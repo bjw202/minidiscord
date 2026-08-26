@@ -2,7 +2,7 @@
 id: SPEC-BOT-001
 title: "minidiscord 봇 초대 API — 게이트웨이 토큰 발급과 세션 실행 명령 안내"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-08-26
 updated: 2026-08-27
 author: manager-spec

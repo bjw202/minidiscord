@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t2` (브랜치 `WT-auth-room-bot`) |
 | 선행 SPEC | `SPEC-CORE-001` (카드 `t1`) → `SPEC-AUTH-001` → `SPEC-ROOM-001` |
 | 실행 순서 | 카드 `t2` 의 세 SPEC 중 **세 번째(마지막)** |
-| 현재 상태 | `draft` — plan 단계 완료 |
+| 현재 상태 | `completed` — sync 단계 완료 (§E.4 audit-ready) |
 
 ---
 
@@ -377,7 +377,83 @@ typecheck: "exit 0 (최종 트리)"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill-SPEC-BOT-001
+spec_id: SPEC-BOT-001
+card: t2
+worktree: .claude/worktrees/t2 (WT-auth-room-bot)
+head_at_sync_evidence: "3bc0387"
+sync_session: 05a46860-5a2b-4779-bb63-a879ff273531
+lens: "--security --deep"
+docs_updated: [README.md, CHANGELOG.md]
+status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+```
+
+### Claim (주장)
+
+SPEC-BOT-001 의 초대 토큰 발급·목록·철회가 sync 세션의 **독립 재실행**으로 확인되었고, 리드가 1순위로 지목한 **토큰 유출 경로 점검**에서 유출 경로가 발견되지 않았다. 문서(README·CHANGELOG)가 현재 코드 상태를 반영한다.
+
+### Evidence (증거)
+
+sync 세션이 run 세션 보고를 인용하지 않고 직접 실행해 관측했다.
+
+```
+$ npm test -w server -- --reporter=verbose
+ ✓ test/rooms-bots.test.ts > invites > invites a bot and returns one-time token + command 44ms
+ ✓ test/rooms-bots.test.ts > invites > re-inviting same bot revokes old token and issues new one 55ms
+ ✓ test/rooms-bots.test.ts > invites > command carries env vars, the dev flag and the configured port 43ms
+ ✓ test/rooms-bots.test.ts > invites > invite failures distinguish missing room, archived room and missing bot 43ms
+ ✓ test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token 44ms
+ ✓ test/rooms-bots.test.ts > invites > lists invites without token 43ms
+ ✓ test/rooms-bots.test.ts > invites > never exposes the issued token again 43ms
+ ✓ test/rooms-bots.test.ts > invites > online is a boolean false, not the integer 0 43ms
+ ✓ test/rooms-bots.test.ts > invites > revoking an invite is idempotent 43ms
+ ✓ test/rooms-bots.test.ts > invites > archiving a room revokes that room bot tokens (verifies SPEC-ROOM-001 archive contract) 44ms
+ Test Files  5 passed (5)
+      Tests  37 passed (37)
+exit=0
+```
+
+```
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+원문 로그: `.moai/state/verify/sync-t2/full.log`, `.moai/state/verify/sync-t2/typecheck.log`.
+
+**보안 렌즈 — 토큰 유출 경로 전수 점검** (리드 지목 1번, AC-BOT-003 이 런타임 단언으로 바꾼 지점). 평문 토큰이 발급 응답 밖으로 나갈 수 있는 경로를 셋으로 나눠 각각 명령으로 확인했다.
+
+1. **로그로 새는가 — 아니다.** `grep -rn 'console\.' server/src/` 의 출력은 한 줄이며(`index.ts:34` 의 기동 배너 `minidiscord listening on :${config.port}`) 토큰을 담지 않는다. 요청 로깅 자체가 꺼져 있다 — `grep -rn 'logger' server/src/` → `index.ts:18: const app = Fastify({ logger: false })`. Fastify 기본 요청 로거가 비활성이므로 요청 본문·응답 본문이 로그로 흐르는 경로가 없다.
+2. **목록 API 로 새는가 — 아니다.** `GET /api/rooms/:id/invites` 의 SELECT 는 `t.bot_id, b.name AS bot_name` 두 컬럼만 뽑고(`routes-bots.ts:66-70`) `token_hash` 조차 조회하지 않는다. 응답은 `{ bot_id, bot_name, online }` 세 키다. 테스트 `never exposes the issued token again` 가 키 집합 정렬 일치 + 발급 토큰 문자열 부재를 단언한다.
+3. **오류 본문으로 새는가 — 아니다.** 초대 경로의 오류 응답 세 개는 전부 고정 문자열이다 — `'방을 찾을 수 없습니다'`(404), `'보관된 방에는 초대할 수 없습니다'`(409), `'봇을 찾을 수 없습니다'`(404). 입력값이나 토큰을 본문에 반사하지 않는다.
+
+**저장 형태**: `grep -rn 'token' server/src/routes-bots.ts` 전수 출력에서 `bot_tokens` 에 쓰는 문장은 `INSERT ... (room_id, bot_id, token_hash) VALUES (?, ?, sha256Hex(token))` 하나뿐이다(`routes-bots.ts:59`). 평문이 DB 로 가는 경로가 없다. 테스트 `stores only the sha256 hash of the issued token` 가 `token_hash === sha256Hex(평문)` 과 `token_hash !== 평문` 을 함께 단언한다.
+
+**결론**: 평문 토큰이 존재하는 곳은 (a) 발급 요청을 처리하는 동안의 메모리, (b) `201` 응답 본문(`token` 필드와 `command` 문자열) 둘뿐이다. 이는 1회 노출 설계 그대로이며 유출 경로가 아니다.
+
+### Baseline-attribution (baseline 귀속)
+
+- 측정 대상 트리: `.claude/worktrees/t2`, `git rev-parse --short HEAD` → `3bc0387`, 브랜치 `WT-auth-room-bot`.
+- 위 명령(테스트·타입검사·세 grep)은 모두 이 트리에서 이 sync 세션이 실행했으며, run 세션이나 리드 디스패치의 수치를 옮겨 적지 않았다.
+- 리드가 보고한 "BOT 단계 server/src 변경 = routes-bots.ts 한 파일뿐"(REQ-BOT-008)은 §E.2 의 `git diff --name-only <spec_base_sha> -- server/src` 출력이 근거이며, sync 세션은 이를 **재실행하지 않았다** — 아래 Gaps 에 기록한다.
+
+### Gaps (미검증)
+
+- **커버리지 수치** — `@vitest/coverage-v8` 미설치, 설치 금지. §E.3 E3 의 이월 항목 그대로다.
+- **REQ-BOT-008 단일 파일 규칙의 sync 측 재확인** — 리드가 직접 실행해 관측했다고 보고했고 §E.2 에 원문 출력이 있으나, sync 세션이 같은 명령을 다시 돌리지는 않았다. 이 항목만은 재실행이 아니라 기록 확인이다.
+- **게이트웨이 쪽 토큰 소비 경로** — `sha256Hex` 로 저장된 해시를 실제로 대조하는 소비자(카드 t3 게이트웨이)가 아직 없어, 발급–조회 계약의 반대편은 관측할 수 없다.
+- **실제 프로세스 기동 후 수동 확인** — 관측 범위는 `buildServer()` + `inject` 까지다.
+
+### Residual-risk (잔여 위험)
+
+- **동시 재초대 시 활성 토큰 2개 가능성** — 재초대는 "기존 철회 UPDATE → 새 INSERT" 두 문장으로 처리되며 트랜잭션으로 묶여 있지 않다. 같은 방·같은 봇에 대한 두 초대 요청이 겹치면 이론적으로 활성 토큰이 둘 남는다. plan.md §E 가 수용한 위험이며 §E.3 의 이월 항목 그대로다. 게이트웨이가 붙어 토큰이 실제 접속 권한이 되는 시점에는 재평가가 필요하다.
+- **토큰은 1회만 표시된다** — 사용자가 응답을 놓치면 복구 수단이 재초대뿐이다. 의도된 설계이며 README 에 명시했다.
+- **`command` 문자열에 평문 토큰이 포함된다** — 사용자가 이 문자열을 셸 히스토리나 스크립트에 붙여 넣으면 토큰이 그 파일에 남는다. 서버 책임 범위 밖이나, 로컬 전용 전제에서 수용되는 위험으로 기록한다.
+- **인증만 있고 인가는 없다** — 로그인한 사용자는 누구나 어떤 방에든 어떤 봇이든 초대·철회할 수 있다. 단일 사용자 로컬 전제에서는 의도된 범위이며 README 에 명시했다.
+- **`DELETE` 철회의 멱등성은 "조건에 맞는 행이 없으면 아무것도 안 함"으로 구현된다** — 없는 방·없는 봇을 지목해도 `200 { ok: true }` 다. AC-BOT-007 이 요구한 동작이나, 호출자가 오타를 알아챌 신호가 없다.
 
 ---
 
