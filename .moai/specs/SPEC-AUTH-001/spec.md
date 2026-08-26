@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTH-001
 title: "minidiscord 인증 — 회원가입·로그인·세션 쿠키·보호 라우트 진입 검사"
-version: "0.2.0"
+version: "0.5.0"
 status: draft
 created: 2026-08-26
 updated: 2026-08-26
@@ -12,6 +12,7 @@ module: "server/"
 lifecycle: spec-anchored
 tags: "auth, session-cookie, scrypt, require-auth"
 tier: M
+depends_on: [SPEC-CORE-001]
 ---
 
 # SPEC-AUTH-001 — minidiscord 인증
@@ -22,6 +23,9 @@ tier: M
 |------|------|-----------|--------|
 | 0.1.0 | 2026-08-26 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 3-5 에서 도출 (칸반 카드 `t2`, 마일스톤 M2). | manager-spec |
 | 0.2.0 | 2026-08-26 | **3분할.** 요구사항 33개·수용 기준 27개가 Tier L 상한(25/25, `.claude/rules/moai/workflow/spec-workflow.md:146-152`)을 넘어, 예산을 늘리는 대신 세 SPEC 으로 쪼갰다. 이 SPEC 은 인증만 남기고 방·봇 등록은 `SPEC-ROOM-001`, 봇 초대·토큰 발급은 `SPEC-BOT-001` 로 옮겼다. 요구사항 15개·수용 기준 13개로 Tier M(16/16) 안에 들어온다. | manager-spec |
+| 0.3.0 | 2026-08-26 | **plan-audit 교정 라운드.** `.moai/reports/plan-audit/t2-3spec-audit.md` 가 이 SPEC 을 **FAIL**(0.62, Tier M 기준선 0.80)로 판정했고, 차단 3건(AUTH-B1·B2·B3)·중대 4건·경미 3건을 지적했다. 그 지적을 전부 반영했다. REQ-AUTH-013 을 이 SPEC 이 등록하는 라우트로 한정하고(`GET /api/health` 는 SPEC-CORE-001 소관), REQ-AUTH-006 에 빈 문자열 거절을 되살리고, REQ-AUTH-003 에 `registerAuthRoutes(app, app.db)` 호출 규칙을 명시했다. 수용 기준에는 `buildServer` 를 실제로 부르는 AC-AUTH-014 를 더해 13→14개가 됐다(Tier M 상한 이내). | manager-spec |
+| 0.4.0 | 2026-08-26 | **plan-audit 2차 교정 라운드 (소규모).** `.moai/reports/plan-audit/t2-3spec-audit-iter2.md` 가 **PASS**(0.90, Tier M 기준선 0.80, 차단 0건)로 판정했고, 남은 중대 2건만 닫았다. **R1** — 범위 경계 기준(AC-AUTH-012)의 관측 조건이 "출력이 비어 있다" 하나뿐이라, `.spec-base-sha` 를 기록하지 않은 실행에서도 통과했다(git 이 오류를 표준 오류로 내고 표준 출력을 비우기 때문). `git rev-parse --verify` 로 기준 SHA 확인을 앞에 두고, 두 명령 모두 **종료 코드 `0`** 을 관측 조건에 넣었다. **R2** — AC-AUTH-014 가 기대는 `MINIDISCORD_DATA_DIR` 지연 반영이 우연에 기대고 있었다. `server/src/config.ts` 의 `dataDir` 을 게터로 고쳤고(카드 교차 수정 — 경위는 `SPEC-ROOM-001` `plan.md` §D 8번), 기준 본문이 그 근거를 게터로 명시한다. 요구사항 15개·수용 기준 14개로 개수는 그대로다. | manager-spec |
+| 0.5.0 | 2026-08-26 | **plan-audit 3차 교정 라운드 (기준 관측성 한정).** `.moai/reports/plan-audit/t2-3spec-audit-iter3.md` 가 이 SPEC 을 **FAIL**(0.87, Tier M 기준선 0.80, 차단 2건)로 판정했다 — 점수는 기준선을 넘었고 실패 사유는 차단 결함이다. 리드 지시에 따라 **D1 하나만** 닫는다. "이름 붙은 기존 테스트가 통과한다"를 관측으로 삼은 기준 다섯 개(AC-AUTH-001·003·005·006·007)가 명령을 `npm test -w server` 로 지정하고 있었는데, 기본 리포터는 파일 수와 테스트 수만 내보내고 테스트 이름은 한 줄도 내지 않는다. 그 결과 그 테스트를 아예 쓰지 않은 실행과 통과한 실행의 출력이 서로 같았다 — 둘 다 종료 코드 `0` 이라 검사가 아무것도 검사하지 못했다. 명령을 `npm test -w server -- --reporter=verbose` 로 바꾸고, 관측 대상을 `✓ test/auth.test.ts > <describe 이름> > <테스트 이름>` 줄이 출력에 실제로 나타나는가로 바꿨다. `plan.md` §H 에 같은 결함이 되돌아오는 것을 막는 안티패턴을 더했다. 요구사항 15개·수용 기준 14개로 개수는 그대로다. D2(원본 `plan-v2.md` 부재)는 리드 판단 대기라 이번 범위 밖이다. | manager-spec |
 
 ---
 
@@ -63,7 +67,7 @@ SPEC-AUTH-001 (여기) → SPEC-ROOM-001 → SPEC-BOT-001
 `auth.ts` 는 Fastify 모듈 선언 병합으로 `FastifyRequest.user?: { id: number; username: string }` 를 선언해야 한다. `requireAuth` 를 통과한 요청은 이 속성으로 인증 주체를 노출한다.
 
 **REQ-AUTH-003** (Ubiquitous)
-`buildServer` 는 `@fastify/cookie` 를 등록하고, `openDb(config.dbPath)` 의 결과를 `app.db` 데코레이터로 노출해야 한다. `requireAuth` 와 모든 라우트는 `req.server.db` 로 이 하나의 연결을 공유한다.
+`buildServer` 는 `@fastify/cookie` 를 등록하고, `openDb(config.dbPath)` 의 결과를 `app.db` 데코레이터로 노출해야 한다. `requireAuth` 와 모든 라우트는 `req.server.db` 로 이 하나의 연결을 공유한다. `buildServer` 는 인증 라우트를 `registerAuthRoutes(app, app.db)` 로 등록해, 인자로 받는 연결과 `req.server.db` 가 같은 객체를 가리켜야 한다.
 
 **REQ-AUTH-004** (Ubiquitous)
 비밀번호는 평문으로 저장되어서는 안 된다. `hashPassword` 는 16바이트 난수 salt 와 `scrypt` 64바이트 파생 키를 `<salt-hex>:<key-hex>` 형식으로 만들고, `verifyPassword` 는 `timingSafeEqual` 로 비교해야 한다.
@@ -74,7 +78,7 @@ SPEC-AUTH-001 (여기) → SPEC-ROOM-001 → SPEC-BOT-001
 클라이언트가 `POST /api/auth/register` 를 유효한 `{ username, password }` 로 호출하면, 서버는 `users` 에 한 행을 넣고 상태 코드 `201` 을 응답해야 한다.
 
 **REQ-AUTH-006** (When — 유효하지 않은 입력 감지)
-`username` 이 문자열이 아니거나, `password` 가 문자열이 아니거나, `password` 의 길이가 8 미만인 요청이 감지되면, 서버는 상태 코드 `400` 과 한국어 오류 메시지를 응답하고 `users` 에 아무 행도 넣지 않아야 한다. 타입 검사는 길이 검사보다 먼저 수행한다 — 값이 없는 경우(`undefined`)와 문자열이 아닌 경우(배열·객체·숫자)를 모두 이 한 검사로 거른다.
+`username` 이 문자열이 아니거나 빈 문자열이거나, `password` 가 문자열이 아니거나, `password` 의 길이가 8 미만인 요청이 감지되면, 서버는 상태 코드 `400` 과 한국어 오류 메시지를 응답하고 `users` 에 아무 행도 넣지 않아야 한다. 타입 검사는 길이 검사보다 먼저 수행한다 — 값이 없는 경우(`undefined`)와 문자열이 아닌 경우(배열·객체·숫자)를 모두 이 한 검사로 거른다. 빈 문자열은 타입 검사를 통과하므로 별도의 조건으로 거른다.
 
 **REQ-AUTH-007** (When — 중복 감지)
 이미 존재하는 `username` 으로 가입 요청이 오면, 서버는 상태 코드 `409` 를 응답해야 한다.
@@ -97,7 +101,9 @@ SPEC-AUTH-001 (여기) → SPEC-ROOM-001 → SPEC-BOT-001
 `md_session` 쿠키가 없거나 그 토큰이 `sessions` 에 없는 요청이 감지되면, `requireAuth` 는 상태 코드 `401` 을 응답하고 핸들러를 실행시키지 않아야 한다.
 
 **REQ-AUTH-013** (Unwanted — shall not)
-인증 없이 접근 가능한 경로는 `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout` 세 개뿐이어야 한다. 이 SPEC 은 그 밖의 어떤 도메인 라우트도 등록하지 않으며, 뒤따르는 SPEC 이 등록할 도메인 라우트는 `requireAuth` 를 preHandler 로 달지 않고 동작해서는 안 된다.
+이 SPEC 이 등록하는 라우트 가운데 인증 없이 접근 가능한 경로는 `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout` 세 개뿐이어야 한다. `GET /api/health` 는 `SPEC-CORE-001` 이 이미 인증 없이 등록해 둔 경로로 이 SPEC 의 범위 밖이며, 그대로 둔다 — 이 요구사항은 그 경로의 삭제를 요구하지 않는다. 이 SPEC 은 그 밖의 어떤 도메인 라우트도 등록하지 않으며, 뒤따르는 SPEC 이 등록할 도메인 라우트는 `requireAuth` 를 preHandler 로 달지 않고 동작해서는 안 된다.
+
+`GET /api/me` 는 이 SPEC 의 라우트가 아니다. 원본 Task 3 의 테스트가 `requireAuth` 를 걸어 볼 대상으로 쓰는 **테스트 전용 경로**이며, 테스트의 `build()` 헬퍼 안에서만 등록된다. `server/src` 의 어떤 파일에도 이 경로를 등록해서는 안 된다.
 
 ### 3.4 범위 경계 (금지)
 
@@ -184,7 +190,7 @@ SPEC-AUTH-001 (여기) → SPEC-ROOM-001 → SPEC-BOT-001
 
 ## 6. 수용 기준
 
-수용 기준 전체는 `acceptance.md` 에 있다(AC-AUTH-001..013). 각 기준은 명령 하나와 관측 가능한 결과 하나로 이루어진다.
+수용 기준 전체는 `acceptance.md` 에 있다(AC-AUTH-001..014). 각 기준은 명령 하나와 관측 가능한 결과 하나로 이루어진다.
 
 ## 7. 참조
 

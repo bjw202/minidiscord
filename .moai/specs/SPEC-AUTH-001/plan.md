@@ -103,6 +103,10 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply): Pro
 | `sessions` 에 만료가 없어 세션이 영구적이다 | 쿠키 탈취 시 무기한 유효 | 범위 밖(spec.md §5)으로 명시. 평문 HTTP 를 수용한 원본 결정과 같은 층위의 리스크다 |
 | `users.username` 의 `UNIQUE` 위반을 `try/catch` 로 잡아 409 로 바꾸는데, 다른 DB 오류도 같이 409 가 된다 | 오진단 | 수용(원본 그대로). 이 테이블에 다른 제약이 없어 실제 오분류 경로가 없다 |
 | 이 SPEC 만으로는 `requireAuth` 를 쓰는 실제 도메인 라우트가 없다 | 진입 검사가 테스트 전용 `/api/me` 로만 검증된다 | 수용. `/api/me` 는 원본 Task 3 테스트가 이미 쓰는 경로이고, 실제 결합은 `SPEC-ROOM-001` 이 검증한다 |
+| 모든 테스트가 자기 `Fastify()` 를 만들어 배선해서 `index.ts` 를 한 줄도 안 고쳐도 초록불이 난다 | `npm test` 는 통과하는데 실제로 띄운 서버는 모든 요청에 `401` — 가장 늦게 발견되는 종류의 결함이다 | AC-AUTH-014 가 `buildServer()` 를 직접 호출해 `app.db` · 쿠키 발급 · 인증 라우트 등록을 관측한다. 테스트 헬퍼의 배선으로 `buildServer` 의 배선을 추론하지 않는다 |
+| 모듈 선언 병합이 두 파일에 갈라져 있다 — `FastifyRequest.user` 는 `auth.ts`(REQ-AUTH-002), `FastifyInstance.db` 는 `index.ts`(§B) | `index.ts` 가 tsconfig `include` 밖으로 나가는 순간 `req.server.db` 가 타입 오류가 된다. 지금은 프로젝트 전체를 한 tsconfig 가 덮어서 드러나지 않는다 | 수용하되 기록해 둔다. 빌드를 나누게 되면 두 선언을 한 곳(예: `types.d.ts`)으로 모아야 한다. `npm run typecheck -w server` 가 현재 구성에서는 이 문제를 부수적으로 잡는다 |
+| AC-AUTH-014 가 `MINIDISCORD_DATA_DIR` 대입 뒤 `import('../src/index.js')` 로 서버를 띄운다 | 대입이 반영되지 않으면 이 기준은 통과하면서 저장소의 진짜 `data/minidiscord.db` 를 연다 | `server/src/config.ts` 의 `dataDir` 이 게터라 환경변수를 그때 다시 읽는다. 교정 경위와 남은 한계(`port` 즉시 평가)는 `SPEC-ROOM-001` `plan.md` §D 8번. 게터를 평범한 속성으로 되돌리지 않는다 |
+| 범위 경계 검사를 `git diff HEAD` 로 하면 이미 커밋된 변경을 못 본다 | `db.ts` 스키마 변경이 커밋된 뒤에는 검사가 항상 빈 출력이라 통과한다 — 금지 요구사항이 거짓 통과한다 | 이 SPEC 은 마일스톤이 하나라 커밋 전에 검사가 돌지만, 형제 SPEC 과 형태를 맞춰 `spec_base_sha` 기준으로 비교한다 (M1 단계 0) |
 
 ## §F 마일스톤
 
@@ -110,20 +114,21 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply): Pro
 
 ### M1 — 인증과 세션 쿠키 (우선순위 High)
 
-1. `server/test/auth.test.ts` 작성 (원본 Task 3 Step 1 본문 그대로 — 5개 테스트). `build()` 에 `app.db = db` 한 줄을 포함한다.
+0. **`spec_base_sha` 기록** (다른 어떤 변경보다 먼저): `git rev-parse HEAD > .moai/specs/SPEC-AUTH-001/.spec-base-sha` 를 실행하고, 같은 값을 `progress.md` `§E.1` 의 `spec_base_sha` 에 적는다. 이후 범위 경계 검사(7단계)는 `HEAD` 가 아니라 이 값을 기준으로 비교한다.
+1. `server/test/auth.test.ts` 작성 (원본 Task 3 Step 1 본문 그대로 — 5개 테스트). `build()` 에 `app.db = db` 한 줄을 포함한다. `build()` 는 이 파일 안에만 두고 내보내지 않는다 — `SPEC-ROOM-001` 이 쓰는 `{ app, cookie }` 헬퍼는 그 SPEC 이 `rooms-bots.test.ts` 에 따로 만드는 별개의 헬퍼다.
 2. **RED 확인**: `npm test -w server` → `Cannot find module '../src/auth.js'` 로 실패. 출력 기록.
 3. `server/src/auth.ts` 구현 — `hashPassword` / `verifyPassword` / `registerAuthRoutes` / `requireAuth`. `requireAuth` 는 §B 의 데코레이터 버전 **하나만** 쓴다.
 4. `server/src/index.ts` 의 `buildServer` 수정 — `declare module 'fastify'` 로 `db` 선언, `mkdirSync(config.dataDir)` / `mkdirSync(config.uploadsDir)`, `app.db = openDb(config.dbPath)`, `await app.register(cookie)`, `registerAuthRoutes(app, app.db)`, `onClose` 훅에서 `app.db.close()`.
-5. AC-AUTH-002 / 004 / 008 / 010 / 011 의 추가 테스트를 `auth.test.ts` 에 넣는다.
+5. AC-AUTH-002 / 004 / 008 / 010 / 011 / 014 의 추가 테스트를 `auth.test.ts` 에 넣는다. AC-AUTH-014 만 다른 테스트와 성격이 다르다 — 자기 `Fastify()` 를 만들지 않고 `buildServer()` 를 직접 불러 조립 결과를 관측한다.
 6. **GREEN 확인**: `npm test -w server` 전부 통과. `npm run typecheck -w server` → 종료 코드 0.
-7. 범위 경계 확인: `server/src` 가 네 파일인지, `db.ts` 가 안 바뀌었는지 (AC-AUTH-012).
+7. 범위 경계 확인 (AC-AUTH-012): `ls server/src` 가 네 파일인지 본다. 이어서 `git rev-parse --verify "$(cat .moai/specs/SPEC-AUTH-001/.spec-base-sha)^{commit}"` 로 기준 SHA 를 확인하고 — 이 명령이 종료 코드 `0` 으로 SHA 를 내야 한다 — 그 SHA 를 그대로 넣은 `git diff --stat <SHA> -- server/src/db.ts` 가 종료 코드 `0` 이면서 출력이 비어 있는지 본다. **빈 출력 하나만 보고 통과로 적지 않는다**: 단계 0 을 건너뛰어 기준 SHA 가 없을 때도 표준 출력은 비어 있다.
 8. 커밋: `feat: auth with register/login/session cookie`
 
-수용 기준: AC-AUTH-001..013 전부.
+수용 기준: AC-AUTH-001..014 전부.
 
 ## §G 자기 검증
 
-구현 완료 판정은 `acceptance.md` 의 AC-AUTH-001..013 전부다. 별도 기준을 만들지 않는다.
+구현 완료 판정은 `acceptance.md` 의 AC-AUTH-001..014 전부다. 별도 기준을 만들지 않는다.
 
 실행자는 마일스톤 종료 시 다음을 `progress.md` `§E.2` 에 기록한다.
 
@@ -137,16 +142,24 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply): Pro
 - **`requireAuth` 두 버전 병존** — 원본이 제시한 첫 번째(`req.server['db' as keyof …]`) 형태를 남기지 않는다. §B 의 데코레이터 버전 하나만 존재해야 한다.
 - **다음 SPEC 선반영** — "어차피 `SPEC-ROOM-001` 에서 필요하니까" `routes-rooms.ts` / `routes-bots.ts` 스텁을 미리 만들지 않는다. AC-AUTH-012 가 기계적으로 잡는다.
 - **오류 본문으로 존재 여부 흘리기** — 로그인 실패 응답이 "없는 사용자"와 "비밀번호 틀림"을 구분하면 사용자 이름 열거가 가능해진다. 두 경우 같은 401 본문을 쓴다 (REQ-AUTH-009).
-- **RED 단계 건너뛰기** — 구현을 먼저 쓰면 AC-AUTH-013 의 전이 증거를 만들 수 없다.
+- **`/api/me` 를 `server/src` 에 등록** — 이 경로는 원본 Task 3 테스트가 `requireAuth` 를 걸어 볼 대상으로 쓰는 **테스트 전용**이다. `build()` 헬퍼 안에서만 등록한다. `auth.ts` 에 넣으면 AC-AUTH-011 의 라우트 수 `grep` 이 `3` 을 넘겨 실패하고, REQ-AUTH-013 을 어긴다.
+- **`index.ts` 를 건너뛰기** — 테스트가 각자 `Fastify()` 를 배선하므로 `index.ts` 를 안 고쳐도 대부분의 기준이 통과한다. 그렇게 하면 실제로 띄운 서버가 동작하지 않는다. AC-AUTH-014 가 이 경로를 막는다.
+- **`git diff HEAD` 로 범위 경계 검사** — 커밋 뒤에는 항상 빈 출력이라 아무것도 잡지 못한다. `spec_base_sha` 를 기준으로 비교한다 (M1 단계 0).
+- **빈 출력만 보고 범위 경계 통과로 적기** — 기준 SHA 가 없으면 git 은 오류를 표준 오류로 내고 표준 출력은 비운다. `git rev-parse --verify` 가 종료 코드 `0` 으로 SHA 를 내는 것을 먼저 확인하고, `git diff` 도 종료 코드 `0` 임을 함께 확인한다 (AC-AUTH-012).
+- **RED 단계 건너뛰기** — 구현을 먼저 쓰면 AC-AUTH-013 의 전이 증거를 만들 수 없다. 다만 RED 판정은 도구가 내는 특정 문구가 아니라 "모듈 부재로 실패했다"는 원인으로 한다.
 - **테스트에서 실제 `data/` 쓰기** — 모든 테스트는 `mkdtempSync` 임시 디렉터리를 쓰고 `afterEach` 에서 지운다.
+- **이름만 대고 통과로 적기** — 기본 리포터는 테스트 이름을 출력하지 않으므로, 이름 붙은 테스트를 하나도 쓰지 않아도 `npm test -w server` 는 종료 코드 `0` 이다. 이름 붙은 테스트의 통과는 `npm test -w server -- --reporter=verbose` 출력에서 `✓ test/<파일> > <describe 이름> > <테스트 이름>` 줄을 직접 보고 판정한다. `--reporter=verbose` 를 불필요한 플래그로 여겨 빼지 않는다. `-t <이름>` 필터로 대신하지도 않는다 — 맞는 이름이 없으면 전부 건너뛴 채 종료 코드 `0` 이다 (3차 보고서 D1).
 
 ## §I 상호 참조
 
+- `.moai/plan/2026-08-26-minidiscord/plan-v2.md`, `spec-v2.md` — **이 SPEC 의 유일한 규범 근거**(읽기 전용). 같은 디렉터리의 `plan.md`·`spec.md` 는 폐기된 v1 이며 참조하지 않는다.
 - `spec.md` — 이 SPEC 의 GEARS 요구사항(REQ-AUTH-001..015)과 범위 경계
-- `acceptance.md` — AC-AUTH-001..013
+- `acceptance.md` — AC-AUTH-001..014
+- `.moai/reports/plan-audit/t2-3spec-audit.md` — 이 SPEC 을 FAIL(0.62)로 판정한 1차 plan-audit 보고서. v0.3.0 교정 라운드의 근거다
+- `.moai/reports/plan-audit/t2-3spec-audit-iter2.md` — 이 SPEC 을 PASS(0.90)로 판정한 2차 plan-audit 보고서. v0.4.0 교정 라운드(R1·R2)의 근거다
 - `progress.md` — 단계별 증거 기록처
 - `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 3 — 원본 (읽기 전용)
 - `.moai/plan/2026-08-26-minidiscord/spec-v2.md` 2·5·9장 — 기능 요구사항, 데이터 모델, 보안
 - `.moai/specs/SPEC-CORE-001/` — 토대 SPEC (`buildServer`, `openDb`, 스키마)
-- `SPEC-ROOM-001` — 이 SPEC 다음. §A 의 `requireAuth` / `req.user` / `app.db` 계약을 소비한다
+- `SPEC-ROOM-001` — 이 SPEC 다음. §A 의 `requireAuth` / `req.user` / `app.db` 계약을 소비한다. 그 `plan.md` §D 8번이 AC-AUTH-014 도 기대고 있는 `config.dataDir` 지연 평가 기록이다
 - `SPEC-BOT-001` — `SPEC-ROOM-001` 다음. 같은 계약을 소비하고, §D 1번의 안내 문자열 판단을 이어받는다

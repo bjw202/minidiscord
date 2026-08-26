@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROOM-001
 title: "minidiscord 방 API와 봇 등록 API"
-version: "0.1.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-26
 updated: 2026-08-26
@@ -12,7 +12,7 @@ module: "server/"
 lifecycle: spec-anchored
 tags: "rooms, archive, bots, registration, routes"
 tier: M
-related_specs: [SPEC-CORE-001, SPEC-AUTH-001, SPEC-BOT-001]
+depends_on: [SPEC-CORE-001, SPEC-AUTH-001]
 ---
 
 # SPEC-ROOM-001 — minidiscord 방 API와 봇 등록 API
@@ -22,6 +22,9 @@ related_specs: [SPEC-CORE-001, SPEC-AUTH-001, SPEC-BOT-001]
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
 | 0.1.0 | 2026-08-26 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 4 에서 도출 (칸반 카드 `t2`). 원래 카드 `t2` 는 인증·방·봇 등록·봇 초대를 한 SPEC(요구사항 33개, 수용 기준 27개)으로 묶었는데, `.claude/rules/moai/workflow/spec-workflow.md` 의 Tier 상한(Tier M 16/16, Tier L 25/25)을 넘겼다. 상한을 늘리는 대신 규칙이 지시하는 대로 쪼개서, 카드 `t2` 가 `SPEC-AUTH-001` → `SPEC-ROOM-001` → `SPEC-BOT-001` 세 개의 Tier M SPEC 을 의존 순서대로 내놓는다. 이 문서는 그 가운데 두 번째다. | manager-spec |
+| 0.2.0 | 2026-08-26 | **plan-audit 교정 라운드.** `.moai/reports/plan-audit/t2-3spec-audit.md` 가 이 SPEC 을 **FAIL**(0.74, Tier M 기준선 0.80)로 판정했고, 차단 1건(ROOM-B1)·중대 3건·경미 4건을 지적했다. 전부 반영했다. 보관 실패 응답을 `404`(방 없음) 와 `409`(이미 보관됨)로 나눠 `SPEC-BOT-001` 의 초대 실패 응답과 의미를 맞췄고(원본으로부터의 의도적 이탈 — `plan.md` §D 7번), `buildServer` 등록을 요구사항 층에 올렸으며(REQ-ROOM-014), `POST /api/rooms` 응답의 다섯 키를 REQ-ROOM-003 에 못 박았다. 요구사항 13→14개, 수용 기준 10→11개로 Tier M(16/16) 이내다. | manager-spec |
+| 0.3.0 | 2026-08-26 | **plan-audit 2차 교정 라운드 (소규모).** `.moai/reports/plan-audit/t2-3spec-audit-iter2.md` 가 **PASS**(0.88, Tier M 기준선 0.80, 차단 0건)로 판정했고, 남은 중대 2건만 닫았다. **R1** — 범위 경계 기준(AC-ROOM-009)의 관측 조건이 "출력이 비어 있다" 하나뿐이라, M1 단계 0 을 건너뛴 실행에서도 통과했다. `git rev-parse --verify` 로 기준 SHA 확인을 앞에 두고 두 명령 모두 **종료 코드 `0`** 을 관측 조건에 넣었다. **R2** — AC-ROOM-011 이 쓰는 임시 `MINIDISCORD_DATA_DIR` 이 `SPEC-BOT-001` 착수 이후 반영되지 않게 될 예정이었다. `server/src/config.ts` 의 `dataDir` 을 게터로 고쳤다 — `SPEC-CORE-001` 산출물을 카드 `t2` 에서 수정한 것이며, 사유는 `AC-ROOM-011` hermetic 보장이다(`plan.md` §D 8번). 요구사항 14개·수용 기준 11개로 개수는 그대로다. | manager-spec |
+| 0.4.0 | 2026-08-26 | **plan-audit 3차 교정 라운드 (기준 관측성 한정).** `.moai/reports/plan-audit/t2-3spec-audit-iter3.md` 가 이 SPEC 을 **FAIL**(0.88, Tier M 기준선 0.80, 차단 2건)로 판정했다 — 점수는 기준선을 넘었고 실패 사유는 차단 결함이다. 리드 지시에 따라 **D1 하나만** 닫는다. "이름 붙은 기존 테스트가 통과한다"를 관측으로 삼은 기준 세 개(AC-ROOM-001·005·006)가 명령을 `npm test -w server` 로 지정하고 있었는데, 기본 리포터는 파일 수와 테스트 수만 내보내고 테스트 이름은 한 줄도 내지 않는다. 그 결과 그 테스트를 아예 쓰지 않은 실행과 통과한 실행의 출력이 서로 같았다 — 둘 다 종료 코드 `0` 이라 검사가 아무것도 검사하지 못했다. 명령을 `npm test -w server -- --reporter=verbose` 로 바꾸고, 관측 대상을 `✓ test/rooms-bots.test.ts > <describe 이름> > <테스트 이름>` 줄이 출력에 실제로 나타나는가로 바꿨다. `plan.md` §H 에 같은 결함이 되돌아오는 것을 막는 안티패턴을 더했다. 요구사항 14개·수용 기준 11개로 개수는 그대로다. D2(원본 `plan-v2.md` 부재)는 리드 판단 대기라 이번 범위 밖이다. | manager-spec |
 
 ---
 
@@ -65,7 +68,7 @@ SPEC-CORE-001 이 서버 토대(`buildServer`, `openDb`, 여덟 테이블)를 �
 `GET /api/rooms` 가 호출되면, 서버는 `{ active: Room[], archived: Room[] }` 형태로 응답해야 한다. `Room` 은 `{ id, name, status, created_at, archived_at }` 이고, 두 배열 모두 `id` 내림차순이다.
 
 **REQ-ROOM-003** (When — 이벤트 구동)
-`POST /api/rooms` 가 공백이 아닌 `name` 으로 호출되면, 서버는 앞뒤 공백을 제거한 이름으로 방을 만들고 상태 코드 `201` 과 `status` 가 `active` 인 방 객체를 응답해야 한다.
+`POST /api/rooms` 가 공백이 아닌 `name` 으로 호출되면, 서버는 앞뒤 공백을 제거한 이름으로 방을 만들고 상태 코드 `201` 과 `status` 가 `active` 인 방 객체를 응답해야 한다. 응답 객체의 키 집합은 `GET /api/rooms` 가 돌려주는 `Room` 과 **정확히 같아야** 한다 — `id`, `name`, `status`, `created_at`, `archived_at` 다섯 개다. 활성 방이므로 `archived_at` 의 값은 `null` 이지만, 키 자체는 있어야 한다. 생성 응답과 목록 응답의 모양이 갈라지면 클라이언트가 두 형태를 따로 다뤄야 한다.
 
 **REQ-ROOM-004** (When — 빈 이름 감지)
 `name` 이 없거나 공백뿐인 방 생성 요청이 감지되면, 서버는 상태 코드 `400` 을 응답해야 한다.
@@ -73,8 +76,10 @@ SPEC-CORE-001 이 서버 토대(`buildServer`, `openDb`, 여덟 테이블)를 �
 **REQ-ROOM-005** (When — 이벤트 구동)
 `POST /api/rooms/:id/archive` 가 활성 방에 대해 호출되면, 서버는 한 트랜잭션 안에서 (1) 방의 `status` 를 `archived` 로, `archived_at` 을 현재 시각으로 바꾸고, (2) 그 방의 모든 활성 `bot_tokens` 의 `revoked_at` 을 채운 뒤, 상태 코드 `200` 을 응답해야 한다.
 
-**REQ-ROOM-006** (When — 대상 없음 감지)
-존재하지 않는 방이거나 이미 보관된 방에 대한 보관 요청이 감지되면, 서버는 상태 코드 `404` 를 응답하고 어떤 토큰도 철회하지 않아야 한다.
+**REQ-ROOM-006** (When — 대상 없음 또는 상태 충돌 감지)
+존재하지 않는 방에 대한 보관 요청이 감지되면 서버는 상태 코드 `404` 를, 방은 존재하지만 이미 `archived` 인 방에 대한 보관 요청이 감지되면 상태 코드 `409` 를 응답해야 한다. 두 경우 모두 어떤 토큰도 철회하지 않아야 하며, 오류 본문은 두 경우를 서로 다른 한국어 문구로 구분해야 한다.
+
+두 코드의 의미를 이 SPEC 과 `SPEC-BOT-001` 이 같은 규칙으로 쓴다 — `404` 는 "지목한 대상이 없다", `409` 는 "대상은 있으나 그 상태에서는 할 수 없다"다. 원본 `plan-v2.md` 는 두 경우를 `404` 하나로 합쳤으나, 그러면 클라이언트가 "방이 없다"와 "방이 보관됐다"를 구분할 수 없다. 의도적 이탈이며 근거는 `plan.md` §D 7번에 있다.
 
 **REQ-ROOM-007** (Where — `onArchive` 훅이 주어진 경우)
 `registerRoomRoutes` 에 `onArchive` 가 주어진 구성에서, 보관이 성공하면 서버는 그 방 `id` 를 인자로 훅을 정확히 한 번 호출해야 한다. 훅이 주어지지 않은 구성에서 보관은 훅 없이 성공해야 한다.
@@ -101,6 +106,11 @@ SPEC-CORE-001 이 서버 토대(`buildServer`, `openDb`, 여덟 테이블)를 �
 **REQ-ROOM-013** (Unwanted — shall not)
 이 SPEC 의 구현은 `server/src/db.ts` 의 `SCHEMA` 상수를 변경해서는 안 된다. 필요한 여덟 테이블과 두 인덱스는 SPEC-CORE-001 이 이미 만들었다. 스키마 변경이 필요해 보이면 진행을 멈추고 보고한다.
 
+### 3.4 서버 조립
+
+**REQ-ROOM-014** (Ubiquitous)
+`buildServer` 는 `registerRoomRoutes(app)` 와 `registerBotRoutes(app)` 를 `registerAuthRoutes` 호출 뒤에 등록해야 한다. 두 모듈을 내보내기만 하고 조립하지 않으면, 테스트는 각자 인스턴스를 배선하므로 전부 통과하는데 실제로 띄운 서버에는 방·봇 라우트가 없어 모든 요청이 `404` 가 된다. 등록은 `AC-ROOM-011` 이 `buildServer()` 를 직접 호출해 관측한다.
+
 ---
 
 ## 4. 제약
@@ -121,9 +131,11 @@ SPEC-CORE-001 이 서버 토대(`buildServer`, `openDb`, 여덟 테이블)를 �
 | 소비 대상 | 출처 | 쓰이는 곳 |
 |-----------|------|-----------|
 | `requireAuth(req, reply)` preHandler | SPEC-AUTH-001 (`server/src/auth.ts`) | 이 SPEC 이 등록하는 다섯 경로 전부 |
-| `md_session` 세션 쿠키 계약 | SPEC-AUTH-001 | 테스트의 `build()` 헬퍼가 로그인해 쿠키를 얻는다 |
+| `md_session` 세션 쿠키 계약 | SPEC-AUTH-001 | 이 SPEC 이 만드는 `{ app, cookie }` 헬퍼가 그 계약으로 로그인해 쿠키를 얻는다 |
 | `app.db` 데코레이터와 `req.server.db` | SPEC-AUTH-001 (`buildServer` 수정분) | 두 라우트 모듈의 모든 쿼리 |
 | `rooms` / `bots` / `bot_tokens` 테이블 | SPEC-CORE-001 (`db.ts` 의 `SCHEMA`) | 읽기·쓰기 대상 |
+
+테스트 헬퍼 하나는 이 SPEC 이 **만든다**. `server/test/rooms-bots.test.ts` 의 `build()` 는 가입·로그인까지 마친 `{ app, cookie }` 를 돌려주며, `SPEC-BOT-001` 의 모든 시나리오가 같은 헬퍼를 쓴다. `SPEC-AUTH-001` 이 `auth.test.ts` 에 둔 `build()` 는 `app` 하나만 돌려주는 **다른 헬퍼**이고 내보내지 않는다 — 두 헬퍼를 같은 것으로 다루면 안 된다.
 
 ---
 
