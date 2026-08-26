@@ -4,6 +4,7 @@ import { mkdirSync } from 'node:fs'
 import { openDb, type Db } from './db.js'
 import { registerAuthRoutes } from './auth.js'
 import { registerRoomRoutes } from './routes-rooms.js'
+import { registerBotRoutes } from './routes-bots.js'
 import { config } from './config.js'
 
 // FastifyInstance.db — requireAuth 와 이후 도메인 라우트가 req.server.db 로 공유하는 단일 연결
@@ -22,6 +23,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.get('/api/health', async () => ({ ok: true }))
   registerAuthRoutes(app, app.db)
   registerRoomRoutes(app)
+  registerBotRoutes(app)
   app.addHook('onClose', async () => app.db.close())
   return app
 }

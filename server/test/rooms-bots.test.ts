@@ -7,6 +7,7 @@ import cookie from '@fastify/cookie'
 import { openDb, type Db } from '../src/db.js'
 import { registerAuthRoutes } from '../src/auth.js'
 import { registerRoomRoutes } from '../src/routes-rooms.js'
+import { registerBotRoutes } from '../src/routes-bots.js'
 
 let dir: string
 let db: Db
@@ -31,6 +32,7 @@ async function build(opts?: { onArchive?: (roomId: number) => void }) {
   await app.register(cookie)
   registerAuthRoutes(app, db)
   registerRoomRoutes(app, opts)
+  registerBotRoutes(app)
   await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
   const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
   const cookie0 = setCookieOf(login).split(';')[0]
@@ -116,10 +118,52 @@ describe('rooms', () => {
       ['GET', '/api/rooms'],
       ['POST', '/api/rooms'],
       ['POST', '/api/rooms/1/archive'],
+      ['GET', '/api/bots'],
+      ['POST', '/api/bots'],
     ]
     for (const [method, url] of calls) {
       const res = await app.inject({ method: method as any, url, payload: {} })
       expect(res.statusCode, `${method} ${url}`).toBe(401)
     }
   })
+})
+
+describe('bots', () => {
+  it('registers and lists bots', async () => {
+    const { app, cookie } = await build()
+    const create = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: '코드리뷰어', description: '리뷰 전문' } })
+    expect(create.statusCode).toBe(201)
+    const list = await app.inject({ method: 'GET', url: '/api/bots', headers: { cookie } })
+    expect(list.json()).toEqual([{ id: create.json().id, name: '코드리뷰어', description: '리뷰 전문' }])
+  })
+
+  it('rejects duplicate and blank bot names', async () => {
+    const { app, cookie } = await build()
+    await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })
+    const dup = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })
+    expect(dup.statusCode).toBe(409)
+    const blank = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: '  ' } })
+    expect(blank.statusCode).toBe(400)
+  })
+})
+
+it('buildServer registers room and bot routes behind requireAuth', async () => {
+  process.env.MINIDISCORD_DATA_DIR = mkdtempSync(join(tmpdir(), 'md-buildserver-rooms-'))
+  const { buildServer } = await import('../src/index.js')
+  const app = await buildServer()
+  await app.ready()
+
+  const guarded = await app.inject({ method: 'GET', url: '/api/rooms' })
+  expect(guarded.statusCode).toBe(401)
+
+  await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
+  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+  const cookie = setCookieOf(login).split(';')[0]
+
+  const rooms = await app.inject({ method: 'GET', url: '/api/rooms', headers: { cookie } })
+  expect(rooms.statusCode).toBe(200)
+  const bots = await app.inject({ method: 'GET', url: '/api/bots', headers: { cookie } })
+  expect(bots.statusCode).toBe(200)
+
+  await app.close()
 })

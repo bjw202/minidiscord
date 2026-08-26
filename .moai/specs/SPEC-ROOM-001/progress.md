@@ -237,12 +237,139 @@ $ grep -c 'db\.transaction(' server/src/routes-rooms.ts
 
 **AC-ROOM-003 토큰 철회 절반 — 이 SPEC 에서 미검증.** 활성 토큰이 실제로 죽는지는 이 SPEC 에 토큰 발급 경로가 없어 실행으로 관측할 수 없다. 이 문서의 근거는 구조 절반(`grep -c 'db\.transaction('` → `1`)과 관측 절반(방 이동·`archived_at`·활성 토큰 수 0)뿐이다. 동작 검증은 `SPEC-BOT-001` 의 AC-BOT-008 이 맡는다.
 
+### M2 — 봇 등록 API
+
+**전이 3 (RED)** — `describe('bots', …)` 추가 + `build()` 에 `registerBotRoutes` 배선 직후, 구현 이전. 실패 원인이 출력에서 확인됨: `routes-bots.js` 모듈 부재.
+
+```
+$ npm test -w server
+ FAIL  test/rooms-bots.test.ts [ test/rooms-bots.test.ts ]
+Error: Cannot find module '../src/routes-bots.js' imported from /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t2/server/test/rooms-bots.test.ts
+ ❯ test/rooms-bots.test.ts:10:1
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  16 passed (16)
+EXIT=1
+```
+
+**전이 4 (GREEN)** — `routes-bots.ts` 구현 + `buildServer` 등록 후, 최종 트리 기준.
+
+```
+$ npm test -w server
+ Test Files  5 passed (5)
+      Tests  27 passed (27)
+EXIT=0
+```
+
+이름 붙은 테스트 관측 (AC-ROOM-006 판정 근거). 최종 트리에서 `npm test -w server -- --reporter=verbose`(총 27 passed / EXIT=0) 실행 출력의 `rooms-bots.test.ts` 줄 발췌:
+
+```
+ ✓ test/rooms-bots.test.ts > rooms > creates and lists rooms
+ ✓ test/rooms-bots.test.ts > rooms > archives a room and moves it to archived list
+ ✓ test/rooms-bots.test.ts > rooms > calls onArchive hook when provided
+ ✓ test/rooms-bots.test.ts > rooms > requires auth
+ ✓ test/rooms-bots.test.ts > rooms > rejects a blank room name
+ ✓ test/rooms-bots.test.ts > rooms > archiving moves the room and stamps archived_at
+ ✓ test/rooms-bots.test.ts > rooms > archiving distinguishes a missing room (404) from an archived one (409)
+ ✓ test/rooms-bots.test.ts > rooms > every room and bot route requires a session
+ ✓ test/rooms-bots.test.ts > bots > registers and lists bots
+ ✓ test/rooms-bots.test.ts > bots > rejects duplicate and blank bot names
+ ✓ test/rooms-bots.test.ts > buildServer registers room and bot routes behind requireAuth
+```
+
+**AC-ROOM-009 범위 경계 (M2 단계 6, 최종 트리 기준):**
+
+```
+$ ls server/src
+auth.ts
+config.ts
+db.ts
+index.ts
+routes-bots.ts
+routes-rooms.ts
+
+$ git rev-parse --verify "$(cat .moai/specs/SPEC-ROOM-001/.spec-base-sha)^{commit}"
+bca6067b7d76cdf3eb196d1a4326fba3f4f54962
+(EXIT=0)
+
+$ git diff --stat bca6067b7d76cdf3eb196d1a4326fba3f4f54962 -- server/src/db.ts
+(EXIT=0, 출력 없음)
+```
+
+**경계 grep (AC-ROOM-009 / E4):**
+
+```
+$ grep -c "sha256Hex" server/src/routes-bots.ts
+0
+$ grep -c "invites" server/src/routes-bots.ts
+0
+$ grep -c 'db\.transaction(' server/src/routes-rooms.ts
+1
+```
+
+**커버리지 시도 (E3) — 미검증.** `@vitest/coverage-v8` 이 없어 설치가 금지돼 있으므로 커버리지 수치를 잴 수 없다. 원문 오류:
+
+```
+$ npm test -w server -- --coverage
+ MISSING DEPENDENCY  Cannot find dependency '@vitest/coverage-v8'
+EXIT=1
+```
+
+보상 관측 — 어떤 테스트가 어느 내보낸 라우트를 덮는지: `creates and lists rooms`·`requires auth`·`every room and bot route requires a session`(GET/POST `/api/rooms`), `rejects a blank room name`(POST `/api/rooms` 400), `archiving moves…`·`archiving distinguishes…`·`archives a room…`·`calls onArchive hook…`(POST `/api/rooms/:id/archive` 200/409/404/훅), `registers and lists bots`·`rejects duplicate and blank bot names`(GET/POST `/api/bots`), `buildServer registers…`(buildServer 조립 + 인증 경계). 다섯 경로 전부가 성공 경로와 최소 하나의 실패 경로를 갖는다.
+
+**M2 중 커밋 전 수정 한 건.** @MX 주석이 형제 계약 서술에 `sha256Hex` 라는 이름을 그대로 써 `grep -c "sha256Hex" server/src/routes-bots.ts` 가 `1` 이 나왔다. 주석을 "초대 라우트·토큰 해시"로 다시 써 `0` 을 만들었다. 코드 동작 변화 없음(주석만 수정, 수정 후 전체 스위트 27/27 재확인).
+
+
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-26
+spec_id: SPEC-ROOM-001
+cycle_type: tdd
+milestones: "M1 room API + M2 bot registry API — 2 커밋 (워크트리 WT-auth-room-bot)"
+ac_total: 11
+ac_pass: 11
+ac_fail: 0
+test_files: 5
+tests: 27
+typecheck: "exit 0 (최종 트리)"
+```
+
+### §E 행렬 요약 (E1-E8)
+
+| 항목 | 판정 | 근거 (원문 출력은 §E.2) |
+|------|------|------------------------|
+| E1 AC-ROOM-001..011 | 11/11 PASS | 001·005·006 은 verbose `✓` 줄, 나머지는 명령 출력 — 아래 AC 표 |
+| E2 typecheck | PASS | `npm run typecheck -w server` exit 0 (최종 트리) |
+| E3 coverage | GAP | `@vitest/coverage-v8` 부재, 설치 금지 — 오류 원문 §E.2, 보상 관측(테스트↔라우트 매핑)으로 대체 |
+| E4 경계 grep | PASS | sha256Hex 0 / invites 0 / db\.transaction( 1 — §E.2 |
+| E5 lint | PASS | typecheck 가 lint 면이며 신규 0건 (tsc --noEmit exit 0) |
+| E6 커밋 | PASS | 2 커밋 M1·M2, 명시적 pathspec, 미푸시 — SHA 는 git log 참조 |
+| E7 차단 보고 | 없음 | 요구되지 않은 사용자 결정 없음 |
+| E8 RED 증거 | PASS | 네 전이 순서대로 관측 (§E.2 — AC-ROOM-010) |
+
+### AC 판정표 (E1)
+
+| AC | 판정 | 판정 근거 |
+|----|------|-----------|
+| AC-ROOM-001 | PASS | `✓ test/rooms-bots.test.ts > rooms > creates and lists rooms` 줄 관측 + `Object.keys(...).sort()` 다섯 키 단언 통과 (201·`status: 'active'` 포함) |
+| AC-ROOM-002 | PASS | `rejects a blank room name` — 400 |
+| AC-ROOM-003 | PASS | 방 `archived` 이동 + `archived_at` 충족 + `grep -c 'db\.transaction('` → `1`. 토큰 철회 동작 절반은 미검증(SPEC-BOT-001 AC-BOT-008 위임, §E.2 기록) |
+| AC-ROOM-004 | PASS | 409 / 404 / 숫자 아님 404 / 두 본문 상이 — 전부 단언 통과 |
+| AC-ROOM-005 | PASS | `✓ test/rooms-bots.test.ts > rooms > calls onArchive hook when provided` 줄 관측 (calls 배열 `[방 id]`) |
+| AC-ROOM-006 | PASS | `✓ test/rooms-bots.test.ts > bots > registers and lists bots` 줄 관측 (목록 `[{ id, name, description }]` 일치 — 페르소나 필드 없음) |
+| AC-ROOM-007 | PASS | 중복 409 / 공백 400 |
+| AC-ROOM-008 | PASS | 다섯 경로 전부 무쿠키 401 (최종 트리 — M2 가 봇 경로 둘을 추가한 뒤) |
+| AC-ROOM-009 | PASS | `ls server/src` 정확히 6 파일 + `git rev-parse --verify` exit 0 SHA 출력 + `git diff --stat <SHA> -- db.ts` exit 0·빈 출력 |
+| AC-ROOM-010 | PASS | 네 전이 순서 관측 — 전이 1(RED, routes-rooms.js 부재) → 2(GREEN) → 3(RED, routes-bots.js 부재) → 4(GREEN), 원문은 §E.2 |
+| AC-ROOM-011 | PASS | `buildServer registers room and bot routes behind requireAuth` — 무쿠키 401(등록+진입검사 증명), 로그인 후 rooms·bots 200 |
+
+**잔여 한계(기록).** 커버리지 수치 미측정(E3). `bots` INSERT 의 try/catch 가 UNIQUE 위반 외 DB 오류도 409 로 분류(plan.md §E 수용 항목). `config.port` 즉시 평가 한계는 이 SPEC 범위 밖 기록 유지.
+
 
 ---
 
