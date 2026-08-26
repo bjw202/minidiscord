@@ -196,11 +196,182 @@ TEST_EXIT=0
 EXIT=0
 ```
 
+### M2 — 초대 목록·철회와 교차 검증
+
+**전이 3 (RED)** — 목록·철회 테스트 5건 추가 후 `npm test -w server` 실행. 새 테스트 가운데 4건 실패, 원인은 GET/DELETE 라우트 미등록으로 `404`. 원문 출력:
+
+```text
+ ❯ test/rooms-bots.test.ts (21 tests | 4 failed) 958ms
+     × lists invites without token 44ms
+     × never exposes the issued token again 43ms
+     × online is a boolean false, not the integer 0 41ms
+     × revoking an invite is idempotent 43ms
+
+ FAIL  test/rooms-bots.test.ts > invites > lists invites without token
+AssertionError: expected { …(3) } to deeply equal [ { bot_id: 1, bot_name: 'pm', …(1) } ]
++ Received:
+{
+  "error": "Not Found",
+  "message": "Route GET:/api/rooms/1/invites not found",
+  "statusCode": 404,
+}
+
+ FAIL  test/rooms-bots.test.ts > invites > never exposes the issued token again
+TypeError: Cannot convert undefined or null to object
+
+ FAIL  test/rooms-bots.test.ts > invites > online is a boolean false, not the integer 0
+TypeError: Cannot read properties of undefined (reading 'online')
+
+ FAIL  test/rooms-bots.test.ts > invites > revoking an invite is idempotent
+AssertionError: expected 404 to be 200 // Object.is equality
+- 200
++ 404
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  4 failed | 33 passed (37)
+NPM_EXIT=1
+```
+
+"라우트 미등록으로 404"는 두 곳에서 직접 관측된다 — 목록 테스트의 수신값에 `"Route GET:/api/rooms/1/invites not found"` 본문이 그대로 찍혔고, 철회 테스트는 `expected 404 to be 200` 이다. 나머지 2건은 GET 404 의 downstream(`list.json()[0]` 가 없음)다. 같은 실행에서 `archiving a room revokes that room bot tokens` 는 **이미 통과했다** — 이 테스트는 M1 의 POST 라우트와 `SPEC-ROOM-001` 의 보관 라우트만 쓰고 GET/DELETE 를 쓰지 않으므로 M2 RED 시점에 실패할 이유가 없다. AC-BOT-010 표의 "그 항목들이 실패"는 목록·철회 항목에 성립한다.
+
+**전이 4 (GREEN)** — `GET /api/rooms/:id/invites`(online 불리언 매핑)와 `DELETE /api/rooms/:id/invites/:botId` 구현 후 `npm test -w server` → exit 0. 원문 출력:
+
+```text
+ Test Files  5 passed (5)
+      Tests  37 passed (37)
+   Duration  1.16s
+TEST_EXIT=0
+```
+
+`npm run typecheck -w server` → `tsc --noEmit` exit 0 (TYPECHECK_EXIT=0).
+
+최종 이름 붙은 테스트 판정(`npm test -w server -- --reporter=verbose`, NPM_EXIT=0):
+
+```text
+ ✓ test/rooms-bots.test.ts > invites > invites a bot and returns one-time token + command 45ms
+ ✓ test/rooms-bots.test.ts > invites > re-inviting same bot revokes old token and issues new one 41ms
+ ✓ test/rooms-bots.test.ts > invites > command carries env vars, the dev flag and the configured port 42ms
+ ✓ test/rooms-bots.test.ts > invites > invite failures distinguish missing room, archived room and missing bot 42ms
+ ✓ test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token 43ms
+ ✓ test/rooms-bots.test.ts > invites > lists invites without token 42ms
+ ✓ test/rooms-bots.test.ts > invites > never exposes the issued token again 42ms
+ ✓ test/rooms-bots.test.ts > invites > online is a boolean false, not the integer 0 42ms
+ ✓ test/rooms-bots.test.ts > invites > revoking an invite is idempotent 43ms
+ ✓ test/rooms-bots.test.ts > invites > archiving a room revokes that room bot tokens (verifies SPEC-ROOM-001 archive contract) 43ms
+ Test Files  5 passed (5)
+      Tests  37 passed (37)
+```
+
+### 범위 경계 검사 (AC-BOT-009) — 네 명령 원문 출력
+
+```text
+$ ls server/src
+auth.ts
+config.ts
+db.ts
+index.ts
+routes-bots.ts
+routes-rooms.ts
+EXIT=0
+
+$ git rev-parse --verify "$(cat .moai/specs/SPEC-BOT-001/.spec-base-sha)^{commit}"
+b23e356337defb25510795501a8d2072f1e53a12
+EXIT=0
+
+$ git diff --stat b23e356337defb25510795501a8d2072f1e53a12 -- server/src/db.ts
+(출력 없음)
+EXIT=0
+
+$ git diff --name-only b23e356337defb25510795501a8d2072f1e53a12 -- server/src
+server/src/routes-bots.ts
+EXIT=0
+```
+
+E4 경계 grep (HEAD c33b3ce + M2 작업 트리 기준):
+
+```text
+$ grep -c "export function sha256Hex" server/src/routes-bots.ts
+1
+$ grep -rn "gateway\|sse\|permissions" server/src
+(일치 없음 — grep EXIT=1)
+$ grep -c "3000" server/src/routes-bots.ts
+0
+(grep EXIT=1)
+```
+
+### E3 coverage 시도 원문 (MISSING DEPENDENCY — 설치하지 않는다)
+
+```text
+$ npm test -w server -- --coverage
+ MISSING DEPENDENCY  Cannot find dependency '@vitest/coverage-v8'
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+```
+
+보상 관측(테스트↔라우트 매핑)은 §E.3 에 있다.
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-27
+spec_id: SPEC-BOT-001
+cycle_type: tdd
+milestones: "M1 초대 발급 + M2 목록·철회·교차 검증 — 2 커밋 (워크트리 WT-auth-room-bot)"
+ac_total: 11
+ac_pass: 11
+ac_fail: 0
+test_files: 5
+tests: 37
+typecheck: "exit 0 (최종 트리)"
+```
+
+### §E 행렬 요약 (E1-E8)
+
+| 항목 | 판정 | 근거 (원문 출력은 §E.2) |
+|------|------|------------------------|
+| E1 AC-BOT-001..011 | 11/11 PASS | 001·004 는 verbose `✓` 줄, 나머지는 명령 출력 — 아래 AC 표 |
+| E2 typecheck | PASS | `npm run typecheck -w server` exit 0 (M2 GREEN 시점, 최종 트리) |
+| E3 coverage | GAP | `MISSING DEPENDENCY Cannot find dependency '@vitest/coverage-v8'` — 설치 금지, 오류 원문 §E.2, 보상 관측(테스트↔라우트 매핑)으로 대체 |
+| E4 경계 grep | PASS | sha256Hex export 1 / gateway·sse·permissions 0건 / routes-bots.ts 에 3000 0건 — §E.2 |
+| E5 lint | PASS | typecheck 가 lint 면이며 신규 0건 (tsc --noEmit exit 0) |
+| E6 커밋 | PASS | 2 커밋 M1·M2, 명시적 pathspec, 미푸시 — SHA 는 git log 참조 |
+| E7 차단 보고 | 없음 | 요구되지 않은 사용자 결정 없음. AC-BOT-008 도 routes-rooms.ts 결함 아님 — 통과 |
+| E8 RED 증거 | PASS | 네 전이 순서대로 관측, 원인(라우트 미등록 404)이 출력에 직접 보임 (§E.2 — AC-BOT-010) |
+
+### AC 판정표 (E1)
+
+| AC | 판정 | 판정 근거 |
+|----|------|-----------|
+| AC-BOT-001 | PASS | `✓ test/rooms-bots.test.ts > invites > invites a bot and returns one-time token + command 45ms` 줄 관측 (verbose 출력) — 201·`/^[0-9a-f]{64}$/`·command 조각 단언 통과 |
+| AC-BOT-002 | PASS | `command carries env vars, the dev flag and the configured port` 통과 — 네 조각(`export MINIDISCORD_TOKEN=`·`export MINIDISCORD_SERVER=ws://127.0.0.1:${config.port}/bot`·`--dangerously-load-development-channels`·`claude mcp add --scope user minidiscord-channel`) 모두 `toContain` 통과. 포트는 config.port 대조 |
+| AC-BOT-003 | PASS | `never exposes the issued token again` 통과 — 키 집합 `['bot_id','bot_name','online']` 정렬 일치 + 목록 본문에 발급 토큰 문자열 부재. 원본 `lists invites without token` 도 통과 |
+| AC-BOT-004 | PASS | `✓ test/rooms-bots.test.ts > invites > re-inviting same bot revokes old token and issues new one 41ms` 줄 관측 (verbose 출력) — 두 토큰 상이 + 활성 토큰 1 |
+| AC-BOT-005 | PASS | `invite failures distinguish missing room, archived room and missing bot` 통과 — 없는 방 404 / 없는 봇 404 / 두 본문 상이 / 보관된 방 409 / `bot_tokens` 행 0 |
+| AC-BOT-006 | PASS | `online is a boolean false, not the integer 0` 통과 — `typeof 'boolean'` + 값 `false` |
+| AC-BOT-007 | PASS | `revoking an invite is idempotent` 통과 — DELETE 두 번 모두 200 + 활성 토큰 0 |
+| AC-BOT-008 | PASS | `archiving a room revokes that room bot tokens (verifies SPEC-ROOM-001 archive contract)` 통과 — 발급 201 → 활성 1 → 보관 200 → 활성 0. routes-rooms.ts 결함 아님(블로커 없음) |
+| AC-BOT-009 | PASS | 네 관측 성립 — `ls server/src` 여섯 파일 / `git rev-parse --verify` exit 0 + SHA / `git diff --stat <SHA> -- db.ts` exit 0 + 빈 출력 / `git diff --name-only <SHA> -- server/src` exit 0 + `routes-bots.ts` 한 줄 (원문 출력 §E.2) |
+| AC-BOT-010 | PASS | 네 전이 순서 관측 — M1 RED(5건 실패, `expected 404 to be 201`) → M1 GREEN(32 통과) → M2 RED(4건 실패, `Route GET:... not found`·`expected 404 to be 200`) → M2 GREEN(37 통과) (원문 출력 §E.2) |
+| AC-BOT-011 | PASS | `stores only the sha256 hash of the issued token` 통과 — `token_hash === sha256Hex(평문)` + `token_hash !== 평문` |
+
+### E3 보상 관측 — 테스트↔라우트 매핑 (coverage 도구 부재 대체)
+
+| 구현 단위 | 직접 두드린 테스트 |
+|-----------|-------------------|
+| `POST /api/rooms/:id/invites` 성공 경로 | `invites a bot and returns one-time token + command`, `re-inviting same bot revokes old token and issues new one` |
+| `POST` 실패 3분기(404/409/404, 무쓰기) | `invite failures distinguish missing room, archived room and missing bot` |
+| `POST` command 문자열·포트 | `command carries env vars, the dev flag and the configured port` |
+| `POST` 해시 저장 | `stores only the sha256 hash of the issued token` |
+| `GET /api/rooms/:id/invites` | `lists invites without token`, `never exposes the issued token again`, `online is a boolean false, not the integer 0` |
+| `DELETE /api/rooms/:id/invites/:botId` | `revoking an invite is idempotent` |
+| `sha256Hex` 내보내기 | `stores only the sha256 hash of the issued token`(import 해 대조) |
+| 교차 검증(보관→토큰 철회) | `archiving a room revokes that room bot tokens (verifies SPEC-ROOM-001 archive contract)` |
+
+발급 재초대(기존 철회→새 삽입)는 두 문장으로 처리하며 원본 그대로다 — 동시 재초대 시 활성 2개 가능성은 수용된 위험(plan.md §E).
 
 ---
 

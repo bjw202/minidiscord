@@ -59,4 +59,23 @@ export function registerBotRoutes(app: FastifyInstance): void {
     db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, bot.id, sha256Hex(token))
     return reply.code(201).send({ bot_id: bot.id, bot_name: bot.name, token, command: inviteCommand(token, config.port) })
   })
+
+  // 초대 목록 — SQL 결과를 매핑해 online 을 불리언으로 내보낸다. SQLite 의 0 AS online 은 정수 0 이라 그대로 흘려보내면 안 된다 (plan.md §D 1)
+  app.get('/api/rooms/:id/invites', { preHandler: [requireAuth] }, async req => {
+    const roomId = Number((req.params as { id: string }).id)
+    const rows = req.server.db.prepare(
+      `SELECT t.bot_id, b.name AS bot_name FROM bot_tokens t JOIN bots b ON b.id = t.bot_id
+       WHERE t.room_id=? AND t.revoked_at IS NULL ORDER BY b.name`,
+    ).all(roomId) as { bot_id: number; bot_name: string }[]
+    // 이 SPEC 범위에서 online 은 항상 false — 실제 판정은 카드 t3 게이트웨이가 채운다
+    return rows.map(r => ({ ...r, online: false }))
+  })
+
+  // 초대 철회 — 멱등: 철회할 활성 토큰이 없어도 같은 응답을 낸다 (REQ-BOT-007)
+  app.delete('/api/rooms/:id/invites/:botId', { preHandler: [requireAuth] }, async req => {
+    const { id, botId } = req.params as { id: string; botId: string }
+    // room_id 와 bot_id 를 모두 조건에 넣어 다른 방의 같은 봇 토큰은 건드리지 않는다
+    req.server.db.prepare("UPDATE bot_tokens SET revoked_at=datetime('now') WHERE room_id=? AND bot_id=? AND revoked_at IS NULL").run(Number(id), Number(botId))
+    return { ok: true }
+  })
 }

@@ -214,6 +214,63 @@ describe('invites', () => {
     expect(row.token_hash).toBe(sha256Hex(body.token))
     expect(row.token_hash).not.toBe(body.token)
   })
+
+  it('lists invites without token', async () => {
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm', description: '' } })).json()
+    await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })
+    const list = await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/invites`, headers: { cookie } })
+    expect(list.json()).toEqual([{ bot_id: bot.id, bot_name: 'pm', online: false }])
+  })
+
+  it('never exposes the issued token again', async () => {
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })).json()
+    const body = (await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })).json()
+
+    const list = await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/invites`, headers: { cookie } })
+    expect(Object.keys(list.json()[0]).sort()).toEqual(['bot_id', 'bot_name', 'online'])
+    expect(list.body).not.toContain(body.token)
+  })
+
+  it('online is a boolean false, not the integer 0', async () => {
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })).json()
+    await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })
+    const list = (await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/invites`, headers: { cookie } })).json()
+    expect(typeof list[0].online).toBe('boolean')
+    expect(list[0].online).toBe(false)
+  })
+
+  it('revoking an invite is idempotent', async () => {
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })).json()
+    await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })
+    const first = await app.inject({ method: 'DELETE', url: `/api/rooms/${room.id}/invites/${bot.id}`, headers: { cookie } })
+    const second = await app.inject({ method: 'DELETE', url: `/api/rooms/${room.id}/invites/${bot.id}`, headers: { cookie } })
+    expect(first.statusCode).toBe(200)
+    expect(second.statusCode).toBe(200)
+    const c = db.prepare('SELECT COUNT(*) c FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL').get(room.id) as { c: number }
+    expect(c.c).toBe(0)
+  })
+
+  it('archiving a room revokes that room bot tokens (verifies SPEC-ROOM-001 archive contract)', async () => {
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })).json()
+    const invite = await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })
+    expect(invite.statusCode).toBe(201)
+    const before = db.prepare('SELECT COUNT(*) c FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL').get(room.id) as { c: number }
+    expect(before.c).toBe(1)
+    const archived = await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/archive`, headers: { cookie } })
+    expect(archived.statusCode).toBe(200)
+    const after = db.prepare('SELECT COUNT(*) c FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL').get(room.id) as { c: number }
+    expect(after.c).toBe(0)
+  })
 })
 
 it('buildServer registers room and bot routes behind requireAuth', async () => {
