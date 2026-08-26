@@ -72,7 +72,7 @@ export const config = {
 
 ## §E 자기 검증
 
-구현 완료 판정은 `acceptance.md` 의 AC-CORE-001..014 전부다. 별도 기준을 만들지 않는다.
+구현 완료 판정은 `acceptance.md` 의 AC-CORE-001..015 전부다. 별도 기준을 만들지 않는다.
 
 실행자는 각 마일스톤 종료 시 다음을 `progress.md` `§E.2` 에 기록한다.
 
@@ -101,7 +101,7 @@ export const config = {
 6. **GREEN 확인**: `npm test -w server` → 1 test 통과. `npm run typecheck -w server` → 종료 코드 0.
 7. 커밋: `chore: scaffold workspace with server health endpoint`
 
-수용 기준: AC-CORE-001, 002, 003, 004, 008, 013, 014(전이 1-2).
+수용 기준: AC-CORE-001, 002, 003, 004, 008, 013, 014(전이 1-2), 015.
 
 ### M2 — SQLite 스키마 (우선순위 High)
 
@@ -126,7 +126,7 @@ export const config = {
 ## §H 상호 참조
 
 - `spec.md` — 이 SPEC의 GEARS 요구사항과 범위 경계
-- `acceptance.md` — AC-CORE-001..014
+- `acceptance.md` — AC-CORE-001..015
 - `progress.md` — 단계별 증거 기록처
 - `.moai/plan/2026-08-26-minidiscord/plan.md` Task 1-2 — 원본 (읽기 전용)
 - `.moai/plan/2026-08-26-minidiscord/spec.md` 5장 — 데이터 모델 근거

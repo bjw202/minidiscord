@@ -12,7 +12,7 @@
 |----|----------|------|-------------|
 | AC-CORE-001 | REQ-CORE-001 | `node -e "const p=require('./package.json');console.log(p.private,JSON.stringify(p.workspaces))"` | `true ["server","channel"]` |
 | AC-CORE-002 | REQ-CORE-003 | `npm run typecheck -w server` | 종료 코드 `0` |
-| AC-CORE-003 | REQ-CORE-004 | `git check-ignore -q node_modules data dist; echo $?` | `0` |
+| AC-CORE-003 | REQ-CORE-004 | `git check-ignore -q node_modules && git check-ignore -q data && git check-ignore -q dist; echo $?` | `0` |
 | AC-CORE-004 | REQ-CORE-009 | `npm test -w server` | `health.test.ts` 의 `GET /api/health returns ok` 통과 |
 | AC-CORE-005 | REQ-CORE-012 | `npm test -w server` | `db.test.ts` 의 `creates all tables` 통과 |
 | AC-CORE-006 | REQ-CORE-013 | `npm test -w server` | `db.test.ts` 의 `is idempotent (reopen same file)` 통과 |
@@ -24,6 +24,7 @@
 | AC-CORE-012 | REQ-CORE-015 | `ls server/src` | 정확히 `config.ts`, `db.ts`, `index.ts` 세 파일만 |
 | AC-CORE-013 | REQ-CORE-002 | `node -e "const p=require('./server/package.json');console.log(p.type,Object.keys(p.scripts).sort().join(','))"` | `module dev,test,typecheck` |
 | AC-CORE-014 | RED→GREEN 전이 | 아래 AC-CORE-014 본문 참조 | 구현 전 실패, 구현 후 통과 |
+| AC-CORE-015 | REQ-CORE-010 | 아래 AC-CORE-015 본문 참조 | 직접 실행 시 `{"ok":true}` 관측, 가져오기만 할 때 종료 출력 `0` |
 
 ---
 
@@ -44,8 +45,8 @@
 ### AC-CORE-003 — 데이터가 추적되지 않음
 
 **Given** `.gitignore` 가 저장소 루트에 있다.
-**When** `git check-ignore -q node_modules data dist; echo $?` 를 실행한다.
-**Then** 출력이 `0` 이다 (세 경로 모두 무시 대상).
+**When** `git check-ignore -q node_modules && git check-ignore -q data && git check-ignore -q dist; echo $?` 를 실행한다.
+**Then** 출력이 `0` 이다 (세 경로를 각각 확인하여 모두 무시 대상 — 어느 하나라도 무시되지 않으면 체인이 끊겨 `1`).
 
 ### AC-CORE-004 — 헬스 체크 응답
 
@@ -140,6 +141,40 @@ npx -w server tsx -e "import {openDb} from './server/src/db.js'; const d=openDb(
 
 각 전이의 실제 명령 출력을 `progress.md` `§E.2 Run-phase Evidence` 에 기록한다.
 
+### AC-CORE-015 — 진입점 직접 실행 시에만 수신
+
+**Given** M1 이 끝나 `server/src/index.ts` 구현과 `dev` 스크립트(`tsx src/index.ts`)가 갖춰져 있다.
+
+**When** 다음 두 단계를 차례로 실행한다.
+
+1단계 — 진입점으로 직접 실행 (비기본 포트에서 수신 시작):
+
+```bash
+MINIDISCORD_PORT=4199 timeout 15 npm run dev -w server &
+S=$!
+for i in $(seq 1 20); do curl -fsS http://127.0.0.1:4199/api/health 2>/dev/null && break; sleep 0.5; done
+wait $S
+```
+
+2단계 — 모듈을 가져오기만 함 (수신 없음). 먼저 `server/test/no-listen.ts` 를 아래 내용으로 작성한다 (vitest 실행 대상이 아닌 검증 보조 파일 — 파일명이 `*.test.ts` 가 아니므로 `npm test` 의 테스트 수는 그대로 3개다):
+
+```ts
+// AC-CORE-015 검증 보조 — 가져오기만 하고 스스로 종료해야 한다 (vitest 실행 대상 아님)
+import '../src/index.js'
+```
+
+이어서 다음을 실행한다:
+
+```bash
+timeout 10 npx -w server tsx test/no-listen.ts; echo $?
+```
+
+**Then** 1단계에서 `curl` 이 `{"ok":true}` 를 출력한다 — 비기본 포트 `4199` 로 응답한다는 점이 수신 포트가 `config.port` 에서 왔다는 증거다. 2단계의 출력이 `0` 이다 — 리스너가 이벤트 루프를 붙잡고 있었다면 프로세스는 스스로 종료하지 못하고 `timeout` 의 강제 종료를 받아 출력이 `124` 가 된다.
+
+띄운 프로세스의 상한은 전부 외부 `timeout` 이 보장한다. trailing `kill` 을 쓰지 않는다 — 1단계의 `wait $S` 는 `timeout` 이 서버를 회수하는 것을 기다리기만 한다.
+
+> 구현자 주: 진입점 가드(`process.argv[1]?.includes('index.ts')`)가 tsx runner 아래에서 발동하는지가 1단계의 전제다. `curl` 이 응답하지 않으면 가드 조건부터 확인한다.
+
 ---
 
 ## 엣지 케이스
@@ -167,7 +202,7 @@ npx -w server tsx -e "import {openDb} from './server/src/db.js'; const d=openDb(
 
 ## Definition of Done
 
-- [ ] AC-CORE-001 부터 AC-CORE-014 까지 전부 통과, 각 항목의 명령 출력이 `progress.md` `§E.2` 에 기록됨
+- [ ] AC-CORE-001 부터 AC-CORE-015 까지 전부 통과, 각 항목의 명령 출력이 `progress.md` `§E.2` 에 기록됨
 - [ ] `npm test -w server` 가 3개 테스트 통과로 종료 코드 `0`
 - [ ] `npm run typecheck -w server` 가 종료 코드 `0`
 - [ ] `server/src` 에 `config.ts`, `db.ts`, `index.ts` 외의 파일이 없음 (범위 경계 유지)
