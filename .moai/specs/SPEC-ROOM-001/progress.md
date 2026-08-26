@@ -378,7 +378,7 @@ typecheck: "exit 0 (최종 트리)"
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill-SPEC-ROOM-001
+sync_commit_sha: "41e36e5894736c8cae9705451a8b9dd571c45f80"
 spec_id: SPEC-ROOM-001
 card: t2
 worktree: .claude/worktrees/t2 (WT-auth-room-bot)

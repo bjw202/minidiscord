@@ -356,7 +356,7 @@ coverage: "미검증 — @vitest/coverage-v8 미설치, 새 의존성 설치 금
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill-SPEC-AUTH-001
+sync_commit_sha: "cadfe32c9ee1f630e14e4d5dff75e9481a12d7a5"
 spec_id: SPEC-AUTH-001
 card: t2
 worktree: .claude/worktrees/t2 (WT-auth-room-bot)
