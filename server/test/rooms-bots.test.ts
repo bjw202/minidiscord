@@ -147,6 +147,75 @@ describe('bots', () => {
   })
 })
 
+describe('invites', () => {
+  it('invites a bot and returns one-time token + command', async () => {
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm', description: '' } })).json()
+    const res = await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })
+    expect(res.statusCode).toBe(201)
+    const body = res.json()
+    expect(body.token).toMatch(/^[0-9a-f]{64}$/)
+    expect(body.command).toContain('--dangerously-load-development-channels')
+    expect(body.command).toContain(body.token)
+  })
+
+  it('re-inviting same bot revokes old token and issues new one', async () => {
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm', description: '' } })).json()
+    const first = (await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })).json()
+    const second = (await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })).json()
+    expect(first.token).not.toBe(second.token)
+    const count = db.prepare('SELECT COUNT(*) c FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL').get(room.id) as { c: number }
+    expect(count.c).toBe(1)
+  })
+
+  it('command carries env vars, the dev flag and the configured port', async () => {
+    const { config } = await import('../src/config.js')
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })).json()
+    const body = (await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })).json()
+    expect(body.command).toContain(`export MINIDISCORD_TOKEN=${body.token}`)
+    expect(body.command).toContain(`export MINIDISCORD_SERVER=ws://127.0.0.1:${config.port}/bot`)
+    expect(body.command).toContain('--dangerously-load-development-channels')
+    expect(body.command).toContain('claude mcp add --scope user minidiscord-channel')
+  })
+
+  it('invite failures distinguish missing room, archived room and missing bot', async () => {
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })).json()
+
+    const missingRoom = await app.inject({ method: 'POST', url: '/api/rooms/9999/invites', headers: { cookie }, payload: { bot_id: bot.id } })
+    expect(missingRoom.statusCode).toBe(404)
+
+    const missingBot = await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: 9999 } })
+    expect(missingBot.statusCode).toBe(404)
+
+    expect(missingRoom.json().error).not.toBe(missingBot.json().error)
+
+    await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/archive`, headers: { cookie } })
+    const archived = await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })
+    expect(archived.statusCode).toBe(409)
+
+    const c = db.prepare('SELECT COUNT(*) c FROM bot_tokens').get() as { c: number }
+    expect(c.c).toBe(0)
+  })
+
+  it('stores only the sha256 hash of the issued token', async () => {
+    const { sha256Hex } = await import('../src/routes-bots.js')
+    const { app, cookie } = await build()
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })).json()
+    const body = (await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })).json()
+    const row = db.prepare('SELECT token_hash FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL').get(room.id) as { token_hash: string }
+    expect(row.token_hash).toBe(sha256Hex(body.token))
+    expect(row.token_hash).not.toBe(body.token)
+  })
+})
+
 it('buildServer registers room and bot routes behind requireAuth', async () => {
   process.env.MINIDISCORD_DATA_DIR = mkdtempSync(join(tmpdir(), 'md-buildserver-rooms-'))
   const { buildServer } = await import('../src/index.js')

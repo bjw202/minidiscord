@@ -29,7 +29,7 @@ spec_version: "0.3.0"
 req_count: 9
 ac_count: 11
 tier_budget: "16 REQ / 16 AC"
-spec_base_sha: "<run 단계 진입 시 기록 — M1 단계 0>"
+spec_base_sha: "b23e356337defb25510795501a8d2072f1e53a12"
 plan_audit: .moai/reports/plan-audit/t2-3spec-audit.md
 plan_audit_verdict: "FAIL (0.66) — 1차 교정 라운드 반영 완료"
 plan_audit_iter2: .moai/reports/plan-audit/t2-3spec-audit-iter2.md
@@ -135,7 +135,66 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+사전 확인(워크트리 루트, 브랜치 `WT-auth-room-bot`, base `b23e356`): `npm test -w server` → 5파일 27테스트 통과 exit 0 · `npm run typecheck -w server` → exit 0 · `ls server/src` → 6파일 · `.spec-base-sha` → `b23e356337defb25510795501a8d2072f1e53a12` (단계 0은 오케스트레이터가 완료 — 재기록하지 않음).
+
+### M1 — 초대 발급
+
+**전이 1 (RED)** — `describe('invites', …)` 에 발급 테스트 5건 추가 후 `npm test -w server` 실행. 새 테스트 5건 전부 실패, 원인은 라우트 미등록으로 `404`. 원문 출력:
+
+```text
+ ❯ test/rooms-bots.test.ts (16 tests | 5 failed) 748ms
+     × invites a bot and returns one-time token + command 45ms
+     × re-inviting same bot revokes old token and issues new one 42ms
+     × command carries env vars, the dev flag and the configured port 42ms
+     × invite failures distinguish missing room, archived room and missing bot 41ms
+     × stores only the sha256 hash of the issued token 41ms
+
+ FAIL  test/rooms-bots.test.ts > invites > invites a bot and returns one-time token + command
+AssertionError: expected 404 to be 201 // Object.is equality
+- 201
++ 404
+
+ FAIL  test/rooms-bots.test.ts > invites > re-inviting same bot revokes old token and issues new one
+AssertionError: expected undefined not to be undefined // Object.is equality
+
+ FAIL  test/rooms-bots.test.ts > invites > command carries env vars, the dev flag and the configured port
+AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion.
+
+ FAIL  test/rooms-bots.test.ts > invites > invite failures distinguish missing room, archived room and missing bot
+AssertionError: expected 'Not Found' not to be 'Not Found' // Object.is equality
+
+ FAIL  test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token
+TypeError: Cannot read properties of undefined (reading 'token_hash')
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  5 failed | 27 passed (32)
+EXIT_CODE=1
+```
+
+"라우트 미등록으로 404"는 첫 테스트의 `expected 404 to be 201` 에서 직접 관측된다. 나머지 4건은 같은 404 의 downstream 이다 — 라우트가 없어 `body.token`·`body.command` 가 `undefined`, 두 404 본문이 Fastify 기본값 `Not Found` 으로 같아지고, `bot_tokens` 에 행이 없어 `row` 가 `undefined` 다.
+
+**전이 2 (GREEN)** — `routes-bots.ts` 에 `sha256Hex` + `inviteCommand(token, port)` + `POST /api/rooms/:id/invites` 구현 후 `npm test -w server` → exit 0. 원문 출력:
+
+```text
+ Test Files  5 passed (5)
+      Tests  32 passed (32)
+   Duration  987ms
+TEST_EXIT=0
+```
+
+`npm run typecheck -w server` → `tsc --noEmit` exit 0 (TYPECHECK_EXIT=0).
+
+이름 붙은 테스트 판정(`npm test -w server -- --reporter=verbose`, 관측 줄만 발췌):
+
+```text
+ ✓ test/rooms-bots.test.ts > invites > invites a bot and returns one-time token + command 45ms
+ ✓ test/rooms-bots.test.ts > invites > re-inviting same bot revokes old token and issues new one 45ms
+ ✓ test/rooms-bots.test.ts > invites > command carries env vars, the dev flag and the configured port 41ms
+ ✓ test/rooms-bots.test.ts > invites > invite failures distinguish missing room, archived room and missing bot 45ms
+ ✓ test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token 42ms
+ Tests  32 passed (32)
+EXIT=0
+```
 
 ---
 
@@ -148,3 +207,24 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+**입력 변수** — tier: M · 스코프: 소스 파일 1개(`routes-bots.ts`에 초대 라우트·`sha256Hex`·`inviteCommand` 추가) + 테스트 파일 1개(`rooms-bots.test.ts`에 `describe('invites')` 추가) + progress.md 증거 · 도메인 수: 1(봇 초대·토큰) · 언어 조합: TypeScript 단일 · 동시성 이득: 낮음(코딩 중심, M1→M2 순서 의존 — M2 목록·철회 테스트가 M1 발급 라우트를 씀) · Agent Teams 전제: 명시 요구 없음
+
+| 모드 | 선택 | 근거 |
+|------|------|------|
+| direct | 아니오 | 두 마일스톤·보안 계약(토큰 해시)을 다루는 신규 로직 |
+| serial | **선택** | 코딩 중심 + 마일스톤 순서 의존 + 같은 파일 이어 쓰기 |
+| fanout | 아니오 | 단일 도메인·연구 아님 — RED→GREEN→커밋이 순차 두 번 |
+| sweep | 아니오 | 파일 수 최소·순차 의존적 신규 코드 |
+
+**Decision: serial**
+
+**근거**: M1(발급)과 M2(목록·철회)가 같은 파일(`routes-bots.ts`, `rooms-bots.test.ts`)을 이어 쓰고 M2가 M1의 발급 라우트에 의존하므로 병렬화 이득이 없다. Implementation Kickoff Approval은 리드 디스패치(카드 t2, 2026-08-26)로 완료.
+
+**depends_on 처분 기록**: `SPEC-CORE-001` completed(충족). `SPEC-AUTH-001`·`SPEC-ROOM-001` 라벨은 `in-progress`이나 진입 조건의 실질(산출물 존재)은 run 세션 오케스트레이터가 b23e356에서 직접 관측 — `auth.ts`·`requireAuth`·`app.db`·`routes-bots.ts`의 `registerBotRoutes`(+GET/POST /api/bots)·`routes-rooms.ts`·`rooms-bots.test.ts`의 `{ app, cookie }` build() 헬퍼 존재, `npm test -w server` 27/27 통과·exit 0, typecheck exit 0. 라벨의 `implemented` 전이는 카드 t2의 sync 단계에서 세 SPEC과 함께 일어난다. 리드 디스패치가 세 SPEC 순차 run을 명시적으로 지시했다.
+
+**Phase 1 (Plan Audit Gate) 처리 기록**: plan-audit 사이클 3회 상한 도달(0.66 → 0.92 PASS → 0.90 FAIL·차단 2건, 3차 D1은 v0.4.0으로 교정, D2는 plan 세션이 근거 문서 반입으로 해소 — ROOM progress.md §E.1 기록 참조). 이후 진행은 리드가 Implementation Kickoff Approval과 함께 오버라이드 — run 세션에서 4차 재감사 없음(상한 계약 위반).
