@@ -30,7 +30,7 @@ spec_version: "0.3.0"
 req_count: 14
 ac_count: 11
 tier_budget: "16 REQ / 16 AC"
-spec_base_sha: "<run 단계 진입 시 기록 — M1 단계 0>"
+spec_base_sha: "bca6067b7d76cdf3eb196d1a4326fba3f4f54962"
 plan_audit: .moai/reports/plan-audit/t2-3spec-audit.md
 plan_audit_verdict: "FAIL (0.74) — 1차 교정 라운드 반영 완료"
 plan_audit_iter2: .moai/reports/plan-audit/t2-3spec-audit-iter2.md
@@ -161,7 +161,82 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### 사전 확인 (pre-flight, HEAD `bca6067b7d76cdf3eb196d1a4326fba3f4f54962`)
+
+```
+$ git branch --show-current && git rev-parse HEAD
+WT-auth-room-bot
+bca6067b7d76cdf3eb196d1a4326fba3f4f54962
+
+$ npm test -w server
+ Test Files  4 passed (4)
+      Tests  16 passed (16)
+EXIT=0
+
+$ npm run typecheck -w server
+> typecheck
+> tsc --noEmit
+EXIT=0
+
+$ ls server/src
+auth.ts
+config.ts
+db.ts
+index.ts
+
+$ cat .moai/specs/SPEC-ROOM-001/.spec-base-sha
+bca6067b7d76cdf3eb196d1a4326fba3f4f54962
+```
+
+### M1 — 방 API
+
+**전이 1 (RED)** — `server/test/rooms-bots.test.ts` 작성 직후, 구현 이전. 실패 원인이 출력에서 확인됨: `routes-rooms.js` 모듈 부재.
+
+```
+$ npm test -w server
+ FAIL  test/rooms-bots.test.ts [ test/rooms-bots.test.ts ]
+Error: Cannot find module '../src/routes-rooms.js' imported from /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t2/server/test/rooms-bots.test.ts
+ ❯ test/rooms-bots.test.ts:9:1
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  16 passed (16)
+EXIT=1
+```
+
+**전이 2 (GREEN)** — `routes-rooms.ts` 구현 + `buildServer` 등록 후.
+
+```
+$ npm test -w server
+ Test Files  5 passed (5)
+      Tests  24 passed (24)
+EXIT=0
+
+$ npm run typecheck -w server
+> typecheck
+> tsc --noEmit
+EXIT=0
+
+$ grep -c 'db\.transaction(' server/src/routes-rooms.ts
+1
+```
+
+이름 붙은 테스트 관측 (AC-ROOM-001·005 판정 근거). 아래는 `npm test -w server -- --reporter=verbose` 실행(M1 GREEN 시점, 총 24 passed / EXIT=0) 출력에서 `rooms-bots.test.ts` 줄만 발췌한 것이다 — 실행마다 소요 시간(ms)은 달라지므로 생략했다:
+
+```
+ ✓ test/rooms-bots.test.ts > rooms > creates and lists rooms
+ ✓ test/rooms-bots.test.ts > rooms > archives a room and moves it to archived list
+ ✓ test/rooms-bots.test.ts > rooms > calls onArchive hook when provided
+ ✓ test/rooms-bots.test.ts > rooms > requires auth
+ ✓ test/rooms-bots.test.ts > rooms > rejects a blank room name
+ ✓ test/rooms-bots.test.ts > rooms > archiving moves the room and stamps archived_at
+ ✓ test/rooms-bots.test.ts > rooms > archiving distinguishes a missing room (404) from an archived one (409)
+ ✓ test/rooms-bots.test.ts > rooms > every room and bot route requires a session
+```
+
+**이탈 기록 (환경 적응, AUTH 와 같은 부류).** light-my-request 가 이 환경에서 `headers['set-cookie']` 을 배열이 아니라 **문자열 하나**로 돌려주므로, 원본 테스트의 `['set-cookie']![0]` 인덱싱은 그대로 쓰면 항상 `undefined` 에서 죽는다. `auth.test.ts` 의 `setCookieOf()` 헬퍼를 이 파일에 다시 선언해 `build()` 와 AC-ROOM-011 의 쿠키 추출을 정규화했다. 모든 테스트 이름과 단언은 acceptance.md 그대로다.
+
+**AC-ROOM-003 토큰 철회 절반 — 이 SPEC 에서 미검증.** 활성 토큰이 실제로 죽는지는 이 SPEC 에 토큰 발급 경로가 없어 실행으로 관측할 수 없다. 이 문서의 근거는 구조 절반(`grep -c 'db\.transaction('` → `1`)과 관측 절반(방 이동·`archived_at`·활성 토큰 수 0)뿐이다. 동작 검증은 `SPEC-BOT-001` 의 AC-BOT-008 이 맡는다.
+
 
 ---
 
@@ -174,3 +249,24 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+**입력 변수** — tier: M · 스코프: 4개 파일(`routes-rooms.ts`·`routes-bots.ts` 신규, `rooms-bots.test.ts` 신규, `index.ts` 등록 두 줄) + progress.md 증거 · 도메인 수: 1(서버 방·봇 API) · 언어 조합: TypeScript 단일 · 동시성 이득: 낮음(코딩 중심, M1→M2 순서 의존 — M2 테스트가 M1의 `build()` 헬퍼를 씀) · Agent Teams 전제: 명시 요구 없음
+
+| 모드 | 선택 | 근거 |
+|------|------|------|
+| direct | 아니오 | 두 마일스톤·세 파일 신규 작성 |
+| serial | **선택** | 코딩 중심 + 마일스톤 간 순서 의존(M2가 M1 산출물 소비) |
+| fanout | 아니오 | 단일 도메인·연구 아님 — RED→GREEN→커밋이 두 번 순차로 이어짐 |
+| sweep | 아니오 | 파일 수 적음·순차 의존적 신규 코드 |
+
+**Decision: serial**
+
+**근거**: M1(방)과 M2(봇 등록)가 강하게 순서 의존적이고(M2의 테스트가 M1의 `{ app, cookie }` build() 헬퍼를 사용) 같은 파일(`rooms-bots.test.ts`, `index.ts`)을 이어 쓰므로 병렬화 이득이 없다. Implementation Kickoff Approval은 리드 디스패치(카드 t2, 2026-08-26)로 완료.
+
+**depends_on 처분 기록**: `SPEC-CORE-001` completed(충족). `SPEC-AUTH-001` 라벨은 `in-progress`이나 진입 조건의 실질(산출물 존재)은 run 세션 오케스트레이터가 bca6067에서 직접 관측 — `server/src/auth.ts` 존재, `index.ts`에 `app.db`·쿠키 등록·`registerAuthRoutes(app, app.db)` 배선 확인, `npm test -w server` 16/16 통과·exit 0, typecheck exit 0. 라벨의 `implemented` 전이는 카드 t2의 sync 단계에서 세 SPEC과 함께 일어난다. 리드 디스패치가 세 SPEC 순차 run을 명시적으로 지시했으므로 이 순서로 진행한다.
+
+**Phase 1 (Plan Audit Gate) 처리 기록**: plan-audit 사이클 3회 상한 도달(0.74 → 0.88 PASS → 0.88 FAIL·차단 2건, 3차 D1은 v0.4.0으로 교정, D2는 원본 반입으로 실질 해소). 이후 진행은 리드가 Implementation Kickoff Approval과 함께 오버라이드 — run 세션에서 4차 재감사 없음(상한 계약 위반).

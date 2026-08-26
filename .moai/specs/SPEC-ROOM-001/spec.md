@@ -2,7 +2,7 @@
 id: SPEC-ROOM-001
 title: "minidiscord 방 API와 봇 등록 API"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-08-26
 updated: 2026-08-26
 author: manager-spec
