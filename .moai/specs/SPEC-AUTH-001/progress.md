@@ -29,7 +29,7 @@ spec_version: "0.4.0"
 req_count: 15
 ac_count: 14
 tier_budget: "16 REQ / 16 AC"
-spec_base_sha: "<run 단계 진입 시 기록 — M1 단계 0>"
+spec_base_sha: "a3b1f7c9bad61b45387cc65469e77f6d99195d48"
 plan_audit: .moai/reports/plan-audit/t2-3spec-audit.md
 plan_audit_verdict: "FAIL (0.62) — 1차 교정 라운드 반영 완료"
 plan_audit_iter2: .moai/reports/plan-audit/t2-3spec-audit-iter2.md
@@ -159,16 +159,217 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+실행 환경: 워크트리 `.claude/worktrees/t2` (브랜치 `WT-auth-room-bot`), HEAD `a3b1f7c9bad61b45387cc65469e77f6d99195d48`. 모든 명령은 워크스페이스 루트에서 실행.
+
+### RED — M1 단계 2 (AC-AUTH-013 전이 1/2, 구현 직전 캡처)
+
+**명령**: `npm test -w server`
+**출력 원문** (실패 원인 = `src/auth` 모듈 부재):
+
+```
+ ❯ test/auth.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯
+
+ FAIL  test/auth.test.ts [ test/auth.test.ts ]
+Error: Cannot find module '../src/auth.js' imported from /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t2/server/test/auth.test.ts
+ ❯ test/auth.test.ts:8:1
+      6| import cookie from '@fastify/cookie'
+      7| import { openDb, type Db } from '../src/db.js'
+      8| import { registerAuthRoutes, requireAuth } from '../src/auth.js'
+       | ^
+      9|
+     10| let dir: string
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  5 passed (5)
+```
+
+종료 코드 `1`. 기존 3개 파일(5 테스트)은 통과 — 실패는 `auth.test.ts` 의 모듈 해석 하나뿐이다.
+
+### 사전 확인 — better-sqlite3 의 undefined 바인딩 (구현 결정 근거)
+
+**명령**: `node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x TEXT)'); try { const r=db.prepare('SELECT * FROM t WHERE x=?').get(undefined); console.log('NO-THROW result:', JSON.stringify(r)); } catch(e) { console.log('THROWS:', e.message); }"` (server/ 워크스페이스)
+**출력 원문**: `NO-THROW result: undefined`
+
+better-sqlite3 v13 은 `undefined` 를 예외 없이 NULL 로 바인딩한다. 따라서 원본 `plan-v2.md` Task 3 의 로그인 코드를 그대로 쓰면 빈 페이로드(`{}`) 로그인이 `WHERE username = NULL` → 행 없음 → **401** 이 되고, AC-AUTH-011 의 `POST /api/auth/login` `payload: {}` → `not.toBe(401)` 단언이 실패한다. 그래서 로그인 핸들러는 **타입 가드(문자열이 아니면 400)** 를 추가한다 — 존재하지 않는 사용자/틀린 비밀번호(둘 다 문자열)는 REQ-AUTH-009 대로 동일한 401 본문을 유지한다. 이것이 원본 코드에서 벗어나는 유일한 지점이며, SPEC 의 수용 기준(AC-AUTH-011)이 원본 코드보다 우선한다.
+
+### 사전 확인 — light-my-request 의 set-cookie 헤더 형태 (테스트 코드 이탈 근거)
+
+**명령**: `npx tsx scratch-debug.mts` (server/ 안의 임시 진단 스크립트, 확인 후 삭제)
+**출력 원문**:
+
+```
+typeof: string
+isArray: false
+full value: md_session=cdc435ecdb46edb6bec8ed50c142cf9aaf2bc478ce0b0a0ea60c3402427f5454; Path=/; HttpOnly; SameSite=Lax
+```
+
+이 환경(fastify ^5.12.1 + light-my-request)의 `app.inject` 는 set-cookie 값 하나를 **문자열**로 돌려준다. 원본 테스트 코드(`plan-v2.md` Task 3, `acceptance.md` AC-AUTH-004/010/014 본문)가 쓰는 `login.headers['set-cookie']![0]` 는 배열을 가정한 표현이라, 문자열에서 인덱스 0 은 글자 한 글자 `'m'` 을 돌려준다 — 서버가 올바른 쿠키를 내려도 AC-AUTH-005/004/010/014 가 거짓으로 실패한다(위 디버그 출력의 `token match: false`, `me: 401` 로 재현 확인).
+
+**조치**: `auth.test.ts` 에 정규화 헬퍼 `setCookieOf(res)` 를 두고, 영향 받은 네 테스트의 **헤더 추출 표현만** 교체했다. 모든 단언(쿠키 이름·속성 정규식, 상태 코드, 응답 본문)은 acceptance.md 본문과 글자 그대로 동일하며, 테스트 이름도 그대로다. 서버 구현은 위 출력이 증명하듯 이미 올바르므로 구현을 바꿀 여지는 없다 — 이 이탈은 관측 환경의 사실에 맞춘 최소 조정이다.
+
+### GREEN — M1 단계 6 (AC-AUTH-013 전이 2/2)
+
+**명령**: `npm test -w server`
+**출력 원문**:
+
+```
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t2/server
+
+ Test Files  4 passed (4)
+      Tests  16 passed (16)
+   Start at  23:26:13
+   Duration  564ms (transform 132ms, setup 0ms, import 287ms, tests 451ms, environment 0ms)
+```
+
+종료 코드 `0` — 기존 5 테스트 + 이 SPEC 의 11 테스트(원본 5 + 추가 6).
+
+**명령**: `npm run typecheck -w server`
+**출력 원문**:
+
+```
+> typecheck
+> tsc --noEmit
+```
+
+종료 코드 `0`.
+
+### 이름 붙은 테스트 관측 — `--reporter=verbose` (AC-AUTH-001·003·005·006·007)
+
+**명령**: `npm test -w server -- --reporter=verbose`
+**출력 원문** (auth.test.ts 부분):
+
+```
+ ✓ test/auth.test.ts > auth > registers a user 81ms
+ ✓ test/auth.test.ts > auth > rejects duplicate username 44ms
+ ✓ test/auth.test.ts > auth > login sets session cookie and /api/me works 44ms
+ ✓ test/auth.test.ts > auth > wrong password returns 401 43ms
+ ✓ test/auth.test.ts > auth > protected route without cookie returns 401 4ms
+ ✓ test/auth.test.ts > auth > rejects invalid registration input 4ms
+ ✓ test/auth.test.ts > auth > sets an httpOnly lax session cookie 44ms
+ ✓ test/auth.test.ts > auth > stores a salted scrypt hash, never the plaintext 25ms
+ ✓ test/auth.test.ts > auth > logout invalidates the session 43ms
+ ✓ test/auth.test.ts > auth > only the three /api/auth routes are reachable without a session 5ms
+ ✓ test/auth.test.ts > auth > buildServer wires cookie, db and auth routes 48ms
+```
+
+판정 대상 다섯 줄(`registers a user` / `rejects duplicate username` / `login sets session cookie and /api/me works` / `wrong password returns 401` / `protected route without cookie returns 401`)이 모두 `✓` 로 출력에 나타난다.
+
+### 경계 검사 (AC-AUTH-009 / AC-AUTH-011 / AC-AUTH-012 / api/me 부재)
+
+**명령** (AC-AUTH-009 — 심볼별 개별 실행): `grep -c "export function hashPassword" server/src/auth.ts` … 5개 명령
+**출력 원문**: `1` × 5 (hashPassword / verifyPassword / registerAuthRoutes / requireAuth / `user?: { id: number; username: string }` 선언), 종료 코드 `0`.
+
+**명령** (AC-AUTH-011): `grep -c "app\.\(get\|post\|put\|delete\)(" server/src/auth.ts`
+**출력 원문**: `3`, 종료 코드 `0` — auth.ts 가 등록하는 라우트는 세 개뿐.
+
+**명령** (api/me 부재): `grep -rn "api/me" server/src`
+**출력 원문**: 빈 출력, 종료 코드 `1` (매치 없음) — `server/src` 어디에도 이 경로를 등록하지 않는다.
+
+**명령** (AC-AUTH-012 관측 1): `ls server/src`
+**출력 원문**:
+
+```
+auth.ts
+config.ts
+db.ts
+index.ts
+```
+
+정확히 네 항목.
+
+**명령** (AC-AUTH-012 관측 2): `git rev-parse --verify "$(cat .moai/specs/SPEC-AUTH-001/.spec-base-sha)^{commit}"`
+**출력 원문**: `a3b1f7c9bad61b45387cc65469e77f6d99195d48`, 종료 코드 `0` — 기준 SHA 가 실제 커밋으로 풀린다.
+
+**명령** (AC-AUTH-012 관측 3): `git diff --stat a3b1f7c9bad61b45387cc65469e77f6d99195d48 -- server/src/db.ts`
+**출력 원문**: 빈 출력, 종료 코드 `0` — `db.ts` 는 이 SPEC 에서 한 줄도 바뀌지 않았다 (빈 출력 + 종료 코드 0 두 조건 모두 관측).
+
+### 커버리지 (미검증 — Gap)
+
+**명령**: `npm test -w server -- --coverage`
+**출력 원문**: `MISSING DEPENDENCY  Cannot find dependency '@vitest/coverage-v8'` — 커버리지 측정은 설치된 의존성만으로 불가능하다. 이 SPEC 은 새 의존성 추가가 금지되어 있어(제약) 커버리지 수치는 **미검증**으로 남긴다. 테스트 수 관측으로는 `auth.test.ts` 가 11 테스트로 `auth.ts` 의 네 내보내기와 세 라우트 전 경로(성공/실패/경계)를 직접 두드린다.
+
+### 부수 관찰
+
+- `health.test.ts`(SPEC-CORE-001 산출물, 보존 대상)가 `buildServer()` 를 직접 호출하므로, M1 이후 테스트 실행마다 `server/data/`(minidiscord.db + uploads) 가 만들어진다. `.gitignore` 2행(`data/`)이 덮고 있어 커밋 대상이 되지 않는다. 기존 테스트 파일은 수정하지 않았다.
+- AC-AUTH-014 테스트가 만드는 `md-buildserver-*` 임시 디렉터리는 acceptance.md 본문 그대로 삭제하지 않고 둔다(OS tmpdir).
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-26
+spec_id: SPEC-AUTH-001
+milestone: M1 (유일한 마일스톤)
+spec_base_sha: "a3b1f7c9bad61b45387cc65469e77f6d99195d48"
+head_at_evidence: "a3b1f7c9bad61b45387cc65469e77f6d99195d48 (커밋 전 워크트리 — 아래 run_commit_sha 로 갱신)"
+cycle_type: tdd
+test_files: 4
+test_total: 16
+test_passed: 16
+typecheck: "exit 0"
+coverage: "미검증 — @vitest/coverage-v8 미설치, 새 의존성 설치 금지"
+```
+
+**AC 이원 판정 매트릭스 요약** (전체 근거는 위 §E.2 원문 출력):
+
+| AC | 판정 | 근거 (§E.2 해당 출력) |
+|----|------|----------------------|
+| AC-AUTH-001 | PASS | verbose `✓ … > registers a user` 줄 관측 |
+| AC-AUTH-002 | PASS | `rejects invalid registration input` — 6입력 400 + users 0행, 16/16 통과에 포함 |
+| AC-AUTH-003 | PASS | verbose `✓ … > rejects duplicate username` 줄 관측 |
+| AC-AUTH-004 | PASS | `sets an httpOnly lax session cookie` — md_session/HttpOnly/SameSite=Lax/Path=/ 4단언, 16/16 통과에 포함 |
+| AC-AUTH-005 | PASS | verbose `✓ … > login sets session cookie and /api/me works` 줄 관측 |
+| AC-AUTH-006 | PASS | verbose `✓ … > wrong password returns 401` 줄 관측 |
+| AC-AUTH-007 | PASS | verbose `✓ … > protected route without cookie returns 401` 줄 관측 |
+| AC-AUTH-008 | PASS | `stores a salted scrypt hash…` — `[0-9a-f]{32}:[0-9a-f]{128}` + 평문 부재, 16/16 통과에 포함 |
+| AC-AUTH-009 | PASS | 심볼별 `grep -c` 5개 명령 각각 `1` |
+| AC-AUTH-010 | PASS | `logout invalidates the session` — 로그아웃 후 401 + sessions 0행, 16/16 통과에 포함 |
+| AC-AUTH-011 | PASS | 테스트 통과 + 라우트 수 grep `3` |
+| AC-AUTH-012 | PASS | `ls server/src` 네 항목 + 기준 SHA verify exit 0 + `db.ts` diff exit 0·빈 출력 |
+| AC-AUTH-013 | PASS | RED(모듈 부재) → GREEN(16/16) 전이, 두 출력 모두 위에 원문 기록 |
+| AC-AUTH-014 | PASS | `buildServer wires cookie, db and auth routes` — app.db·health 200·가입 201·md_session 쿠키, 16/16 통과에 포함 |
+
+**run 단계가 원본/문서에서 이탈한 두 지점** (둘 다 §E.2에 근거 출력과 함께 기록):
+
+1. 로그인 핸들러에 타입 가드 추가(문자열 아님 → 400) — 원본 코드 그대로면 빈 페이로드 로그인이 401 이 되어 AC-AUTH-011 이 실패한다. better-sqlite3 undefined 바인딩 관측이 근거.
+2. 테스트 4건의 set-cookie 헤더 추출 표현만 `setCookieOf()` 정규화로 교체 — 이 환경의 light-my-request 는 단일 set-cookie 를 문자열로 돌려준다. 모든 단언과 테스트 이름은 본문 그대로. typeof 관측이 근거.
+
+**미검증 항목 (Gaps)**:
+
+- 커버리지 수치 — `@vitest/coverage-v8` 미설치, 설치 금지로 측정 불가.
+- 실제 프로세스 기동(`npm run dev`) 후의 수동 동작 확인 — AC-AUTH-014 가 `buildServer()` 조립 결과를 inject 로 관측했고 그 범위를 넘지 않는다.
+
+**잔여 위험 (Residual-risk)**:
+
+- `scryptSync` 동기 호출, 세션 만료 없음, 평문 HTTP — plan.md §E 가 수용한 원본 설계의 리스크 그대로.
+- `config.port` 즉시 평가 한계 — plan-audit 2차 R2 에서 기록된 이월 항목, 이 SPEC 범위 밖.
+
 
 ---
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+**입력 변수** — tier: M · 스코프: 4개 파일(`server/src/auth.ts` 신규, `server/test/auth.test.ts` 신규, `server/src/index.ts` 수정, `progress.md` 증거 기록) · 도메인 수: 1(서버 인증) · 언어 조합: TypeScript 단일 · 동시성 이득: 낮음(코딩 중심) · Agent Teams 전제: 명시 요구 없음
+
+| 모드 | 선택 | 근거 |
+|------|------|------|
+| direct | 아니오 | 오탈자 수준이 아닌 신규 모듈 + 신규 테스트 작성 |
+| serial | **선택** | 코딩 중심 단일 마일스톤 — 순차 서브에이전트가 기본 경로 |
+| fanout | 아니오 | 단일 도메인·연구 아님 — RED→GREEN→범위검사→커밋이 순서 의존적 |
+| sweep | 아니오 | 파일 수가 임계(~30)에 못 미치고 순차 의존적인 신규 코드 |
+
+**Decision: serial**
+
+**근거**: 마일스톤 M1 하나, 도메인 하나, 파일 네 개. RED 확인 → 구현 → GREEN → 범위 경계 검사 → 커밋이 강한 순서 의존성을 가지므로 병렬화 이득이 없다. Implementation Kickoff Approval은 리드 디스패치(카드 t2, 2026-08-26)로 완료.
+
+**Phase 1 (Plan Audit Gate) 처리 기록**: plan-audit 사이클 3회 상한 도달(0.62 → 0.90 → 0.87, 3차는 2차 대비 미세 회귀 — Retry Loop Contract의 STOP 조건). 3차 차단 2건 중 D1은 v0.5.0으로 교정 완료, D2(원본 `plan-v2.md` 부재)는 해당 문서가 커밋으로 반입되어 실질 해소. 이후 진행은 리드가 Implementation Kickoff Approval과 함께 오버라이드 — run 세션에서 4차 재감사는 없음(상한 계약 위반이므로).
