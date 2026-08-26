@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t2` (브랜치 `WT-auth-room-bot`) |
 | 선행 SPEC | `SPEC-CORE-001` (카드 `t1`, `completed`) |
 | 후행 SPEC | `SPEC-ROOM-001` → `SPEC-BOT-001` (같은 카드, 순차 진행) |
-| 현재 상태 | `draft` — plan 단계 완료 |
+| 현재 상태 | `completed` — sync 단계 완료 (§E.4 audit-ready) |
 
 ---
 
@@ -353,7 +353,78 @@ coverage: "미검증 — @vitest/coverage-v8 미설치, 새 의존성 설치 금
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill-SPEC-AUTH-001
+spec_id: SPEC-AUTH-001
+card: t2
+worktree: .claude/worktrees/t2 (WT-auth-room-bot)
+head_at_sync_evidence: "3bc0387"
+sync_session: 05a46860-5a2b-4779-bb63-a879ff273531
+lens: "--security --deep"
+docs_updated: [README.md, CHANGELOG.md]
+status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+```
+
+### Claim (주장)
+
+SPEC-AUTH-001 의 run 단계 산출물이 sync 세션의 **독립 재실행**으로 확인되었고, 인증 경계에 대한 보안 렌즈 검토에서 차단 사항이 나오지 않았다. 문서(README·CHANGELOG)가 현재 코드 상태를 반영한다.
+
+### Evidence (증거)
+
+sync 세션이 run 세션 보고를 인용하지 않고 직접 실행해 관측했다.
+
+```
+$ npm test -w server -- --reporter=verbose
+ ✓ test/auth.test.ts > auth > registers a user 88ms
+ ✓ test/auth.test.ts > auth > rejects duplicate username 44ms
+ ✓ test/auth.test.ts > auth > login sets session cookie and /api/me works 44ms
+ ✓ test/auth.test.ts > auth > wrong password returns 401 43ms
+ ✓ test/auth.test.ts > auth > protected route without cookie returns 401 5ms
+ ✓ test/auth.test.ts > auth > rejects invalid registration input 4ms
+ ✓ test/auth.test.ts > auth > sets an httpOnly lax session cookie 46ms
+ ✓ test/auth.test.ts > auth > stores a salted scrypt hash, never the plaintext 24ms
+ ✓ test/auth.test.ts > auth > logout invalidates the session 44ms
+ ✓ test/auth.test.ts > auth > only the three /api/auth routes are reachable without a session 5ms
+ ✓ test/auth.test.ts > auth > buildServer wires cookie, db and auth routes 48ms
+ Test Files  5 passed (5)
+      Tests  37 passed (37)
+exit=0
+```
+
+```
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+원문 로그: `.moai/state/verify/sync-t2/full.log`, `.moai/state/verify/sync-t2/typecheck.log`.
+
+**보안 렌즈 관측 3건** (리드가 지목한 확인 대상 중 2·3번, 각각 명령 출력으로 확인):
+
+1. **세션 쿠키 속성** — `auth.ts:60` `reply.setCookie('md_session', token, { httpOnly: true, sameSite: 'lax', path: '/' })`. `secure` 속성 없음 — spec.md §5 가 "HTTPS 및 `secure` 쿠키 속성"을 명시적 범위 밖으로 선언한 결정 그대로다(평문 HTTP 수용).
+2. **로그아웃 시 세션 무효화** — `auth.ts:62-67` 이 `DELETE FROM sessions WHERE token = ?` 로 서버 측 행을 지운 뒤 `clearCookie` 한다. 쿠키만 지우고 서버 세션이 남는 형태가 아니다. 테스트 `logout invalidates the session` 이 로그아웃 후 401 + `sessions` 0행을 단언한다.
+3. **인증 없이 닿는 경로 전수** — `grep -rn "app\.\(get\|post\|put\|delete\|patch\)(" server/src/` 가 12개 라우트를 출력했고, 그중 `preHandler: [requireAuth]` 가 없는 것은 정확히 넷이다: `/api/health`(SPEC-CORE-001 소관, 이 카드 범위 밖) + `/api/auth/{register,login,logout}`. 나머지 8개는 전부 가드가 붙어 있다(`grep -c 'preHandler: \[requireAuth\]'` → `routes-rooms.ts` 3, `routes-bots.ts` 5). AC-AUTH-011 의 런타임 단언과 정적 관측이 일치한다.
+
+### Baseline-attribution (baseline 귀속)
+
+- 측정 대상 트리: `.claude/worktrees/t2`, `git rev-parse --short HEAD` → `3bc0387`, 브랜치 `WT-auth-room-bot`.
+- 위 두 명령 모두 이 트리에서 이 sync 세션이 실행한 것이며, run 세션이나 리드 디스패치의 수치를 옮겨 적지 않았다.
+
+### Gaps (미검증)
+
+- **커버리지 수치** — `@vitest/coverage-v8` 미설치, 새 의존성 설치 금지로 측정하지 못했다. §E.3 의 이월 항목 그대로이며 sync 단계에서 해소 대상이 아니다.
+- **실제 프로세스 기동 후 수동 확인** — `npm run dev -w server` 로 포트를 열어 브라우저에서 쿠키 왕복을 본 적은 없다. 관측 범위는 `buildServer()` + `inject` 까지다.
+- **동시 요청 하에서의 세션 동작** — 단일 요청 경로만 관측했다.
+
+### Residual-risk (잔여 위험)
+
+- 평문 HTTP·`secure` 미설정, 세션 만료·회전 없음, 로그인 시도 제한 없음, CSRF 토큰 없음 — 전부 spec.md §5 가 범위 밖으로 선언한 결정이다. 이 서버가 로컬 밖으로 노출되면 그대로 실제 위험이 된다.
+- **인증만 있고 인가는 없다** — `requireAuth` 는 세션 존재만 확인한다. 로그인한 사용자는 누구나 모든 방·봇·초대를 다룰 수 있다. 단일 사용자 로컬 전제에서는 의도된 범위이나, 다중 사용자로 넓히면 별도 SPEC 이 필요하다. README 「보안에 대해 알아둘 점」에 명시했다.
+- **`sessions.token` 은 평문 저장** — 봇 토큰(`bot_tokens.token_hash`)이 해시로 저장되는 것과 비대칭이다. plan.md §B 가 쿠키 값을 `sessions.token` 자체로 규정한 설계 그대로이며 결함이 아니다. 다만 DB 파일 유출 시 살아 있는 세션이 그대로 노출된다.
+- **회원가입은 사용자 이름 존재를 드러낸다** — 로그인은 열거를 막지만(같은 401 본문), 가입은 중복 시 `409` 를 낸다. AC-AUTH-003 이 요구한 동작이므로 결함이 아니나, 열거 표면이 로그인 쪽에만 닫혀 있다는 비대칭은 기록해 둔다.
+- `config.port` 즉시 평가 한계 — plan-audit 2차 R2 이월 항목, 이 SPEC 범위 밖(카드 t4 소관 가능성).
 
 ---
 

@@ -2,9 +2,9 @@
 id: SPEC-AUTH-001
 title: "minidiscord 인증 — 회원가입·로그인·세션 쿠키·보호 라우트 진입 검사"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-27
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
