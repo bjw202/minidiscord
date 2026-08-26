@@ -2,7 +2,7 @@
 id: SPEC-CORE-001
 title: "minidiscord 저장소 스캐폴드와 SQLite 스키마 기반"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-26
 updated: 2026-08-26
 author: manager-spec
