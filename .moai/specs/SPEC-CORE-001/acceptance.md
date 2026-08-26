@@ -12,7 +12,7 @@
 |----|----------|------|-------------|
 | AC-CORE-001 | REQ-CORE-001 | `node -e "const p=require('./package.json');console.log(p.private,JSON.stringify(p.workspaces))"` | `true ["server","channel"]` |
 | AC-CORE-002 | REQ-CORE-003 | `npm run typecheck -w server` | 종료 코드 `0` |
-| AC-CORE-003 | REQ-CORE-004 | `git check-ignore -q node_modules && git check-ignore -q data && git check-ignore -q dist; echo $?` | `0` |
+| AC-CORE-003 | REQ-CORE-004 | `git check-ignore -q node_modules/ && git check-ignore -q data/ && git check-ignore -q dist/; echo $?` | `0` |
 | AC-CORE-004 | REQ-CORE-009 | `npm test -w server` | `health.test.ts` 의 `GET /api/health returns ok` 통과 |
 | AC-CORE-005 | REQ-CORE-012 | `npm test -w server` | `db.test.ts` 의 `creates all tables` 통과 |
 | AC-CORE-006 | REQ-CORE-013 | `npm test -w server` | `db.test.ts` 의 `is idempotent (reopen same file)` 통과 |
@@ -45,8 +45,8 @@
 ### AC-CORE-003 — 데이터가 추적되지 않음
 
 **Given** `.gitignore` 가 저장소 루트에 있다.
-**When** `git check-ignore -q node_modules && git check-ignore -q data && git check-ignore -q dist; echo $?` 를 실행한다.
-**Then** 출력이 `0` 이다 (세 경로를 각각 확인하여 모두 무시 대상 — 어느 하나라도 무시되지 않으면 체인이 끊겨 `1`).
+**When** `git check-ignore -q node_modules/ && git check-ignore -q data/ && git check-ignore -q dist/; echo $?` 를 실행한다.
+**Then** 출력이 `0` 이다 (세 경로를 각각 확인하여 모두 무시 대상 — 인자 끝에 슬래시를 붙인 형태라 디렉터리가 디스크에 없어도 패턴 매칭이 성립한다. 어느 하나라도 무시되지 않으면 체인이 끊겨 `1`).
 
 ### AC-CORE-004 — 헬스 체크 응답
 
@@ -150,7 +150,7 @@ npx -w server tsx -e "import {openDb} from './server/src/db.js'; const d=openDb(
 1단계 — 진입점으로 직접 실행 (비기본 포트에서 수신 시작):
 
 ```bash
-MINIDISCORD_PORT=4199 timeout 15 npm run dev -w server &
+MINIDISCORD_PORT=4199 perl -e '$t=shift; $pid=fork(); if(!$pid){ setpgrp(0,0); exec(@ARGV) or exit(127) } $SIG{ALRM}=sub{ kill q(ALRM), -$pid }; alarm $t; waitpid($pid,0); exit(($? & 127) ? 128+($? & 127) : ($? >> 8))' 15 npm run dev -w server &
 S=$!
 for i in $(seq 1 20); do curl -fsS http://127.0.0.1:4199/api/health 2>/dev/null && break; sleep 0.5; done
 wait $S
@@ -166,12 +166,14 @@ import '../src/index.js'
 이어서 다음을 실행한다:
 
 ```bash
-timeout 10 npx -w server tsx test/no-listen.ts; echo $?
+perl -e '$t=shift; $pid=fork(); if(!$pid){ setpgrp(0,0); exec(@ARGV) or exit(127) } $SIG{ALRM}=sub{ kill q(ALRM), -$pid }; alarm $t; waitpid($pid,0); exit(($? & 127) ? 128+($? & 127) : ($? >> 8))' 10 npx -w server tsx test/no-listen.ts; echo $?
 ```
 
-**Then** 1단계에서 `curl` 이 `{"ok":true}` 를 출력한다 — 비기본 포트 `4199` 로 응답한다는 점이 수신 포트가 `config.port` 에서 왔다는 증거다. 2단계의 출력이 `0` 이다 — 리스너가 이벤트 루프를 붙잡고 있었다면 프로세스는 스스로 종료하지 못하고 `timeout` 의 강제 종료를 받아 출력이 `124` 가 된다.
+**Then** 1단계에서 `curl` 이 `{"ok":true}` 를 출력한다 — 비기본 포트 `4199` 로 응답한다는 점이 수신 포트가 `config.port` 에서 왔다는 증거다. 2단계의 출력이 `0` 이다 — 리스너가 이벤트 루프를 붙잡고 있었다면 프로세스는 스스로 종료하지 못하고 상한 시점에 `SIGALRM` 으로 죽어 출력이 `0` 이 아닌 값(이 머신 실측 `142`)이 된다. 판정은 이분법이다 — 출력이 `0` 이면 통과, 그 외에는 실패.
 
-띄운 프로세스의 상한은 전부 외부 `timeout` 이 보장한다. trailing `kill` 을 쓰지 않는다 — 1단계의 `wait $S` 는 `timeout` 이 서버를 회수하는 것을 기다리기만 한다.
+띄운 프로세스의 상한은 전부 perl 알람 셸이 보장한다 — 셸은 자식을 새 프로세스 그룹으로 띄우고(`setpgrp`) 알람 시점에 그 그룹 전체에 `SIGALRM` 을 보낸다. 리스너가 `npm` 의 손자 프로세스여도 그룹째로 죽는다(이 머신에서 실측 — exec 만 하는 단순 알람 셸은 `npm` 만 죽고 손자 node 리스너가 포트를 붙잡은 채 살아남는다). trailing `kill` 을 쓰지 않는다 — 1단계의 `wait $S` 는 알람이 서버를 회수하는 것을 기다리기만 한다.
+
+전제: macOS 에는 GNU `timeout` 이 없다(이 머신 실측 — 실행 시 exit `127`, `gtimeout` 도 없음). GNU `timeout`/`gtimeout` 이 있는 환경은 그것으로 동등하게 대체 가능하다 (`command -v gtimeout || command -v timeout` 이 있으면 사용, 없으면 위 perl 셸 — macOS 기본 perl 사용, 추가 설치 불필요).
 
 > 구현자 주: 진입점 가드(`process.argv[1]?.includes('index.ts')`)가 tsx runner 아래에서 발동하는지가 1단계의 전제다. `curl` 이 응답하지 않으면 가드 조건부터 확인한다.
 
