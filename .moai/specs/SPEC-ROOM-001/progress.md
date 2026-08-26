@@ -11,7 +11,7 @@
 | 선행 SPEC | `SPEC-CORE-001` (완료), `SPEC-AUTH-001` (같은 카드, 먼저 실행) |
 | 후행 SPEC | `SPEC-BOT-001` (같은 카드, 나중 실행) |
 | 실행 순서 | `SPEC-AUTH-001` → **`SPEC-ROOM-001`** → `SPEC-BOT-001` |
-| 현재 상태 | `draft` — plan 단계 완료 |
+| 현재 상태 | `completed` — sync 단계 완료 (§E.4 audit-ready) |
 
 ---
 
@@ -375,7 +375,76 @@ typecheck: "exit 0 (최종 트리)"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill-SPEC-ROOM-001
+spec_id: SPEC-ROOM-001
+card: t2
+worktree: .claude/worktrees/t2 (WT-auth-room-bot)
+head_at_sync_evidence: "3bc0387"
+sync_session: 05a46860-5a2b-4779-bb63-a879ff273531
+lens: "--security --deep"
+docs_updated: [README.md, CHANGELOG.md]
+status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+```
+
+### Claim (주장)
+
+SPEC-ROOM-001 의 방 API 와 봇 등록 API 가 sync 세션의 **독립 재실행**으로 확인되었고, 보관 트랜잭션과 라우트 가드에 대한 보안 렌즈 검토에서 차단 사항이 나오지 않았다. 문서(README·CHANGELOG)가 현재 코드 상태를 반영한다.
+
+### Evidence (증거)
+
+sync 세션이 run 세션 보고를 인용하지 않고 직접 실행해 관측했다.
+
+```
+$ npm test -w server -- --reporter=verbose
+ ✓ test/rooms-bots.test.ts > rooms > creates and lists rooms 105ms
+ ✓ test/rooms-bots.test.ts > rooms > archives a room and moves it to archived list 46ms
+ ✓ test/rooms-bots.test.ts > rooms > calls onArchive hook when provided 45ms
+ ✓ test/rooms-bots.test.ts > rooms > requires auth 44ms
+ ✓ test/rooms-bots.test.ts > rooms > rejects a blank room name 45ms
+ ✓ test/rooms-bots.test.ts > rooms > archiving moves the room and stamps archived_at 47ms
+ ✓ test/rooms-bots.test.ts > rooms > archiving distinguishes a missing room (404) from an archived one (409) 44ms
+ ✓ test/rooms-bots.test.ts > rooms > every room and bot route requires a session 45ms
+ ✓ test/rooms-bots.test.ts > bots > registers and lists bots 43ms
+ ✓ test/rooms-bots.test.ts > bots > rejects duplicate and blank bot names 43ms
+ ✓ test/rooms-bots.test.ts > buildServer registers room and bot routes behind requireAuth 47ms
+ Test Files  5 passed (5)
+      Tests  37 passed (37)
+exit=0
+```
+
+```
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+원문 로그: `.moai/state/verify/sync-t2/full.log`, `.moai/state/verify/sync-t2/typecheck.log`.
+
+**보안 렌즈 관측 2건**:
+
+1. **방·봇 라우트 5개가 전부 진입 검사 뒤에 있다** — `grep -c 'preHandler: \[requireAuth\]' server/src/routes-rooms.ts` → `3`, 같은 명령을 `routes-bots.ts` 에 → `5`. `grep -rn "app\.\(get\|post\|...\)("` 전수 출력에서 가드 없는 라우트는 `/api/health` 와 `/api/auth/*` 넷뿐이고, 방·봇 경로는 하나도 그 목록에 없다. AC-ROOM-008 의 런타임 401 단언과 정적 관측이 일치한다.
+2. **보관 트랜잭션이 실패 경로에서 아무것도 쓰지 않는다** — `routes-rooms.ts:38-50` 의 `db.transaction()` 이 방을 먼저 조회해 `missing`/`conflict`/`ok` 로 갈라, 앞 둘에서는 두 `UPDATE` 를 실행조차 하지 않는다. `onArchive` 훅은 트랜잭션 반환 **이후**에만 불린다 — 훅 예외가 확정된 보관을 되돌리지 못한다.
+
+### Baseline-attribution (baseline 귀속)
+
+- 측정 대상 트리: `.claude/worktrees/t2`, `git rev-parse --short HEAD` → `3bc0387`, 브랜치 `WT-auth-room-bot`.
+- 두 명령 모두 이 트리에서 이 sync 세션이 실행했으며, run 세션이나 리드 디스패치의 수치를 옮겨 적지 않았다.
+
+### Gaps (미검증)
+
+- **커버리지 수치** — `@vitest/coverage-v8` 미설치, 설치 금지. §E.3 E3 의 이월 항목 그대로다.
+- **실제 프로세스 기동 후 수동 확인** — 관측 범위는 `buildServer()` + `inject` 까지다.
+- **동시 보관 요청** — 같은 방에 대한 두 보관 요청이 겹칠 때의 동작은 관측하지 않았다. SQLite 트랜잭션이 직렬화하므로 이론적으로는 두 번째가 `409` 이나, 실측하지 않았다.
+
+### Residual-risk (잔여 위험)
+
+- **봇 등록의 `409` 오분류 여지** — `routes-bots.ts:38-43` 의 `catch` 가 `UNIQUE` 위반 외 DB 오류(디스크 가득 참, 잠금 시간 초과 등)도 "이미 있는 봇 이름입니다" `409` 로 바꾼다. `bots` 표에 다른 제약이 없다는 근거로 plan.md §E 가 수용한 항목이다. 표에 제약이 추가되면 이 판단이 무효가 된다.
+- **인증만 있고 인가는 없다** — 로그인한 사용자는 누구나 어떤 방이든 보관할 수 있고 어떤 봇이든 등록할 수 있다. 단일 사용자 로컬 전제에서는 의도된 범위이며 README 에 명시했다.
+- **`Number(id)` 처리** — 숫자가 아닌 방 id 는 `Number.isInteger` 검사에서 `404` 로 떨어진다. 소수점 id(`1.5`)도 같은 `404` 다 — 의도된 동작이며 AC-ROOM-004 가 관측한다.
+- `config.port` 즉시 평가 한계 — 이 SPEC 범위 밖 기록 유지.
 
 ---
 
