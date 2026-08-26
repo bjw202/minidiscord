@@ -343,7 +343,7 @@ typecheck: "exit 0"
 boundary: "git diff --name-only <spec_base_sha> -- server → 정확히 2줄"
 commits:
   - 36ad9b43b694f703a8e76efa4381f2e273a4d822  # feat: @TO/@CC mention parser (card t3) — 구현+프론트매터 전이
-  - <본 §E.2·§E.3 기록 커밋 — 기록 커밋은 자기 SHA 를 못 실으므로 리드가 git log 로 확인>
+  - d9eb5fd929068562b96a00b4cb39ed9408ea279d  # docs(SPEC-MENTION-001): run-phase 증거 기록 (§E.2·§E.3) — SHA 백필 커밋이 이 줄을 채움
 ```
 
 ---
