@@ -1,0 +1,181 @@
+# SPEC-MSG-001 진행 기록
+
+| 항목 | 값 |
+|------|-----|
+| SPEC-ID | `SPEC-MSG-001` |
+| 칸반 카드 | `t3` (마일스톤 M3) |
+| Tier | M (spec.md + plan.md + acceptance.md) |
+| 원본 계획 | `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 9 |
+| 원본 스펙 | `.moai/plan/2026-08-26-minidiscord/spec-v2.md` 5·6·7·8·9장 |
+| 워크트리 | `.claude/worktrees/t3` |
+| 선행 SPEC | `SPEC-CORE-001` → `SPEC-AUTH-001` → `SPEC-ROOM-001` → `SPEC-MENTION-001` / `SPEC-SSE-001` → `SPEC-GATEWAY-001` |
+| 실행 순서 | 카드 `t3` 의 네 SPEC 중 **네 번째(마지막)** |
+| 현재 상태 | `draft` — plan 단계 산출물 작성 완료 |
+
+---
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+```yaml
+plan_status: audit-ready
+plan_complete_at: 2026-08-27
+spec_id: SPEC-MSG-001
+tier: M
+card: t3
+depends_on: [SPEC-CORE-001, SPEC-AUTH-001, SPEC-ROOM-001, SPEC-MENTION-001, SPEC-SSE-001, SPEC-GATEWAY-001]
+source_plan: .moai/plan/2026-08-26-minidiscord/plan-v2.md (Task 9)
+spec_version: "0.2.0"
+req_count: 15
+ac_count: 15
+tier_budget: "16 REQ / 16 AC"
+plan_audit: .moai/reports/t3-plan-audit-a.md
+plan_audit_verdict: "CONDITIONAL PASS — must-fix 4건(M1..M4) + nice-to-have 7 반영 완료 (v0.2.0)"
+spec_base_sha: "<run 단계 M1 단계 0 에서 기록>"
+```
+
+`spec_base_sha` 는 run 단계 첫 동작으로 채운다.
+
+```bash
+git rev-parse HEAD > .moai/specs/SPEC-MSG-001/.spec-base-sha
+```
+
+같은 값을 위 필드에도 옮겨 적는다. 이 SPEC 에서는 이 기준점 위에 검사 **두 개**가 올라간다 — `db.ts` 불변과 "손댄 소스 파일은 `index.ts`·`routes-messages.ts` 둘뿐"(REQ-MSG-014).
+
+### 작성한 산출물
+
+| 파일 | 내용 |
+|------|------|
+| `.moai/specs/SPEC-MSG-001/spec.md` | GEARS 요구사항 14개 (REQ-MSG-001..014), 범위 밖 7개 항목, 제약, HISTORY 0.1.0 |
+| `.moai/specs/SPEC-MSG-001/plan.md` | 의존 표, 되돌리기 어려운 결정 2건(메시지 커서 / 업로드 경로), 원본 모순 7건, 위험 12건, 마일스톤 M1-M3, 안티패턴 15건 |
+| `.moai/specs/SPEC-MSG-001/acceptance.md` | 수용 기준 14개 (AC-MSG-001..014), 테스트 본문 포함 Given-When-Then, 엣지 케이스 11건, 품질 게이트, Definition of Done |
+| `.moai/specs/SPEC-MSG-001/progress.md` | 이 파일 |
+
+### SPEC-ID 검증
+
+```
+$ ID="SPEC-MSG-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL
+PASS
+```
+
+### REQ → AC 커버리지
+
+15개 REQ 전부가 하나 이상의 AC 에 매핑됐다.
+
+| REQ | 주제 | 대응 AC |
+|-----|------|---------|
+| REQ-MSG-001 | 전송 성공 — `200` + `{ ok, message }`, `message.id` 가 저장 행 | AC-MSG-001 |
+| REQ-MSG-002 | 멘션 → `message_targets` (to/cc) | AC-MSG-002 |
+| REQ-MSG-003 | 미초대 봇 멘션 → `400` + 이름 포함, 무쓰기 | AC-MSG-003 |
+| REQ-MSG-004 | 없는 방 `404` / 보관된 방 `409`, 본문 구분 | AC-MSG-004 |
+| REQ-MSG-005 | 빈 전송 `400` | AC-MSG-005 |
+| REQ-MSG-006 | 첨부 저장 (`filename`/`stored_path`/`size`/`mime`) | AC-MSG-006 |
+| REQ-MSG-007 | 업로드 경로 이탈 금지 (쓰기 시점 `basename`) | AC-MSG-007 |
+| REQ-MSG-008 | 다운로드 — 헤더·MIME, 없으면 `404` | AC-MSG-006 |
+| REQ-MSG-009 | 업로드 디렉터리 밖 첨부 제공 금지 (읽기 시점 봉인) | AC-MSG-008 |
+| REQ-MSG-010 | SSE `publish` + 게이트웨이 `deliver` 각 1회, 페이로드가 실제 그 메시지 | AC-MSG-009 |
+| REQ-MSG-011 | 목록 — 방 한정, `id > after`, 오름차순, `author_name`·`attachments` | AC-MSG-010, AC-MSG-011 |
+| REQ-MSG-012 | 커서 = `messages.id`, 게이트웨이와 공유 | AC-MSG-010 (`ids[1] > ids[0]` 단조성), AC-MSG-009 (`deliver` 의 `msg.id` 가 실제 그 메시지) |
+| REQ-MSG-013 | 세 라우트 `requireAuth`, 미인증 `401` | AC-MSG-012 |
+| REQ-MSG-014 | 범위 경계 — 새 파일 하나, 수정 파일 하나, `SCHEMA` 불변, `permissions.ts` 없음 | AC-MSG-013 |
+| REQ-MSG-015 | 프로덕션 배선 — `registerMessageRoutes` 시그니처, `uploadsDir` 데코레이터, multipart 가 라우트보다 먼저 등록 | AC-MSG-015 |
+| (전 구간) | RED→GREEN 전이 증거 | AC-MSG-014 |
+
+### 수용 기준 자기 점검 — "스텁에도 통과하는 기준이 있는가"
+
+카드 `t2` 에서 같은 결함 부류(아무것도 검증하지 않는 수용 기준)가 세 번 재생산됐다. 그래서 개별 확인이 아니라 **부류로 한 번 훑었다.** 열네 기준 각각에 대해 "구현 본문이 비어 있어도 이 단언이 성립하는가"를 물었고, 성립하는 것은 전부 다시 썼다.
+
+| 걸러 낸 형태 | 어디에 있었나 | 어떻게 고쳤나 |
+|--------------|--------------|--------------|
+| "이름 붙은 테스트가 통과한다"를 기본 리포터로 판정 | 열두 기준 전부의 후보 형태 | 명령을 `npm test -w server -- --reporter=verbose` 로 고정하고, 관측 대상을 `✓ … > messages > <이름>` 줄의 실제 출현으로 못 박았다. 테스트를 안 썼든 이름이 다르든 건너뛰었든 전부 실패로 드러난다 |
+| `statusCode === 200` 만 보는 성공 기준 | AC-MSG-001 초안 | `res.json().message.id` 가 실제 저장 행의 `id` 와 같은지 단언을 더했다. 아무것도 저장하지 않고 `{ ok: true }` 만 돌려주는 구현이 걸린다 |
+| "거부된다"만 보는 실패 기준 | AC-MSG-003, AC-MSG-005 | 각각에 **대조군**(정상 요청이 같은 라우트에서 통과한다)을 더했다. 모든 요청을 `400` 으로 막는 구현이 걸린다 |
+| 인증 기준이 긍정 사례만 관측 | AC-MSG-012 초안 | 부정 사례를 본체로 삼았다 — 쿠키 없는 세 요청이 `[401, 401, 401]`. 여기에 대조군과 "거부된 전송이 저장되지 않았다"를 더해 세 겹으로 만들었다 |
+| 경로 이탈 방어를 "파일이 존재한다"로 관측 | AC-MSG-007 초안 | 구체적 입력(`../../../../etc/passwd`)을 명시하고, `filename === 'passwd'` + `resolve(stored_path)` 가 업로드 디렉터리 아래 + 그 경로에 파일 존재, 세 단언으로 나눴다 |
+| 읽기 시점 봉인을 상태 코드만으로 관측 | AC-MSG-008 초안 | `404` 와 함께 `dl.body` 에 파일 내용이 없다는 단언을 더했다. `404` 를 내면서 본문을 실어 보내는 구현이 걸린다 |
+| 목록 기준이 한 방만 확인 | AC-MSG-011 초안 | 방 두 개를 교차 확인하도록 바꿨다. `WHERE room_id=?` 를 빠뜨린 구현이 걸린다 |
+| 팬아웃이 어느 기준에도 관측되지 않음 | 초안 전체 | AC-MSG-009 를 신설했다. `publish`/`deliver` 를 아예 부르지 않아도 나머지 열세 기준은 전부 통과한다 — DB 에는 다 들어가기 때문이다. 스파이로 호출 횟수와 인자를 직접 관측한다 |
+| "파일이 존재한다"만 보는 범위 경계 | AC-MSG-013 초안 | `spec_base_sha` 기준 `git diff` 두 개로 바꾸고, 기준 SHA 가 실제 커밋으로 풀리는 것(`git rev-parse --verify` 종료 코드 `0`)을 선행 관측으로 올렸다. 빈 출력만 보고 통과로 적는 경로를 막는다 (`SPEC-BOT-001` BOT-B2·R1 의 교훈) |
+
+남은 기준 가운데 구현 본문이 빈 채로 통과하는 것은 없다. AC-MSG-014(RED→GREEN)만은 성질상 절차 증거이며, 관측 대상을 "실패 원인이 출력에서 확인되는가"로 두어 형식적 통과를 막았다.
+
+### 이 단계에서 하지 않은 것 (Gaps)
+
+- 이 SPEC 의 산출물 코드는 한 줄도 작성하지 않았다. `server/src/routes-messages.ts` 도 `server/test/messages.test.ts` 도 미생성이며, `server/src/index.ts` 도 수정하지 않았다 — run 단계 소관이다.
+- `acceptance.md` 의 어떤 명령도 실행하지 않았다. `npm test -w server` 가 현재 몇 개 통과하는지 **미검증**이다. 이 워크트리에는 `node_modules` 가 없어 지금 실행해도 의미 있는 관측이 나오지 않는다.
+- **형제 SPEC 세 개(`SPEC-MENTION-001`·`SPEC-SSE-001`·`SPEC-GATEWAY-001`)의 문서를 읽지 않았다.** 같은 세션에서 다른 에이전트가 동시에 쓰고 있었기 때문이다. 이 SPEC 이 인용하는 세 인터페이스(`parseMentions` 의 반환 형태, `hub.publish` 시그니처, `gateway.deliver` 시그니처)는 형제 SPEC 문서가 아니라 **원본 `plan-v2.md` Task 6·7·8 의 Interfaces 절**에서 직접 가져왔다. 형제 SPEC 이 원본에서 이탈했다면 §A 의존 표와 AC-MSG-009 의 스파이 단언이 어긋날 수 있다 — plan-audit 단계에서 교차 확인이 필요한 항목이다.
+- `plan-v2.md` Task 10(권한 릴레이) 이후는 읽지 않았다. 이 SPEC 범위 밖이다.
+- `plan.md` §D 6번(멘션 오류 시 디스크에 남는 고아 업로드 파일)은 **의도적으로 미해결**이다. 원자적 이동과 함께 범위 밖으로 두었고, AC-MSG-003 본문에 관측 경계를 적어 두었다.
+- **형제 SPEC `SPEC-PERM-001` 과의 파일 경계는 관측 방식으로만 분리했다.** 그 SPEC 이 `server/src/permissions.ts` 를 만들 예정이므로, AC-MSG-013 은 그 파일의 존재 여부를 보지 않고 `git diff --name-only <spec_base_sha>` 출력에 나타나는가만 본다. 두 SPEC 이 같은 카드에서 `index.ts` 를 함께 수정할 가능성은 **미검증**이다 — 순서가 겹치면 넷째 관측(정확히 두 줄)이 깨질 수 있고, plan-audit 단계에서 실행 순서 확인이 필요하다.
+- `plan.md` §D 2번(방별 인가 부재)은 **해결이 아니라 경계 선언**이다. 스키마에 구성원 개념이 없어 이 SPEC 이 강제할 수 없고, 필요해지면 별도 SPEC 이다.
+
+---
+
+## §Audit Response — plan-audit 교정 라운드 (v0.2.0)
+
+근거 보고서: `.moai/reports/t3-plan-audit-a.md` (감사 일자 2026-08-27). 판정은 **CONDITIONAL PASS**, must-fix 4건(M1..M4)이다. 네 건 전부와 nice-to-have 7번을 반영했다. 요구사항 14→15개, 수용 기준 14→15개로 각각 하나씩 늘었고 Tier M 상한 16 이내다.
+
+### M1 — 공통 하네스의 `set-cookie` 처리 (열두 기준 실행 불능)
+
+**확인한 사실.** `server/test/rooms-bots.test.ts:21-26` 을 직접 읽어 `setCookieOf` 헬퍼와 그 주석("light-my-request 는 set-cookie 값을 배열이 아니라 문자열 하나로 돌려준다")이 실재함을 확인했다. 초판 하네스의 `login.headers['set-cookie']![0]` 은 문자열의 첫 글자 `"m"` 을 집어내므로 모든 요청이 `401` 이 된다 — 스텁이 통과하는 방향이 아니라 **정상 구현조차 통과할 수 없는** 방향의 결함이다.
+
+**고친 것.** `acceptance.md` 공통 하네스에 `setCookieOf` 를 기존 스위트와 글자 단위로 같은 형태로 두고, `build()` 의 반환을 `setCookieOf(login).split(';')[0]` 으로 바꿨다. 하네스 서두에 교정 두 곳의 근거를 적었다. `plan.md` §D 에 **8번** 항목으로 경위를 남겼고(감사 보고서가 지정한 번호), §E 위험 표와 §H 안티패턴에 각각 한 행을 더했으며, §F M1 단계 1 이 이 교정을 절차로 요구하도록 고쳤다.
+
+### M2 — 프로덕션 배선을 관측하는 기준이 없음
+
+**고친 것 (a) 규범.** `spec.md` 에 §4.4 를 신설하고 **REQ-MSG-015** 를 추가했다. `registerMessageRoutes(app: FastifyInstance): void` 시그니처를 글자 그대로 고정하고, 배선 네 가지(`uploadsDir` 데코레이트 / multipart 등록 / 라우트 등록 / `declare module` 확장)를 열거했으며, **multipart 등록이 라우트 등록보다 앞선다는 순서가 계약의 일부**임을 명시했다. 기존 §4.4 는 §4.5 로 밀렸다.
+
+**고친 것 (b) 관측.** **AC-MSG-015** 를 신설했다. 형제 SPEC 의 AC-GW-018 과 같은 형태로 실제 `buildServer()` 를 띄우고, 네 관측이 각각 배선의 한 조각을 맡는다 — `uploadsDir` 데코레이터가 `config.uploadsDir` 과 같은지, multipart 를 태운 실제 form 전송이 왕복하는지, 목록 라우트가 방금 것을 돌려주는지, 다운로드 라우트가 등록돼 있는지.
+
+**스텁 훑기를 새 기준에 적용한 결과 하나를 더 막았다.** 네 번째 관측을 `dl.statusCode === 404` 로만 두면 아무것도 검증하지 못한다 — **라우트를 등록하지 않아도 Fastify 가 `404` 를 내기 때문**에 "등록됨"과 "미등록"이 같은 값이 된다. 그래서 응답 본문이 Fastify 기본 미등록 응답(`Route GET:… not found`)이 아닌지까지 단언한다. 두 번째 관측도 상태 코드만 보지 않고 `sent.json().message.body` 가 보낸 문자열과 같은지 본다.
+
+`plan.md` §D 에 **9번** 항목으로 경위를 적고, §E 위험 표 두 행·§H 안티패턴 두 항목·§F M2 수용 기준 목록을 함께 고쳤다.
+
+### M3 — AC-MSG-009 가 `Gateway.deliver` 의 두 번째 인자를 단언하지 않음
+
+**고친 것.** 세 단언을 더했다 — `delivered[0][1].id` 가 실제 저장된 `message id`, `.body` 가 보낸 문자열, `.author_name` 이 `'alice'`. 감사 보고서가 같은 문단에서 지적한 SSE 쪽 구멍도 함께 막아 `published[0][2].id` 와 `.author_name` 을 단언한다. 기준 본문에 이유를 적었다 — 게이트웨이가 그 `msg.id` 로 `bot_tokens.last_delivered_id` 를 올리므로(`plan-v2.md:1580`), 빈 객체가 넘어가면 REQ-MSG-012 의 커서 체계가 조용히 깨지고 봇의 재접속 복구가 잘못된 지점에서 시작한다.
+
+### M4 — REQ-MSG-006 / 007 / 009 의 `config.uploadsDir` 이 수용 기준과 모순
+
+**고친 것.** REQ-MSG-006 본문의 `(config.uploadsDir)` 을 빼고, 그 아래에 **"업로드 디렉터리의 정의"** 상자를 두었다 — `req.server.uploadsDir` 데코레이터가 가리키는 경로이며, 프로덕션에서는 `buildServer()` 가 그 값을 `config.uploadsDir` 로 설정하고(REQ-MSG-015) 테스트에서는 하네스가 임시 디렉터리로 설정한다. **구현이 `config.uploadsDir` 을 직접 읽어서는 안 된다**는 금지도 함께 적었다. REQ-MSG-007 과 REQ-MSG-009 는 "업로드 디렉터리"라는 같은 용어를 쓰므로 정의 상자가 셋을 함께 덮고, REQ-MSG-009 에는 정의 위치를 명시적으로 가리키는 참조를 넣었다.
+
+감사가 권고한 "데코레이터의 존재 자체를 REQ 로 승격"은 M2 와 함께 처리했다 — REQ-MSG-015 항목 1 이 그것이고, AC-MSG-015 1번이 관측한다.
+
+### nice-to-have 7 — MIME 표가 SPEC 안에 없음
+
+**고친 것.** `plan-v2.md:1758-1762` 의 `MIME` 상수를 REQ-MSG-006 본문의 표로 옮겼다. 열 행 전부(`.txt`·`.log` → `text/plain` 포함)와 기본값 `application/octet-stream`, 그리고 확장자를 소문자로 정규화해 비교한다는 규칙을 적었고, 이 SPEC 이 그 내용의 소유자임을 명시했다.
+
+### 곁들여 고친 것 (감사 지적 아님)
+
+`spec.md` §5 와 `acceptance.md` 엣지 케이스 표의 "없는 방 목록 조회" 행이 `plan.md §D 5번`(`last_insert_rowid`)을 가리키고 있었다 — 초판 작성 시의 잘못된 상호 참조다. 각각 REQ-MSG-011 과 `spec.md §5` 를 가리키도록 고쳤다.
+
+### 이번 라운드에서 닫지 않은 것 (미해결)
+
+감사 보고서 §3 의 나머지 일곱 항목은 리드 재량으로 분류돼 있고 이번 지시 범위 밖이라 그대로 둔다. 그중 SPEC-MSG-001 에 해당하는 것은 다음 다섯이며, 전부 **미해결**이다.
+
+- **항목 3** — 검증되지 않는 잔여 요건: REQ-MSG-011 의 `LIMIT 200`, REQ-MSG-001 응답의 `attachments` 배열, REQ-MSG-008 의 응답 `content-type`. 매핑된 AC 는 있으나 그 절을 실제로 관측하지 않는 부분 미검증 상태다.
+- **항목 4** — AC-MSG-006 의 `content-disposition` 단언이 접두사(`filename*=UTF-8''`)만 본다. 파일명을 하드코딩한 헤더도 통과한다. `encodeURIComponent('첨부.txt')` 결과 포함 여부를 보는 편이 낫다.
+- **항목 5** — AC-MSG-004 가 `messages` 개수만 센다. REQ-MSG-004 는 "어떤 테이블에도"이므로 `message_targets`·`attachments` 도 함께 봐야 AC-MSG-003 과 대칭이 맞는다.
+- **항목 6** — 이 SPEC 의 어느 테스트도 `await app.close()` 를 부르지 않는다(신설한 AC-MSG-015 만 예외). `createGateway` 가 연 `WebSocketServer` 의 `onClose` 정리가 실행되지 않아 vitest 종료가 지연될 수 있다.
+- **항목 8** — AC-MSG-007 의 테스트 이름 `refuses to store an upload outside the uploads directory` 가 동작과 반대다. 본문은 `200`(정상 저장, 이름만 소독)을 단언하므로 `sanitizes an upload filename so it cannot escape…` 쪽이 정확하다.
+
+항목 4·5·8 은 각각 한두 줄 수정이고 항목 6 은 하네스 한 줄이라, 리드가 지시하면 같은 라운드에서 닫을 수 있다.
+
+**감사가 명시한 미검증 항목은 그대로 남는다.** 감사자는 테스트를 실행하지 않았고(`§7`), M1 은 코드 대조와 기존 주석에 근거한 판정이다. 나도 실행하지 않았다 — 이 워크트리에 `node_modules` 가 없어 지금 실행해도 의미 있는 관측이 나오지 않는다. 다만 M1 의 근거인 `rooms-bots.test.ts:21-26` 은 직접 읽어 확인했고, M2 의 참조 형태인 AC-GW-018 도 직접 읽었다.
+
+---
+
+## §E.2 Run-phase Evidence
+
+_<pending run-phase>_
+
+---
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_<pending run-phase>_
+
+---
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+_<pending sync-phase>_
