@@ -187,4 +187,34 @@ describe('sse', () => {
     expect(res.headers.get('content-type') ?? '').not.toContain('text/event-stream')
     await res.body?.cancel()
   })
+
+  // AC-SSE-009 — buildServer 배선이 실제로 살아 있다
+  it('wires the hub and the events route into buildServer', async () => {
+    // 데이터 디렉터리 격리 — buildServer() 는 config.dataDir 아래 진짜 디렉터리를 연다.
+    // config.dataDir 은 게터로 지연 평가되므로(config.ts) import 이후에 환경변수를 설정해도 반영된다.
+    const dataDir = mkdtempSync(join(tmpdir(), 'md-sse-wire-'))
+    const prevDataDir = process.env.MINIDISCORD_DATA_DIR
+    process.env.MINIDISCORD_DATA_DIR = dataDir
+    cleanups.push(() => {
+      if (prevDataDir === undefined) delete process.env.MINIDISCORD_DATA_DIR
+      else process.env.MINIDISCORD_DATA_DIR = prevDataDir
+      rmSync(dataDir, { recursive: true, force: true })
+    })
+
+    const { buildServer } = await import('../src/index.js')
+    const app = await buildServer()
+    cleanups.push(async () => { await app.close() })
+
+    await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'w', password: 'pw123456' } })
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'w', password: 'pw123456' } })
+    const ck = setCookieOf(login).split(';')[0]
+
+    await app.listen({ port: 0 })
+    const port = (app.server.address() as { port: number }).port
+    const { reader } = await openStream(port, ck, 1)
+    expect(await readFrame(reader)).toContain('connected')
+
+    app.hub.publish(1, 'message', { id: 42 })
+    expect(await readFrame(reader)).toBe('event: message\ndata: {"id":42}\n\n')
+  })
 })
