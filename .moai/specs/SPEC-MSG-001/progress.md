@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t3` |
 | 선행 SPEC | `SPEC-CORE-001` → `SPEC-AUTH-001` → `SPEC-ROOM-001` → `SPEC-MENTION-001` / `SPEC-SSE-001` → `SPEC-GATEWAY-001` |
 | 실행 순서 | 카드 `t3` 의 네 SPEC 중 **네 번째(마지막)** |
-| 현재 상태 | `in-progress` — run 단계 (M1 전송 경로 완료) |
+| 현재 상태 | `in-progress` — run 단계 완료 (AC 15/15 PASS, audit-ready) |
 
 ---
 
@@ -166,13 +166,186 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+실행 환경: 워크트리 `.claude/worktrees/t3`, 브랜치 `WT-msg-gateway-relay`. 기준점(`spec_base_sha`) = `f7bccbdc5d85b41aa42d5dc7c71c1af75e5cd814` (M1 단계 0 에 `.spec-base-sha` 로 기록).
+
+**시작 baseline (f7bccbd, 직접 실행 확인):**
+
+```
+$ npm test -w server -- --run
+ Test Files  8 passed (8)
+      Tests  70 passed (70)
+```
+
+테스트 파일 본문은 `acceptance.md` 의 Given-When-Then 시나리오를 그대로 옮겼다 (이름·본문 글자 단위 동일). 구현 파일은 `server/src/routes-messages.ts` (신규) 와 `server/src/index.ts` (배선만) 두 곳이다.
+
+### RED → GREEN 전이 증거 (AC-MSG-014)
+
+**전이 1 — M1 RED (messages.test.ts M1 7건 추가 직후):**
+
+```
+$ npm test -w server -- --run
+ FAIL  test/messages.test.ts [ test/messages.test.ts ]
+Error: Cannot find module '../src/routes-messages.js' imported from …/server/test/messages.test.ts
+ ❯ test/messages.test.ts:14:1
+     12| import { createGateway } from '../src/gateway.js'
+     13| import { registerAuthRoutes, requireAuth } from '../src/auth.js'
+     14| import { registerMessageRoutes } from '../src/routes-messages.js'
+       | ^
+ Test Files  1 failed | 8 passed (9)
+      Tests  70 passed (70)
+```
+
+원인이 출력에서 확인된다: `../src/routes-messages.js` 모듈 부재. npm 종료 코드 1.
+
+**전이 2 — M1 GREEN (`routes-messages.ts` POST + `index.ts` 배선 후, 커밋 `2677d78`):**
+
+```
+$ npm test -w server -- --run --reporter=verbose
+ ✓ test/messages.test.ts > messages > stores a plain user message with no targets 101ms
+ ✓ test/messages.test.ts > messages > stores targets for mentioned bots 48ms
+ ✓ test/messages.test.ts > messages > rejects mention of bot not invited to the room 48ms
+ ✓ test/messages.test.ts > messages > send failures distinguish missing room from archived room 46ms
+ ✓ test/messages.test.ts > messages > rejects an empty send with neither body nor file 46ms
+ ✓ test/messages.test.ts > messages > refuses to store an upload outside the uploads directory 53ms
+ ✓ test/messages.test.ts > messages > publishes to the sse hub and delivers to the gateway exactly once 47ms
+ Test Files  9 passed (9)
+      Tests  77 passed (77)
+
+$ npm run typecheck -w server
+> tsc --noEmit
+typecheck exit: 0
+```
+
+**전이 3 — M2 RED (목록·다운로드 6건 추가 직후):**
+
+```
+$ npm test -w server -- --run
+ ❯ test/messages.test.ts (13 tests | 5 failed) 663ms
+     × saves uploaded file as attachment and serves download 52ms
+     × lists messages after cursor 47ms
+     × list is scoped to the room and carries author_name 46ms
+     × all three message routes reject unauthenticated requests 45ms
+     × buildServer wires the message routes, multipart and uploadsDir 47ms
+ Test Files  1 failed | 8 passed (9)
+      Tests  5 failed | 78 passed (83)
+```
+
+실패 원인이 전부 `GET` 두 라우트 미등록이다 — 대표 원문:
+
+```
+ FAIL … > saves uploaded file as attachment and serves download
+AssertionError: expected 404 to be 200        ← GET /api/attachments/:id 미등록
+ FAIL … > lists messages after cursor
+AssertionError: Target cannot be null or undefined.   ← list.json().messages 가 없음 (미등록 404 본문)
+ FAIL … > all three message routes reject unauthenticated requests
+AssertionError: expected [ 401, 404, 404 ] to deeply equal [ 401, 401, 401 ]
+```
+
+> **관측 경계.** M2 6건 중 `refuses to serve an attachment whose stored path escapes…`(AC-MSG-008) 는 이 단계에서 **공히 통과했다** — 라우트가 미등록이어도 Fastify 가 `404` 를 내기 때문이다 (acceptance.md AC-MSG-015 4번이 경고한 바로 그 형태). 이 기준의 유효 판정은 전이 4(라우트가 실재하는 상태)에서 이루어진다.
+
+**전이 4 — M2 GREEN (GET 두 라우트 + 읽기 시점 봉인 구현 후, 커밋 `f9a8fb6`):** 아래 AC 매트릭스의 전체 통과 출력이 그 증거다.
+
+### AC 매트릭스 — 15/15 PASS (판정 시점 트리 = 커밋 `f9a8fb6`)
+
+행동 기준(001–012, 015)의 명령은 전부 동일하다: `npm test -w server -- --reporter=verbose`. 관측 대상은 그 출력의 `✓` 줄. 범위 경계(013)와 전이(014)는 별도 명령.
+
+| AC | 판정 | 명령 | 관측된 출력 (원문) |
+|----|------|------|-------------------|
+| AC-MSG-001 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > stores a plain user message with no targets 101ms` |
+| AC-MSG-002 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > stores targets for mentioned bots 48ms` |
+| AC-MSG-003 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > rejects mention of bot not invited to the room 48ms` |
+| AC-MSG-004 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > send failures distinguish missing room from archived room 46ms` |
+| AC-MSG-005 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > rejects an empty send with neither body nor file 46ms` |
+| AC-MSG-006 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > saves uploaded file as attachment and serves download 52ms` |
+| AC-MSG-007 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > refuses to store an upload outside the uploads directory 48ms` |
+| AC-MSG-008 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > refuses to serve an attachment whose stored path escapes the uploads directory 48ms` |
+| AC-MSG-009 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > publishes to the sse hub and delivers to the gateway exactly once 47ms` |
+| AC-MSG-010 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > lists messages after cursor 47ms` |
+| AC-MSG-011 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > list is scoped to the room and carries author_name 45ms` |
+| AC-MSG-012 | PASS | 〃 | ` ✓ test/messages.test.ts > messages > all three message routes reject unauthenticated requests 46ms` |
+| AC-MSG-013 | PASS | 아래 네 명령 | 아래 "범위 경계 관측" 절의 원문 출력 |
+| AC-MSG-014 | PASS | 각 마일스톤 `npm test -w server -- --run` | 위 "RED → GREEN 전이 증거" 절의 원문 출력 4개 |
+| AC-MSG-015 | PASS | `npm test -w server -- --reporter=verbose` | ` ✓ test/messages.test.ts > messages > buildServer wires the message routes, multipart and uploadsDir 48ms` |
+
+전체 스위트 요약 (같은 실행, 원문):
+
+```
+ Test Files  9 passed (9)
+      Tests  83 passed (83)
+   Start at  10:25:09
+   Duration  4.59s
+```
+
+`$ npm run typecheck -w server` → `typecheck exit: 0`.
+
+### 범위 경계 관측 (AC-MSG-013, 판정 시점 `f9a8fb6`)
+
+```
+$ ls server/src
+auth.ts
+config.ts
+db.ts
+gateway.ts
+index.ts
+mention.ts
+routes-bots.ts
+routes-messages.ts
+routes-rooms.ts
+sse.ts
+
+$ git rev-parse --verify "$(cat .moai/specs/SPEC-MSG-001/.spec-base-sha)^{commit}"
+f7bccbdc5d85b41aa42d5dc7c71c1af75e5cd814
+exit: 0
+
+$ git diff --stat f7bccbdc5d85b41aa42d5dc7c71c1af75e5cd814 -- server/src/db.ts
+exit: 0        ← 출력 없음 (빈 출력 + 종료 코드 0 동시 성립)
+
+$ git diff --name-only f7bccbdc5d85b41aa42d5dc7c71c1af75e5cd814 -- server/src
+server/src/index.ts
+server/src/routes-messages.ts
+exit: 0
+```
+
+네 관측 전부 성립 — 열 파일 존재, 기준 SHA 해석 exit 0, `db.ts` 불변, 변경 소스 정확히 두 줄. 보조 확인: `git diff --name-only <기준 SHA> | grep -E "^(channel|web|scripts)/"` → 일치 없음 (exit 1) — `channel/`·`web/`·`scripts/` 아래 생성된 파일 없다.
+
+### Gaps (미검증 명시)
+
+- **감사 이월 항목 3** — `LIMIT 200` 상한, REQ-MSG-001 응답의 `attachments` 배열 내용, REQ-MSG-008 응답의 `content-type` 헤더는 매핑된 AC 안에서 직접 관측되지 않는다. 구현은 넣었다 (`LIMIT 200`·`attachments`·`reply.header('content-type', att.mime)`).
+- **감사 이월 항목 4** — AC-MSG-006 의 `content-disposition` 단언은 접두사(`filename*=UTF-8''`)만 본다. 구현은 `encodeURIComponent(att.filename)` 까지 실어 보낸다.
+- **감사 이월 항목 5** — AC-MSG-004 는 `messages` 개수만 센다. 구현은 multipart 소비 **앞에서** 방을 가르므로 `message_targets`·`attachments` 에도 행이 생길 수 없으나, 그 두 테이블의 무쓰기는 이 기준이 관측하지 않는다.
+- **감사 이월 항목 6** — `build()` 기반 12개 테스트는 `app.close()` 를 부르지 않는다 (AC-MSG-015 만 예외). 이번 실행에서 vitest 종료 지연은 관측되지 않았다(전체 Duration 4.59s)만 `onClose` 정리가 무관측인 앱이 12개 있다.
+- **감사 이월 항목 8** — AC-MSG-007 의 테스트 이름(`refuses to store…`)이 동작(200 정상 저장 + 이름 소독)과 어긋나나 acceptance.md 본문 그대로 유지했다.
+- **AC-MSG-008 의 RED 공히 통과** — 전이 3 관측 경계에 적은 대로, M2 RED 에서 이 기준만은 실패하지 않았다(미등록 라우트도 404). 라우트 실재 상태(GREEN)의 통과가 유효 판정이다.
+
+### Residual-risk (잔여 위험)
+
+- **멘션 오류·방 오류 시 디스크 고아 파일** — 방 검사를 multipart 소비 앞으로 당겨 404/409 경로의 고아는 없앴으나, 미초대 멘션(REQ-MSG-003)은 파일 저장 뒤에 거부되므로 디스크에 파일이 남는다. plan.md §D 6번이 수용한 위험이고 AC-MSG-003 의 관측 경계는 DB 세 테이블이다.
+- **방별 인가 부재** — 로그인한 누구나 모든 방을 읽고 모든 첨부를 내려받는다. 이 시스템의 의도된 경계다 (REQ-MSG-013 본문, plan.md §D 2번).
+- **업로드 스트림 오류 미처리** — 디스크 가득 참 등으로 `pipeline` 이 던지면 Fastify 기본 500 로 흘린다. 어떤 AC 도 이 경로를 관측하지 않는다.
+- **100MB 파일 상한 초과 동작** — `limits.fileSize` 를 걸었으나 `truncated` 플래그를 검사하지 않는다(원본과 동일). 초과분은 잘린 채 저장된다.
+- **AC-MSG-015 의 환경 변수 미복원** — 그 테스트는 `process.env.MINIDISCORD_DATA_DIR` 을 바꾸고 복원하지 않는다. 파일 마지막에 두어 이번에는 영향이 없으나, 이후 테스트를 그 아래에 추가하면 임시 경로를 물려받는다.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-27
+spec_id: SPEC-MSG-001
+card: t3
+cycle_type: tdd
+head_commit: f9a8fb6bdb7ce772a03d43216c81ab5c2d5d3be0
+commits:
+  - "2677d7826b2be3f61df66dd11d6a72e8263333a4 — feat: message send API with multipart upload and mention fan-out (card t3)"
+  - "f9a8fb6bdb7ce772a03d43216c81ab5c2d5d3be0 — feat: message listing with cursor and guarded attachment download (card t3)"
+tests: "9 files / 83 passed (baseline 8 / 70 + 13 신규) — npm test -w server -- --run 직접 실행 확인"
+typecheck: "npm run typecheck -w server exit 0"
+boundary_base_sha: f7bccbdc5d85b41aa42d5dc7c71c1af75e5cd814
+evidence: .moai/specs/SPEC-MSG-001/progress.md §E.2
+ac_matrix: "AC-MSG-001..015 전부 PASS (15/15)"
+gaps: "감사 이월 5건(3·4·5·6·8) + AC-MSG-008 RED 공히 통과 — §E.2 Gaps 참조"
+```
 
 ---
 
