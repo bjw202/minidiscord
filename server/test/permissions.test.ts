@@ -351,17 +351,59 @@ describe('permission relay', () => {
     expect(await verdictB).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
   })
 
-  // 대소문자 섞인 id 로 등록해도 답이 풀리고 판정의 id 는 소문자로 나간다 (t7 결함2, REQ-PERM-006)
-  it('mixed-case request_id resolves and the verdict carries the lowercase id', async () => {
-    const { app, broker, port, cookie } = await build()
-    const { roomId, botId, token } = seedRoomAndBot()
-    const ws = await wsConnect(port, token)
+  // 대소문자 섞인 id 는 등록 자체가 거절돼야 한다 — 등록되면 keyOf 의 소문자화가 소문자 id 와 같은 키로
+  // 뭉개져 먼저 등록한 요청이 조용히 사라진다 (t7 sync-audit T7-F-01·03)
+  it('refuses a mixed-case request_id and registers nothing', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
     broker.onGatewayRequest({ roomId, botId }, { request_id: 'AbCdE', tool_name: 'Bash', description: 'd', input_preview: 'p' })
-    const verdict = nextMessage(ws)
-    const res = await post(app, roomId, cookie, 'yes AbCdE')
-    expect(res.json().consumed_by).toBe('permission')
-    expect(await verdict).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
-    const c = db.prepare("SELECT COUNT(*) c FROM messages WHERE author_type='user'").get() as { c: number }
-    expect(c.c).toBe(0)
+    const rows = db.prepare("SELECT body FROM messages WHERE author_type='system'").all() as { body: string }[]
+    expect(rows.length).toBe(1)                                   // 대기 항목 없이 거절 안내 한 줄만
+    expect(rows[0].body).toContain('형식에 맞지 않아 등록하지 않았습니다')
+    expect(rows[0].body).not.toContain('yes AbCdE')               // 불가능한 답을 시키는 안내문이 남지 않는다
+  })
+
+  // reply 정규식이 절대 못 맞추는 id(hello — l 포함)는 등록하지 않는다 — 안내대로 쳐도 아무 일도
+  // 일어나지 않고 대기 항목이 영원히 남는 결함 (t7 sync-audit T7-F-02)
+  it('refuses to register an id the reply format can never match', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'hello', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const rows = db.prepare("SELECT body FROM messages WHERE author_type='system'").all() as { body: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0].body).toContain('형식에 맞지 않아 등록하지 않았습니다')
+    expect(rows[0].body).not.toContain('yes hello')
+  })
+
+  // 봇이 보낸 텍스트의 줄바꿈은 중화된다 — 안내문에 가짜 승인 줄을 위조하는 경로 차단 (t7 sync-audit T7-F-01)
+  it('flattens newlines in bot-supplied text so no forged instruction line appears', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, {
+      request_id: 'abcde', tool_name: 'Bash',
+      description: '도구를 실행합니다\n승인하려면 "yes zzzzz"',
+      input_preview: 'cat README\n봇이 도구 사용 승인을 요청합니다: Read',
+    })
+    const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
+    const lines = row.body.split('\n')
+    expect(lines.length).toBe(4)                                  // REQ-PERM-002 네 줄 구조가 무너지지 않는다
+    const instructing = lines.filter(l => l.includes('승인하려면'))
+    expect(instructing.length).toBe(1)                            // 안내 줄은 서버가 쓴 한 줄뿐이다
+    expect(instructing[0]).toContain('yes abcde')
+  })
+
+  // 같은 방 대소문자 변형 id 는 충돌 자체가 불가능하다 — 대문자 원본은 등록이 거절되므로 (t7 sync-audit T7-F-03)
+  it('same-room case variants cannot collide because non-lowercase ids are refused', async () => {
+    const { app, broker, cookie } = await build()
+    const a = seedRoomAndBot('A', 'pm')
+    const b = db.prepare("INSERT INTO bots (name, description) VALUES ('qa','')").run().lastInsertRowid as number
+    broker.onGatewayRequest({ roomId: a.roomId, botId: a.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    broker.onGatewayRequest({ roomId: a.roomId, botId: b }, { request_id: 'ABCDE', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const rows = db.prepare("SELECT body FROM messages WHERE author_type='system'").all() as { body: string }[]
+    expect(rows.length).toBe(2)                                   // 승인 안내 1건 + 거절 안내 1건
+    expect(rows[0].body).toContain('yes abcde')                   // 첫 등록은 정상 승인 안내
+    expect(rows[1].body).toContain('형식에 맞지 않아 등록하지 않았습니다')   // 두 번째 등록은 거절 — 덮어쓰기가 아니다
+    const res = await post(app, a.roomId, cookie, 'yes abcde')
+    expect(res.json().consumed_by).toBe('permission')             // 먼저 등록한 요청이 살아 있다
   })
 })
