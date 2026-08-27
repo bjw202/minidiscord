@@ -1,7 +1,7 @@
 // 봇 게이트웨이: 채널 플러그인의 WebSocket 접속 창구 (spec 6장)
 import { WebSocketServer, WebSocket } from 'ws'
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, statSync } from 'node:fs'
+import { copyFileSync, statSync, realpathSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { sha256Hex } from './routes-bots.js'
@@ -141,14 +141,18 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     const r = db.prepare("INSERT INTO messages (room_id, author_type, author_bot_id, body) VALUES (?, 'bot', ?, ?)")
       .run(info.roomId, info.botId, String(msg.body ?? ''))
     const messageId = r.lastInsertRowid as number
-    // 허용 뿌리는 한 번만 정규화한다. 미지정이면 null 이고, 아래 검사가 모든 첨부를 거부한다.
-    const filesRoot = opts.botFilesDir ? resolve(opts.botFilesDir) : null
+    // 허용 뿌리는 한 번만 정규화한다. 미지정이거나 실재하지 않으면 null 이고, 아래 검사가 모든 첨부를 거부한다.
+    // realpathSync 를 쓴다 — resolve() 는 어휘적 정규화만 해서 심볼릭 링크를 따라가지 않는데,
+    // copyFileSync 는 따라간다. 그 차이로 뿌리 안의 링크가 바깥 내용을 끌어올 수 있었다 (sync-reaudit N-02).
+    let filesRoot: string | null = null
+    try { filesRoot = opts.botFilesDir ? realpathSync(opts.botFilesDir) : null } catch { filesRoot = null }
     for (const f of (msg.files ?? []) as { local_path?: string; name?: string }[]) {
       try {
         // 출처 경로 봉인 (sync-audit F-01). basename() 은 목적지 이름에만 걸리고 출처에는 걸리지 않아,
         // 이 검사가 없으면 '../..' 없이 절대 경로만으로도 뿌리 밖 파일이 그대로 복사됐다.
         // sep 를 붙여 비교한다 — 붙이지 않으면 '<root>-evil' 같은 접두사 일치가 통과한다.
-        const src = resolve(String(f.local_path))
+        // 없는 파일은 realpathSync 가 던지고 아래 catch 가 받는다 — REQ-GW-011 의 건너뛰기와 같은 자리다.
+        const src = realpathSync(String(f.local_path))
         if (!filesRoot || !src.startsWith(filesRoot + sep)) continue
         // 다섯 컬럼 전부 채운다 — size·mime 은 NOT NULL 이라 빠뜨리면 INSERT 가 제약 위반으로
         // 던지고 이 catch 가 그것을 삼켜 첨부가 조용히 사라진다 (plan.md §D 9번).
@@ -163,7 +167,9 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       }
     }
     const row = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId) as any
-    const attachments = db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(messageId)
+    // stored_path 를 뽑지 않는다 — 이 프레임은 방을 구독한 로그인 사용자 전원에게 가므로
+    // HTTP 응답과 같은 규칙이 적용돼야 한다 (sync-reaudit N-01). 봇 프레임은 deliver 가 따로 만든다.
+    const attachments = db.prepare('SELECT id, filename FROM attachments WHERE message_id = ?').all(messageId)
     hub.publish(info.roomId, 'message', { ...row, author_name: authorName(row), attachments })
   }
 

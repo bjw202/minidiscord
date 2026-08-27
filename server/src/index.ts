@@ -66,4 +66,9 @@ if (process.argv[1]?.includes('index.ts')) {
   const app = await buildServer()
   await app.listen({ port: config.port, host: config.host })
   console.log(`minidiscord listening on ${config.host}:${config.port}`)
+  // 켜지지 않은 기능은 조용히 없는 것처럼 보인다 — 봇이 파일을 보내는데 방에 아무것도 안 뜨는
+  // 진단하기 어려운 실패를 막으려고 기동 시 한 줄 알린다 (sync-reaudit N-03).
+  if (!config.botFilesDir) {
+    console.warn('minidiscord: MINIDISCORD_BOT_FILES_DIR 이 없어 봇 첨부를 받지 않습니다 (본문만 전달됩니다)')
+  }
 }

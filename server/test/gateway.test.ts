@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
@@ -425,6 +425,69 @@ describe('gateway', () => {
       ws.close()
       await app.close()
     }
+  })
+
+  // AC-GW-023 — 허용 뿌리 안의 심볼릭 링크로도 밖을 끌어오지 못한다 (sync-reaudit N-02)
+  it('bot_message refuses a symlink inside botFilesDir that points outside it', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+
+    const outsideDir = mkdtempSync(join(tmpdir(), 'md-outside-'))
+    const canary = join(outsideDir, 'secret.txt')
+    writeFileSync(canary, 'TOP-SECRET-LINK-7b2c')
+    // 링크 자체는 허용 뿌리(dir) **안**에 있다 — 어휘적 경로 검사는 이걸 통과시킨다.
+    const link = join(dir, '겉보기정상.txt')
+    symlinkSync(canary, link)
+    // 대조군: 링크가 아닌 뿌리 안의 진짜 파일.
+    const good = join(dir, '진짜.txt')
+    writeFileSync(good, 'ok')
+
+    try {
+      ws.send(JSON.stringify({
+        type: 'bot_message', body: '링크 시도',
+        files: [{ local_path: link, name: '겉보기정상.txt' }, { local_path: good, name: '진짜.txt' }],
+      }))
+      await new Promise(r => setTimeout(r, 300))
+
+      const row = db.prepare("SELECT * FROM messages WHERE room_id=? AND author_type='bot'").get(room) as any
+      expect(row.body).toBe('링크 시도')
+      const atts = db.prepare('SELECT filename, stored_path FROM attachments WHERE message_id=?').all(row.id) as { filename: string; stored_path: string }[]
+      expect(atts.map(a => a.filename)).toEqual(['진짜.txt'])
+      for (const a of atts) {
+        expect(readFileSync(a.stored_path, 'utf8')).not.toContain('TOP-SECRET-LINK-7b2c')
+      }
+    } finally {
+      rmSync(outsideDir, { recursive: true, force: true })
+      ws.close()
+      await app.close()
+    }
+  })
+
+  // AC-GW-024 — 허브 발행 프레임에 저장 경로가 실리지 않는다 (sync-reaudit N-01)
+  it('never publishes stored_path on the hub frame for a bot attachment', async () => {
+    const { app, published, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+    const src = join(dir, '첨부.txt')
+    writeFileSync(src, '내용')
+
+    ws.send(JSON.stringify({ type: 'bot_message', body: '첨부 있음', files: [{ local_path: src, name: '첨부.txt' }] }))
+    await new Promise(r => setTimeout(r, 300))
+
+    const frame = published.filter(p => p.event === 'message').at(-1)!
+    // 대조군: 첨부가 실제로 하나 실려 있고 id·filename 은 있어야 한다 —
+    // 없으면 "첨부를 통째로 빼먹은" 구현도 통과한다.
+    expect(frame.data.attachments).toHaveLength(1)
+    expect(frame.data.attachments[0].filename).toBe('첨부.txt')
+    expect(typeof frame.data.attachments[0].id).toBe('number')
+    expect(frame.data.attachments[0]).not.toHaveProperty('stored_path')
+    // 프레임 전체를 문자열로 훑어 다른 필드 이름으로 새는 경우까지 잡는다.
+    const att = db.prepare('SELECT stored_path FROM attachments').get() as { stored_path: string }
+    expect(JSON.stringify(frame.data)).not.toContain(att.stored_path)
+
+    ws.close()
+    await app.close()
   })
 
   // AC-GW-009 — status 는 두 값만 발행한다
