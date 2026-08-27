@@ -443,3 +443,70 @@ $ grep -n "basename\|resolve(.*startsWith\|preHandler" server/src/routes-message
 Decision: serial
 Implementation Kickoff Approval: 통과 — 리드 디스패치 gate 필드로 운영자 승인 전달됨 (2026-08-27)
 기록 시점 HEAD: f7bccbd (SPEC-GATEWAY-001 run 완료 직후)
+
+---
+
+## §E.5 Sync-audit Response — 감사 FAIL 대응 라운드
+
+sync 단계 독립 감사(`.moai/reports/t3/sync-audit.md`, `--security --deep`)가 **FAIL** 을 냈다
+(Security 45/100, 임계 70). 리드가 판정을 채택하고 차단 3건 수정 + 재감사를 지시했다.
+그에 따라 `status` 를 `completed` → `in-progress` 로 되돌렸고, §E.4 는 **재감사 PASS 전까지 유효하지 않다.**
+
+### 이 SPEC 에서 바뀐 것 — F-02 (High, 이 SPEC 소유)
+
+전송 응답(`POST /api/rooms/:id/messages`)과 목록 응답(`GET /api/rooms/:id/messages`)의
+`attachments` 에 서버 파일시스템 **절대 경로**(`stored_path`)가 그대로 실렸다. 클라이언트는
+`id` 하나면 내려받을 수 있으므로 이 값은 쓸모가 없고, 서버 디렉터리 구조·임시 경로·사용자명을 노출했다.
+
+수정: 전송 응답의 `attachments` 배열에서 `stored_path` 를 빼고, 목록 응답의 SELECT 를
+`SELECT id, filename` 으로 좁혔다. 봇 프레임의 `local_path` 는 봇이 로컬 파일을 여는 설계상
+표면이므로 **유지**한다 — 그 비대칭은 README 에 적었다.
+
+가드 테스트: `test/messages.test.ts` — `never puts stored_path in the send or list response
+while keeping the id usable`. 이 테스트가 실제로 무언가를 잡는지 **되돌려서 확인했다**.
+
+```
+# 수정을 일시적으로 되돌린 상태
+AssertionError: expected { id: 1, filename: '첨부.txt', …(1) } to not have property "stored_path"
+    192|     expect(sent.attachments[0]).not.toHaveProperty('stored_path')
+      Tests  1 failed | 99 skipped (100)
+```
+
+대조군으로 `id`·`filename` 이 실려 있는지, 그리고 그 `id` 로 실제 다운로드가 되는지를 함께 본다 —
+없으면 "첨부를 통째로 빼먹은" 구현도 통과한다. 응답 본문 문자열 전체에 저장 경로가 없는지도
+확인해, 다른 필드 이름으로 새는 경우까지 잡는다. F-01 수정과 맞물려
+CHANGELOG 의 "다운로드도 업로드 디렉터리 밖은 내주지 않습니다" 가 이제 내용에 대해서도 참이 된다.
+
+### 프로젝트 전역에서 바뀐 것 — F-03 (High)
+
+`server/src/index.ts` 가 `0.0.0.0` 에 바인드했다. README 는 "내 PC에서만 도는 서버"라는 전제 위에서
+HTTPS·CSRF·세션 만료·권한 구분을 뺐다고 명시하는데, 코드가 그 전제를 지키지 않았다. 개방 가입과
+겹치면 같은 네트워크의 누구나 계정을 만들어 모든 방을 읽고, 쓰고, 봇의 도구 승인까지 할 수 있었다.
+
+수정: `config.host` 를 추가하고 기본을 `127.0.0.1` 로 두었다. 넓히려면 `MINIDISCORD_HOST` 를 명시해야 한다.
+
+### 재실행 결과
+
+```
+$ unset MOAI_KANBAN … && npm test -w server -- --run
+ Test Files  10 passed (10)
+      Tests  100 passed (100)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+진입 98 → 100 (경로 봉인 1건 + 저장 경로 비노출 1건).
+
+### 이 라운드에서 닫지 않은 것
+
+- **비차단 8건(F-04..F-11)** 은 손대지 않았다. 리드가 F-04·F-05 를 별도 백로그 카드로 적립했고
+  나머지는 그대로 남는다.
+- **방 멤버십 모델**은 여전히 없다. F-03 수정은 그 부재가 기대는 전제(루프백 전용)를 코드로 되돌린
+  것이지, 인가를 넣은 것이 아니다.
+- **spec.md 본문에 새 요구사항 항목을 추가하지 않았다.** 출처 경로 봉인은 감사 대응으로 들어간
+  코드이고 `spec.md` 본문은 manager-spec 소유라, 요구사항 번호 부여는 후속 몫으로 남긴다 —
+  현재 근거는 이 §E.5 와 감사 보고서다.
+- **재감사를 아직 받지 않았다.** 이 절을 쓰는 시점에 판정은 여전히 FAIL 이다.

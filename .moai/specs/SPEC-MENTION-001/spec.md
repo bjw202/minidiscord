@@ -2,7 +2,7 @@
 id: SPEC-MENTION-001
 title: "minidiscord 멘션 파서 — @TO/@CC 수신 봇 판정 순수 함수"
 version: "0.1.0"
-status: completed
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec

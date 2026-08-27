@@ -11,7 +11,17 @@
 - **봇 게이트웨이** — `server/src/gateway.ts`가 `ws://.../bot`에 WebSocket 서버를 얹습니다. `hello { token }` 하나로 토큰이 그 봇의 방과 신원을 결정하고, 재접속하면 끊긴 동안 놓친 메시지를 번호 순으로 중복 없이 이어받습니다. 봇의 답장(`bot_message`)·상태(`status`)·이력 조회(`history_request`)를 받고, 초대 목록의 `online` 필드도 이제 실제 접속 여부를 보여줍니다. (`SPEC-GATEWAY-001`)
 - **메시지 API** — `server/src/routes-messages.ts`가 `POST /api/rooms/:id/messages`(multipart 전송)·`GET /api/rooms/:id/messages`(커서 목록)·`GET /api/attachments/:id`(다운로드) 세 경로를 등록합니다. 멘션된 이름을 그 방에 초대된 봇으로만 매핑해 SSE와 게이트웨이 양쪽으로 정확히 한 번씩 흘려보내고, 업로드 파일명은 경로 성분을 제거해 저장하며 다운로드도 업로드 디렉터리 밖은 내주지 않습니다. (`SPEC-MSG-001`)
 - **권한 릴레이** — `server/src/permissions.ts`가 봇의 도구 사용 승인 요청을 방에 system 메시지로 띄우고, 사람이 그 방에 `yes <ID>` 또는 `no <ID>`라고 답하면 그 문장을 가로채 일반 메시지로 남기지 않고 판정으로 바꿔 봇에게 돌려보냅니다. (`SPEC-PERM-001`)
-- **테스트** — vitest 테스트가 37개에서 98개로 늘었습니다(테스트 파일 5개 → 10개; `npm test -w server -- --run` 실행 확인, `npm run typecheck -w server` 통과).
+- **테스트** — vitest 테스트가 37개에서 100개로 늘었습니다(테스트 파일 5개 → 10개; `npm test -w server -- --run` 실행 확인, `npm run typecheck -w server` 통과). 이 중 2개는 아래 보안 감사에서 추가됐습니다.
+
+### 보안 감사에서 고친 것 (카드 `t3` sync)
+
+sync 단계의 독립 감사가 차단 3건을 찾아 같은 카드 안에서 닫았습니다.
+
+- **봇 첨부 경로 봉인** — `bot_message`의 `files[].local_path`를 아무 검사 없이 복사하던 것을 `MINIDISCORD_BOT_FILES_DIR` 안으로 제한했습니다. 이 검사가 없는 동안에는 봇 토큰 하나로 서버가 읽을 수 있는 임의 파일을 첨부 폴더로 복사해 로그인한 누구나 내려받을 수 있었습니다(감사자가 재현). 설정이 없으면 봇 첨부를 전부 건너뜁니다. (`SPEC-GATEWAY-001`)
+- **저장 경로 비노출** — 전송·목록 응답의 `attachments`에서 `stored_path`를 뺐습니다. 클라이언트는 `id` 하나로 내려받으면 되고, 절대 경로는 서버 디렉터리 구조만 노출했습니다. 봇 프레임의 `local_path`는 봇이 로컬 파일을 여는 설계상 표면이라 그대로 둡니다. (`SPEC-MSG-001`)
+- **기본 바인드를 루프백으로** — `0.0.0.0`에 붙던 것을 `127.0.0.1`로 바꾸고 `MINIDISCORD_HOST`로 넓힐 수 있게 했습니다. "내 PC에서만 돈다"는 전제 위에서 HTTPS·CSRF·권한 구분을 뺐는데, 정작 코드가 그 전제를 지키지 않고 있었습니다. (`SPEC-CORE-001` 경계)
+
+테스트는 98개에서 100개로 늘었습니다(경로 봉인 1건, 저장 경로 비노출 1건 — 둘 다 대조군을 함께 관측합니다).
 
 ### 알아둘 점
 

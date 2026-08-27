@@ -516,3 +516,82 @@ $ grep -n "sha256Hex" server/src/gateway.ts
 Decision: serial
 Implementation Kickoff Approval: 통과 — 리드 디스패치 gate 필드로 운영자 승인 전달됨 (2026-08-27)
 기록 시점 HEAD: cb90fb3 (SPEC-SSE-001 run 완료 직후)
+
+---
+
+## §E.5 Sync-audit Response — 감사 FAIL 대응 라운드
+
+sync 단계 독립 감사(`.moai/reports/t3/sync-audit.md`, `--security --deep`)가 **FAIL** 을 냈다
+(Security 45/100, 임계 70). 리드가 판정을 채택하고 차단 3건 수정 + 재감사를 지시했다.
+그에 따라 `status` 를 `completed` → `in-progress` 로 되돌렸고, §E.4 는 **재감사 PASS 전까지 유효하지 않다.**
+
+### 이 SPEC 에서 바뀐 것 — F-01 (Critical, 이 SPEC 소유)
+
+`handleBotMessage` 가 `files[].local_path` 를 아무 검증 없이 `copyFileSync` 로 복사했다.
+`basename()` 은 **목적지 이름**에만 걸리고 **출처 경로**에는 걸리지 않아, 봇 토큰 하나로
+서버가 읽을 수 있는 임의 파일을 업로드 디렉터리 안으로 끌어올 수 있었다. 그 결과
+`SPEC-MSG-001` 의 읽기 시점 봉인은 **통과한다** — 파일이 실제로 업로드 디렉터리 안에 있기 때문이다.
+감사자가 uploads 밖 카나리 파일의 유출을 HTTP 200 으로 재현했다.
+
+수정: `createGateway` 에 `botFilesDir` 옵션을 추가하고, 복사 전에
+`resolve(local_path).startsWith(resolve(botFilesDir) + sep)` 를 확인한다. 미지정이면 모든 봇 첨부를
+거부한다(fail-closed). 벗어난 경로는 **그 첨부만** 건너뛴다 — 기존 REQ-GW-011 의 "없는 파일은
+건너뛴다" 와 같은 자리다. `sep` 를 붙여 비교하므로 `<root>-evil` 같은 접두사 일치가 통과하지 않는다.
+
+재현 테스트: `test/gateway.test.ts` — `bot_message refuses a local_path outside botFilesDir
+while still attaching one inside`. 대조군(뿌리 안 정상 파일 1건)을 같은 테스트에서 함께 관측해
+"전부 거부"하는 구현도 걸러낸다. 파일명뿐 아니라 **복사본의 내용**에 카나리 문자열이 없는지까지 본다.
+
+RED → GREEN 전이를 관측했다.
+
+```
+# 수정 전 (RED)
+$ npx vitest run --root server -t "refuses a local_path outside botFilesDir"
+- Expected
++ Received
+  [
++   "harmless.txt",
+    "정상.txt",
+  ]
+ Test Files  1 failed | 9 skipped (10)
+
+# 수정 후 (GREEN)
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a local_path outside botFilesDir while still attaching one inside 344ms
+```
+
+`MessageRow.attachments` 의 원소 타입에서 `stored_path` 를 뺐다 (F-02 와 짝). `deliver` 는
+첨부를 DB 에서 다시 읽으므로 봇 프레임의 `local_path` 는 영향을 받지 않는다.
+
+### 프로젝트 전역에서 바뀐 것 — F-03 (High)
+
+`server/src/index.ts` 가 `0.0.0.0` 에 바인드했다. README 는 "내 PC에서만 도는 서버"라는 전제 위에서
+HTTPS·CSRF·세션 만료·권한 구분을 뺐다고 명시하는데, 코드가 그 전제를 지키지 않았다. 개방 가입과
+겹치면 같은 네트워크의 누구나 계정을 만들어 모든 방을 읽고, 쓰고, 봇의 도구 승인까지 할 수 있었다.
+
+수정: `config.host` 를 추가하고 기본을 `127.0.0.1` 로 두었다. 넓히려면 `MINIDISCORD_HOST` 를 명시해야 한다.
+
+### 재실행 결과
+
+```
+$ unset MOAI_KANBAN … && npm test -w server -- --run
+ Test Files  10 passed (10)
+      Tests  100 passed (100)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+진입 98 → 100 (경로 봉인 1건 + 저장 경로 비노출 1건).
+
+### 이 라운드에서 닫지 않은 것
+
+- **비차단 8건(F-04..F-11)** 은 손대지 않았다. 리드가 F-04·F-05 를 별도 백로그 카드로 적립했고
+  나머지는 그대로 남는다.
+- **방 멤버십 모델**은 여전히 없다. F-03 수정은 그 부재가 기대는 전제(루프백 전용)를 코드로 되돌린
+  것이지, 인가를 넣은 것이 아니다.
+- **spec.md 본문에 새 요구사항 항목을 추가하지 않았다.** 출처 경로 봉인은 감사 대응으로 들어간
+  코드이고 `spec.md` 본문은 manager-spec 소유라, 요구사항 번호 부여는 후속 몫으로 남긴다 —
+  현재 근거는 이 §E.5 와 감사 보고서다.
+- **재감사를 아직 받지 않았다.** 이 절을 쓰는 시점에 판정은 여전히 FAIL 이다.
