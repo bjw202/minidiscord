@@ -204,3 +204,139 @@ input:focus { outline: 1px solid var(--md-accent); }
   color: var(--md-status-error);
   border-top: 1px solid var(--md-divider);
 }
+
+/* ── SPEC-WEBCHAT-001 채팅 영역 ── */
+/* 방 헤더 + 메시지 목록 + 작성기의 세로 레이아웃. 색은 전부 design-tokens.css 의
+   --md-* 변수로만 쓴다 (REQ-WEBCHAT-015) — 16진수 리터럴을 직접 적지 않는다. */
+#chat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 방 헤더 — 제목·봇 칩·초대 버튼 한 줄. 구분선으로 본문과 나눈다 */
+#room-header {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-3);
+  padding: var(--md-space-3) var(--md-space-4);
+  border-bottom: var(--md-border-width) solid var(--md-divider);
+}
+
+#room-title {
+  margin: 0;
+  font-size: var(--md-font-size-body);
+  font-weight: var(--md-font-weight-name);
+}
+
+#room-bots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--md-space-2);
+}
+
+/* 봇 칩 — 오프라인은 흐리게 (design DNA §1). 아이콘 🟢/⚪ 는 JS 가 넣는다 */
+.bot-chip {
+  padding: var(--md-space-1) var(--md-space-2);
+  border-radius: var(--md-radius-badge);
+  background: var(--md-bg-panel);
+  font-size: var(--md-font-size-label);
+  color: var(--md-text-muted);
+}
+
+.bot-chip.offline { opacity: 0.55; }
+
+/* 초대 버튼 — SPEC-WEBRICH-001 이 모달을 붙인다. 자리만 눈에 들어오게 */
+#invite-btn {
+  margin-left: auto;
+  padding: var(--md-space-1) var(--md-space-2);
+  background: none;
+  color: var(--md-text-muted);
+  font-size: var(--md-font-size-label);
+}
+
+/* 메시지 목록 — 이 영역만 스크롤된다 */
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--md-space-4);
+}
+
+.message { margin-bottom: var(--md-space-3); }
+
+.msg-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--md-space-2);
+}
+
+.msg-head strong { font-weight: var(--md-font-weight-name); }
+
+/* 타임스탬프 — 본문보다 작고 흐리다 (design DNA §2: 12px, muted) */
+.msg-time {
+  font-size: var(--md-font-size-timestamp);
+  color: var(--md-text-muted);
+}
+
+.msg-body {
+  margin: var(--md-space-1) 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 봇 작성자 이름 색 — author_bot_id 로 다섯 색을 순환 배정한다 (design DNA §1) */
+.bot-color-1 { color: var(--md-role-color-1); }
+.bot-color-2 { color: var(--md-role-color-2); }
+.bot-color-3 { color: var(--md-role-color-3); }
+.bot-color-4 { color: var(--md-role-color-4); }
+.bot-color-5 { color: var(--md-role-color-5); }
+
+/* system 메시지(권한 릴레이 등)는 본문도 흐리게 — 장식 없이 구분되게 */
+.message.system .msg-body { color: var(--md-text-muted); }
+
+/* 작성기 — 자동완성 드롭다운은 입력창 바로 위에 뜬다 */
+#composer {
+  position: relative;
+  display: flex;
+  gap: var(--md-space-2);
+  padding: var(--md-space-3) var(--md-space-4);
+}
+
+#autocomplete {
+  position: absolute;
+  bottom: 100%;
+  left: var(--md-space-4);
+  min-width: 240px;
+  padding: var(--md-space-1);
+  border-radius: var(--md-radius-badge);
+  background: var(--md-bg-panel);
+}
+
+.ac-item {
+  padding: var(--md-space-1) var(--md-space-2);
+  border-radius: var(--md-radius-badge);
+  cursor: pointer;
+  font-size: var(--md-font-size-body);
+}
+
+.ac-item:hover { background: var(--md-bg-hover); }
+
+/* 멘션 불가 이름 — 선택할 수 없고 그 이유가 함께 보인다 (REQ-WEBCHAT-011) */
+.ac-item.disabled {
+  color: var(--md-text-muted);
+  cursor: not-allowed;
+}
+
+.ac-item.disabled:hover { background: none; }
+
+/* 입력창 — 둥근 사각형에 채팅 배경보다 밝은 배경 (design DNA §4) */
+#msg-input {
+  flex: 1;
+  resize: none;
+  min-height: 44px;
+}
+
+/* #file-input 은 HTML 의 hidden 속성으로 숨겨 둔다 — CSS display:none 을 덮지 않는다.
+   SPEC-WEBRICH-001 이 hidden 을 떼는 순간 바로 보이는 것이 형제와의 약속이다. */
+
+#send-btn { align-self: flex-end; }
