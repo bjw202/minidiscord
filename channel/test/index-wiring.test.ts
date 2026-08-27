@@ -1,6 +1,8 @@
-// SPEC-CHANWIRE-001 채널 배선 테스트 — acceptance.md 공통 하네스 + AC-CHANWIRE-001~005 (M1)
+// SPEC-CHANWIRE-001 채널 배선 테스트 — acceptance.md 공통 하네스 + AC-CHANWIRE-001~008·010·011·014
 import { describe, it, expect, afterEach } from 'vitest'
 import { WebSocketServer, WebSocket } from 'ws'
+import { spawn } from 'node:child_process'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { AddressInfo } from 'node:net'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -55,6 +57,49 @@ function gatewayStub() {
     countOf: (pred: (m: any) => boolean) => sent.filter(pred).length,
   }
 }
+
+// 빌드 산출물의 절대 경로. 테스트 파일 기준이라 vitest 의 cwd 가 무엇이든 같은 곳을 가리킨다.
+const DIST = fileURLToPath(new URL('../dist/index.js', import.meta.url))
+
+// 부모(vitest) 환경의 두 변수가 새어 들어가면 판정이 뒤집히므로 명시적으로 지운다.
+function childEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
+  const env = { ...process.env }
+  delete env.MINIDISCORD_TOKEN
+  delete env.MINIDISCORD_SERVER
+  return { ...env, ...extra }
+}
+
+// 자식 프로세스를 띄우고 **바로 다음 줄에서** 수거를 등록한다.
+// 이 순서가 계약이다 — 아래에서 무엇이 던지든 afterEach 가 반드시 거둔다.
+function spawnChild(args: string[], extra: Record<string, string>) {
+  const child = spawn(process.execPath, args, { env: childEnv(extra), stdio: ['pipe', 'pipe', 'pipe'] })
+  cleanups.push(() => new Promise<void>(resolve => {
+    if (child.exitCode !== null || child.signalCode !== null) return resolve()
+    child.once('close', () => resolve())
+    child.kill('SIGKILL')
+  }))
+  const chunks: string[] = []
+  child.stdout.on('data', d => chunks.push(String(d)))
+  let exit: number | null = null
+  child.once('exit', code => { exit = code })
+  return { child, out: () => chunks.join(''), exitCode: () => exit }
+}
+
+// stdout 의 줄들 중 그 id 를 가진 JSON-RPC 응답을 찾는다. 없으면 undefined.
+function rpcResponse(text: string, id: number): any | undefined {
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue
+    try {
+      const msg = JSON.parse(line)
+      if (msg.id === id) return msg
+    } catch { /* 아직 덜 온 줄 */ }
+  }
+}
+
+const INITIALIZE = JSON.stringify({
+  jsonrpc: '2.0', id: 1, method: 'initialize',
+  params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'probe', version: '0' } },
+})
 
 // 게이트웨이에 붙고 MCP 관찰자까지 연결된 상태를 만든다.
 async function connected() {
@@ -135,5 +180,85 @@ describe('channel wiring', () => {
     const idleIdx = stub.sent.findIndex(m => m.type === 'status' && m.state === 'idle')
     expect(msgIdx).toBeGreaterThanOrEqual(0)
     expect(idleIdx).toBeGreaterThan(msgIdx)
+  })
+
+  // AC-CHANWIRE-006 — fetch_history 파라미터가 게이트웨이까지 그대로 간다
+  it('fetch_history forwards since_id and limit verbatim', async () => {
+    const { stub, obs } = await connected()
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') ws.send(JSON.stringify({ type: 'history_response', rid: m.rid, messages: [] }))
+    })
+    await obs.callTool({ name: 'fetch_history', arguments: { since_id: 41, limit: 5 } })
+    const req = stub.sent.find(m => m.type === 'history_request')!
+    expect(req.since_id).toBe(41)
+    expect(req.limit).toBe(5)
+  })
+
+  // AC-CHANWIRE-007 — 이력 줄이 #번호 형식으로 렌더링된다
+  it('history lines carry the #id cursor prefix', async () => {
+    const { stub, obs } = await connected()
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') ws.send(JSON.stringify({
+        type: 'history_response', rid: m.rid,
+        messages: [{ id: 1, author_name: 'alice', body: '과거', created_at: '2026-08-01' }],
+      }))
+    })
+    const res = await obs.callTool({ name: 'fetch_history', arguments: { limit: 1 } })
+    expect((res.content as any[])[0].text).toBe('#1 [2026-08-01] alice: 과거')
+  })
+
+  // AC-CHANWIRE-008 — 빈 이력은 한국어 문구로 돌아온다
+  it('empty history renders the Korean placeholder', async () => {
+    const { stub, obs } = await connected()
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') ws.send(JSON.stringify({ type: 'history_response', rid: m.rid, messages: [] }))
+    })
+    const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
+    expect((res.content as any[])[0].text).toBe('(기록 없음)')
+  })
+
+  // AC-CHANWIRE-010 — 임포트만으로는 소켓이 열리지 않는다 (부정 사례). 토큰을 일부러 준다.
+  it('importing the module opens no connection', async () => {
+    const stub = gatewayStub()
+    const spec = pathToFileURL(DIST).href
+    const child = spawnChild(
+      ['--input-type=module', '--eval', `await import(${JSON.stringify(spec)})`],
+      { MINIDISCORD_TOKEN: 'tok', MINIDISCORD_SERVER: `ws://127.0.0.1:${stub.port()}/bot` },
+    )
+    await waitFor(() => child.exitCode() !== null, '자식 프로세스 종료')
+    expect(child.exitCode()).toBe(0)
+    expect(stub.sent.length).toBe(0)
+  })
+
+  // AC-CHANWIRE-011 — 주소가 환경변수대로 정해지고, 기본값이 지켜진다.
+  // 동적 import 로 받는다 — 수출이 없을 때 로드 실패가 아니라 undefined 단언 실패로 RED 가 나야 한다 (AC-013 전이 3).
+  it('resolveUrl falls back to the documented default', async () => {
+    const mod = await import('../src/index.js')
+    expect(mod.DEFAULT_SERVER).toBe('ws://127.0.0.1:3000/bot')
+    expect(mod.resolveUrl({})).toBe('ws://127.0.0.1:3000/bot')
+    expect(mod.resolveUrl({ MINIDISCORD_SERVER: 'ws://example/bot' })).toBe('ws://example/bot')
+  })
+
+  // AC-CHANWIRE-014 — 빌드 산출물이 MCP 를 말하고, 토큰은 게이트웨이만 잠근다
+  it('the built artifact speaks MCP; the token gates only the gateway', async () => {
+    const stub = gatewayStub()
+    const url = `ws://127.0.0.1:${stub.port()}/bot`
+
+    // (a) 토큰 있음 — 두 갈래가 같은 프로세스에서 동시에 성립해야 한다
+    const withToken = spawnChild([DIST], { MINIDISCORD_TOKEN: 'tok', MINIDISCORD_SERVER: url })
+    withToken.child.stdin.write(INITIALIZE + '\n')
+    await waitFor(() => rpcResponse(withToken.out(), 1) !== undefined, '(a) initialize 응답')
+    expect(rpcResponse(withToken.out(), 1).result.serverInfo.name).toBe('minidiscord-channel')
+    await waitFor(() => stub.sent.some(m => m.type === 'hello'), '(a) hello 도착')
+    expect(stub.sent.find(m => m.type === 'hello').token).toBe('tok')
+
+    // (b) 토큰 없음 — MCP 는 여전히 말하고, 게이트웨이에는 붙지 않는다
+    const helloBefore = stub.countOf(m => m.type === 'hello')
+    const noToken = spawnChild([DIST], { MINIDISCORD_SERVER: url })
+    noToken.child.stdin.write(INITIALIZE + '\n')
+    await waitFor(() => rpcResponse(noToken.out(), 1) !== undefined, '(b) initialize 응답')
+    expect(rpcResponse(noToken.out(), 1).result.serverInfo.name).toBe('minidiscord-channel')
+    await new Promise(r => setTimeout(r, 300))   // 늦게 오는 접속을 놓치지 않기 위한 여유
+    expect(stub.countOf(m => m.type === 'hello')).toBe(helloBefore)
   })
 })
