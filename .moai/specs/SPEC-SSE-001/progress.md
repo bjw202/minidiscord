@@ -378,7 +378,75 @@ commits:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-27
+sync_commit_sha: "<sync 커밋 직후 백필>"
+spec_id: SPEC-SSE-001
+card: t3
+milestone: M3
+worktree: .claude/worktrees/t3 (WT-msg-gateway-relay)
+head_at_sync_evidence: "8c4798a"
+sync_session: 9d51afd1-8226-4e22-946e-2ed4574a878e
+lens: "--security --deep"
+docs_updated: [README.md, CHANGELOG.md]
+status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+```
+
+### Claim (주장)
+
+`SPEC-SSE-001` 의 run 단계 산출물이 sync 세션의 **독립 재실행**으로 확인되었다. SSE 허브 테스트 9건이 전부 통과하고 타입 검사가 깨끗하며, 실시간 스트림의 인증 경계와 방 격리에 대한 보안 렌즈 검토에서 차단 사항이 나오지 않았다.
+
+### Evidence (증거)
+
+sync 세션이 직접 실행해 관측했다. 원문은 `.moai/state/verify/9d51afd1/test-verbose.txt` 에 남겼다.
+
+```
+$ npm test -w server -- --run --reporter=verbose
+ ✓ test/sse.test.ts > sse > delivers a published event to the room subscriber 134ms
+ ✓ test/sse.test.ts > sse > opens the stream with SSE headers and a connected comment 51ms
+ ✓ test/sse.test.ts > sse > never leaks another room event into this room stream 49ms
+ ✓ test/sse.test.ts > sse > frames events exactly as event/data/blank-line 51ms
+ ✓ test/sse.test.ts > sse > delivers to every subscriber of the room 50ms
+ ✓ test/sse.test.ts > sse > removes the subscriber when the connection closes 60ms
+ ✓ test/sse.test.ts > sse > publishing to a room with no subscribers is a silent no-op 48ms
+ ✓ test/sse.test.ts > sse > rejects an unauthenticated event-stream request 51ms
+ ✓ test/sse.test.ts > sse > wires the hub and the events route into buildServer 61ms
+ Test Files  10 passed (10)
+      Tests  98 passed (98)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+보안 렌즈 — 이벤트 라우트의 진입 검사를 코드에서 직접 확인했다.
+
+```
+$ grep -n "preHandler" server/src/index.ts
+57:  app.get('/api/rooms/:id/events', { preHandler: [requireAuth] }, async (req, reply) => {
+```
+
+방 격리는 `never leaks another room event into this room stream` 한 줄이 양성으로 지킨다 — 다른 방 이벤트가 흘러들면 실패하는 테스트다.
+
+### Baseline-attribution (baseline 귀속)
+
+- 측정 트리: 워크트리 `.claude/worktrees/t3`, 분기 `WT-msg-gateway-relay`, HEAD `8c4798a`.
+- run 단계 §E.3 은 `52 passed / 52 (신규 9)` 를 기록했다. sync 시점 `test/sse.test.ts` 자체 건수는 **9 로 변함이 없다** — 총계 98 은 형제 SPEC 3벌이 위에 얹힌 결과다.
+- 스키마 불변 주장(AC-SSE-010)은 §E.2 의 기준 SHA 대비 diff 관측이 근거이며, sync 세션이 다시 재지 않았다.
+
+### Gaps (미검증)
+
+- 커버리지 수치 미측정 (`@vitest/coverage-v8` 미설치).
+- **방 멤버십은 검사하지 않는다.** 로그인한 사용자면 누구나 임의의 방 이벤트 스트림을 열 수 있다. 이 프로젝트에 아직 멤버십 모델 자체가 없어 이번 범위 밖이며, `SPEC-PERM-001` spec.md §5 의 미결 질문과 같은 부류다 — 리드 판정 대기.
+- 프록시·역방향 프록시 뒤에서의 버퍼링 동작은 실환경에서 관측하지 않았다.
+
+### Residual-risk (잔여 위험)
+
+- 하트비트가 없다(AC-SSE-012, 의도된 설계). 중간 장비가 유휴 연결을 끊으면 브라우저 재연결에 기대야 한다 — 카드 `t5` 웹 UI 에서 실제로 확인할 항목이다.
+- 구독자 맵은 프로세스 메모리다. 서버 재시작이면 전부 사라지고 클라이언트가 다시 붙어야 한다.
+- 이 분기는 아직 머지되지 않았다.
 
 ---
 
