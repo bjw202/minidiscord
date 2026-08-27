@@ -351,7 +351,84 @@ gaps: "감사 이월 5건(3·4·5·6·8) + AC-MSG-008 RED 공히 통과 — §E.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-27
+sync_commit_sha: "<sync 커밋 직후 백필>"
+spec_id: SPEC-MSG-001
+card: t3
+milestone: M3
+worktree: .claude/worktrees/t3 (WT-msg-gateway-relay)
+head_at_sync_evidence: "8c4798a"
+sync_session: 9d51afd1-8226-4e22-946e-2ed4574a878e
+lens: "--security --deep"
+docs_updated: [README.md, CHANGELOG.md]
+status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+```
+
+### Claim (주장)
+
+`SPEC-MSG-001` 의 run 단계 산출물이 sync 세션의 **독립 재실행**으로 확인되었다. 메시지 API 테스트 13건이 전부 통과하고 타입 검사가 깨끗하며, 첨부 업로드·다운로드 경로에 대한 보안 렌즈 검토에서 차단 사항이 나오지 않았다.
+
+### Evidence (증거)
+
+sync 세션이 직접 실행해 관측했다. 원문은 `.moai/state/verify/9d51afd1/test-verbose.txt` 에 남겼다.
+
+```
+$ npm test -w server -- --run --reporter=verbose
+ ✓ test/messages.test.ts > messages > stores a plain user message with no targets 103ms
+ ✓ test/messages.test.ts > messages > stores targets for mentioned bots 49ms
+ ✓ test/messages.test.ts > messages > rejects mention of bot not invited to the room 49ms
+ ✓ test/messages.test.ts > messages > send failures distinguish missing room from archived room 49ms
+ ✓ test/messages.test.ts > messages > rejects an empty send with neither body nor file 48ms
+ ✓ test/messages.test.ts > messages > saves uploaded file as attachment and serves download 53ms
+ ✓ test/messages.test.ts > messages > refuses to store an upload outside the uploads directory 49ms
+ ✓ test/messages.test.ts > messages > refuses to serve an attachment whose stored path escapes the uploads directory 48ms
+ ✓ test/messages.test.ts > messages > publishes to the sse hub and delivers to the gateway exactly once 49ms
+ ✓ test/messages.test.ts > messages > lists messages after cursor 48ms
+ ✓ test/messages.test.ts > messages > list is scoped to the room and carries author_name 44ms
+ ✓ test/messages.test.ts > messages > all three message routes reject unauthenticated requests 45ms
+ ✓ test/messages.test.ts > messages > buildServer wires the message routes, multipart and uploadsDir 47ms
+ Test Files  10 passed (10)
+      Tests  98 passed (98)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+보안 렌즈 — 경로 탈출 봉인이 **쓰기와 읽기 양쪽에** 있는 것을 코드에서 직접 확인했다.
+
+```
+$ grep -n "basename\|resolve(.*startsWith\|preHandler" server/src/routes-messages.ts
+29:  app.post('/api/rooms/:id/messages', { preHandler: [requireAuth] }, async (req, reply) => {
+49:        const safeName = basename(part.filename)
+121:  app.get('/api/rooms/:id/messages', { preHandler: [requireAuth] }, async req => {
+139:  app.get('/api/attachments/:id', { preHandler: [requireAuth] }, async (req, reply) => {
+150:    if (!resolve(att.stored_path).startsWith(resolve(req.server.uploadsDir) + sep)) {
+```
+
+쓰기 시점에는 사용자 파일명의 경로 성분을 `basename` 으로 잘라내고, 읽기 시점에는 저장 경로를 절대 경로로 펼쳐 업로드 디렉터리 안인지 다시 확인한다. `+ sep` 이 붙어 있어 `uploads-evil/` 같은 접두사 우회도 막힌다. 두 방향 모두 양성 테스트가 지킨다(`refuses to store an upload outside…`, `refuses to serve an attachment whose stored path escapes…`).
+
+### Baseline-attribution (baseline 귀속)
+
+- 측정 트리: 워크트리 `.claude/worktrees/t3`, 분기 `WT-msg-gateway-relay`, HEAD `8c4798a`.
+- run 단계 §E.3 은 `83 passed (baseline 70 + 13 신규)` 를 기록했다. sync 시점 `test/messages.test.ts` 자체 건수는 **13 으로 변함이 없다** — 총계 98 은 `SPEC-PERM-001` 15건이 위에 얹힌 결과다.
+- AC 15/15 판정과 범위 경계 관측은 §E.2 의 run 시점 기록이며, sync 세션이 다시 재지 않았다.
+
+### Gaps (미검증)
+
+- 커버리지 수치 미측정 (`@vitest/coverage-v8` 미설치).
+- **업로드 크기 상한과 MIME 허용 목록은 이번 범위에 없다.** §E.2 의 nice-to-have 7 로 이미 기록된 이월 항목이며 sync 에서도 닫지 않았다.
+- **방 멤버십 검사가 없다.** 로그인만 하면 임의의 방에 메시지를 보내고 목록을 읽을 수 있다. 프로젝트에 멤버십 모델 자체가 없어 범위 밖이며, `SPEC-PERM-001` spec.md §5 의 미결 질문과 같은 부류다 — 리드 판정 대기.
+- §E.2 Gaps 에 기록된 감사 이월 5건(3·4·5·6·8)은 이번 sync 에서도 닫지 않았다.
+
+### Residual-risk (잔여 위험)
+
+- 커서 목록은 `id` 단조 증가에 기댄다. 카드 `t4` MCP `fetch_history` 의 `since_id` 와 이 커서가 같은 의미를 공유해야 하며, 어긋나면 봇이 메시지를 건너뛴다.
+- 첨부 파일은 지워지지 않는다. 방을 보관해도 업로드 디렉터리에 남는다 — 의도된 수용이나 장기 운영에서 용량 관리가 필요하다.
+- 이 분기는 아직 머지되지 않았다.
 
 ---
 
