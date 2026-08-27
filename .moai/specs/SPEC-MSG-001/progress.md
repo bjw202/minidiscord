@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t3` |
 | 선행 SPEC | `SPEC-CORE-001` → `SPEC-AUTH-001` → `SPEC-ROOM-001` → `SPEC-MENTION-001` / `SPEC-SSE-001` → `SPEC-GATEWAY-001` |
 | 실행 순서 | 카드 `t3` 의 네 SPEC 중 **네 번째(마지막)** |
-| 현재 상태 | `draft` — plan 단계 산출물 작성 완료 |
+| 현재 상태 | `in-progress` — run 단계 (M1 전송 경로 완료) |
 
 ---
 
@@ -30,7 +30,7 @@ ac_count: 15
 tier_budget: "16 REQ / 16 AC"
 plan_audit: .moai/reports/t3-plan-audit-a.md
 plan_audit_verdict: "CONDITIONAL PASS — must-fix 4건(M1..M4) + nice-to-have 7 반영 완료 (v0.2.0)"
-spec_base_sha: "<run 단계 M1 단계 0 에서 기록>"
+spec_base_sha: "f7bccbdc5d85b41aa42d5dc7c71c1af75e5cd814"
 ```
 
 `spec_base_sha` 는 run 단계 첫 동작으로 채운다.
@@ -179,3 +179,17 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+- 입력: tier M / 범위 3개 파일 (routes-messages.ts·테스트 신규, index.ts 수정) / 도메인 1 (server) / 언어 TypeScript / 병렬 이득 낮음
+- direct: 미선택 — 다중 파일 신규 코드+테스트 작성
+- serial: 선택 — 코딩 중심 구현의 기본값; 선행 MENTION(parseMentions)·SSE(hub.publish)·GATEWAY(gateway.deliver) 산출물을 계약으로 소비하고 후행 PERM이 메시지 라우트에 가로채기를 결합
+- fanout: 미선택 — 단일 도메인 구현 작업 (코딩 병렬성 경고)
+- sweep: 미선택 — 30파일 미만, 기계적 일괄 변환 아님
+
+Decision: serial
+Implementation Kickoff Approval: 통과 — 리드 디스패치 gate 필드로 운영자 승인 전달됨 (2026-08-27)
+기록 시점 HEAD: f7bccbd (SPEC-GATEWAY-001 run 완료 직후)
