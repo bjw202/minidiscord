@@ -387,8 +387,10 @@ describe('permission relay', () => {
     const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
     const lines = row.body.split('\n')
     expect(lines.length).toBe(4)                                  // REQ-PERM-002 네 줄 구조가 무너지지 않는다
-    // 안내 문구로 "시작하는" 줄은 서버가 쓴 한 줄뿐이어야 한다 — 위조 텍스트는 중화 표식과 함께
-    // 설명 줄 안에 갇혀 있고 독립된 안내 줄이 되지 못한다 (includes 로는 중화된 텍스트까지 걸리므로 startsWith 로 판정)
+    // 불변식 전체는 "봇이 쓴 줄은 모두 │ 접두를 달고, 접두 없는 줄만 서버가 쓴 줄이다" — 그러므로 안내 문구로
+    // 시작하는 줄은 서버가 쓴 한 줄뿐이다. 이 테스트가 재는 것은 그중 "줄바꿈으로는 안내 줄을 만들 수 없다" 절반이고,
+    // 줄 없는 안내 줄 위조와 표식 문자 주입은 바로 아래 두 테스트가 잰다 (t7 재감사 §R4 — 접두 도입 전에는 이 주석이
+    // 구현보다 강한 보증을 주장했다. includes 로는 중화된 텍스트까지 걸리므로 startsWith 로 판정)
     const instructing = lines.filter(l => l.startsWith('승인하려면'))
     expect(instructing.length).toBe(1)
     expect(instructing[0]).toContain('yes abcde')

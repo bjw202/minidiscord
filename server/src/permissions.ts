@@ -12,9 +12,14 @@ export const PERMISSION_REPLY_RE = /^\s*(y|yes|n|no)\s+([a-km-z]{5})\s*$/i
 // id(l 포함·길이≠5)의 등록 — 사람이 안내대로 쳐도 아무 일도 일어나지 않는 결함 — 도 여기서 함께 막는다 (T7-F-02).
 const PERMISSION_REQUEST_ID_RE = /^[a-km-z]{5}$/
 
-// 봇이 보낸 문자열의 줄바꿈을 눈에 보이는 표식으로 중화한다 — join('\n') 네 줄 구조(REQ-PERM-002) 안에서
-// 서버 문구처럼 보이는 가짜 안내 줄이 위조되는 것을 막는다 (sync-audit T7-F-01)
-const oneLine = (s: string) => String(s).replace(/\r\n?|\n/g, ' ⏎ ')
+// 봇이 쓴 줄의 접두 표식 — 접두가 붙은 줄은 봇이 쓴 줄, 접두 없는 줄만 서버가 쓴 줄이다.
+// 줄바꿈 중화만으로는 줄 없는 description 이 안내 문구와 똑같은 한 줄을 통째로 차지하는 것을 막지 못하므로
+// 봇이 채우는 두 줄(description·input_preview)에 붙여 서버 문구와 시각적으로 갈라 놓는다 (sync-audit 재감사 §R3, 정정 2라운드)
+const BOT_MARK = '│ '
+// 봇이 보낸 문자열의 줄바꿈과 접두 표식 문자를 눈에 보이는 표식으로 중화한다 — join('\n') 네 줄 구조(REQ-PERM-002) 안에서
+// 서버 문구처럼 보이는 가짜 안내 줄이 위조되는 것(줄바꿈)과 표식을 줄 중간에 새겨 접두 없는 서버 줄로 위장하는 것(│)을 막는다
+// (sync-audit T7-F-01, 정정 2라운드 §R3)
+const oneLine = (s: string) => String(s).replace(/\r\n?|\n/g, ' ⏎ ').replaceAll('│', '/')
 
 // @MX:ANCHOR: [AUTO] index.ts 배선과 routes-messages 가로채기가 소비하는 브로커 공개 계약 (REQ-PERM-004)
 // @MX:REASON: createPermissionBroker/PermissionBroker 시그니처는 spec.md REQ-PERM-004 가 글자 그대로 고정한다
@@ -52,9 +57,10 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
       // 대기 등록이 system 저장보다 먼저다 — 저장이 실패해도 대기 항목은 남아야 터미널 승인 경로가 살아 있다 (plan.md §B)
       open.set(keyOf(info.roomId, requestId), info)
       const body = [
+        // 1·4 번째 줄은 서버가 통째로 쓰므로 접두가 없다 — 접두 없는 줄이 곧 서버가 쓴 줄이라는 불변식의 절반이다
         `🔒 봇이 도구 사용 승인을 요청합니다: ${oneLine(params.tool_name)}`,
-        oneLine(params.description),
-        oneLine(params.input_preview),
+        BOT_MARK + oneLine(params.description),
+        BOT_MARK + oneLine(params.input_preview),
         `승인하려면 "yes ${requestId}", 거절하려면 "no ${requestId}" 라고 답해주세요.`,
       ].join('\n')
       postSystem(info.roomId, body)
