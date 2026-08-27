@@ -2,7 +2,7 @@
 id: SPEC-GATEWAY-001
 title: "minidiscord 봇 게이트웨이 — WebSocket 접속·재접속 복구·이력 조회"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec

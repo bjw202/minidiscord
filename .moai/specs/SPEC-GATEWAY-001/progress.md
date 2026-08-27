@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t3` |
 | 선행 SPEC | `SPEC-CORE-001` → `SPEC-BOT-001` (카드 `t2`) → `SPEC-MENTION-001` → `SPEC-SSE-001` |
 | 실행 순서 | 카드 `t3` 의 세 SPEC 중 **세 번째(마지막)** |
-| 현재 상태 | `draft` — plan 단계 산출물 작성 완료 |
+| 현재 상태 | `in-progress` — M1(접속·인증·재전송·deliver) 완료 |
 
 ---
 
@@ -29,7 +29,7 @@ spec_version: "0.3.0"
 req_count: 23
 ac_count: 20
 tier_budget: "25 REQ / 25 AC"
-spec_base_sha: "<run 단계 첫 동작으로 기록>"
+spec_base_sha: "cb90fb3c80e33c25f5e8cf05d9f0a8ce8550350c"
 plan_audit: .moai/reports/t3-plan-audit-a.md
 plan_audit_verdict: "CONDITIONAL PASS — 차단 3건(M5·M6·M7) + §3-1 반영 완료; 재감사에서 셋 다 RESOLVED, 잔여 §3-2 도 v0.3.0 에서 반영 (§Audit Response)"
 ```
@@ -243,3 +243,17 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+- 입력: tier L / 범위 4개 파일 (gateway.ts·테스트 신규, index.ts·routes-bots.ts 수정) / 도메인 1 (server) / 언어 TypeScript / 병렬 이득 낮음
+- direct: 미선택 — 대규모 신규 코드+테스트 작성 (23 REQ / 20 AC)
+- serial: 선택 — 코딩 중심 구현의 기본값; 선행 MENTION·SSE 산출물을 계약으로 소비하고 후행 MSG·PERM이 이 SPEC의 deliver·커서 계약에 결합
+- fanout: 미선택 — 단일 도메인 구현 작업 (코딩 병렬성 경고)
+- sweep: 미선택 — 30파일 미만, 기계적 일괄 변환 아님
+
+Decision: serial
+Implementation Kickoff Approval: 통과 — 리드 디스패치 gate 필드로 운영자 승인 전달됨 (2026-08-27)
+기록 시점 HEAD: cb90fb3 (SPEC-SSE-001 run 완료 직후)
