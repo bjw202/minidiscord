@@ -12,7 +12,7 @@
 | 실행 순서 | 카드 `t5` 의 첫 SPEC — `SPEC-WEBCHAT-001`(Task 16)·`SPEC-WEBRICH-001`(Task 17)이 이 SPEC 의 `state`/`api()`/`initApp()` 계약에 결합한다 |
 | 현재 상태 | `draft` — plan 단계 완료, **감사 교정 라운드 반영(0.2.0)** |
 | plan 감사 | `.moai/reports/t5/plan-audit.md` (2026-08-27, HEAD `6e9a167`) — 이 SPEC **CONDITIONAL PASS**, 통합 표면 **FAIL**. 배정된 MUST-FIX 5건(MF-2·3·4·6·7) + 관찰 O-4 교정 완료 |
-| spec_base_sha | _(run 단계 M1 단계 0 에서 채운다)_ |
+| spec_base_sha | `0020276` (전체: `00202769b3731ea223d97c2c20e8068cd4d331cd`) |
 
 ---
 
@@ -36,7 +36,7 @@ plan_audit_fixes: [MF-2, MF-3, MF-4, MF-6, MF-7, O-4]
 card_contract_section: "spec.md §4.8 (REQ-WEBSHELL-015)"
 manual_ac_count: 1
 tier_budget: "16 REQ / 16 AC"
-spec_base_sha: pending
+spec_base_sha: 00202769b3731ea223d97c2c20e8068cd4d331cd
 ```
 
 `spec_base_sha` 는 run 단계 첫 동작으로 채운다.
@@ -166,7 +166,44 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 준비와 정적 서빙
+
+**DOM 테스트 환경 결정 (plan.md §C)**: 파일 단위 도크블록 `// @vitest-environment jsdom` 을 채택했다. vitest 4.1.11 + jsdom 29.1.1 에서 정상 작동한다 — 첫 실행 출력의 `environment 396ms` 가 jsdom 환경 로드이며, 도크블록이 무시됐다면 `loadDom` 의 `DOMParser` 가 없어 다른 오류로 죽는다. `server/vitest.config.ts` 대안 경로는 쓰지 않았다(AC-015 허용 집합에도 안 들어간다).
+
+**acceptance.md 골격 대비 조정**: 공통 골격의 `stubFetch`/`loadApp` 헬퍼를 M3 시점에 추가했다. M1 골격에 포함했더니 Vite transform 이 아직 없는 `../../web/app.js` import 해석에 실패해 파일 전체가 로드되지 않았다(RED 직전 판). 마일스톤 순서상 `app.js` 는 M3 에서 만들므로, 헬퍼는 그 소비 시점(AC-006~013 테스트)에 함께 넣는다.
+
+**RED (AC-016 전이 1)**:
+
+```
+$ npm test -w server -- web-shell.test.ts
+Error: ENOENT: no such file or directory, open '.../t5/web/index.html'
+ ❯ loadDom test/web-shell.test.ts:17:16
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+```
+
+원인이 `web/index.html` 부재로 출력에 직접 보인다 — AC-016 전이 1 의 허용 원인 둘 중 하나.
+
+**GREEN (AC-016 전이 2)**:
+
+```
+$ npm test -w server -- web-shell.test.ts
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+```
+
+**전체 스위트 + typecheck (직접 실행)**:
+
+```
+$ npm test -w server
+ Test Files  11 passed (11)
+      Tests  106 passed (106)      ← 기존 104 + 이 SPEC 2
+
+$ npm run typecheck -w server
+종료 코드 0
+```
+
+**@fastify/static v10 폴백 확인 (plan.md §D 7 미확인 항목 — 해소)**: AC-002 가 통과했다. `GET /api/nope` 는 `404` 에 비-HTML 본문을 내고 `index.html` 로 폴백하지 않는다. `wildcard` 조정 없이 등록 위치(buildServer 맨 끝)만으로 충분했다. 블로커 없음.
 
 ---
 
@@ -179,3 +216,14 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+- **기록 시각**: 2026-08-27 (run-phase 진입, 카드 `t5` run 레인 `run2`)
+- **입력 변수**: tier=M · scope=신규 3파일(web/index.html·style.css·app.js)+기존 1파일(server/src/index.ts)+테스트 · domain=1(웹 UI) · 언어 혼합=HTML/CSS/JS/TS · 동시성 편익=LOW(코딩 집중, 계약 소유자 단일 세션 필수)
+- **모드 평가**: `direct` 부적합(다중 파일·신규 UI) · `serial` **선택** · `fanout` 부적합(코딩 집중 — Anthropic 코딩 병렬성 주의; WEBSHELL은 공유 계약 소유자로 단독 구현 필수) · `sweep` 부적합(기계적 균일 변환 아님)
+- **Decision: serial**
+- **근거**: 코딩 집중 작업은 직렬이 기본(Anthropic 코딩-과제 병렬성 회피 권고). 세 SPEC이 한 파일(web/app.js)을 공유하므로 병렬 쓰기는 이음새 파괴 위험. 구현은 manager-develop 역할의 단일 에이전트가 순차 수행.
+- **Plan Audit Gate 스킵 근거**: 최종(3차) 감사 `.moai/reports/t5/plan-audit-c.md` 판정 **PASS**(MUST-FIX 11건 전부 종결, 미종결 0건 — Tier M 문턱 0.80 충족 판정문) + 산출물 해시 무변경(판정 후 plan 산출물 커밋 `0020276` 이후 spec/plan/acceptance 수정 없음, `git status`로 확인). 스킵 3조건 모두 성립.
