@@ -427,3 +427,178 @@ describe('AC-WEBCHAT-008 reconnect backfill', () => {
     expect(bodies).toEqual(['과거', '실시간', '놓친 것'])   // 중복 없이 정확히 셋
   })
 })
+
+// ── AC-WEBCHAT-009 — 자동완성이 캐시만 읽는다 ────────────────────────
+describe('AC-WEBCHAT-009 autocomplete reads cache only', () => {
+  it('shows candidates from cache without one request per keystroke', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/invites': [
+        { bot_id: 1, bot_name: 'pm', online: true },
+        { bot_id: 2, bot_name: 'qa', online: false },
+      ],
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    const before = inviteGets()
+    expect(before).toBeGreaterThanOrEqual(1)   // 방을 열 때는 실제로 한 번 받아 온다
+
+    type('@'); await flush()
+    type('@p'); await flush()
+    type('@pm'); await flush()
+
+    expect(inviteGets()).toBe(before)   // 타이핑으로 늘지 않는다
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(false)
+    const items = $$('#autocomplete .ac-item').map(n => n.textContent ?? '')
+    expect(items.length).toBeGreaterThan(0)
+    expect(items.every(t => t.includes('pm'))).toBe(true)   // 'qa' 는 접두사가 안 맞아 걸러졌다
+
+    type('그냥 텍스트'); await flush()
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(true)
+  })
+})
+
+// ── AC-WEBCHAT-010 — 삽입 문자열을 서버 파서가 그 봇으로 해석한다 ────
+describe('AC-WEBCHAT-010 mention contract round-trip', () => {
+  it('inserts a mention the real server parser resolves to that bot', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/invites': [{ bot_id: 1, bot_name: 'pm', online: true }],
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    // TO 후보 선택
+    type('@p'); await flush()
+    const to = $$('#autocomplete .ac-item').find(n => (n.textContent ?? '').startsWith('TO')) as HTMLElement
+    expect(to).toBeDefined()
+    to.click(); await flush()
+
+    const composed = input().value + '일정 정리해줘'
+    expect(parseMentions(composed)).toEqual([{ bot: 'pm', delivery: 'to' }])
+
+    // CC 후보 선택
+    type('@p'); await flush()
+    const cc = $$('#autocomplete .ac-item').find(n => (n.textContent ?? '').startsWith('CC')) as HTMLElement
+    cc.click(); await flush()
+    expect(parseMentions(input().value + '참고')).toEqual([{ bot: 'pm', delivery: 'cc' }])
+  })
+})
+
+// ── AC-WEBCHAT-011 — 서버가 해석하지 못하는 이름은 완성해 주지 않는다 ─
+describe('AC-WEBCHAT-011 unmentionable names excluded', () => {
+  it('never offers a bot name the server parser cannot resolve', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/invites': [
+        { bot_id: 1, bot_name: '코드 리뷰어', online: true },
+        { bot_id: 2, bot_name: 'pm', online: true },
+      ],
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    type('@'); await flush()
+    const selectable = $$('#autocomplete .ac-item')
+      .filter(n => !(n as HTMLElement).classList.contains('disabled') && n.getAttribute('aria-disabled') !== 'true')
+      .map(n => n.textContent ?? '')
+
+    // 1) 불가 이름은 선택 가능한 후보에 없다
+    expect(selectable.some(t => t.includes('코드 리뷰어'))).toBe(false)
+    // 2) 정상 이름은 그대로 있다 — 전부 숨기는 구현을 배제한다
+    expect(selectable.some(t => t.includes('pm'))).toBe(true)
+    // 3) 배제 근거가 실제 파서와 같다 — 임의 규칙이 아님을 같은 테스트에서 못 박는다
+    expect(parseMentions('@TO(코드 리뷰어) 봐줘')).toEqual([])
+    expect(parseMentions('@TO(pm) 봐줘')).toEqual([{ bot: 'pm', delivery: 'to' }])
+  })
+})
+
+// ── AC-WEBCHAT-012 — 드롭다운 열림 상태 Enter 미전송 ─────────────────
+describe('AC-WEBCHAT-012 enter with open dropdown', () => {
+  it('does not send while the autocomplete is open', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/invites': [{ bot_id: 1, bot_name: 'pm', online: true }],
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    type('@p'); await flush()
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(false)
+
+    pressEnter(); await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+
+    // 드롭다운이 닫히면 Enter 는 정상 전송이어야 한다 — 전송을 통째로 막는 구현을 배제한다
+    type('안녕하세요'); await flush()
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(true)
+    pressEnter(); await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(1)
+  })
+})
+
+// ── AC-WEBCHAT-013 — 전송은 한 번, 응답 미렌더, 실패 복원 ────────────
+describe('AC-WEBCHAT-013 send once, no response render, restore on failure', () => {
+  it('posts once, does not render the response, and restores on failure', async () => {
+    const app = await loadApp(baseHandler({ '/api/rooms/1/messages': { messages: [] } }))
+    await app.openRoom(1)
+    await flush()
+    expect($$('#messages .message').length).toBe(0)
+
+    type('보낼 메시지'); await flush()
+    ;(el('send-btn') as HTMLButtonElement).click()
+    await flush()
+
+    const posts = calls.filter(c => c.method === 'POST')
+    expect(posts.length).toBe(1)
+    expect(posts[0].url).toBe('/api/rooms/1/messages')
+    expect(posts[0].body).toBeInstanceOf(FormData)
+    expect((posts[0].body as FormData).get('body')).toBe('보낼 메시지')
+    // 서버가 같은 메시지를 SSE 로도 보내므로 응답을 그리면 두 번 보인다
+    expect($$('#messages .message').length).toBe(0)
+    expect(input().value).toBe('')
+
+    // 실패 경로 — 입력을 되살린다.
+    // 핸들러는 'POST /api/rooms/1/messages' 하나만 실패시킨다. 방 목록·과거 메시지·초대 목록
+    // 조회는 기본 핸들러가 그대로 성공시켜야, 실패가 '전송'에서 났다고 말할 수 있다.
+    const app2 = await loadApp((url, opts) =>
+      opts.method === 'POST' && url === '/api/rooms/1/messages'
+        ? { ok: false, status: 409, data: { error: '보관된 방입니다' } }
+        : baseHandler()(url, opts))
+    await app2.openRoom(1); await flush()
+    type('실패할 메시지'); await flush()
+    ;(el('send-btn') as HTMLButtonElement).click()
+    await flush()
+
+    expect(input().value).toBe('실패할 메시지')            // 입력이 되살아난다
+    expect($$('#messages .message').length).toBe(0)        // 실패한 메시지를 그리지 않는다
+    expect(document.body.textContent).toContain('보관된 방입니다')   // 서버 오류 문구를 화면에 보여 준다
+  })
+})
+
+// ── AC-WEBCHAT-014 — 늦은 응답이 다른 방 화면을 오염시키지 않는다 ────
+describe('AC-WEBCHAT-014 late response isolation', () => {
+  it('discards a late response that belongs to a room the user already left', async () => {
+    let releaseRoom1: (v: unknown) => void = () => {}
+    const slow = new Promise(r => { releaseRoom1 = r })
+
+    const app = await loadApp(async url => {
+      if (url.startsWith('/api/rooms/1/messages')) {
+        await slow
+        return { data: { messages: [msg({ id: 1, body: '방1 메시지' })] } }
+      }
+      if (url.startsWith('/api/rooms/2/messages')) return { data: { messages: [msg({ id: 2, body: '방2 메시지' })] } }
+      if (url.includes('/invites')) return { data: [] }
+      if (url.startsWith('/api/rooms')) return { data: { active: [{ id: 1, name: '방1' }, { id: 2, name: '방2' }], archived: [] } }
+      return { data: {} }
+    })
+
+    const p1 = app.openRoom(1)          // 응답 대기 상태로 둔다
+    await flush()
+    await app.openRoom(2)               // 그 사이 방 2 로 전환
+    await flush()
+    releaseRoom1({})                    // 이제 방 1 의 응답이 도착한다
+    await p1
+    await flush()
+
+    const bodies = $$('#messages .msg-body').map(n => n.textContent)
+    expect(bodies).toEqual(['방2 메시지'])
+  })
+})

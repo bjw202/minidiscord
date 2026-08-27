@@ -303,6 +303,11 @@ export function initChat() {
   state.lastEventId = 0
   state.roomBots = []
   state.roomGeneration = 0
+  // 작성기 이벤트 핸들러 — 한 번만 건다 (REQ-WEBCHAT-016)
+  const composer = $('msg-input')
+  composer.addEventListener('input', onComposerInput)
+  composer.addEventListener('keydown', onComposerKeyDown)
+  $('send-btn').addEventListener('click', () => { sendMessage() })
   chatReady = true
 }
 
@@ -442,4 +447,108 @@ function markBotStatus(botId, botState) {
     delete state.staleTimers[key]
   }
   renderRoomBots()
+}
+
+// ── @ 자동완성 ───────────────────────────────────────────────────────
+// 커서 앞 문자열에서 멘션 토큰을 뽑는 정규식과, 서버 파서가 해석할 수 있는 이름의
+// 문자 집합. 둘 다 server/src/mention.ts 의 MENTION_RE 왌 맞춘다 — 파서를 고치지 않고
+// UI 가 맞춘다 (REQ-WEBCHAT-010·011, plan.md §B).
+const MENTION_TOKEN_RE = /(^|\s)@([^\s(]*)$/
+const MENTIONABLE_RE = /^[^()\s]+$/
+
+// 커서 앞의 미완성 멘션 낱말. 없으면 null.
+function currentMentionToken() {
+  const box = $('msg-input')
+  const caret = box.selectionStart ?? box.value.length
+  const m = box.value.slice(0, caret).match(MENTION_TOKEN_RE)
+  return m ? m[2] : null
+}
+
+// input 이벤트 — 캐시된 초대 목록만 읽는다. 키 입력마다 네트워크를 치지 않는다 (REQ-WEBCHAT-009).
+function onComposerInput() {
+  const token = currentMentionToken()
+  if (token === null) { hideAutocomplete(); return }
+  const prefix = token.toLowerCase()
+  const box = $('autocomplete')
+  box.innerHTML = ''
+  const matched = state.roomBots.filter(b => b.bot_name.toLowerCase().startsWith(prefix))
+  if (matched.length === 0) { hideAutocomplete(); return }
+  for (const bot of matched) {
+    if (!MENTIONABLE_RE.test(bot.bot_name)) {
+      // 서버 파서가 해석하지 못하는 이름(공백·괄호 포함)은 완성해 주지 않는다 (REQ-WEBCHAT-011).
+      // 완성된 멘션이 조용히 아무 봇에게도 전달되지 않는 마지막 조각이 여기서 끊긴다.
+      const item = document.createElement('div')
+      item.className = 'ac-item disabled'
+      item.setAttribute('aria-disabled', 'true')
+      item.textContent = `${bot.bot_name} — 멘션할 수 없는 이름(공백·괄호 포함)`
+      box.appendChild(item)
+      continue
+    }
+    for (const kind of ['TO', 'CC']) {
+      const item = document.createElement('div')
+      item.className = 'ac-item'
+      item.textContent = `${kind} ${bot.bot_name}`
+      item.addEventListener('click', () => commitMention(kind, bot.bot_name))
+      box.appendChild(item)
+    }
+  }
+  box.hidden = false
+}
+
+// 후보 확정 — 커서 앞의 미완성 토큰을 완성된 멘션 문자열로 바꾼다.
+// 삽입 형태 '@TO(이름) ' / '@CC(이름) ' 는 서버 파서의 문법 그 자체다 (REQ-WEBCHAT-010).
+function commitMention(kind, name) {
+  const box = $('msg-input')
+  const caret = box.selectionStart ?? box.value.length
+  const before = box.value.slice(0, caret)
+  const after = box.value.slice(box.selectionEnd ?? box.value.length)
+  const replaced = before.replace(/@([^\s(]*)$/, `@${kind}(${name}) `)
+  box.value = replaced + after
+  box.selectionStart = box.selectionEnd = replaced.length
+  hideAutocomplete()
+  box.focus()
+}
+
+// keydown — 드롭다운이 보이는 동안 Enter 는 전송이 아니다 (REQ-WEBCHAT-012).
+// '@pm' 까지 치고 Enter 를 누른 사용자는 완성을 기대하지, 깨진 멘션 전송을 기대하지 않는다.
+function onComposerKeyDown(e) {
+  if (e.key !== 'Enter' || e.shiftKey) return
+  e.preventDefault()
+  const box = $('autocomplete')
+  if (!box.hidden) {
+    const first = box.querySelector('.ac-item:not(.disabled)')
+    if (first) first.click()
+    else hideAutocomplete()
+    return
+  }
+  sendMessage()
+}
+
+// ── 전송 ─────────────────────────────────────────────────────────────
+// FormData 에 body 하나를 담아 POST 를 정확히 한 번 (REQ-WEBCHAT-013).
+// POST 응답의 message 는 그리지 않는다 — 서버가 같은 것을 SSE 로도 발행하므로
+// 응답을 그리면 자기 메시지가 두 번 보인다. 실패하면 화면 요소로 알리고 입력을 복원한다.
+export async function sendMessage() {
+  const box = $('msg-input')
+  const body = box.value
+  if (!body.trim()) return   // 빈 본문은 아무것도 하지 않는다
+  box.value = ''
+  hideAutocomplete()
+  const form = new FormData()
+  form.append('body', body)
+  try {
+    await api(`/api/rooms/${state.currentRoomId}/messages`, { method: 'POST', body: form })
+  } catch (err) {
+    notifyError(err)
+    // 그 사이 사용자가 다음 메시지를 치고 있을 수 있다 — 빈 칸일 때만 되살린다 (plan.md §D 9번)
+    if (box.value === '') box.value = body
+  }
+}
+
+// 전송 실패 알림 — alert 대신 화면 안의 요소로 낸다. jsdom 이 alert 를 던지지 않고
+// 브라우저를 멈추지도 않으며, 무엇보다 테스트에서 관측 가능하다.
+function notifyError(err) {
+  const toast = $('error-toast')
+  toast.textContent = err instanceof Error ? err.message : String(err)
+  toast.hidden = false
 }
