@@ -1,7 +1,7 @@
 ---
 id: SPEC-CHANPERM-001
 title: "minidiscord 채널 권한 릴레이 — Claude Code 의 승인 요청을 게이트웨이로 넘기고 판정을 되돌린다"
-version: "0.2.1"
+version: "0.2.2"
 status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
@@ -21,6 +21,7 @@ depends_on: [SPEC-CHANNEL-001, SPEC-CHANCLIENT-001, SPEC-CHANWIRE-001, SPEC-PERM
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.2.2 | 2026-08-27 | **sync 감사 마감 라운드 (기록 전용).** `.moai/reports/t4/sync-audit.md` 는 이 SPEC 의 수용 기준 품질을 **양호**로 판정했다 — 변이 5종(M11~M14·M20) 전건 사망, 각각 표적 기준 하나만 무너뜨렸다. 따라서 기준을 하나도 고치지 않았고, 요구사항 10개·수용 기준 12개 모두 그대로다. 대신 **미해소 결함 두 건을 기록했다.** (1) **F-01(Critical)** — 인증되지 않은 상대의 `allow` 판정이 세션으로 중계되는 경로이며, 감사자가 요구한 수정은 **REQ-CHANPERM-008 과 AC-CHANPERM-008 의 개정을 전제로 한다**(현재의 무상태 계약과 충돌). 이 카드는 그 개정을 하지 않았고 판단도 내리지 않았다 — 열린 계약 질문으로 §4.3 과 `acceptance.md` AC-CHANPERM-008 양쪽에 적었다. (2) **F-14(High)** — 방 멤버십 개념이 없어 서버에 계정이 있는 누구나 임의 방의 승인을 대신 눌러 줄 수 있다. 서버 쪽 인가 문제이고 카드 `t7` 의 `request_id` 결함과는 다른 항목이므로 §5 에 별도로 기록했다. | manager-spec |
 | 0.2.1 | 2026-08-27 | **plan-audit 사소 2건 정리 (m1·m6).** m1 — AC-CHANPERM-001 이 `--reporter=verbose` 출력의 테스트 **이름**만 재고 본문이 그 테스트를 "원본"이라 불러, 구현자가 원본의 `as any` 스키마 형태(정상 구현을 거짓 실패시키는 부류)를 정본으로 되살릴 여지가 있었다. 기준을 **왕복 상관 관측**으로 바꿨다 — 나가는 경로에서 실제로 관측한 `request_id` 를 되먹여 돌아온 알림이 원래 값을 싣는지 잰다. 두 경로 중 어디서든 id 를 파생·재작성하는 구현을 잡으며, 리터럴 id 를 쓰는 002·003·005·006 어느 것도 잡지 못하던 자리다. 정본이 원본 테스트가 아니라 공통 하네스임을 `acceptance.md` 와 `plan.md` §F M1 에 명시했다. m6 — §3 코드 블록의 소유자 주석을 "확장 후 최종 형태"로 고쳤다. **요구사항 10개·수용 기준 12개는 그대로다.** | manager-spec |
 | 0.2.0 | 2026-08-27 | **plan-audit 교정 라운드.** `.moai/reports/t4/plan-audit.md` 가 이 SPEC 을 포함한 채널 SPEC 4종을 **CONDITIONAL PASS** 로 판정하고, 이 SPEC 몫으로 주요 3건(M2·M3·M4)을 지적했다. M2·M3 은 §3.1 의 `request_id` 가정 두 개가 **실제 서버 코드와 어긋난다**는 것 — 방 대조는 `permissions.ts:49` 에 이미 있어 "다른 방의 판정이 섞인다"는 거짓이고, 대소문자 불일치는 `:47` 의 조회 단계에서 먼저 걸려 "돌아온 id 가 다르다"가 아니라 **판정이 아예 나가지 않는다**. 둘 다 실제 고장 경로와 사용자가 보는 증상으로 다시 썼고(§3.1, §5), 카드 `t7` 위임 문구도 같은 문장으로 맞췄다. M4 는 `acceptance.md` 하네스의 고정 50ms 대기 문제로 그쪽에서 닫았다. 부기로 지적된 SDK capability 위험은 `plan.md` §E 와 §F M1 에 등록했다. **요구사항 10개·수용 기준 12개는 개수·내용 모두 그대로다** — 채널 쪽 동작은 두 기술 중 어느 쪽에서도 같기 때문이다. | manager-spec |
 | 0.1.0 | 2026-08-27 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 14 에서 도출 (칸반 카드 `t4`, 마일스톤 M4). 요구사항 10개·수용 기준 12개로 Tier M 상한(16/16) 안이다. 서버 쪽 릴레이(`SPEC-PERM-001`)는 이미 구현돼 있어 이 SPEC 은 그 반대편 끝을 맡는다 — 서버 쪽 계약은 재정의하지 않고 소비만 한다. `request_id` 에 대해 채널이 세우는 가정 세 가지를 §3.1 에 명시했고, 그중 대소문자 가정은 `SPEC-PERM-001` / 카드 `t7` 의 미해결 결함과 맞물리므로 §3.1 과 §5 에 교차 의존으로 기록했다. | manager-spec |
@@ -167,6 +168,10 @@ Claude Code 에서 `notifications/claude/channel/permission_request` 알림이 �
 
 같은 `request_id` 로 판정이 두 번 오면 알림도 두 번 나간다. 두 번째를 채널이 삼키려면 해소된 id 목록을 기억해야 하는데, 그것이 곧 상태다. Global Constraints 의 무상태 원칙이 이 선택을 고정한다.
 
+> **열려 있는 계약 질문 (감사 F-01, 미해소).** `.moai/reports/t4/sync-audit.md` 의 F-01(Critical)은 이 조항을 정면으로 겨눈다. 봇은 `hello` + 토큰으로 서버에 자신을 인증하지만 **서버는 봇에게 자신을 인증하지 않고**, `gateway-client` 는 접속 상태를 보지 않고 프레임의 `type` 만으로 분기한다. 그래서 채널이 내보낸 적 없는 `request_id` 의 `allow` 판정도 그대로 세션에 중계되는데 — 이것은 사고가 아니라 **이 조항이 요구하고 AC-CHANPERM-008 이 정상 동작으로 못 박은 계약**이다(`channel/test/permission-relay.test.ts`). 감사자가 요구한 수정 2번("채널이 실제로 내보낸 `request_id` 집합을 기억하고 그 안의 판정만 중계한다")은 **REQ-CHANPERM-008 과 AC-CHANPERM-008 의 개정을 전제로 한다** — 지금의 무상태 계약과 정면으로 충돌하기 때문이다.
+>
+> **이 카드는 그 개정을 하지 않았고, 판단도 내리지 않았다.** 무상태를 지킬 것인가(그러면 인증은 전송 계층 — `welcome` 게이팅과 `wss://` 요구 — 에서 해결해야 한다), 아니면 대기 id 를 기억하는 상태를 채널에 들일 것인가는 F-01 을 소유하는 별도 카드가 결정한다. 여기서는 **이 조항이 열린 질문의 대상**이라는 사실만 기록한다. 그 결정이 나기 전까지 REQ-CHANPERM-008 과 AC-CHANPERM-008 은 현재 문언대로 유효하다.
+
 **REQ-CHANPERM-009** (Unwanted — shall not)
 `handlePermissionVerdict` 는 전송이 불가능한 상태(Claude Code 와의 transport 가 아직 연결되지 않았거나 이미 끊긴 상태)에서 호출되더라도 동기 예외를 던져서는 안 되고, **처리되지 않은 프로미스 거부(unhandled rejection)를 남겨서도 안 된다**.
 
@@ -194,6 +199,15 @@ Claude Code 에서 `notifications/claude/channel/permission_request` 알림이 �
 
 - 대기 레지스트리, system 메시지 저장·발행, `PERMISSION_REPLY_RE` 판정 파싱, `sendToBot` 호출과 전달 실패 문구
 - 게이트웨이의 `permission_request` 분기와 `setPermissionHandler` 등록
+
+### Out of Scope — 서버 쪽 방 인가 (감사 F-14, 미해소)
+
+`.moai/reports/t4/sync-audit.md` 의 F-14(High)는 **승인 권한이 방 참가와 무관하다**는 점을 지적했다 — 방 멤버십 개념이 코드베이스에 존재하지 않고(`grep -rn 'room_members\|membership\|requireMember' server/src` → 결과 없음), `request_id` 는 서버 스스로 방의 system 메시지로 공개하므로, **서버에 계정이 있는 누구나** 아무 방이나 열어 대기 중인 `request_id` 를 읽고 대신 승인해 줄 수 있다.
+
+- `server/src/routes-messages.ts` 의 메시지 POST 에 방 멤버십 검사를 더하는 일
+- `server/src/permissions.ts` 의 판정 수락 조건을 방 참가자로 좁히는 일
+
+**이 카드에서 해소하지 않았고, 이 SPEC 의 범위도 아니다** — 서버 쪽 인가 모델이다. 카드 `t7` 에 인계된 서버 쪽 `request_id` 결함 2건(§3.1 가정-2·가정-3)과는 **다른 항목이다**: 저쪽은 형식·대소문자 문제이고 이것은 인가 문제이므로, 감사자는 별도 카드를 권했다. 여기서는 채널의 무상태 릴레이가 어떤 서버 위에서 도는지를 기록할 뿐이다.
 
 ### Out of Scope — 채널 코어와 게이트웨이 클라이언트
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-CHANCLIENT-001
 title: "minidiscord 게이트웨이 클라이언트 — 채널 플러그인이 봇 게이트웨이에 붙어 있게 하는 WebSocket 배관"
-version: "0.2.1"
+version: "0.3.0"
 status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
@@ -22,6 +22,7 @@ related_specs: [SPEC-GATEWAY-001, SPEC-CHANWIRE-001, SPEC-CHANPERM-001]
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.3.0 | 2026-08-27 | **sync 감사 마감 라운드 (F-05).** `.moai/reports/t4/sync-audit.md` 가 이 SPEC 에서 High 1건을 실행으로 재현했다 — `gateway-client.ts` 의 `ws.on('message')` 리스너가 `JSON.parse` 를 무방비로 부르고 있어, JSON 아닌 프레임 **한 개**로 `uncaughtException` 이 나 프로세스가 끝난다(`P4_EXIT=1`). 재접속조차 없다, 프로세스가 없기 때문이다. v0.2.1 까지 엣지 케이스 표는 이것을 "미검증 — 수용" 으로 적었으나, 수용 기록이 결함을 결함이 아니게 만들지는 않는다 — 같은 파일이 형제 위험은 모두 막아 두었고(`ws.on('error')`), 서버 쪽 같은 자리도 `try/catch` 다. **REQ-CHANCLIENT-006 에 파싱 실패 조항을 더하고 AC-CHANCLIENT-005 에 셋째 테스트를 더해 닫았다**(변이 `M-F05 revert try/catch` 로 조준 확인, 이 테스트 한 건만 실패). 요구사항 14개·수용 기준 16개 그대로다 — Tier M 상한(16/16)을 넘지 않으려고 새 AC 를 만드는 대신 같은 요구사항을 재는 AC-005 를 넓혔다. 함께 미해소 결함 F-01(상대 인증 부재)·F-07(평문 토큰)을 §5 에 기록했다 — **이 카드는 그 둘을 고치지 않았다.** | manager-spec |
 | 0.2.1 | 2026-08-27 | **2차 감사 사소 교정 (근거 문장 한 곳).** 2차 판정은 PASS 였고, 사소 지적 m3 하나만 닫았다 — `REQ-CHANCLIENT-003` 의 근거 문장이 `missed_after_id` 커서를 "쓰는 `SPEC-CHANWIRE-001` 쪽"이라고 적었으나 **그런 소비자는 존재하지 않는다.** 실제 소비자는 서버 자신으로, `server/src/gateway.ts:101-108` 이 `welcome` 을 보낸 직후 그 커서 이후의 메시지를 스스로 재전송한다(직접 확인). 요구사항 자체와 실제 영향은 그대로이므로 근거만 바로잡고, 이 요구사항이 겨냥하는 것이 그 필드 하나가 아니라 **해석하지 않는 프레임의 통과 충실성**이라는 점을 §4.1·§5·`acceptance.md` AC-CHANCLIENT-002·`plan.md` §E 에 다시 적었다. **요구사항·수용 기준은 개수·내용 모두 그대로다.** | manager-spec |
 | 0.2.0 | 2026-08-27 | **plan-audit 교정 라운드 (프론트매터 한 줄).** `.moai/reports/t4/plan-audit.md` 가 주요 1건(M5)을 지적했다 — `depends_on: []` 이 실행 순서를 보증하지 않는다는 것. "코드 의존이 아니라 실행 전제"라는 v0.1.0 의 관찰은 옳지만 결론이 틀렸다: `depends_on` 이 표현하는 것은 import 그래프가 아니라 **착수 가능 조건**이고, 비워 두면 스케줄러가 이 SPEC 을 `SPEC-CHANNEL-001` 보다 먼저 띄울 수 있어 수용 기준 16개가 전부 실행 불가가 된다. `depends_on: [SPEC-CHANNEL-001]` 로 고쳤고, 그 의존이 코드 import 가 아니라 패키지 스캐폴드 선행이라는 구분은 §3 과 `plan.md` §A 에 그대로 남겼다. **요구사항·수용 기준은 개수·내용 모두 그대로다**(REQ-CHANCLIENT-001..014, AC-CHANCLIENT-001..016). | manager-spec |
 | 0.1.0 | 2026-08-27 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 12 에서 도출 (칸반 카드 `t4`, 마일스톤 M4). 요구사항 14개·수용 기준 16개로 Tier M 상한(16/16) 안이다. 원본 Task 12 의 `Consumes` 가 "없음(독립)" 이라 `depends_on` 을 비워 두었으나, 테스트 명령 `npm test -w channel` 은 `SPEC-CHANNEL-001` 이 만드는 `channel/` 워크스페이스 스캐폴드 없이는 실행되지 않는다 — 코드 의존이 아닌 실행 전제로 §3 과 `plan.md` §A 에 기록하고 리드에 보고했다. | manager-spec |
@@ -139,6 +140,8 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 
 해당 콜백이 지정되지 않은 프레임이 도착해도 예외가 나서는 안 되고, 그 뒤에도 클라이언트는 계속 동작해야 한다.
 
+**JSON 으로 파싱되지 않는 프레임도 같다** (v0.3.0 개정, 감사 F-05). 본문이 JSON 이 아닌 프레임 하나가 도착해도 클라이언트는 **그 프레임만 버리고** 계속 동작해야 하며, 그 뒤에 도착하는 정상 프레임은 평소대로 분배되어야 한다. `ws.on('message')` 리스너 안에서 나간 예외는 `uncaughtException` 으로 올라가 프로세스를 끝내므로 — 재접속 경로조차 밟지 못하고 봇이 사라진다 — 파싱 실패는 리스너 안에서 삼켜야 한다. v0.2.1 까지 이 자리는 "미검증 — 수용" 이었고, 감사가 프레임 한 개로 `exit=1` 을 재현해 그 수용을 철회했다.
+
 ### 4.3 송신
 
 **REQ-CHANCLIENT-007** (When — 이벤트 구동)
@@ -205,6 +208,15 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 
 - `server/src/gateway.ts` 전체 — `hello` 토큰 검증, `welcome` 발행, `history_request` 처리와 `since_id` 필터, `missed_after_id` 재전송
 - 이 SPEC 의 테스트는 실제 게이트웨이가 아니라 테스트 안의 가짜 `WebSocketServer` 를 상대한다. 두 쪽이 실제로 맞물리는지는 원본 Task 18 의 E2E 가 본다
+
+### Out of Scope — 상대 인증과 접속 상태 게이팅 (감사 F-01, 미해소)
+
+`.moai/reports/t4/sync-audit.md` F-01(Critical)은 이 파일의 프레임 분배가 **`welcome` 을 받았는지 보지 않고** `type` 만으로 분기한다는 점을 지적했다. 봇은 `hello` + 토큰으로 자신을 인증하지만 서버는 봇에게 자신을 인증하지 않으므로, 소켓 상대가 진짜 게이트웨이인지 검사하는 자리가 이 SPEC 에는 없다. `MINIDISCORD_SERVER` 로 원격을 가리키는 지원 구성(AC-CHANWIRE-011)에서는 같은 망의 누구나·평문 경로의 MITM·재시작 직후 포트를 선점한 프로세스가 전부 그 자리에 설 수 있다.
+
+- `welcome` 수신 전에는 `message`/`permission_verdict`/`history_response` 를 처리하지 않는 접속 상태 가드
+- 호스트가 루프백이 아닐 때 `wss://` 를 요구하는 스킴 검증 (같은 보고서 F-07)
+
+**이 카드에서 해소하지 않았다.** 위 둘은 별도 카드가 소유하며, 여기서는 결함이 열려 있다는 사실만 기록한다. 이 카드가 닫은 것은 같은 파일의 F-05(파싱 실패로 인한 프로세스 종료)뿐이고, 그것은 인증 문제가 아니라 견고성 문제다 — 인증되지 않은 상대의 프레임은 F-05 수정 뒤에도 여전히 그대로 분배된다.
 
 ### Out of Scope — 프로토콜 확장
 

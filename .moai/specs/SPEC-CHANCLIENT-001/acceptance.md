@@ -136,7 +136,7 @@ async function connected(srv: FakeServer, over: Partial<GatewayClientOpts> = {})
 | AC-CHANCLIENT-002 | REQ-CHANCLIENT-003 | 아래 본문 | `onWelcome` 인자가 `missed_after_id` 를 포함해 서버가 보낸 객체와 완전히 같음 |
 | AC-CHANCLIENT-003 | REQ-CHANCLIENT-004 (message) | 아래 본문 | `onMessage` 인자가 `files` 배열과 `delivery:'cc'` 를 포함해 원 프레임과 완전히 같음 |
 | AC-CHANCLIENT-004 | REQ-CHANCLIENT-004 (verdict) | 아래 본문 | `onVerdict` 인자의 `behavior` 가 정확히 `'deny'`, `request_id` 보존 |
-| AC-CHANCLIENT-005 | REQ-CHANCLIENT-006 | 아래 본문 | 알 수 없는 `type` 이 세 콜백 어디에도 가지 않음 + 콜백 없는 클라이언트가 예외 없이 계속 동작 |
+| AC-CHANCLIENT-005 | REQ-CHANCLIENT-006 | 아래 본문 | 알 수 없는 `type` 이 세 콜백 어디에도 가지 않음 + 콜백 없는 클라이언트가 예외 없이 계속 동작 + **JSON 아닌 프레임 뒤에도 다음 정상 프레임이 배달되고 소켓이 살아 있음** |
 | AC-CHANCLIENT-006 | REQ-CHANCLIENT-007 | 아래 본문 | 연결 전 `false` + 그 프레임 **미도달**, 연결 중 `true` + 도달, `stop()` 후 `false` |
 | AC-CHANCLIENT-007 | REQ-CHANCLIENT-008 | 아래 본문 | `history_request` 프레임이 `since_id` 포함 다섯 키를 **최상위**에 그대로 실음 |
 | AC-CHANCLIENT-008 | REQ-CHANCLIENT-005, 009 | 아래 본문 | 두 요청의 `rid` 가 서로 다르고, **역순** 응답에도 각 약속이 자기 프레임 전체로 resolve |
@@ -231,7 +231,7 @@ it('passes a deny verdict through as deny', async () => {
 
 **Then** 테스트가 통과한다. `'deny'` 를 쓰는 이유는 값을 읽지 않는 구현이 **거절을 승인으로 뒤집을** 수 있기 때문이다. `'allow'` 로만 시험하면 값을 상수로 박은 구현도 통과한다 — 이 시스템에서 가장 비싼 오작동이라 판정을 실어 나르는 이 부품에서도 값을 직접 단언한다.
 
-### AC-CHANCLIENT-005 — 모르는 프레임은 어디로도 새지 않는다
+### AC-CHANCLIENT-005 — 모르는 프레임도 깨진 프레임도 어디로도 새지 않고, 프로세스를 끝내지도 않는다
 
 **Given** 클라이언트가 세 콜백을 모두 지정하고 연결돼 있다.
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
@@ -263,11 +263,32 @@ it('survives frames whose callback was not provided', async () => {
 })
 ```
 
-**Then** 두 테스트가 통과한다.
+```ts
+// 회귀: JSON 아닌 프레임 한 개가 프로세스를 끝내지 않는다 (감사 F-05)
+it('drops a malformed frame and keeps processing the next valid one', async () => {
+  const srv = startServer()
+  const got: any[] = []
+  const { client } = await connected(srv, { onMessage: m => got.push(m) })
+  const sock = srv.sockets[0]
+  sock.send('not-json{')                                   // 먼저 깨진 프레임
+  const frame = { type: 'message', id: 1, body: 'x', author_name: 'a', delivery: 'to' }
+  sock.send(JSON.stringify(frame))                          // 그 뒤 정상 프레임
+  await waitFor(() => got.length === 1)
+  expect(got[0]).toEqual(frame)                             // 깨진 프레임 뒤에도 배달된다
+  expect(client.send({ type: 'still_alive' })).toBe(true)   // 연결도 살아 있다
+  await waitFor(() => srv.messages.some(m => m.type === 'still_alive'))
+})
+```
+
+**Then** 세 테스트가 통과한다.
 
 첫 테스트의 판정 근거는 **순서**다. 한 소켓 위의 두 프레임은 보낸 순서대로 도착하므로, 미지의 프레임은 `message` 보다 먼저 처리된다. 마지막 갈래를 `else { opts.onMessage?.(msg) }` 로 둔 구현에서는 `seen` 이 `['message','message']` 가 되어 `toEqual` 이 실패한다. 고정 시간 대기 없이 부정 관측을 하는 방법이기도 하다 — 뒤에 보낸 프레임의 도착이 앞의 것이 이미 처리됐다는 증거다.
 
 둘째 테스트는 콜백이 없을 때 예외로 죽지 않는지를 본다. 관측 대상은 "예외가 안 났다"가 아니라 **그 뒤에도 소켓으로 프레임을 보낼 수 있는가**다 — 죽은 클라이언트는 그 단언을 통과할 수 없다.
+
+셋째 테스트(v0.3.0 추가, 감사 F-05)가 재는 것은 **파싱 실패한 프레임 뒤에도 배선이 살아 있는가**다. `ws.on('message')` 리스너 안의 throw 는 `uncaughtException` 으로 올라가 프로세스를 끝내므로 — 재접속조차 일어나지 않는다, 프로세스가 없기 때문이다 — "예외를 안 던진다"를 단언해서는 잡히지 않는다. 그래서 두 단언을 짝으로 둔다: 깨진 프레임 **뒤에** 보낸 정상 프레임이 `onMessage` 에 도착했는가(리스너가 살아 있다), 그리고 그 소켓으로 다시 보낼 수 있는가(프로세스가 살아 있다).
+
+**이 기준을 무너뜨리는 것**: `gateway-client.ts` 의 `try { msg = JSON.parse(String(d)) } catch { return }` 를 v0.2.1 의 무방비 `JSON.parse` 로 되돌리는 구현. 변이 `M-F05 revert try/catch` 로 실행 확인했다 — 이 테스트 한 건만 실패했다(`.moai/state/verify/t4-sync-fix/mutation-report.json`). 되돌린 구현에서 `waitFor` 는 정상 프레임을 영영 보지 못한다.
 
 ### AC-CHANCLIENT-006 — send 의 `true`/`false` 가 실제 전송과 일치한다
 
@@ -593,7 +614,7 @@ grep -nE "node:fs|from 'fs'|require\('fs'\)|process\.env" channel/src/gateway-cl
 | 재접속 대기 중에 `send` 를 부른다 | 소켓이 없으므로 `false`. 큐에 담지 않는다 | AC-CHANCLIENT-006 (연결 전 갈래와 같은 경로) |
 | 모르는 `rid` 의 `history_response` 가 온다 | 대기 맵에 없으므로 조용히 무시한다. 어떤 콜백에도 가지 않는다 | AC-CHANCLIENT-005 (분배 규칙), AC-CHANCLIENT-008 (rid 조회) |
 | 타임아웃된 요청의 응답이 뒤늦게 온다 | 이미 맵에서 지워졌으므로 무시된다. 두 번 settle 되지 않는다 | AC-CHANCLIENT-009 + 위 줄과 같은 경로 |
-| 서버가 JSON 이 아닌 프레임을 보낸다 | `JSON.parse` 가 던진다 | **미검증 — 수용.** 원본과 같은 동작이며, 상대는 같은 리포지토리가 만든 게이트웨이 하나뿐이다 |
+| 서버가 JSON 이 아닌 프레임을 보낸다 | 그 프레임만 버리고 다음 정상 프레임은 평소대로 분배한다. 프로세스는 끝나지 않는다 | AC-CHANCLIENT-005 (셋째 테스트). v0.2.1 의 "미검증 — 수용"은 철회했다 — 감사가 프레임 한 개로 `exit=1` 을 재현했다(F-05) |
 | `start()` 를 두 번 부른다 | 소켓이 두 개 열린다 | **미검증 — 수용.** 원본에 가드가 없다. 호출자는 `SPEC-CHANWIRE-001` 한 곳이고 조립 시 한 번만 부른다 |
 | 첫 연결부터 실패한다(서버가 아예 없다) | `close` 경로로 들어가 백오프 재시도를 시작한다 | AC-CHANCLIENT-012 (죽은 주소에서 시작한다) |
 
@@ -612,5 +633,5 @@ grep -nE "node:fs|from 'fs'|require\('fs'\)|process\.env" channel/src/gateway-cl
 
 - AC-CHANCLIENT-001 부터 AC-CHANCLIENT-016 까지 **전부** 통과했고, 각 명령의 원문 출력이 `progress.md` §E.2 에 남았다.
 - 요구사항 REQ-CHANCLIENT-001..014 각각이 최소 하나의 AC 에 매핑돼 있고, 그 매핑이 `progress.md` §E.1 에 표로 남았다.
-- 미검증 항목(엣지 케이스 표의 "미검증" 두 줄 포함)이 §E.2 의 Gaps 절에 명시적으로 기록됐다.
+- 미검증 항목(엣지 케이스 표의 "미검증" 한 줄 — v0.3.0 에서 JSON 파싱 줄이 AC-CHANCLIENT-005 로 넘어가 둘에서 하나가 됐다 — 포함)이 §E.2 의 Gaps 절에 명시적으로 기록됐다.
 - `spec.md` §3 에 기록한 실행 전제(`SPEC-CHANNEL-001` 의 `channel/` 스캐폴드)가 충족됐음을 착수 전에 확인했고, 그 확인 명령과 출력이 §E.2 에 남았다.

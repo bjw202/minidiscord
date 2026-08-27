@@ -179,6 +179,7 @@ async function connected() {
 | AC-CHANWIRE-012 | REQ-CHANWIRE-005, 013 | 아래 본문 | 기준 SHA 확인 종료 코드 `0`, 변경 파일이 정확히 두 줄, 선행 소유 파일 diff 빈 출력 |
 | AC-CHANWIRE-013 | RED→GREEN 전이 | 아래 본문 | 네 전이가 순서대로 관측됨 |
 | AC-CHANWIRE-014 | REQ-CHANWIRE-003, 004 | 아래 본문 | 빌드 산출물이 토큰 유무와 무관하게 `initialize` 에 응답하고, 게이트웨이 접속은 토큰이 있을 때만 |
+| AC-CHANWIRE-015 | REQ-CHANWIRE-014 | 아래 본문 | MCP 상대가 없는 상태에서 채팅 1건이 도착해도 수집된 unhandled rejection **0건** + 배선이 계속 프레임을 보냄 |
 
 ---
 
@@ -494,6 +495,48 @@ it('the built artifact speaks MCP; the token gates only the gateway', async () =
 >
 > (b) 는 형제 SPEC 과의 계약을 지키는 자리이기도 하다. `SPEC-CHANNEL-001` 의 AC-CHANNEL-002·004·005 가 **토큰 없이** 이 산출물을 띄워 `initialize` 응답을 읽으므로, 이 SPEC 이 stdio 까지 토큰으로 잠그면 그 세 기준이 조용히 실행 불가가 된다. 그래서 REQ-CHANWIRE-003·004 를 갈라 놓았고(`plan.md` §D 3번), (b) 가 그 분리를 매 실행마다 지킨다.
 
+### AC-CHANWIRE-015 — MCP 상대가 끊긴 뒤 도착한 채팅이 프로세스를 죽이지 않는다
+
+**Given** 배선은 붙었지만 채널 서버에 어떤 transport 도 연결돼 있지 않다 — Claude Code 세션이 `/clear` 되거나 재시작되어 stdio 가 끊긴 뒤와 같은 상태다.
+**When** 다음을 `channel/test/index-wiring.test.ts` 에 추가하고 `npm test -w channel` 을 실행한다.
+
+```ts
+it('a chat message with no MCP peer raises no unhandled rejection', async () => {
+  const stub = gatewayStub()
+  // 어떤 transport 도 붙이지 않는다 — 이 상태에서 notification() 은 'Not connected' 로 거부된다
+  const { channel, gw } = wire({ url: `ws://127.0.0.1:${stub.port()}/bot`, token: 'tok' })
+  gw.start()
+  cleanups.push(() => gw.stop())
+  await waitFor(() => stub.sent.some(m => m.type === 'hello'), 'hello 도착')
+
+  // 전제 확인: 이 상태의 pushChatMessage 는 실제로 거부된다 — 이 테스트가 무엇을 재는지 못 박는다
+  await expect(
+    channel.pushChatMessage({ id: 1, author_name: 'a', body: 'x', delivery: 'to' }),
+  ).rejects.toThrow()
+
+  const rejections: unknown[] = []
+  const onRejection = (e: unknown) => { rejections.push(e) }
+  process.on('unhandledRejection', onRejection)
+  cleanups.push(() => { process.off('unhandledRejection', onRejection) })
+
+  stub.push({ type: 'message', id: 9, body: '일정 정리해줘', author_name: 'alice', delivery: 'to' })
+  await waitFor(() => stub.sent.some(m => m.type === 'status' && m.state === 'working'), 'working 프레임')
+  await new Promise(r => setTimeout(r, 200))   // 처리되지 않은 거부는 다음 턴에야 보고된다
+
+  expect(rejections).toEqual([])
+  expect(gw.send({ type: 'still_alive' })).toBe(true)      // 배선은 계속 살아 있다
+  await waitFor(() => stub.sent.some(m => m.type === 'still_alive'), 'still_alive 도착')
+})
+```
+
+**Then** 테스트가 통과한다.
+
+**이 기준은 AC-CHANPERM-009 의 수신 경로 짝이다.** 저쪽은 나가는 방향(판정 알림)에서 미연결 상태의 거부가 프로세스를 죽이지 않는지를 재고, 이쪽은 **들어오는 방향**(채팅 알림)에서 같은 것을 잰다. 두 기준의 관측 도구도 같다 — `unhandledRejection` 수집이다. `not.toThrow()` 만으로는 잡히지 않는데, 처리되지 않은 거부에 의한 죽음은 **다음 tick 에** 일어나기 때문이다.
+
+세 단언이 각각 다른 것을 잰다. 첫째 `rejects.toThrow()` 는 **전제**다 — 이 상태에서 `pushChatMessage` 가 실제로 거부한다는 것을 못 박지 않으면, 거부가 애초에 나지 않는 환경에서도 나머지 단언이 참이 되어 기준이 공허해진다. 둘째 `rejections` 가 빈 배열인지가 **본 관측**이다. 셋째 `still_alive` 왕복이 "그래서 프로세스가 여전히 쓸 만한가"를 잰다.
+
+**이 기준을 무너뜨리는 것**: `index.ts` 의 `await channel.pushChatMessage(m).catch(() => {})` 에서 `.catch(() => {})` 를 떼어 v0.2.1 의 무방비 `await channel.pushChatMessage(m)` 로 되돌리는 구현. 변이 `M-F06 revert rejection swallow` 로 실행 확인했다 — 이 테스트 한 건만 실패했다(`.moai/state/verify/t4-sync-fix/mutation-report.json`).
+
 ---
 
 ## 엣지 케이스
@@ -501,7 +544,7 @@ it('the built artifact speaks MCP; the token gates only the gateway', async () =
 | 상황 | 기대 동작 | 덮는 기준 |
 |------|-----------|-----------|
 | 게이트웨이가 끊긴 상태에서 `reply` 가 호출된다 | `gw.send` 가 `false` 를 돌려주고 프레임은 나가지 않는다. 도구는 오류 없이 끝난다 | 미검증 — `plan.md` §E 알려진 위험 (반환값을 배선이 버린다) |
-| `pushChatMessage` 가 거부(reject)한다 | `onMessage` 를 부르는 쪽이 await 하지 않아 처리되지 않은 거부가 된다 | 미검증 — `plan.md` §E 알려진 위험 |
+| `pushChatMessage` 가 거부(reject)한다 | 배선이 그 거부를 명시적으로 삼킨다. 처리되지 않은 거부가 남지 않고 프로세스도 끝나지 않는다 | AC-CHANWIRE-015 (REQ-CHANWIRE-014). v0.2.1 의 "미검증 — 알려진 위험"은 철회했다 — 감사가 채팅 1건으로 `exit=1` 을 재현했다(F-06) |
 | `requestHistory` 가 10초 타임아웃으로 거부한다 | 거부가 도구 호출 오류로 세션에 전달된다 | 미검증 — 타임아웃 자체는 `SPEC-CHANCLIENT-001` 소유 |
 | 같은 TO 메시지가 재접속 커서 재전송으로 두 번 온다 | 두 번 다 세션에 전달되고 `working` 도 두 번 나간다 | 미검증 — 중복 억제는 서버 커서(`missed_after_id`)가 담당 |
 | `reply` 의 `files` 에 존재하지 않는 경로가 들어온다 | 배선은 그대로 싣고, 게이트웨이가 그 첨부만 건너뛴다 | 서버 SPEC 의 기존 동작 (`handleBotMessage` 의 try/catch) |
@@ -519,6 +562,7 @@ it('the built artifact speaks MCP; the token gates only the gateway', async () =
 | 테스트 | `npm test -w channel` 전체 통과. `index-wiring.test.ts` 의 실패 0건 |
 | 갈래 독립성 | AC-CHANWIRE-009 의 네 변이 결과가 표와 일치 |
 | 빌드 산출물 | AC-CHANWIRE-014 의 네 관측 모두 통과 |
+| 수신 경로 견고성 | AC-CHANWIRE-015 의 세 단언 모두 통과 (전제 · unhandled rejection 0건 · 배선 생존) |
 | 범위 경계 | AC-CHANWIRE-012 의 네 관측 모두 통과 |
 | 무상태 | 테스트와 바이너리 실행이 어떤 파일도 만들지 않는다 — `git status --porcelain` 에 새 파일 없음 |
 | 프로세스 위생 | `npm test -w channel` 이 끝난 뒤 `pgrep -f 'channel/dist/index.js'` 가 빈 출력. 남은 프로세스가 하나라도 있으면 실패이고, 그것을 죽이기 전에 어느 경로가 수거를 빠뜨렸는지 먼저 밝힌다 |
@@ -526,10 +570,10 @@ it('the built artifact speaks MCP; the token gates only the gateway', async () =
 
 ## Definition of Done
 
-- AC-CHANWIRE-001 부터 AC-CHANWIRE-014 까지 **전부** 통과했고, 각 명령의 원문 출력이 `progress.md` §E.2 에 남았다.
-- 요구사항 REQ-CHANWIRE-001..013 각각이 최소 하나의 AC 에 매핑돼 있고, 그 매핑이 `progress.md` §E.1 에 표로 남았다.
+- AC-CHANWIRE-001 부터 AC-CHANWIRE-015 까지 **전부** 통과했고, 각 명령의 원문 출력이 `progress.md` §E.2 에 남았다.
+- 요구사항 REQ-CHANWIRE-001..014 각각이 최소 하나의 AC 에 매핑돼 있고, 그 매핑이 `progress.md` §E.1 에 표로 남았다.
 - AC-CHANWIRE-009 의 네 변이 실행 결과(실패한 테스트 이름 집합)가 §E.2 에 원문으로 남았고, 변이가 모두 되돌려졌다.
-- 미검증 항목(엣지 케이스 표의 "미검증" 여섯 줄 포함)이 §E.2 의 Gaps 절에 명시적으로 기록됐다. AC-CHANWIRE-011 의 "남는 틈" 문단과 typecheck 가 `channel/test/**` 를 덮지 않는다는 사실도 같은 절에 있다.
+- 미검증 항목(엣지 케이스 표의 "미검증" 다섯 줄 — v0.3.0 에서 `pushChatMessage` 거부 줄이 AC-CHANWIRE-015 로 넘어가 여섯에서 다섯이 됐다 — 포함)이 §E.2 의 Gaps 절에 명시적으로 기록됐다. AC-CHANWIRE-011 의 "남는 틈" 문단과 typecheck 가 `channel/test/**` 를 덮지 않는다는 사실도 같은 절에 있다.
 - `plan.md` §D 의 원본 모순 세 건에 대한 처리 결과가 §E.2 에 남았다.
 - 테스트 실행이 프로세스를 남기지 않았다 — 품질 게이트의 `pgrep` 관측이 빈 출력이고, 그 출력이 §E.2 에 남았다.
 - 형제 SPEC 과의 계약이 깨지지 않았다 — `SPEC-CHANNEL-001` 의 AC-CHANNEL-002·004·005 가 이 SPEC 착지 후에도 실행 가능하다는 것을 AC-CHANWIRE-014 (b) 로 확인했다.

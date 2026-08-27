@@ -17,6 +17,7 @@
 | `delivery` 메타 | "알림이 도착한다" 는 **항상 `'to'` 를 싣는 구현**도 통과시킨다 | `'cc'` 로 넣은 메시지의 `meta.delivery` 가 정확히 `'cc'` 인가 (AC-CHANNEL-014) |
 | 무상태 | "테스트가 통과한다" 는 파일을 쓰는 구현도 통과시킨다 — 테스트는 파일을 안 보기 때문이다 | 빈 임시 디렉터리에서 플러그인을 실행한 뒤 그 디렉터리가 **여전히 비어 있는가** (AC-CHANNEL-002) |
 | 진입점 | "`index.ts` 가 존재한다"·"빌드가 성공한다" 는 아무것도 재지 않는다 | `node channel/dist/index.js` 가 stdin 의 `initialize` 에 실제로 MCP 응답을 내놓는가 (AC-CHANNEL-004) |
+| 셸 기준의 회귀 공백 | 셸 명령 기준은 vitest 스위트가 다시 실행하지 않아 **run 단계에 한 번 관측되고 끝**이다 — 이후 어떤 변경도 그것을 다시 묻지 않는다. 감사가 대가를 실행으로 증명했다: `experimental['claude/channel']` 을 지우거나 `INSTRUCTIONS` 를 통째로 지운 구현이 둘 다 46/46 초록이었다 | 같은 계약을 **인프로세스로도** 단언하는가 (AC-CHANNEL-004 (b) · AC-CHANNEL-005 (b), v0.2.0 신설 회귀층) |
 
 같은 이유로 다음 형태는 이 문서에서 금지한다 — "파일이 존재한다", "함수가 export 돼 있다", "테스트 스위트가 통과한다(어떤 테스트인지 이름 없이)", "`channel/src` 에 파일이 정확히 N 개다"(시점에 묶여 썩는다), 그리고 구현 본문을 지워도 참인 단언.
 
@@ -108,7 +109,7 @@ async function toolNamed(client: Client, name: string) {
 
 ### stdio 프로브
 
-AC-CHANNEL-004·005 는 인프로세스가 아니라 **빌드된 실행 파일**을 잰다. 다음 명령이 그 프로브다.
+AC-CHANNEL-004·005 의 **(a) 관측면**은 인프로세스가 아니라 **빌드된 실행 파일**을 잰다. 다음 명령이 그 프로브다. (같은 두 기준의 **(b) 관측면**은 위 공통 하네스의 `connect()` 를 쓰는 인프로세스 회귀층이며, 프로브를 대신하지 않는다.)
 
 ```bash
 INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
@@ -127,8 +128,8 @@ printf '%s\n' "$INIT" | node channel/dist/index.js 2>/dev/null | head -n 1 > /tm
 | AC-CHANNEL-001 | REQ-CHANNEL-001 | 아래 본문 | `package.json` 의 `name`·`type`·`bin` 세 리터럴이 계약대로이고 네 스크립트가 있음 |
 | AC-CHANNEL-002 | REQ-CHANNEL-002 | 아래 본문 | 소스에 파일 쓰기 호출이 없고, 빈 임시 디렉터리에서 실행한 뒤에도 그 디렉터리가 비어 있음 |
 | AC-CHANNEL-003 | REQ-CHANNEL-003 | 아래 본문 | 인프로세스 handshake 완료 + `serverInfo` 가 `minidiscord-channel` / `0.1.0` |
-| AC-CHANNEL-004 | REQ-CHANNEL-004, REQ-CHANNEL-014 | 아래 본문 | `initialize` 응답의 `experimental` 에 `claude/channel`·`claude/channel/permission` 두 키가 있고 `tools` 가 있음 |
-| AC-CHANNEL-005 | REQ-CHANNEL-005 | 아래 본문 | 같은 응답의 `instructions` 가 일곱 조각(따라잡기·커서·복구 포함)을 모두 담음 |
+| AC-CHANNEL-004 | REQ-CHANNEL-004, REQ-CHANNEL-014 | 아래 본문 — **관측면 둘** | (a) 셸: 빌드 산출물의 `initialize` 응답 `experimental` 에 `claude/channel`·`claude/channel/permission` 두 키가 있고 `tools` 가 있음 · (b) vitest: 같은 두 키와 `tools` 를 인프로세스로 단언 (회귀층) |
+| AC-CHANNEL-005 | REQ-CHANNEL-005 | 아래 본문 — **관측면 둘** | (a) 셸: 같은 응답의 `instructions` 가 일곱 조각(따라잡기·커서·복구 포함)을 모두 담음 · (b) vitest: 무게가 실린 지시문 리터럴을 인프로세스로 단언 (회귀층) |
 | AC-CHANNEL-006 | REQ-CHANNEL-006 | 아래 본문 | `tools/list` 이름 집합이 정확히 `['fetch_history','reply']`(정렬 후) |
 | AC-CHANNEL-007 | REQ-CHANNEL-007 | 아래 본문 | `reply.inputSchema` 가 `text: string` + `files: string[]` 이고 `required` 가 `['text']` |
 | AC-CHANNEL-008 | REQ-CHANNEL-008 | 아래 본문 | `sendToChat` 이 `{text, files}` 를 그대로 받고 결과 텍스트가 정확히 `sent` |
@@ -212,6 +213,10 @@ it('creates a connectable MCP server identified as minidiscord-channel', async (
 
 ### AC-CHANNEL-004 — capabilities 와 stdio 진입점 (주 관측)
 
+**이 기준은 관측면이 둘이고, 둘 다 통과해야 한다.** (a) 아래의 셸 프로브는 **빌드 산출물**(`channel/dist/index.js`)을 재고, (b) 그 아래의 vitest 짝은 같은 계약을 **인프로세스로** 재는 **회귀층**이다. 둘은 대체 관계가 아니다 — 인프로세스 테스트는 `bin` 이 가리키는 산출물이 실제로 생기는지도, 그것이 stdio 로 MCP 를 말하는지도 재지 못하므로 셸 기준을 대신할 수 없고, 셸 기준은 회귀 스위트 밖에 있어 이후의 어떤 변경도 그것을 다시 묻지 않는다.
+
+#### (a) 셸 관측 — 빌드 산출물
+
 **Given** `npm run build -w channel` 이 끝났다.
 **When** 공통 하네스의 stdio 프로브를 실행하고 그 응답을 검사한다.
 
@@ -238,9 +243,39 @@ console.log("OK");
 
 원본 테스트의 `tools/list` 우회로는 (c)를 잴 수 없다 — `experimental['claude/channel']` 을 통째로 빼도 `tools/list` 는 답하기 때문이다. 그 구현은 Claude Code 가 채널로 인식하지 않아 채팅이 한 건도 도착하지 않는데, 어떤 오류도 나지 않는다. 여기서 그것을 잡는다.
 
+#### (b) vitest 관측 — 인프로세스 회귀층 (v0.2.0 신설)
+
+**Given** 공통 하네스의 `connect()` 로 클라이언트가 붙어 있다.
+**When** 다음을 `channel/test/channel-server.test.ts` 에 추가하고 `npm test -w channel` 을 실행한다.
+
+```ts
+it('declares both channel experimental capabilities in the initialize response', async () => {
+  const { client } = await connect()
+  const caps = client.getServerCapabilities()
+  expect(caps).toBeDefined()
+  const experimental = (caps as any).experimental
+  expect(experimental).toBeDefined()
+  expect('claude/channel' in experimental).toBe(true)
+  expect('claude/channel/permission' in experimental).toBe(true)
+  expect(caps!.tools).toBeDefined()
+})
+```
+
+**Then** 테스트가 통과한다.
+
+**왜 회귀층이 필요한가.** v0.1.0 에서 이 기준은 셸 명령 하나뿐이었고, 셸 명령은 vitest 스위트가 다시 실행하지 않는다 — 즉 run 단계에 **한 번 관측되고 끝**이었다. 감사가 그 공백의 대가를 실행으로 증명했다: `experimental['claude/channel']` 을 통째로 지운 구현에서 스위트가 **46/46 초록**이었다(`.moai/reports/t4/sync-audit.md` §3.2 변이 M4). 이 문서 서두 표가 "이 SPEC 에서 가장 비싼 실패"로 지목한 바로 그 구현이다.
+
+**이 관측면을 무너뜨리는 것**: `channel-server.ts` 의 `experimental` 에서 `claude/channel` 또는 `claude/channel/permission` 중 어느 하나를 지우는 구현. 변이 `M-CAP delete experimental['claude/channel']` 과 `M-PERM delete experimental['claude/channel/permission']` 두 가지로 각각 실행 확인했고, 둘 다 이 테스트 한 건만 실패시켰다(`.moai/state/verify/t4-sync-fix/mutation-report.json`).
+
+`getServerCapabilities()` 를 쓰는 이유는 그것이 SDK 가 **`initialize` 응답에서 받아 보관한 값**이기 때문이다 — 서버 소스의 상수를 다시 읽는 형태였다면 구현을 지워도 통과하는 동어반복 단언이 됐을 것이다.
+
 ### AC-CHANNEL-005 — instructions 가 따라잡기를 안내한다
 
-**Given** AC-CHANNEL-004 의 `/tmp/mdc-init.json` 이 있다.
+**이 기준도 관측면이 둘이고, 둘 다 통과해야 한다** — (a) 셸(빌드 산출물), (b) vitest(회귀층). 근거는 AC-CHANNEL-004 와 같다.
+
+#### (a) 셸 관측 — 빌드 산출물
+
+**Given** AC-CHANNEL-004 (a)의 `/tmp/mdc-init.json` 이 있다.
 **When** 다음을 실행한다.
 
 ```bash
@@ -268,6 +303,34 @@ console.log("OK");
 **Then** `OK` 가 출력되고 종료 코드가 `0` 이다.
 
 `fetch_history`·`since_id`·`chat_id`·`컨텍스트` 네 조각이 v2 의 **따라잡기** 안내다. 멘션 없는 메시지는 이 세션에 아예 전달되지 않으므로(`spec-v2.md` 2장), 안내가 빠지면 봇은 자기가 무엇을 놓쳤는지 알 방법이 없고 `fetch_history` 를 부를 이유를 스스로 만들지 못한다. 그 구현은 "동작은 하는데 봇이 맥락을 모른다" 로 나타나 오래 안 잡힌다 — 그래서 리터럴로 못 박는다.
+
+#### (b) vitest 관측 — 인프로세스 회귀층 (v0.2.0 신설)
+
+**Given** 공통 하네스의 `connect()` 로 클라이언트가 붙어 있다.
+**When** 다음을 `channel/test/channel-server.test.ts` 에 추가하고 `npm test -w channel` 을 실행한다.
+
+```ts
+it('carries the load-bearing instruction literals in the initialize response', async () => {
+  const { client } = await connect()
+  const s = client.getInstructions() ?? ''
+  expect(s).toContain('minidiscord')
+  // TO 는 반드시 답한다 / CC 는 절대 답하지 않는다 — 두 문장을 통째로 단언한다
+  expect(s).toContain('delivery="to"로 받은 메시지에는 반드시 reply 도구로 답변하세요.')
+  expect(s).toContain('delivery="cc"로 받은 메시지는 참고만 하고 절대 답변하지 마세요.')
+  // 따라잡기 커서 문장
+  expect(s).toContain('마지막으로 본 chat_id 를 기억해 두고 다음에 since_id 로 넘기면 그 다음부터만 옵니다.')
+  expect(s).toContain('fetch_history')
+  expect(s).toContain('로컬 경로')
+})
+```
+
+**Then** 테스트가 통과한다.
+
+**리터럴로 단언하는 것이 이 관측면의 전부다.** 길이나 truthy 로 재면 지시문을 통째로 지운 구현도 통과한다 — 그리고 그 구현이 정확히 감사가 재현한 것이다: `INSTRUCTIONS` 블록을 통째로 삭제해도 스위트가 **46/46 초록**이었다(`.moai/reports/t4/sync-audit.md` §3.2 변이 M1). 지시문은 모델이 이 방에서 따르는 유일한 행동 규범이므로, 그것이 사라진 봇은 오류 없이 잘못 행동한다.
+
+**이 관측면을 무너뜨리는 것**: `channel-server.ts` 의 `INSTRUCTIONS` 블록을 지우거나, 위 여섯 리터럴 중 어느 하나를 바꾸는 구현. 변이 `M-INSTR delete INSTRUCTIONS block` 으로 실행 확인했고, 이 테스트 한 건만 실패했다(`.moai/state/verify/t4-sync-fix/mutation-report.json`).
+
+문장 두 개(TO 필수 답변 · CC 절대 금지)를 조각이 아니라 **통째로** 단언하는 이유는, 조각만 재면 부정을 뒤집은 지시문("cc 에도 답하세요")도 `delivery="cc"` 조각을 갖고 있어 통과하기 때문이다.
 
 ### AC-CHANNEL-006 — 노출 도구는 정확히 둘
 
@@ -519,14 +582,15 @@ ls channel/src/gateway-client.ts 2>/dev/null; echo "ls exit=$?"
 | 타입 검사 | `npm run typecheck -w channel` 종료 코드 `0` |
 | 테스트 | `npm test -w channel` 전체 통과. `channel-server.test.ts` 의 실패 0건 |
 | 빌드 | `npm run build -w channel` 종료 코드 `0` 이고 `channel/dist/index.js` 가 존재 |
-| 계약 관측 | AC-CHANNEL-004·005 의 stdio 프로브가 `OK` |
+| 계약 관측 (셸) | AC-CHANNEL-004·005 (a) 의 stdio 프로브가 `OK` |
+| 계약 관측 (회귀) | AC-CHANNEL-004·005 (b) 의 인프로세스 테스트 2건 통과. `--reporter=verbose` 출력에 두 이름이 `✓` 로 보일 것 |
 | 범위 경계 | AC-CHANNEL-015 의 네 관측 모두 통과 |
 | 무상태 | AC-CHANNEL-002 의 두 관측 모두 통과 |
 | 커밋 | `feat:` / `test:` 관례, 마일스톤마다 한 번 |
 
 ## Definition of Done
 
-- AC-CHANNEL-001 부터 AC-CHANNEL-016 까지 **전부** 통과했고, 각 명령의 원문 출력이 `progress.md` §E.2 에 남았다.
+- AC-CHANNEL-001 부터 AC-CHANNEL-016 까지 **전부** 통과했고, 각 명령의 원문 출력이 `progress.md` §E.2 에 남았다. AC-CHANNEL-004·005 는 **관측면 두 개(a 셸 · b vitest)가 모두** 통과했을 때만 통과로 센다.
 - 요구사항 REQ-CHANNEL-001..015 각각이 최소 하나의 AC 에 매핑돼 있고, 그 매핑이 `progress.md` §E.1 에 표로 남았다.
 - 미검증 항목(엣지 케이스 표의 "미검증" 다섯 줄, `typecheck` 가 테스트 파일을 덮지 않는 건 — `plan.md` §D 3번 — 포함)이 §E.2 의 Gaps 절에 명시적으로 기록됐다.
 - `client.getServerVersion()` 접근자의 실제 유무(`plan.md` §D 1번)와 `server.notification()` 의 capability 검사 여부(§E)가 실제 설치된 SDK 기준으로 확인돼 §E.2 에 남았다.
