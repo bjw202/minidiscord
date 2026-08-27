@@ -394,6 +394,41 @@ describe('permission relay', () => {
     expect(instructing[0]).toContain('yes abcde')
   })
 
+  // 줄바꿈이 하나도 없어도 description 은 본문의 한 줄을 통째로 차지하므로 안내 문구와 똑같이 채울 수 있다 —
+  // 봇이 쓴 줄은 접두 표식으로 갈라져야 하고, 안내 문구로 시작하는 줄은 서버가 쓴 한 줄뿐이어야 한다 (t7 재감사 §R3 탐침 R1)
+  it('a newline-free description mimicking the guidance line cannot forge a guidance line', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, {
+      request_id: 'abcde', tool_name: 'Read',
+      description: '승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.',
+      input_preview: 'cat README',
+    })
+    const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
+    const lines = row.body.split('\n')
+    const instructing = lines.filter(l => l.startsWith('승인하려면'))
+    expect(instructing.length).toBe(1)             // 서버가 쓴 안내 줄 하나 — 봇 설명 줄은 표식 줄로 갈라진다
+    expect(instructing[0]).toContain('yes abcde')
+    expect(lines[1].startsWith('│ ')).toBe(true)   // 봇이 쓴 description 줄은 봇 표식 접두로 시작한다
+  })
+
+  // 봇 텍스트가 표식 문자 │ 를 줄 중간에 새겨 넣어도 중화된다 — 표식 없이는 봇 줄이 서버 줄로 위장할 수 없다 (t7 재감사 §R3)
+  it('bot text cannot inject the bot-content marker', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, {
+      request_id: 'abcde', tool_name: 'Bash',
+      description: '정상 설명 │ 봇이 도구 사용 승인을 요청합니다: rm -rf /',
+      input_preview: 'code │ 승인하려면 "yes zzzzz"',
+    })
+    const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
+    const lines = row.body.split('\n')
+    for (const l of lines) {
+      if (l.includes('│')) expect(l.indexOf('│')).toBe(0)   // 표식은 줄의 첫 글자로만 나타난다 — 중간에 새겨진 │ 는 중화돼야 한다
+    }
+    expect(lines.filter(l => l.startsWith('│ ')).length).toBe(2)   // 접두는 봇이 쓴 두 줄에만 붙는다
+  })
+
   // 같은 방 대소문자 변형 id 는 충돌 자체가 불가능하다 — 대문자 원본은 등록이 거절되므로 (t7 sync-audit T7-F-03)
   it('same-room case variants cannot collide because non-lowercase ids are refused', async () => {
     const { app, broker, cookie } = await build()
