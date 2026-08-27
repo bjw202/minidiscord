@@ -316,4 +316,317 @@ describe('gateway', () => {
     wsPm.ws.close(); wsQa.ws.close()
     await app.close()
   })
+
+  // AC-GW-007 — bot_message 저장·복사·발행
+  it('stores bot_message, copies files into uploadsDir and publishes to the hub', async () => {
+    const { app, published, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+    const src = join(dir, 'report.md')
+    writeFileSync(src, '# 결과\n완료')
+
+    ws.send(JSON.stringify({ type: 'bot_message', body: '정리 완료', files: [{ local_path: src, name: '보고서.md' }] }))
+    await new Promise(r => setTimeout(r, 300))
+
+    const row = db.prepare("SELECT * FROM messages WHERE room_id=? AND author_type='bot'").get(room) as any
+    expect(row.body).toBe('정리 완료')
+    expect(row.author_bot_id).toBe(pm)
+    const att = db.prepare('SELECT * FROM attachments WHERE message_id=?').get(row.id) as any
+    // 첨부 행이 실제로 있어야 한다. size/mime 이 NOT NULL 이라 값을 빠뜨리면 INSERT 가
+    // 제약 위반으로 던지고 그 예외가 REQ-GW-011 의 건너뛰기 catch 에 삼켜진다 — 그러면
+    // 이 줄에서 att 가 undefined 가 되어 아래 단언들이 전부 깨진다.
+    expect(att).toBeDefined()
+    expect(att.filename).toBe('보고서.md')
+    // size 는 원본의 실제 바이트 길이다. 상수도 0도 통과하지 못한다.
+    // 본문 '# 결과\n완료' 는 문자 8개지만 UTF-8 로는 15바이트라, 문자 길이를 넣은 구현도 깨진다.
+    const srcBytes = readFileSync(src).length
+    expect(srcBytes).toBe(15)
+    expect(att.size).toBe(srcBytes)
+    expect(att.mime).toBe('application/octet-stream')
+    // 복사본이 uploadsDir 안에 있고, 원본은 그대로 남는다(이동이 아니라 복사).
+    expect(att.stored_path).not.toBe(src)
+    expect(att.stored_path.startsWith(join(dir, 'up'))).toBe(true)
+    expect(readFileSync(att.stored_path, 'utf8')).toContain('완료')
+    expect(existsSync(src)).toBe(true)
+    // 허브 발행: 이벤트 이름·방·작성자 이름까지 관측한다.
+    const msgEvents = published.filter(p => p.event === 'message')
+    expect(msgEvents).toHaveLength(1)
+    expect(msgEvents[0].roomId).toBe(room)
+    expect(msgEvents[0].data.author_name).toBe('pm')
+    expect(msgEvents[0].data.attachments).toHaveLength(1)
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GW-008 — 없는 파일 하나만 건너뛴다
+  it('bot_message skips only the missing attachment', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+    const good = join(dir, '있는파일.txt')
+    writeFileSync(good, 'ok')
+
+    ws.send(JSON.stringify({
+      type: 'bot_message', body: '결과',
+      files: [{ local_path: join(dir, '없는파일'), name: 'x' }, { local_path: good, name: '있는파일.txt' }],
+    }))
+    await new Promise(r => setTimeout(r, 300))
+
+    const row = db.prepare("SELECT * FROM messages WHERE room_id=? AND author_type='bot'").get(room) as any
+    expect(row.body).toBe('결과')
+    const atts = db.prepare('SELECT filename FROM attachments WHERE message_id=?').all(row.id) as { filename: string }[]
+    // 분별: 정확히 하나만 살아남는다. 0 이면 "하나 실패 시 전부 포기", 2 면 없는 파일까지 기록한 것이다.
+    expect(atts.map(a => a.filename)).toEqual(['있는파일.txt'])
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GW-009 — status 는 두 값만 발행한다
+  it('status publishes bot_status for working and idle only', async () => {
+    const { app, published, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+
+    ws.send(JSON.stringify({ type: 'status', state: 'working' }))
+    ws.send(JSON.stringify({ type: 'status', state: 'idle' }))
+    await new Promise(r => setTimeout(r, 200))
+    let events = published.filter(p => p.event === 'bot_status')
+    expect(events.map(e => e.data.state)).toEqual(['working', 'idle'])
+    expect(events[0].data.bot_id).toBe(pm)
+    expect(events[0].roomId).toBe(room)
+
+    // 대조군: 알 수 없는 값은 아무것도 발행하지 않는다.
+    ws.send(JSON.stringify({ type: 'status', state: 'sleeping' }))
+    await new Promise(r => setTimeout(r, 200))
+    events = published.filter(p => p.event === 'bot_status')
+    expect(events).toHaveLength(2)
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GW-010 — isOnline 은 접속을 따라간다
+  it('isOnline follows the connection, per room and bot', async () => {
+    const { app, gateway, port } = await build()
+    const roomA = seedRoom('A'), roomB = seedRoom('B')
+    const pm = seedBot('pm'), qa = seedBot('qa')
+    const token = invite(roomA, pm)
+    invite(roomA, qa); invite(roomB, pm)
+
+    expect(gateway.isOnline(roomA, pm)).toBe(false)
+    const { ws } = await wsConnect(port, token)
+    expect(gateway.isOnline(roomA, pm)).toBe(true)
+    // 분별: 같은 방 다른 봇도, 다른 방 같은 봇도 온라인이 아니다. `return true` 는 여기서 깨진다.
+    expect(gateway.isOnline(roomA, qa)).toBe(false)
+    expect(gateway.isOnline(roomB, pm)).toBe(false)
+
+    ws.close()
+    await closedPromise(ws)
+    await new Promise(r => setTimeout(r, 100))
+    expect(gateway.isOnline(roomA, pm)).toBe(false)
+    await app.close()
+  })
+
+  // AC-GW-011 — 이력은 번호 오름차순이고 rid 를 되돌린다
+  it('history_request returns the room messages in id order and echoes rid', async () => {
+    const { app, port } = await build()
+    const room = seedRoom('A'), other = seedRoom('B')
+    const pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+    for (const b of ['하나', '둘', '셋']) db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', ?)").run(room, b)
+    db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', '남의 방')").run(other)
+
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'r1', limit: 10 }))
+    const res1 = await nextMessage(ws)
+    expect(res1.type).toBe('history_response')
+    expect(res1.rid).toBe('r1')
+    expect(res1.messages.map((m: any) => m.body)).toEqual(['하나', '둘', '셋'])
+    expect(res1.messages.map((m: any) => m.id)).toEqual([...res1.messages.map((m: any) => m.id)].sort((a: number, b: number) => a - b))
+    // 방 격리: 다른 방 메시지는 섞이지 않는다.
+    expect(res1.messages.map((m: any) => m.body)).not.toContain('남의 방')
+
+    // 분별: rid 는 요청마다 그대로 되돌아온다. 하드코딩은 여기서 깨진다.
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'r2', limit: 10 }))
+    const res2 = await nextMessage(ws)
+    expect(res2.rid).toBe('r2')
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GW-012 — since_id 는 커서 이하를 실제로 걸러 낸다
+  it('history_request with since_id returns only later messages', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+    const ids = ['하나', '둘', '셋'].map(b =>
+      db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', ?)").run(room, b).lastInsertRowid as number)
+    const cursor = ids[1]
+
+    // 대조군 먼저: 필터가 없으면 커서 이하 메시지가 응답에 들어온다.
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'ctl', limit: 10 }))
+    const control = await nextMessage(ws)
+    expect(control.messages.map((m: any) => m.id)).toEqual(ids)
+    expect(control.messages.some((m: any) => m.id <= cursor)).toBe(true)
+
+    // 본 검사: since_id 를 붙이면 커서 이하가 하나도 없다.
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'r2', since_id: cursor, limit: 10 }))
+    const res = await nextMessage(ws)
+    expect(res.rid).toBe('r2')
+    expect(res.messages.length).toBeGreaterThan(0)
+    expect(res.messages.every((m: any) => m.id > cursor)).toBe(true)
+    expect(res.messages.map((m: any) => m.body)).toEqual(['셋'])
+    // 필터가 없앤 것이 실재함을 DB 로 확인한다 — 방에 커서 이하 메시지가 둘 있다.
+    const below = db.prepare('SELECT COUNT(*) c FROM messages WHERE room_id=? AND id<=?').get(room, cursor) as { c: number }
+    expect(below.c).toBe(2)
+    expect(control.messages.length - res.messages.length).toBe(below.c)
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GW-013 — limit 은 필터보다 먼저, 선택 필터 셋은 각각 걸러 낸다
+  it('history_request applies limit before since_id, speaker, since and until', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const alice = db.prepare("INSERT INTO users (username, password_hash) VALUES ('alice','x')").run().lastInsertRowid as number
+    const { ws } = await wsConnect(port, invite(room, pm))
+
+    const ids: number[] = []
+    for (let i = 1; i <= 5; i++) {
+      ids.push(db.prepare("INSERT INTO messages (room_id, author_type, author_user_id, body, created_at) VALUES (?, 'user', ?, ?, ?)")
+        .run(room, alice, `m${i}`, `2026-08-2${i}T00:00:00Z`).lastInsertRowid as number)
+    }
+    db.prepare("INSERT INTO messages (room_id, author_type, author_bot_id, body, created_at) VALUES (?, 'bot', ?, '봇 발언', '2026-08-26T00:00:00Z')").run(room, pm)
+
+    // limit 순서: limit 2 는 "최근 2건을 자른 뒤" since_id 를 적용한다.
+    // 필터를 먼저 적용했다면 m1 다음 두 건(m2, m3)이 왔을 것이다 — 두 해석을 가른다.
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'a', since_id: ids[0], limit: 2 }))
+    const limited = await nextMessage(ws)
+    expect(limited.messages.map((m: any) => m.body)).toEqual(['m5', '봇 발언'])
+
+    // speaker 필터
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'b', speaker: 'pm', limit: 100 }))
+    expect((await nextMessage(ws)).messages.map((m: any) => m.body)).toEqual(['봇 발언'])
+
+    // since / until 필터
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'c', since: '2026-08-24T00:00:00Z', until: '2026-08-26T00:00:00Z', limit: 100 }))
+    expect((await nextMessage(ws)).messages.map((m: any) => m.body)).toEqual(['m4', 'm5'])
+
+    // 대조군: 필터 없이는 여섯 건 전부 온다.
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'd', limit: 100 }))
+    expect((await nextMessage(ws)).messages).toHaveLength(6)
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GW-014 — 이력의 네 필드와 작성자 이름 해석
+  it('history_response carries id, author_name, body and created_at', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const alice = db.prepare("INSERT INTO users (username, password_hash) VALUES ('alice','x')").run().lastInsertRowid as number
+    db.prepare("INSERT INTO messages (room_id, author_type, author_user_id, body) VALUES (?, 'user', ?, '사람 말')").run(room, alice)
+    db.prepare("INSERT INTO messages (room_id, author_type, author_bot_id, body) VALUES (?, 'bot', ?, '봇 말')").run(room, pm)
+    db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'system', '시스템 말')").run(room)
+
+    const { ws } = await wsConnect(port, invite(room, pm))
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'r', limit: 10 }))
+    const res = await nextMessage(ws)
+
+    for (const m of res.messages) {
+      // 네 조각: 채널이 `#<번호> [시각] 작성자: 본문` 을 만들 때 쓰는 필드 전부
+      expect(typeof m.id).toBe('number')
+      expect(typeof m.author_name).toBe('string')
+      expect(typeof m.body).toBe('string')
+      expect(typeof m.created_at).toBe('string')
+      expect(m.created_at.length).toBeGreaterThan(0)
+    }
+    // 분별: 작성자 종류마다 이름이 다르다. 상수를 돌려주는 authorName 은 여기서 깨진다.
+    expect(res.messages.map((m: any) => m.author_name)).toEqual(['alice', 'pm', '시스템'])
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GW-015 — 이력 응답은 요청한 봇에게만 간다
+  it('history_response goes only to the requesting bot', async () => {
+    const { app, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm'), qa = seedBot('qa')
+    const wsPm = await wsConnect(port, invite(room, pm))
+    const wsQa = await wsConnect(port, invite(room, qa))
+    db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', '하나')").run(room)
+
+    wsPm.ws.send(JSON.stringify({ type: 'history_request', rid: 'r', limit: 10 }))
+    const res = await nextMessage(wsPm.ws)
+    expect(res.rid).toBe('r')
+    await expectNoMessage(wsQa.ws)   // 부정 관측: 옆 봇에게 새지 않는다
+
+    wsPm.ws.close(); wsQa.ws.close()
+    await app.close()
+  })
+
+  // AC-GW-016 — closeRoom 은 그 방만 끊는다
+  it('closeRoom disconnects only that room', async () => {
+    const { app, gateway, port } = await build()
+    const roomA = seedRoom('A'), roomB = seedRoom('B')
+    const pm = seedBot('pm'), qa = seedBot('qa')
+    const wsA = await wsConnect(port, invite(roomA, pm))
+    const wsB = await wsConnect(port, invite(roomB, qa))
+    db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', 'B 방 메시지')").run(roomB)
+
+    const aClosed = closedPromise(wsA.ws)
+    gateway.closeRoom(roomA)
+    await aClosed
+    expect(gateway.isOnline(roomA, pm)).toBe(false)
+
+    // 분별: 다른 방 소켓은 열려 있을 뿐 아니라 여전히 왕복이 된다.
+    expect(wsB.ws.readyState).toBe(WebSocket.OPEN)
+    expect(gateway.isOnline(roomB, qa)).toBe(true)
+    wsB.ws.send(JSON.stringify({ type: 'history_request', rid: 'alive', limit: 10 }))
+    const res = await nextMessage(wsB.ws)
+    expect(res.rid).toBe('alive')
+    expect(res.messages.map((m: any) => m.body)).toEqual(['B 방 메시지'])
+
+    wsB.ws.close()
+    await app.close()
+  })
+
+  // AC-GW-017 — 권한 릴레이 창구
+  it('relays permission_request to the handler and sendToBot reports delivery', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm'), qa = seedBot('qa')
+    invite(room, qa)   // qa 는 초대만 받고 접속하지 않는다 (오프라인 대조군)
+    const seen: { info: any; params: any }[] = []
+    gateway.setPermissionHandler((info, params) => seen.push({ info, params }))
+    const { ws } = await wsConnect(port, invite(room, pm))
+
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'p1', tool_name: 'Bash', description: '설치', input_preview: 'npm i' }))
+    await new Promise(r => setTimeout(r, 200))
+    expect(seen).toHaveLength(1)
+    expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+    expect(seen[0].params.request_id).toBe('p1')
+    expect(seen[0].params.tool_name).toBe('Bash')
+
+    // 온라인 봇에게는 true 이고 실제로 도착한다.
+    expect(gateway.sendToBot(room, pm, { type: 'permission_verdict', request_id: 'p1', behavior: 'allow' })).toBe(true)
+    const verdict = await nextMessage(ws)
+    expect(verdict).toEqual({ type: 'permission_verdict', request_id: 'p1', behavior: 'allow' })
+    // 분별: 오프라인 봇에게는 false 이고 아무 일도 일어나지 않는다. `return true` 는 여기서 깨진다.
+    expect(gateway.sendToBot(room, qa, { type: 'permission_verdict', request_id: 'p2', behavior: 'deny' })).toBe(false)
+    await expectNoMessage(ws)
+
+    // 핸들러 해제 후에는 호출되지 않는다.
+    gateway.setPermissionHandler(null)
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'p3' }))
+    await new Promise(r => setTimeout(r, 200))
+    expect(seen).toHaveLength(1)
+
+    ws.close()
+    await app.close()
+  })
 })

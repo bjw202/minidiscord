@@ -1,5 +1,8 @@
 // 봇 게이트웨이: 채널 플러그인의 WebSocket 접속 창구 (spec 6장)
 import { WebSocketServer, WebSocket } from 'ws'
+import { randomUUID } from 'node:crypto'
+import { copyFileSync, statSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { sha256Hex } from './routes-bots.js'
 
@@ -58,7 +61,20 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string }
     // hello 로 인증되지 않은 접속의 어떤 메시지도 처리하지 않는다 — 닫는 것으로 끝낸다 (REQ-GW-003)
     if (!info) throw new Error('not authenticated')
     switch (msg.type) {
-      // bot_message·status·history_request·permission_request 분기는 M2 가 추가한다
+      case 'bot_message': return handleBotMessage(info, msg)
+      case 'status': {
+        // 'working'·'idle' 두 값만 발행 — 그 밖의 값은 조용히 무시한다 (REQ-GW-012)
+        if (msg.state === 'working' || msg.state === 'idle') {
+          hub.publish(info.roomId, 'bot_status', { bot_id: info.botId, state: msg.state })
+        }
+        return
+      }
+      case 'history_request': return handleHistory(info, msg)
+      case 'permission_request': {
+        // 등록된 핸들러가 없으면 조용히 무시한다 — 판정은 permissions.ts 의 몫 (REQ-GW-020)
+        permissionHandler?.({ roomId: info.roomId, botId: info.botId }, msg)
+        return
+      }
     }
   }
 
@@ -113,6 +129,50 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string }
 
   function send(ws: WebSocket, payload: object): void {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload))
+  }
+
+  // 봇 발신 메시지 저장 → 파일 복사 → 허브 발행 (REQ-GW-010·011)
+  function handleBotMessage(info: ConnInfo & { tokenRowId: number }, msg: any): void {
+    const r = db.prepare("INSERT INTO messages (room_id, author_type, author_bot_id, body) VALUES (?, 'bot', ?, ?)")
+      .run(info.roomId, info.botId, String(msg.body ?? ''))
+    const messageId = r.lastInsertRowid as number
+    for (const f of (msg.files ?? []) as { local_path?: string; name?: string }[]) {
+      try {
+        // 다섯 컬럼 전부 채운다 — size·mime 은 NOT NULL 이라 빠뜨리면 INSERT 가 제약 위반으로
+        // 던지고 이 catch 가 그것을 삼켜 첨부가 조용히 사라진다 (plan.md §D 9번).
+        // size 는 원본의 바이트 크기, mime 은 상수 — 게이트웨이는 내용을 스니핑하지 않는다.
+        const size = statSync(String(f.local_path)).size
+        const stored = join(opts.uploadsDir, `${randomUUID()}-${basename(String(f.local_path))}`)
+        copyFileSync(String(f.local_path), stored)
+        db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, ?, ?)')
+          .run(messageId, f.name ?? basename(String(f.local_path)), stored, size, 'application/octet-stream')
+      } catch {
+        // 파일이 없으면 그 첨부만 건너뛴다 — 메시지와 나머지 첨부는 그대로 (REQ-GW-011)
+      }
+    }
+    const row = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId) as any
+    const attachments = db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(messageId)
+    hub.publish(info.roomId, 'message', { ...row, author_name: authorName(row), attachments })
+  }
+
+  // 이력 조회 — 최근 N 개를 먼저 자른 뒤 필터를 적용한다 (plan.md §D 6번의 순서)
+  function handleHistory(info: ConnInfo, msg: any): void {
+    const limit = Math.min(Number(msg.limit ?? 100) || 100, 500)
+    let rows = db.prepare('SELECT * FROM messages WHERE room_id = ? ORDER BY id DESC LIMIT ?').all(info.roomId, limit) as any[]
+    rows = rows.reverse()
+    if (msg.speaker != null) rows = rows.filter(m => authorName(m) === msg.speaker)
+    if (msg.since_id != null) rows = rows.filter(m => m.id > Number(msg.since_id))
+    if (msg.since != null) rows = rows.filter(m => m.created_at >= msg.since)
+    if (msg.until != null) rows = rows.filter(m => m.created_at < msg.until)
+    sendToConn(info, {
+      type: 'history_response', rid: msg.rid,
+      messages: rows.map(m => ({ id: m.id, author_name: authorName(m), body: m.body, created_at: m.created_at })),
+    })
+  }
+
+  // 같은 (방, 봇) 의 접속에만 보낸다 — 같은 방의 다른 봇에게는 새지 않는다 (REQ-GW-017)
+  function sendToConn(info: ConnInfo, payload: object): void {
+    for (const [ws, c] of conns) if (c.roomId === info.roomId && c.botId === info.botId) send(ws, payload)
   }
 
   return {
