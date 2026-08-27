@@ -1,10 +1,11 @@
 /*
- * minidiscord 웹 셸 로직 (SPEC-WEBSHELL-001)
+ * minidiscord 웹 셸 로직 (SPEC-WEBSHELL-001) + 채팅 화면 (SPEC-WEBCHAT-001)
  *
- * 이 파일은 카드 t5 의 세 SPEC 이 결합하는 계약 표면이다 — spec.md §4.8 의 여섯 계약이
+ * 이 파일은 카드 t5 의 세 SPEC 이 결합하는 계약 표면이다 — SPEC-WEBSHELL-001 §4.8 의 여섯 계약이
  * 모듈 형식·state 확장·export 집합·요소 소유권·토큰 경로·네트워크 호출 동결을 정한다.
  * 형제 SPEC(SPEC-WEBCHAT-001·SPEC-WEBRICH-001)은 자기 필드와 자기 함수를 자기 초기화
- * 코드에서 더한다. 이 파일은 채팅 렌더링·EventSource·자동완성·첨부·초대·권한을 만들지 않는다.
+ * 코드에서 더한다. 웹 셸 부분은 채팅 내부를 만지지 않고, 채팅 부분(파일 끝 블록)은
+ * 셸의 아홉 함수 본문에 손대지 않는다.
  */
 
 // ── 상태 ───────────────────────────────────────────────────────────────
@@ -185,12 +186,49 @@ function toastError(err) {
   toast.hidden = false
 }
 
-// ── 방 열기 — 최소 구현 ────────────────────────────────────────────────
-// 이름과 시그니처는 이 SPEC 이 확정하고 본체는 SPEC-WEBCHAT-001 이 채운다 (§4.8 계약 3).
-// 형제의 배선은 이 함수 안이나 형제 자신의 함수에 둔다.
-export function openRoom(id) {
+// ── 방 열기 ──────────────────────────────────────────────────────────
+// 이름과 시그니처는 웹 셸 SPEC 이 확정했고 본체는 채팅 SPEC 이 채운다 (§4.8 계약 3).
+// 단계 순서는 REQ-WEBCHAT-002 의 0~9 단계 그대로다 — initChat 이 어떤 단계보다 먼저다.
+export async function openRoom(id) {
+  // 0단계 — 채팅 전용 state 필드를 만들고 작성기 핸들러를 건다
+  initChat()
+  // 1단계 — 열려 있는 스트림이 있으면 닫는다
+  if (state.sse) {
+    state.sse.close()
+    state.sse = null
+  }
+  // 2단계 — 이전 방의 stale 타이머를 전부 해제하고 working·stale 표시를 비운다
+  for (const key of Object.keys(state.staleTimers)) {
+    clearTimeout(state.staleTimers[key])
+    delete state.staleTimers[key]
+  }
+  state.workingBots.clear()
+  state.staleBots.clear()
+  // 3단계 — 방 세대를 올리고 이번 방의 세대를 지역 변수에 잡아 둔다
+  state.roomGeneration += 1
+  const generation = state.roomGeneration
+  // 3-1단계 — 등록된 장식 팩토리가 있으면 이 방 전용 컨텍스트를 새로 만든다
+  roomDecorator = decoratorFactory ? decoratorFactory({ api, doc: document }) : null
+  // 4단계 — 현재 방을 갱신하고 사이드바를 다시 그린다
   state.currentRoomId = id
   renderRooms()
+  // 5단계 — 제목과 메시지 목록을 이 방의 것으로 초기화한다.
+  // 방을 찾지 못하면 방 번호를 쓴다 — "# undefined" 를 화면에 보내지 않는다.
+  const room = [...state.rooms.active, ...state.rooms.archived].find(r => r.id === id)
+  $('room-title').textContent = `# ${room ? room.name : id}`
+  $('messages').innerHTML = ''
+  hideAutocomplete()
+  // 6단계 — 과거 대화를 받아 순서대로 그린다
+  const history = await api(`/api/rooms/${id}/messages`)
+  if (generation !== state.roomGeneration) return   // 늦게 도착한 응답은 버린다 (REQ-WEBCHAT-014)
+  for (const m of history.messages) renderMessage(m)
+  // 7단계 — 맨 아래로 스크롤한다
+  scrollMessages()
+  // 8단계 — 초대 목록을 받아 캐시하고 봇 칩을 그린다
+  await refreshRoomBots()
+  // 9단계 — 스트림을 연다 (같은 세대일 때만)
+  if (generation !== state.roomGeneration) return
+  openStream()
 }
 
 // ── 이름 입력 다이얼로그 ──────────────────────────────────────────────
@@ -241,4 +279,167 @@ export function initApp() {
     .then(() => loadBots())
     .then(() => showMain())
     .catch(() => showAuth())
+}
+
+// ══ 채팅 화면 (SPEC-WEBCHAT-001) ══════════════════════════════════════
+// 이 블록부터는 채팅 SPEC 의 영역이다. 웹 셸의 아홉 함수(api·login·register·logout·
+// loadRooms·loadBots·createRoom·archiveRoom·createBot) 본문은 건드리지 않는다(§4.8 계약 6).
+
+// 장식 팩토리 — SPEC-WEBRICH-001 이 모듈 최상위에서 등록한다 (배선 계약, spec.md §4.6).
+// 등록이 없으면 roomDecorator 는 null 이고 renderMessage 는 훅을 부르지 않는다.
+let decoratorFactory = null
+let roomDecorator = null
+let chatReady = false
+
+// 채팅 전용 state 필드 일곱 개는 이 함수가 만든다 — 형제 웹 셸은 세 필드만 초기화한다(§4.8 계약 2).
+// openRoom 의 0단계에서 불리며 멱등이다: 두 번째 호출은 아무것도 덮어쓰지 않는다.
+// 덮어쓰면 방 세대가 리셋돼 늦은 응답 격리(REQ-WEBCHAT-014)가 깨진다.
+export function initChat() {
+  if (chatReady) return
+  state.sse = null
+  state.workingBots = new Set()
+  state.staleTimers = {}
+  state.staleBots = new Set()
+  state.lastEventId = 0
+  state.roomBots = []
+  state.roomGeneration = 0
+  chatReady = true
+}
+
+// 장식 팩토리를 등록한다. 방을 열 때마다 factory({ api, doc }) 를 새로 불러
+// 그 방 전용 컨텍스트를 만든다 — 방 국소 상태가 방을 넘어가지 않게 한다.
+export function registerMessageDecorator(factory) {
+  decoratorFactory = factory
+}
+
+// ── 렌더 ─────────────────────────────────────────────────────────────
+// div.message.<author_type> > (.msg-head > strong+span, .msg-body) (REQ-WEBCHAT-003).
+// 사용자·봇·시스템이 만든 문자열은 전부 textContent 로만 넣는다 (REQ-WEBCHAT-004).
+export function renderMessage(m) {
+  const wrap = document.createElement('div')
+  wrap.className = `message ${m.author_type}`
+
+  const head = document.createElement('div')
+  head.className = 'msg-head'
+  const author = document.createElement('strong')
+  author.textContent = m.author_name ?? ''
+  // 봇 작성자는 author_bot_id 로 --md-role-color-1..5 를 순환 배정받는다 (design DNA §1)
+  if (m.author_type === 'bot') {
+    author.classList.add(`bot-color-${((m.author_bot_id ?? 0) % 5) + 1}`)
+  }
+  const time = document.createElement('span')
+  time.className = 'msg-time'
+  time.textContent = m.created_at ?? ''
+  head.appendChild(author)
+  head.appendChild(time)
+
+  const body = document.createElement('div')
+  body.className = 'msg-body'
+  body.textContent = m.body ?? ''
+
+  wrap.appendChild(head)
+  wrap.appendChild(body)
+
+  // 장식 훅 — 붙이기 직전에 정확히 한 번 (REQ-WEBCHAT-003). 등록이 없으면 부르지 않고,
+  // 훅이 던지면 삼키지 않는다. m.attachments 는 훅 안에서만 소비된다.
+  if (roomDecorator) roomDecorator.decorate(wrap, m)
+
+  $('messages').appendChild(wrap)
+}
+
+// 초대 목록을 받아 캐시하고 봇 칩을 다시 그린다. 방을 열 때(openRoom 8단계)만 부른다 —
+// 키 입력마다 부르지 않는다 (REQ-WEBCHAT-009). 응답 반영 직전에 방 세대를 검사한다.
+export async function refreshRoomBots() {
+  const generation = state.roomGeneration
+  const id = state.currentRoomId
+  const invites = await api(`/api/rooms/${id}/invites`)
+  if (generation !== state.roomGeneration) return   // 방이 바뀐 사이에 온 응답은 버린다
+  state.roomBots = invites
+  renderRoomBots()
+}
+
+// 봇 칩 — 캐시만 읽는다(네트워크 없음). 🟢/⚪ 는 online 여부, (입력 중…)/(응답 없음?) 는
+// working/stale 표시이고 stale 이 working 보다 우선한다 (REQ-WEBCHAT-006).
+function renderRoomBots() {
+  const box = $('room-bots')
+  box.innerHTML = ''
+  for (const bot of state.roomBots) {
+    const key = `${state.currentRoomId}:${bot.bot_id}`
+    const chip = document.createElement('span')
+    chip.className = `bot-chip${bot.online ? '' : ' offline'}`
+    chip.textContent = `${bot.online ? '🟢' : '⚪'} ${bot.bot_name}`
+    if (state.staleBots.has(key)) chip.textContent += ' (응답 없음?)'
+    else if (state.workingBots.has(key)) chip.textContent += ' (입력 중…)'
+    box.appendChild(chip)
+  }
+}
+
+function scrollMessages() {
+  const box = $('messages')
+  box.scrollTop = box.scrollHeight
+}
+
+function hideAutocomplete() {
+  $('autocomplete').hidden = true
+}
+
+// ── 실시간 수신 ───────────────────────────────────────────────────────
+// EventSource 를 열고 message·bot_status·error/open 을 듣는다 (REQ-WEBCHAT-005~008).
+function openStream() {
+  const id = state.currentRoomId
+  const generation = state.roomGeneration
+  const es = new EventSource(`/api/rooms/${id}/events`)
+  state.sse = es
+  let hadError = false
+
+  es.addEventListener('message', (e) => {
+    const m = JSON.parse(e.data)
+    renderMessage(m)
+    scrollMessages()
+    // 마지막 수신 id — 재연결 백필의 커서다 (REQ-WEBCHAT-005)
+    state.lastEventId = m.id
+  })
+
+  es.addEventListener('bot_status', (e) => {
+    const { bot_id, state: botState } = JSON.parse(e.data)
+    markBotStatus(bot_id, botState)
+  })
+
+  es.addEventListener('error', () => { hadError = true })
+
+  // 첫 연결이 아니라 error 뒤의 재연결이면 끊긴 사이의 메시지를 커서로 백필한다 (REQ-WEBCHAT-008).
+  // 서버가 id:/retry: 를 발행하지 않으므로 Last-Event-ID 재개 경로는 없다 — REST 커서뿐이다.
+  es.addEventListener('open', async () => {
+    if (!hadError) return
+    if (generation !== state.roomGeneration) return
+    const { messages } = await api(`/api/rooms/${id}/messages?after=${state.lastEventId}`)
+    if (generation !== state.roomGeneration) return
+    for (const m of messages) {
+      renderMessage(m)
+      state.lastEventId = m.id   // 커서를 계속 올린다 — 반복 재연결에도 중복이 없게 한다
+    }
+    scrollMessages()
+  })
+}
+
+// bot_status 처리 — working: 표시 + 5분 타이머, idle: 둘 다 해제 (REQ-WEBCHAT-006).
+// 5분 판정은 브라우저가 한다. 서버는 stale 이라는 상태를 발행하지 않는다.
+function markBotStatus(botId, botState) {
+  const key = `${state.currentRoomId}:${botId}`
+  if (botState === 'working') {
+    state.workingBots.add(key)
+    state.staleBots.delete(key)
+    clearTimeout(state.staleTimers[key])
+    state.staleTimers[key] = setTimeout(() => {
+      delete state.staleTimers[key]
+      state.staleBots.add(key)
+      renderRoomBots()   // 캐시만 다시 그린다 — 만료 시점에 네트워크를 치지 않는다
+    }, 300_000)
+  } else if (botState === 'idle') {
+    state.workingBots.delete(key)
+    state.staleBots.delete(key)
+    clearTimeout(state.staleTimers[key])
+    delete state.staleTimers[key]
+  }
+  renderRoomBots()
 }

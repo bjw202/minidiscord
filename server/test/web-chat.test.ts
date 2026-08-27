@@ -178,4 +178,252 @@ describe('AC-WEBCHAT-001 openRoom renders history', () => {
     expect(el('room-title').textContent).toBe('# 방1')
     expect(el('autocomplete').hasAttribute('hidden')).toBe(true)
   })
+
+  it('falls back to the room number when the room is not in state.rooms', async () => {
+    // 방 목록에는 없는 방을 직접 연다 — # undefined 대신 방 번호가 보여야 한다 (plan.md §D 8번)
+    const app = await loadApp(url => {
+      if (url.startsWith('/api/rooms/9/messages')) return { data: { messages: [] } }
+      if (url.includes('/invites')) return { data: [] }
+      if (url.startsWith('/api/rooms')) return { data: { active: [], archived: [] } }
+      return { data: {} }
+    })
+    await app.openRoom(9)
+    await flush()
+    expect(el('room-title').textContent).toBe('# 9')
+    expect(el('room-title').textContent).not.toContain('undefined')
+  })
+})
+
+// ── AC-WEBCHAT-002 — 메시지 구조·작성자별 색·확장 훅 (세 테스트) ──────
+describe('AC-WEBCHAT-002 message structure, bot colours, decoration hook', () => {
+  it('builds the documented message structure and colours bots apart', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [
+        msg({ id: 1, author_type: 'user', author_name: 'jw', body: '사람' }),
+        msg({ id: 2, author_type: 'bot', author_bot_id: 1, author_name: 'pm', body: '봇1' }),
+        msg({ id: 3, author_type: 'bot', author_bot_id: 2, author_name: 'qa', body: '봇2' }),
+        msg({ id: 4, author_type: 'system', author_name: '시스템', body: '🔒 승인 요청' }),
+      ] },
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    expect($$('#messages .message.user').length).toBe(1)
+    expect($$('#messages .message.bot').length).toBe(2)
+    expect($$('#messages .message.system').length).toBe(1)
+
+    // 구조: .message > .msg-head > (strong + span), .message > .msg-body
+    const first = document.querySelector('#messages .message') as HTMLElement
+    expect(first.querySelector('.msg-head > strong')!.textContent).toBe('jw')
+    expect(first.querySelector('.msg-head > span')!.textContent).toContain('2026-08-27')
+    expect(first.querySelector('.msg-body')!.textContent).toBe('사람')
+
+    // 봇 이름 색은 author_bot_id 로 순환 배정된다 (bot-color-1..5)
+    const names = $$('#messages .message.bot .msg-head > strong').map(n => (n as HTMLElement).className)
+    expect(names[0]).toMatch(/\bbot-color-[1-5]\b/)
+    expect(names[1]).toMatch(/\bbot-color-[1-5]\b/)
+    expect(names[0]).not.toBe(names[1])   // 서로 다른 봇은 서로 다른 색
+  })
+
+  it('calls the registered decoration hook once per message, before append', async () => {
+    // SPEC-WEBRICH-001 의 createRichContext({ api, doc }) 자리에 세우는 대역.
+    // 팩토리가 방마다 새로 불리는지, decorate 가 (el, m) 로 정확히 한 번 불리는지를 본다.
+    const seen: { el: Element; m: { id: number }; attachedWhenCalled: boolean }[] = []
+    let factoryCalls = 0
+    const factory = (deps: { api: unknown; doc: Document }) => {
+      factoryCalls++
+      expect(typeof deps.api).toBe('function')     // api 래퍼를 넘겨받는다
+      expect(deps.doc).toBe(document)
+      return {
+        decorate(el: Element, m: { id: number }) {
+          // 호출 시점에 요소는 아직 #messages 에 붙어 있지 않아야 한다
+          seen.push({ el, m, attachedWhenCalled: !!el.parentElement })
+          el.appendChild(document.createElement('figure'))   // 훅은 자손을 더할 수 있다
+        },
+      }
+    }
+
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, body: '가' }), msg({ id: 2, body: '나' })] },
+    }), { decorator: factory })
+
+    await app.openRoom(1)
+    await flush()
+
+    expect(factoryCalls).toBe(1)                       // 방을 열 때 컨텍스트를 만든다
+    expect(seen.length).toBe(2)                        // 과거 메시지 둘 → 정확히 두 번
+    expect(seen.map(s => s.m.id)).toEqual([1, 2])      // 인자 m 은 서버 페이로드 원본
+    expect(seen.every(s => s.attachedWhenCalled === false)).toBe(true)  // 붙이기 '직전'
+    expect(seen[0].el.classList.contains('message')).toBe(true)         // 인자 el 은 메시지 요소
+    // 훅이 더한 자손이 화면에 남는다 — 훅을 부르고 나서 버리는 구현을 배제한다
+    expect($$('#messages .message > figure').length).toBe(2)
+    // 구조 세 요소는 훅이 있어도 그대로다
+    expect($$('#messages .message > .msg-head > strong').length).toBe(2)
+    expect($$('#messages .message > .msg-body').length).toBe(2)
+
+    // SSE 로 온 메시지도 같은 경로를 지난다 — 과거 렌더에만 훅을 붙인 구현을 배제한다
+    FakeEventSource.last().emit('message', msg({ id: 3, body: '다' }))
+    await flush()
+    expect(seen.map(s => s.m.id)).toEqual([1, 2, 3])
+
+    // 방을 다시 열면 컨텍스트가 새로 만들어진다 (방 국소 상태가 넘어가지 않는다)
+    await app.openRoom(2)
+    await flush()
+    expect(factoryCalls).toBe(2)
+  })
+
+  it('renders normally when no decoration hook is registered', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, body: '훅 없음' })] },
+    }))   // 등록하지 않는다
+    await app.openRoom(1)
+    await flush()
+
+    expect($$('#messages .message').length).toBe(1)
+    expect(document.querySelector('#messages .msg-body')!.textContent).toBe('훅 없음')
+  })
+})
+
+// ── AC-WEBCHAT-003 — 사용자·봇 문자열이 마크업으로 해석되지 않는다 ────
+describe('AC-WEBCHAT-003 no markup interpretation', () => {
+  it('never interprets message or bot text as markup', async () => {
+    const evil = '<img src=x onerror="window.__pwned=1"><b>굵게</b>'
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, body: evil, author_name: evil })] },
+      '/api/rooms/1/invites': [{ bot_id: 1, bot_name: '<script>window.__pwned=1</script>', online: true }],
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    // 이 단언은 '첨부가 없는 메시지'(msg() 기본값 attachments: [])에 대한 것이다.
+    // 첨부가 있으면 <img> 를 만드는 것이 SPEC-WEBRICH-001 의 옳은 동작이며, 이 테스트는 그 입력을 주지 않는다.
+    expect(document.querySelectorAll('#messages img').length).toBe(0)
+    expect(document.querySelectorAll('#messages b').length).toBe(0)
+    expect(document.querySelectorAll('#room-bots script').length).toBe(0)
+    expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined()
+
+    // 텍스트로는 그대로 보인다 — 삼켜 버리는 구현도 통과하면 안 된다
+    expect(document.querySelector('#messages .msg-body')!.textContent).toBe(evil)
+    expect(el('room-bots').textContent).toContain('<script>')
+  })
+})
+
+// ── AC-WEBCHAT-004 — SSE 로 온 메시지가 화면에 붙는다 ────────────────
+describe('AC-WEBCHAT-004 live message reception', () => {
+  it('appends messages arriving over the event stream', async () => {
+    const app = await loadApp(baseHandler({ '/api/rooms/1/messages': { messages: [msg({ id: 1, body: '과거' })] } }))
+    await app.openRoom(1)
+    await flush()
+    expect($$('#messages .message').length).toBe(1)
+
+    const es = FakeEventSource.last()
+    expect(es.url).toBe('/api/rooms/1/events')
+
+    es.emit('message', msg({ id: 2, author_type: 'bot', author_bot_id: 1, author_name: 'pm', body: '실시간' }))
+    await flush()
+
+    expect($$('#messages .message').length).toBe(2)
+    expect(document.querySelectorAll('#messages .msg-body')[1].textContent).toBe('실시간')
+  })
+})
+
+// ── AC-WEBCHAT-005 — 봇 상태가 칩에 반영된다 ────────────────────────
+describe('AC-WEBCHAT-005 bot_status on chips', () => {
+  it('reflects bot_status on the bot chip', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/invites': [{ bot_id: 3, bot_name: 'pm', online: true }],
+    }))
+    await app.openRoom(1)
+    await flush()
+    expect(el('room-bots').textContent).toContain('pm')
+    expect(el('room-bots').textContent).not.toContain('입력 중')
+
+    FakeEventSource.last().emit('bot_status', { bot_id: 3, state: 'working' })
+    await flush()
+    expect(el('room-bots').textContent).toContain('입력 중')
+
+    FakeEventSource.last().emit('bot_status', { bot_id: 3, state: 'idle' })
+    await flush()
+    expect(el('room-bots').textContent).not.toContain('입력 중')
+  })
+})
+
+// ── AC-WEBCHAT-006 — 5분 무응답이 가짜 타이머로 관측된다 ─────────────
+describe('AC-WEBCHAT-006 stale after five minutes', () => {
+  it('marks a bot stale after five minutes without idle', async () => {
+    vi.useFakeTimers()
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/invites': [{ bot_id: 3, bot_name: 'pm', online: true }],
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    FakeEventSource.last().emit('bot_status', { bot_id: 3, state: 'working' })
+    await flush()
+    expect(el('room-bots').textContent).toContain('입력 중')
+    expect(el('room-bots').textContent).not.toContain('응답 없음')
+
+    await vi.advanceTimersByTimeAsync(5 * 60_000)
+    await flush()
+    expect(el('room-bots').textContent).toContain('응답 없음')
+
+    FakeEventSource.last().emit('bot_status', { bot_id: 3, state: 'idle' })
+    await flush()
+    expect(el('room-bots').textContent).not.toContain('응답 없음')
+    expect(el('room-bots').textContent).not.toContain('입력 중')
+  })
+})
+
+// ── AC-WEBCHAT-007 — 방을 떠나면 타이머와 스트림이 실제로 정리된다 ───
+describe('AC-WEBCHAT-007 cleanup on room switch', () => {
+  it('clears pending timers and closes the previous stream on room switch', async () => {
+    vi.useFakeTimers()
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/invites': [{ bot_id: 3, bot_name: 'pm', online: true }],
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    FakeEventSource.last().emit('bot_status', { bot_id: 3, state: 'working' })
+    await flush()
+    // 먼저 '걸렸다'를 관측한다 — 이 단언이 없으면 타이머를 아예 안 거는 구현이 통과한다
+    expect(vi.getTimerCount()).toBeGreaterThanOrEqual(1)
+
+    const first = FakeEventSource.last()
+    await app.openRoom(2)
+    await flush()
+
+    expect(vi.getTimerCount()).toBe(0)
+    expect(first.closed).toBe(true)
+    expect(FakeEventSource.instances.length).toBe(2)
+    expect(FakeEventSource.last().url).toBe('/api/rooms/2/events')
+  })
+})
+
+// ── AC-WEBCHAT-008 — 재연결 뒤 놓친 메시지를 커서로 채운다 ───────────
+describe('AC-WEBCHAT-008 reconnect backfill', () => {
+  it('backfills missed messages with the after cursor on reconnect', async () => {
+    const app = await loadApp(url => {
+      if (url === '/api/rooms/1/messages') return { data: { messages: [msg({ id: 10, body: '과거' })] } }
+      if (url === '/api/rooms/1/messages?after=11') return { data: { messages: [msg({ id: 12, body: '놓친 것' })] } }
+      if (url.includes('/invites')) return { data: [] }
+      if (url.startsWith('/api/rooms')) return { data: { active: [{ id: 1, name: '방1' }], archived: [] } }
+      return { data: {} }
+    })
+    await app.openRoom(1)
+    await flush()
+
+    const es = FakeEventSource.last()
+    es.emit('message', msg({ id: 11, body: '실시간' }))
+    await flush()
+    expect($$('#messages .message').length).toBe(2)
+
+    es.fail()
+    es.reopen()
+    await flush()
+
+    expect(calls.some(c => c.url === '/api/rooms/1/messages?after=11')).toBe(true)
+    const bodies = $$('#messages .msg-body').map(n => n.textContent)
+    expect(bodies).toEqual(['과거', '실시간', '놓친 것'])   // 중복 없이 정확히 셋
+  })
 })
