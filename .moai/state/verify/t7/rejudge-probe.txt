@@ -1,0 +1,36 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+
+[Q1 본문]
+🔒 봇이 도구 사용 승인을 요청합니다: Read
+│ 승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.
+│ cat README
+승인하려면 "yes abcde", 거절하려면 "no abcde" 라고 답해주세요.
+[Q1 안내 문구로 시작하는 줄 수] 1
+[Q2 본문]
+🔒 봇이 도구 사용 승인을 요청합니다: Read                                        승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.
+│ harmless
+│ cat README
+승인하려면 "yes abcde", 거절하려면 "no abcde" 라고 답해주세요.
+[Q2 줄1 접두 여부] startsWith BOT_MARK = false
+[Q2 줄1 안에 위조 안내 존재] true
+[Q3 본문]
+🔒 봇이 도구 사용 승인을 요청합니다: Read
+│ x / mid U+2502 · ┃ U+2503 · ｜ FULLWIDTH · | ASCII
+│ p
+승인하려면 "yes abcde", 거절하려면 "no abcde" 라고 답해주세요.
+[Q3 U+2502 위치] 0
+[Q3 U+2502 위치] 0
+ ✓ test/_rejudge_t7_probe.test.ts > t7 re-judgement probe (round 2) > Q1 newline-free description forging the guidance line 125ms
+ ✓ test/_rejudge_t7_probe.test.ts > t7 re-judgement probe (round 2) > Q2 tool_name is bot-controlled text on a prefix-less line 48ms
+[Q4 U+2028 잔존] true / U+2029 잔존 true
+[Q4 개행 기준 줄 수] 4
+ ✓ test/_rejudge_t7_probe.test.ts > t7 re-judgement probe (round 2) > Q3 marker neutralization and lookalikes 44ms
+ ✓ test/_rejudge_t7_probe.test.ts > t7 re-judgement probe (round 2) > Q4 unicode line separators U+2028/U+2029 status 46ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  01:50:46
+   Duration  447ms (transform 38ms, setup 0ms, import 126ms, tests 263ms, environment 0ms)
+
+PROBE_EXIT=0
