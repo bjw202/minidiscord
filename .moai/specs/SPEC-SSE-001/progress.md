@@ -378,6 +378,9 @@ commits:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+> 이 절은 최초 마감 시점의 기록이다. 그 뒤 sync-audit 이 FAIL 을 내 마감이 되돌려졌고,
+> 수정 3라운드와 감사 3회를 거쳐 §E.7 에서 다시 닫혔다. **현재 유효한 판정은 §E.7 이다.**
+
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-27
@@ -391,6 +394,12 @@ sync_session: 9d51afd1-8226-4e22-946e-2ed4574a878e
 lens: "--security --deep"
 docs_updated: [README.md, CHANGELOG.md]
 status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+# --- 아래 4줄은 3차 감사 PASS 후 갱신 (§E.7). 위 sync_commit_sha 는 최초 마감 커밋이며,
+# 그 마감은 sync-audit FAIL 로 되돌려졌다가 이 재마감으로 다시 닫혔다.
+revalidated_at_head: "<재마감 커밋 직후 백필>"
+revalidated_verdict: "PASS — .moai/reports/t3/sync-audit-3.md (기준 HEAD 8c15698)"
+revalidated_tests: "104 passed / 104, exit 0 · typecheck exit 0 (sync 세션 직접 실행)"
+revalidated_evidence: .moai/state/verify/9d51afd1/test-final.txt · typecheck-final.txt
 ```
 
 ### Claim (주장)
@@ -562,3 +571,89 @@ AssertionError: expected { id: 1, filename: '첨부.txt', …(1) } to not have p
 - **비차단 F-04..F-11** — 리드가 F-04·F-05 를 별도 백로그 카드로 적립했고 나머지는 그대로다.
 - **세 번째 재감사를 받지 않았다.** 이 절을 쓰는 시점의 최신 판정은 CONDITIONAL PASS 이며,
   그 판정이 관측한 트리에는 위 5건의 수정이 아직 들어 있지 않다.
+
+---
+
+## §E.7 Third-Audit Response — 3차 감사 PASS 및 잔여 처리
+
+3차 감사(`.moai/reports/t3/sync-audit-3.md`, 기준 HEAD `8c15698`)가 **PASS** 를 냈다.
+차단 findings 잔여 0건 — Functionality 82 / Security 84 / Craft 78 / Consistency 78 (임계 70·70·60·60).
+감사 3회의 궤적: FAIL 66.8 (`eaebe1e`) → CONDITIONAL PASS 74.8 (`2a3c0fc`) → **PASS** (`8c15698`).
+
+직전 findings 전원 처리 결과 (전부 3차 감사가 이번 트리에서 관측):
+
+| ID | 3차 판정 | 근거 |
+|----|----------|------|
+| F-01 봇 첨부 임의 파일 읽기 | **CLOSED (무조건)** | 검사식 8경우 프로브 전원 fail-closed |
+| F-02 `stored_path` 노출 | **CLOSED** | 실제 HTTP 소켓에 도착한 SSE 프레임 원문 관측 — `{id, filename}` 만 |
+| F-03 `0.0.0.0` 바인드 | **CLOSED** | 실행 관측 `minidiscord listening on 127.0.0.1:4321` |
+| N-01 SSE 경로 노출 | **CLOSED** | 위 프레임 관측 + 변이 검증 |
+| N-02 심볼릭 링크 우회 | **CLOSED** | 8경우 프로브 |
+| N-03 조용한 fail-closed | **CLOSED** | 출하 경로에서 경고 실제 출력 확인 |
+| N-04 SPEC-CORE-001 `0.0.0.0` | **CLOSED** | 리드가 `b2d4b4a` 로 REQ-CORE-010 개정 (+ `8c15698` REQ-CORE-005 정렬) |
+| N-05 README 문장 | **CLOSED (거의)** | N-07 만큼만 여전히 넓음 |
+| N-06 `.moai` 잔여물 추적 | **CLOSED** | `.gitignore` 규칙 실동작 확인 |
+
+### 이 라운드에서 닫은 것 — N-08 (Medium)
+
+감사가 변이 검증으로 **출하 기본값 세 가지에 회귀 테스트가 없다**는 것을 드러냈다. 되돌려도
+102개가 전부 초록이었다 — 앞선 두 감사가 "출하 기본 경로에서는 도달 불가능"을 근거로 잔여 위험을
+낮게 매겼는데, **그 근거 자체를 지키는 테스트가 없었다.**
+
+테스트 3건 추가 (102 → 104; `config.test.ts` 는 기존 두 케이스에 단언을 얹어 건수가 늘지 않는다):
+
+- `config.test.ts` — `config.host` 기본 `127.0.0.1` · `config.botFilesDir` 기본 `undefined`,
+  그리고 `MINIDISCORD_HOST` / `MINIDISCORD_BOT_FILES_DIR` 재정의 관측 (기존 `vi.resetModules()` 패턴)
+- `AC-GW-025` — `botFilesDir` 미설정이면 뿌리 안의 정상 파일도 첨부되지 않는다 (본문은 저장됨)
+- `AC-GW-026` — 허용 뿌리와 문자열 접두사가 겹치는 **형제 디렉터리**(`<root>evil`)는 거부된다.
+  `gateway.ts` 주석이 방어한다고 적어 둔 `+ sep` 를 실제로 고정한다
+
+세 건 모두 **변이 검증으로 분별력을 확인했다** — 구현을 하나씩 되돌려 정확히 해당 테스트 하나만 운다.
+
+```
+# 변이 A — 기본 호스트를 0.0.0.0 으로 되돌림
+AssertionError: expected '0.0.0.0' to be '127.0.0.1'
+      Tests  1 failed | 103 passed (104)
+
+# 변이 B — botFilesDir 미설정 시 fail-open 으로 되돌림
+AssertionError: expected { c: 1 } to deeply equal { c: +0 }
+      Tests  1 failed | 103 passed (104)
+
+# 변이 C — `+ sep` 제거 (형제 접두사 통과)
+AssertionError: expected [ 'secret.txt', '진짜뿌리안.txt' ] to deeply equal [ '진짜뿌리안.txt' ]
+      Tests  1 failed | 103 passed (104)
+```
+
+### 최종 재실행 결과
+
+```
+$ unset MOAI_KANBAN … && npm test -w server -- --run
+      Tests  104 passed (104)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+증거 원문: `.moai/state/verify/9d51afd1/test-final.txt`, `typecheck-final.txt`.
+
+### 이 라운드에서 닫지 않은 것
+
+- **N-07 (Low)** — 첨부 행은 있고 디스크의 파일이 없을 때 `GET /api/attachments/:id` 의 500 본문에
+  `stored_path` 가 실린다(감사자 재현). **후속 카드로 넘긴다** — 운영자 결정. 원격 공격자가
+  유발할 수 없는 경로이나, 새는 정보는 F-02 와 같은 종류이고 받는 사람도 같다.
+  닫는 값은 `existsSync` 한 줄 + 테스트 1건.
+- **N-09 (Low)** — `SPEC-CORE-001` AC-CORE-012(`ls server/src` → 정확히 3파일)가 현재 트리에서
+  실패한다(파일 11개). 시점 한정이 없는 AC 의 문제이며 **SPEC 소유권상 리드 판정 사항**이다.
+- **F-04..F-08 (비차단)** — 심각도 변화 없음. F-04·F-05 는 리드가 백로그 카드로 적립.
+- **F-09 재발** — §E.6 의 RED 블록도 `-t` 로 필터링한 실행 결과인데 발췌라고 밝히지 않았다.
+  이 §E.7 의 변이 검증 블록 세 개도 전체 실행 결과이며 `Tests` 줄만 인용한 발췌다 — 밝혀 둔다.
+
+### 이 카드가 남긴 방법론
+
+같은 결함 부류가 이 카드에서 **세 번** 나왔고, 세 번 다 "훑었다"고 믿은 뒤에 나왔다.
+1차는 한 파일의 출구만, 2차는 두 파일의 정상 출구까지, 3차는 **오류 출구**(N-07).
+열거로는 매번 한 칸씩 모자랐고, 실제로 부류를 닫은 것은 **변이 검증** 이었다 —
+테스트를 읽는 대신 구현을 되돌려 테스트가 우는지 보는 것.
+물어야 할 질문은 "이 값을 읽는 자리가 어디인가"가 아니라 **"이 값이 어떤 봉투에 담겨 나갈 수 있는가"** 다.

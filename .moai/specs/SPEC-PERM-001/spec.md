@@ -2,7 +2,7 @@
 id: SPEC-PERM-001
 title: "minidiscord 권한 릴레이 — 봇의 도구 승인 요청을 사람에게 중계하고 판정을 되돌린다"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec

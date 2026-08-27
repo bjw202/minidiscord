@@ -2,7 +2,7 @@
 id: SPEC-MSG-001
 title: "minidiscord 메시지 API — multipart 전송·멘션 팬아웃·목록 커서·첨부 다운로드"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
