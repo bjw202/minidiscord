@@ -25,6 +25,7 @@ function startServer(): FakeServer {
   const messages: any[] = []
   const sockets: WebSocket[] = []
   const handlers: ((ws: WebSocket, msg: any) => void)[] = []
+  let lastUrl = ''
   wss.on('connection', ws => {
     sockets.push(ws)
     ws.on('message', d => {
@@ -36,7 +37,14 @@ function startServer(): FakeServer {
   const srv: FakeServer = {
     wss, messages, sockets,
     on(handler) { handlers.push(handler) },
-    url: () => `ws://127.0.0.1:${(wss.address() as AddressInfo).port}/bot`,
+    // address() 는 리스닝 전·close 후에 null 을 내므로 마지막 유효 주소를 돌려준다 —
+    // null.port 로 예외가 나면 클라이언트의 재시도 루프가 죽어 AC-CHANCLIENT-013 이
+    // 백오프 리셋이 아니라 하네스 결함으로 실패한다 (plan.md §H: 원인 규명 후 기록).
+    url: () => {
+      const addr = wss.address()
+      if (addr) lastUrl = `ws://127.0.0.1:${(addr as AddressInfo).port}/bot`
+      return lastUrl
+    },
   }
   cleanups.push(() => stopServer(srv))
   return srv
@@ -170,5 +178,160 @@ describe('gateway client', () => {
     client.stop()
     await waitFor(() => srv.sockets[0].readyState === WebSocket.CLOSED)
     expect(client.send({ type: 'too_late' })).toBe(false)
+  })
+
+  // AC-CHANCLIENT-007 — 이력 요청 프레임이 다섯 파라미터를 그대로 싣는다
+  it('puts every history parameter on the frame top level, since_id included', async () => {
+    const srv = startServer()
+    const { client } = await connected(srv)
+    const p = client.requestHistory({ since_id: 41, since: '2026-08-01', until: '2026-08-02', speaker: 'alice', limit: 5 })
+    await waitFor(() => srv.messages.some(m => m.type === 'history_request'))
+
+    const frame = srv.messages.find(m => m.type === 'history_request')!
+    expect(typeof frame.rid).toBe('string')
+    expect(frame.rid.length).toBeGreaterThan(0)
+    const { rid, ...rest } = frame
+    expect(rest).toEqual({
+      type: 'history_request',
+      since_id: 41, since: '2026-08-01', until: '2026-08-02', speaker: 'alice', limit: 5,
+    })
+
+    srv.sockets[0].send(JSON.stringify({ type: 'history_response', rid, messages: [] }))
+    await p                                       // 남은 약속을 정리한다 (열린 타이머를 남기지 않는다)
+  })
+
+  // AC-CHANCLIENT-008 — rid 로 맞추고, 도착 순서로 맞추지 않는다
+  it('matches responses by rid, not by arrival order', async () => {
+    const srv = startServer()
+    const { client } = await connected(srv)
+    const rids: string[] = []
+    srv.on((_ws, m) => { if (m.type === 'history_request') rids.push(m.rid) })
+
+    const p1 = client.requestHistory({ limit: 1 })
+    const p2 = client.requestHistory({ limit: 2 })
+    await waitFor(() => rids.length === 2)
+    expect(rids[0]).not.toBe(rids[1])                       // 요청마다 다른 rid
+
+    const sock = srv.sockets[0]
+    sock.send(JSON.stringify({ type: 'history_response', rid: rids[1], messages: [{ id: 2 }] }))   // 역순
+    sock.send(JSON.stringify({ type: 'history_response', rid: rids[0], messages: [{ id: 1 }] }))
+
+    expect(await p1).toEqual({ type: 'history_response', rid: rids[0], messages: [{ id: 1 }] })
+    expect(await p2).toEqual({ type: 'history_response', rid: rids[1], messages: [{ id: 2 }] })
+  })
+
+  // AC-CHANCLIENT-009 — 10초에 정확히 끊는다
+  it('rejects a history request at 10 seconds, not before', async () => {
+    const srv = startServer()
+    const { client } = await connected(srv)            // 연결까지는 실제 타이머로 마친다
+    vi.useFakeTimers()                                  // 그 뒤에만 시간을 가짜로 바꾼다
+
+    const p = client.requestHistory({ limit: 1 })
+    let state: 'pending' | 'resolved' | 'rejected' = 'pending'
+    p.then(() => { state = 'resolved' }, () => { state = 'rejected' })
+
+    await vi.advanceTimersByTimeAsync(9_999)
+    expect(state).toBe('pending')                       // 9,999ms 에는 아직 살아 있다
+    await vi.advanceTimersByTimeAsync(1)
+    expect(state).toBe('rejected')                      // 10,000ms 에 끊긴다
+    await expect(p).rejects.toThrow()
+  })
+
+  // AC-CHANCLIENT-010 — 연결이 없으면 즉시 실패하고 흔적을 남기지 않는다
+  it('fails a history request immediately when not connected, and recovers after connecting', async () => {
+    const srv = startServer()
+    const client = createGatewayClient({ url: () => srv.url(), token: 'tok123', sleep: async () => {} })
+    cleanups.push(() => client.stop())
+
+    await expect(client.requestHistory({ limit: 1 })).rejects.toThrow()
+    expect(srv.messages.length).toBe(0)                 // 아무 프레임도 나가지 않았다
+
+    srv.on((ws, m) => {
+      if (m.type === 'history_request') ws.send(JSON.stringify({ type: 'history_response', rid: m.rid, messages: [] }))
+    })
+    client.start()
+    await waitFor(() => srv.messages.some(m => m.type === 'hello'))
+    expect(await client.requestHistory({ limit: 1 })).toEqual(
+      expect.objectContaining({ type: 'history_response', messages: [] }),
+    )
+  })
+
+  // AC-CHANCLIENT-011 — 끊기면 대기 후 새 주소로 다시 붙는다
+  it('waits then reconnects to the replaced opts.url and says hello again', async () => {
+    const srv1 = startServer()
+    const { client, sleeps } = await connected(srv1)
+
+    const srv2 = startServer()                          // 새 포트에 두 번째 서버
+    client.opts.url = srv2.url()                        // 문자열 형태로 교체 (원본 계약의 노출 경로)
+    await stopServer(srv1)                              // 연결이 끊긴다
+
+    await waitFor(() => srv2.messages.some(m => m.type === 'hello'))
+    expect(sleeps[0]).toBe(1000)                        // 즉시 재시도가 아니라 1초를 기다렸다
+    expect(srv2.messages[0]).toEqual({ type: 'hello', token: 'tok123' })
+  })
+
+  // AC-CHANCLIENT-012 — 백오프가 두 배씩 늘고 상한에서 멈춘다
+  it('doubles the backoff and never exceeds the ceiling', async () => {
+    const url = await deadUrl()
+
+    const sleepsA: number[] = []
+    const a = createGatewayClient({
+      url, token: 't', sleep: async ms => { sleepsA.push(ms); await new Promise(r => setTimeout(r, 1)) },
+    })
+    cleanups.push(() => a.stop())
+    a.start()
+    await waitFor(() => sleepsA.length >= 8)
+    expect(sleepsA.slice(0, 8)).toEqual([1000, 2000, 4000, 8000, 16000, 30000, 30000, 30000])
+
+    const sleepsB: number[] = []
+    const b = createGatewayClient({
+      url, token: 't', maxBackoffMs: 2500,
+      sleep: async ms => { sleepsB.push(ms); await new Promise(r => setTimeout(r, 1)) },
+    })
+    cleanups.push(() => b.stop())
+    b.start()
+    await waitFor(() => sleepsB.length >= 4)
+    expect(sleepsB.slice(0, 4)).toEqual([1000, 2000, 2500, 2500])
+  })
+
+  // AC-CHANCLIENT-013 — 연결에 성공하면 백오프가 처음으로 돌아간다
+  it('resets the backoff to 1000 after a successful connection', async () => {
+    let current = startServer()
+    const sleeps: number[] = []
+    const client = createGatewayClient({
+      url: () => current.url(),                          // 함수 형태 — 시도할 때마다 다시 평가된다
+      token: 'tok123',
+      sleep: async ms => { sleeps.push(ms); await new Promise(r => setTimeout(r, 1)) },
+    })
+    cleanups.push(() => client.stop())
+    client.start()
+    await waitFor(() => current.messages.some(m => m.type === 'hello'))
+
+    await stopServer(current)                            // 1차 절단
+    await waitFor(() => sleeps.length >= 1)
+    expect(sleeps[0]).toBe(1000)
+
+    current = startServer()                              // 새 서버 — 재접속이 성공한다
+    await waitFor(() => current.messages.some(m => m.type === 'hello'))
+    const before = sleeps.length
+
+    await stopServer(current)                            // 2차 절단
+    await waitFor(() => sleeps.length > before)
+    expect(sleeps[before]).toBe(1000)                    // 이어서 자란 값이 아니라 처음 값
+  })
+
+  // AC-CHANCLIENT-014 — stop() 뒤에는 다시 붙지 않는다 (부정 사례)
+  it('never reconnects after stop() — measured against a live control client', async () => {
+    const srv = startServer()
+    const stopped = await connected(srv)
+    const control = await connected(srv)                 // 대조군: 멈추지 않는다
+    await waitFor(() => srv.sockets.length === 2)
+
+    stopped.client.stop()
+    await stopServer(srv)                                // 두 클라이언트 모두 소켓이 끊긴다
+
+    await waitFor(() => control.sleeps.length >= 1)      // 대조군이 재접속 대기에 들어간 시점이 기준선
+    expect(stopped.sleeps).toEqual([])                   // 멈춘 쪽은 대기조차 하지 않았다
+    expect(stopped.client.send({ type: 'anything' })).toBe(false)
   })
 })
