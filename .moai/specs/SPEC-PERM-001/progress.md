@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t3` |
 | 선행 SPEC | `SPEC-CORE-001` → `SPEC-AUTH-001` → `SPEC-SSE-001` → `SPEC-GATEWAY-001` → (메시지 라우트) |
 | 실행 순서 | 카드 `t3` 의 SPEC 중 **마지막** |
-| 현재 상태 | `in-progress` — run 단계 (M1 완료) |
+| 현재 상태 | `in-progress` — run 단계 완료 (§E.2 증거·§E.3 audit-ready) |
 
 ---
 
@@ -120,13 +120,200 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_&lt;pending run-phase&gt;_
+실행 환경: 워크트리 `.claude/worktrees/t3`, 브랜치 `WT-msg-gateway-relay`. 기준점(`spec_base_sha`) = `398b584fb763cce25c5f92802993c425c994484e` (M1 단계 0 에 `.spec-base-sha` 로 기록).
+
+**시작 baseline (398b584, 직접 실행 확인):**
+
+```
+$ npm test -w server -- --run
+ Test Files  9 passed (9)
+      Tests  83 passed (83)
+```
+
+테스트 하네스와 시나리오 본문은 `acceptance.md` 를 그대로 옮겼다 — `setCookieOf` 헬퍼(R-1 교정), `cleanups` 일괄 정리(MF-5), `reply.hijack()` 선행(MF-3), `app.decorate('permissions', broker)`(plan.md §D 1번), `readFrame` 두 번 호출 순서(MF-1)까지 글자 단위로 지켰다. 구현은 `server/src/permissions.ts` (신규)·`server/src/routes-messages.ts` (가로채기 한 갈래)·`server/src/index.ts` (배선 세 줄) 정확히 세 파일이다.
+
+### RED → GREEN 전이 증거 (AC-PERM-014)
+
+**전이 1 — M1 RED (permissions.test.ts 하네스+M1 3건 작성 직후, 커밋 전):**
+
+```
+$ npm test -w server
+ ❯ test/permissions.test.ts (0 test)
+⎯⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯
+ FAIL  test/permissions.test.ts [ test/permissions.test.ts ]
+Error: Cannot find module '../src/permissions.js' imported from /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t3/server/test/permissions.test.ts
+ ❯ test/permissions.test.ts:15:1
+     13| import { createSseHub } from '../src/sse.js'
+     14| import { createGateway } from '../src/gateway.js'
+     15| import { createPermissionBroker } from '../src/permissions.js'
+       | ^
+ Test Files  1 failed | 9 passed (10)
+      Tests  83 passed (83)
+```
+
+사유가 출력에서 확인된다: `../src/permissions.js` 모듈 부재. npm 종료 코드 1.
+
+**전이 2 — M1 GREEN (`permissions.ts` onGatewayRequest + `index.ts` 배선 후, 커밋 `d60bffb`):**
+
+```
+$ npm test -w server -- --run
+ Test Files  10 passed (10)
+      Tests  86 passed (86)
+
+$ npm run typecheck -w server
+> tsc --noEmit
+typecheck exit: 0
+```
+
+과정 기록: 첫 typecheck 시도는 `src/permissions.ts(27,38): error TS2698: Spread types may only be created from object types.` 로 실패했다 — `db.prepare(...).get()` 의 반환형이 `unknown` 인데 스프레드했기 때문이다. 형제 파일들과 같은 캐스트(`as Record<string, unknown>`)로 고쳤고, M1 커밋 전에 위 GREEN·typecheck exit 0 을 확인했다.
+
+**전이 3 — M2 RED (판정 테스트 12건 추가 직후, 커밋 전 — 모듈 부재가 아닌 단언 실패):**
+
+```
+$ npm test -w server
+ ❯ test/permissions.test.ts (15 tests | 10 failed) 12898ms
+     × user yes reply sends verdict to the bot and is not stored as user message 53ms
+     × delivers an allow verdict to the connected bot 1552ms
+     × delivers a deny verdict as deny, not as allow 1563ms
+     × consumes the reply instead of storing it as a user message 57ms
+     × accepts a verdict once and lets a repeat fall through as chat 1548ms
+     × never resolves a request from a different room 3057ms
+     × refuses an unauthenticated verdict and leaves the request pending 3071ms
+     × falls through non-matching text and unknown ids without touching the pending request 1570ms
+     × marks an undelivered verdict differently from a delivered one 67ms
+     × accepts all four verdict words, normalizes case, and rejects ids containing l 47ms
+
+ FAIL  test/permissions.test.ts > permission relay > user yes reply sends verdict to the bot and is not stored as user message
+AssertionError: expected undefined to be 'permission' // Object.is equality
+ ❯ test/permissions.test.ts:165:36
+    164|     const res = await post(app, roomId, cookie, 'yes abcde')
+    165|     expect(res.json().consumed_by).toBe('permission')
+
+ FAIL  test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot
+AssertionError: expected null to deeply equal { type: 'permission_verdict', …(2) }
+ ❯ test/permissions.test.ts:191:24
+    191|     expect(await seen).toEqual({ type: 'permission_verdict', request_i…
+
+ FAIL  test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow
+AssertionError: expected null not to be null
+ ❯ test/permissions.test.ts:202:19
+
+ Test Files  1 failed | 9 passed (10)
+      Tests  10 failed | 88 passed (98)
+```
+
+실패 사유가 **단언 실패**임이 출력에서 확인된다 — `permissions.test.ts` 는 import 되어 15개 테스트로 실행됐고(모듈 부재가 아님), `expected undefined to be 'permission'` / `expected null to deeply equal` / `expected null not to be null` 이다. 이 시점의 `tryHandleUserReply` 는 M1 껍데기(항상 `false`)라 가로채기가 일어나지 않았다. 원본 회귀 방지선 두 개(`non-matching text…`·`yes with unknown id…`)가 이 RED 에서도 통과한 것은 MF-2 가 문서화한 대로다 — 그 둘의 기대값이 정상 경로 기본값과 같아서다. REQ-PERM-010 의 판정은 통과하지 못한 `falls through…` 테스트가 진다.
+
+**전이 4 — M2 GREEN (`tryHandleUserReply` 구현 + 라우트 가로채기 후, 커밋 `d11e53e`):**
+
+```
+$ npm test -w server -- --run
+ Test Files  10 passed (10)
+      Tests  98 passed (98)
+
+$ npm run typecheck -w server
+> tsc --noEmit
+typecheck exit: 0
+```
+
+### AC 매트릭스 (판정 시점 HEAD `d11e53e`, 명령 `npm test -w server -- --reporter=verbose` 원문 `✓` 줄)
+
+| AC | 판정 | 명령 | 관측된 원문 출력 |
+|----|------|------|-----------------|
+| AC-PERM-001 | PASS | `npm test -w server -- --reporter=verbose` | ` ✓ test/permissions.test.ts > permission relay > gateway request creates a system message in the room 124ms` |
+| AC-PERM-002 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > system message carries all four parts and both reply forms 49ms` |
+| AC-PERM-003 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > publishes the request to the room SSE stream 67ms` |
+| AC-PERM-004 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot 53ms` |
+| AC-PERM-005 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow 52ms` |
+| AC-PERM-006 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > consumes the reply instead of storing it as a user message 47ms` |
+| AC-PERM-007 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat 1547ms` |
+| AC-PERM-008 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > never resolves a request from a different room 1548ms` |
+| AC-PERM-009 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending 1560ms` |
+| AC-PERM-010 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request 1571ms` |
+| AC-PERM-011 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one 66ms` |
+| AC-PERM-012 | PASS | 〃 | ` ✓ test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l 47ms` |
+| AC-PERM-013 | PASS | 아래 네 명령 | 아래 "범위 경계 관측" 절의 원문 출력 |
+| AC-PERM-014 | PASS | 각 마일스톤 `npm test -w server -- --run` | 위 "RED → GREEN 전이 증거" 절의 원문 출력 4개 |
+
+전체 스위트 요약 (같은 실행, 원문):
+
+```
+ Test Files  10 passed (10)
+      Tests  98 passed (98)
+   Start at  10:43:40
+   Duration  7.12s (transform 605ms, setup 0ms, import 1.26s, tests 13.99s, environment 0ms)
+```
+
+`$ npm run typecheck -w server` → `typecheck exit: 0`.
+
+### 범위 경계 관측 (AC-PERM-013, 판정 시점 `d11e53e`)
+
+```
+$ git rev-parse --verify "$(cat .moai/specs/SPEC-PERM-001/.spec-base-sha)^{commit}"
+398b584fb763cce25c5f92802993c425c994484e
+exit: 0
+
+$ git diff --stat 398b584fb763cce25c5f92802993c425c994484e -- server/src/db.ts
+exit: 0        ← 출력 없음 (빈 출력 + 종료 코드 0 동시 성립)
+
+$ git diff --name-only 398b584fb763cce25c5f92802993c425c994484e -- server/src
+server/src/index.ts
+server/src/permissions.ts
+server/src/routes-messages.ts
+exit: 0
+```
+
+네 관측 전부 성립 — 기준 SHA 해석 exit 0, `db.ts` 불변(REQ-PERM-014), 변경 소스 정확히 세 줄이고 정렬 시 `index.ts`·`permissions.ts`·`routes-messages.ts` (REQ-PERM-013), 목록에 `gateway.ts`·`sse.ts`·`routes-rooms.ts`·`routes-bots.ts`·`mention.ts` 없음. 세 확인은 M2 커밋 전(작업 트리)과 후(`398b584…HEAD`) 양쪽에서 같은 결과를 냈다. 실행 참고: 워크트리 가드가 `git diff` 안의 `$(cat …)` 치환을 거부해 두·세 번째 명령은 `.spec-base-sha` 에 기록된 같은 값을 리터럴로 넣어 실행했다.
+
+품질 게이트 나머지: `git status --porcelain data/` → 빈 출력 (데이터 격리 성립).
+
+### Gaps (미검증 명시)
+
+- **엣지 케이스 "답과 함께 파일이 첨부된다" — 미검증.** 가로채기가 multipart 파싱 뒤라 파일은 이미 디스크에 저장된 상태로 소비되며, 그 첨부는 어느 메시지에도 붙지 않는다. `plan.md` §E 가 수용한 위험이고 어떤 AC 도 이 경로를 관측하지 않는다.
+- **엣지 케이스 "보관된 방에 온 답" — 이 SPEC 에서 미검증.** 라우트 소유 SPEC(`SPEC-MSG-001`)의 기존 동작에 맡긴다 — 실제 라우트는 방 검사에서 없는 방 404·보관 방 409 로 가르며(`routes-messages.ts` 구현 확인), 그 검사가 multipart 파싱이자 가로채기보다 앞이라 판정까지 오지 않는다. 이 경로의 테스트는 이 SPEC 의 파일에 없다.
+- **판정 결과 system 메시지의 SSE 발행 — 간접 관측만.** REQ-PERM-009 는 결과 메시지도 "SSE 로 발행"을 요구한다. 구현은 `postSystem` 이 요청·결과 양쪽을 같은 경로로 발행하지만, SSE 프레임을 직접 관측하는 AC 는 AC-PERM-003(요청 쪽)뿐이고 AC-PERM-011 은 DB 본문만 잰다. 결과 쪽 SSE 발행이 프레임으로 관측된 적은 없다.
+- **서버 재시작 후 답 — 문자 그대로의 재시작 테스트 없음.** `acceptance.md` 엣지 케이스 표가 규정한 대로 "모르는 ID 와 같은 경로"(AC-PERM-010)로 환산 관측했다. 대기 레지스트리가 프로세스 메모리 맵임은 구현에서 직접 확인된다.
+- **부정 관측의 1.5초 창.** `nextMessage → null` 단언(AC-PERM-007·008·009·010)은 1.5초 안에 오지 않았음을 잰다. `plan.md` §E 가 수용한 대로 타임아웃 직후 도착한 판정은 못 잡는다.
+- **원본 회귀 방지선 두 개의 RED 통과.** 전이 3 관측 경계에 적은 대로 `non-matching text…`·`yes with unknown id…` 는 M2 RED 에서도 통과했다(MF-2 가 문서화한 공허함). REQ-PERM-010 의 판정은 `falls through…` 테스트가 진다.
+- **네 개 범위 밖 항목(전용 엔드포인트·방 멤버십·타임아웃·연결 해제 정리)은 리드 판정 대기다.** `spec.md` §5 첫 절에 소유자와 함께 기록했고 만들지 않았다 — plan 단계(§E.1)에서 리드에 보고한 상태 그대로다.
+
+### Residual-risk (잔여 위험)
+
+- **대기 레지스트리 무한 증식.** 아무도 답하지 않은 요청이 프로세스 수명 동안 쌓인다. 단일 사용자·소수 봇 전제로 수용했다(REQ-PERM-003, plan.md §E).
+- **전송 실패 후 판정 소실.** 봇 오프라인 시 해제가 이미 일어났으므로 그 판정은 되돌릴 수 없다 — 세션 쪽 대화상자가 살아 있어 터미널 승인이 대체 경로다(plan.md §B·§D 3번).
+- **봇 재접속 시 놓친 요청 재전송 없음.** `spec.md` §5 가 명시 배제한 항목이다.
+- **`yes abcde` 에 파일을 함께 보내면 고아 파일이 디스크에 남는다.** 위 Gaps 첫 항목과 같은 사실의 디스크 쪽 면이다.
+- **같은 `request_id` 의 두 번째 승인 요청.** 게이트웨이가 같은 ID 를 다시 보내면 `open.set` 이 기존 항목을 덮어쓴다(값은 같은 (방,봇)이므로 무해하다). 다른 (방,봇) 이 같은 ID 를 쓰면 나중 등록이 이긴다 — 공식 ID 공간(5글자, l 제외)에서 우연 충돌은 가능하나 이 SPEC 의 AC 어디도 다루지 않는다.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_&lt;pending run-phase&gt;_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-27
+spec_id: SPEC-PERM-001
+card: t3
+tier: M
+cycle_type: tdd
+milestones: [M1, M2]
+spec_base_sha: 398b584fb763cce25c5f92802993c425c994484e
+m1_commit_sha: d60bffb44e33470a836df82912698b0f7dc0410a
+m2_commit_sha: d11e53e0deb37a66d3eaf9d739e25cdcb804c766
+run_head_at_signal: d11e53e0deb37a66d3eaf9d739e25cdcb804c766
+evidence: .moai/specs/SPEC-PERM-001/progress.md §E.2
+test_files_before: 9
+test_files_after: 10
+tests_before: 83
+tests_after: 98
+typecheck: "npm run typecheck -w server → exit 0"
+data_isolation: "git status --porcelain data/ → 빈 출력"
+boundary: "db.ts 불변 + 변경 소스 3파일 (index.ts·permissions.ts·routes-messages.ts)"
+ac_total: 14
+ac_pass: 14
+ac_fail: 0
+open_questions: 4   # 리드 판정 대기 — 전용 엔드포인트·멤버십·타임아웃·연결 해제 정리 (spec.md §5)
+```
 
 ---
 
