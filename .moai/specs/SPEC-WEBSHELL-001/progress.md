@@ -262,11 +262,81 @@ $ npm run typecheck -w server
 (web/app.js 는 타입 선언 없는 계약 파일, TS7016 실제 발생을 suppress)
 ```
 
+### M4 — 범위 경계 검증과 기록
+
+**AC-015 일곱 관측 (직접 실행, 기준 SHA `00202769b3731ea223d97c2c20e8068cd4d331cd`)**:
+
+```
+$ ls web
+app.js  design-tokens.css  index.html  style.css        ← 관측 1: 네 파일 전부 존재
+
+$ git rev-parse --verify "$(cat .moai/specs/SPEC-WEBSHELL-001/.spec-base-sha)^{commit}"
+00202769b3731ea223d97c2c20e8068cd4d331cd  (exit 0)      ← 관측 2: 기준 SHA 유효
+
+$ git diff --stat 0020276… -- server/src/db.ts
+(빈 출력, exit 0)                                       ← 관측 3: db.ts 불변
+
+$ git diff --name-only 0020276…
+.moai/specs/SPEC-WEBSHELL-001/.spec-base-sha            ← .moai/ 는 판정 제외
+.moai/specs/SPEC-WEBSHELL-001/progress.md
+.moai/specs/SPEC-WEBSHELL-001/spec.md
+package-lock.json                                       ← 허용 집합
+server/package.json                                     ← 허용 집합
+server/src/index.ts                                     ← 필수 ✓
+server/test/web-shell.test.ts                           ← 허용 집합
+web/app.js                                              ← 필수 ✓
+web/index.html                                          ← 필수 ✓
+web/style.css                                           ← 필수 ✓
+                                                        ← 관측 4: 필수 넷 포함 ∧ 허용 집합 이내,
+                                                           web/design-tokens.css diff 에 없음
+
+$ grep -c 'id="placeholder"' web/index.html
+1                                                       ← 관측 5: #placeholder 존재
+
+$ grep -c 'design-tokens.css' web/index.html
+0  (exit 1)                                             ← 관측 6: 토큰 문자열 부재
+
+$ sed -n '/^export const state = {/,/^}/p' web/app.js
+export const state = {
+  rooms: { active: [], archived: [] },
+  bots: [],
+  currentRoomId: null,
+}                                                       ← 관측 7: 필드 정확히 셋
+```
+
+**서버 기동 smoke test (보조 증거 — 실제 서버, 임시 포트 34571 + 임시 데이터 디렉터리)**:
+
+```
+$ MINIDISCORD_PORT=34571 npx tsx server/src/index.ts   (background)
+GET /               → 200 text/html; charset=utf-8
+GET /style.css      → 200 text/css; charset=utf-8
+GET /app.js         → 200 application/javascript; charset=utf-8
+GET /design-tokens.css → 200 text/css; charset=utf-8
+GET /api/health     → {"ok":true}
+```
+
+**AC-014 (시각 충실도) — MANUAL, 휴먼 판정 대기.** 관측 항목 여섯 개(사이드바가 채팅보다 어두운가 / 컬럼 2개 / light-on-dark / 카테고리 라벨 작은 대문자 흐린 텍스트 / 굵은 테두리·그림자 없음 / 방 이름 호버 시 밝아짐)와 다이얼로그 경로(새 방·새 봇 생성/취소)는 **브라우저에서 사람이 봐야 한다**. run 실행자(manager-develop)는 브라우저를 열지 않았으므로 여섯 항목을 예/아니오로 채우지 않는다 — 채우면 관측하지 않은 판정이 된다. 기계로 잴 수 있는 대리 물질(원시 색상 0건·토큰 60곳·레이아웃 토큰 사용)은 AC-005·style.css 가 이미 통과했다. **사람 확인 후 이 절에 항목별 판정을 덧붙인다.**
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-27
+spec_id: SPEC-WEBSHELL-001
+card: t5
+cycle_type: tdd
+milestones_completed: [M1, M2, M3, M4]
+run_commits: [be971c5, 50ccb50, af631d6]
+spec_base_sha: 00202769b3731ea223d97c2c20e8068cd4d331cd
+ac_mechanical_pass: 15/15        # AC-001..013, 015, 016 전부 기계 관측 통과
+ac_manual_deferred: 1            # AC-014 — 휴먼 브라우저 판정 대기 (위 §E.2 M4 기록)
+full_suite: "11 files / 116 tests passed (직접 실행)"
+typecheck: "exit 0 (직접 실행)"
+dom_env_path: docblock            # // @vitest-environment jsdom — vitest.config.ts 대안 미사용
+deferred_to_human: "AC-014 시각 관측 6개 항목 + 다이얼로그 경로 — 브라우저 확인 후 §E.2 M4 에 판정 기록"
+```
 
 ---
 
