@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t3` |
 | 선행 SPEC | `SPEC-CORE-001` → `SPEC-BOT-001` (카드 `t2`) → `SPEC-MENTION-001` → `SPEC-SSE-001` |
 | 실행 순서 | 카드 `t3` 의 세 SPEC 중 **세 번째(마지막)** |
-| 현재 상태 | `in-progress` — M1(접속·인증·재전송·deliver) 완료 |
+| 현재 상태 | `in-progress` — run 완료 (M1-M3, AC 20/20 PASS, §E.3 audit-ready) |
 
 ---
 
@@ -230,13 +230,194 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**기준과 커밋** — `spec_base_sha` `cb90fb3c80e33c25f5e8cf05d9f0a8ce8550350c` (진입 시점 HEAD, `.spec-base-sha` 에 기록). 구현 커밋 셋: `c28d9d3` (M1), `41e4188` (M2), `0a6e2d7` (M3). 최종 HEAD `0a6e2d7e325980b41c92bb35591e99f0fb9a4739`.
+
+**진입 baseline (cb90fb3 에서 직접 실행)**: `npm test -w server -- --run` → 종료 코드 0, `Test Files 7 passed (7)` / `Tests 52 passed (52)`. 기존 52 테스트는 전 과정에서 한 번도 깨지지 않았다 (각 단계 요약 참조).
+
+### RED → GREEN 전이 증거 (AC-GW-020)
+
+모든 명령은 `npm test -w server -- --run --reporter=verbose` 다.
+
+**전이 1 — M1 RED** (cb90fb3 + 테스트 파일 추가, 구현 없음). 종료 코드 1.
+
+```
+ FAIL  test/gateway.test.ts [ test/gateway.test.ts ]
+Error: Cannot find module '../src/gateway.js' imported from /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t3/server/test/gateway.test.ts
+ ❯ test/gateway.test.ts:11:1
+Serialized Error: { code: 'ERR_MODULE_NOT_FOUND' }
+
+ Test Files  1 failed | 7 passed (8)
+      Tests  52 passed (52)
+```
+
+원인이 `../src/gateway.js` 부재임이 출력에서 직접 확인된다.
+
+**전이 2 — M1 GREEN** (gateway.ts 작성 후). 종료 코드 0. 여섯 `✓` 줄 (아래 매트릭스 AC-GW-001~006 행과 같은 이름):
+
+```
+ ✓ test/gateway.test.ts > gateway > welcomes each token as its own (room, bot) and only on /bot 61ms
+ ✓ test/gateway.test.ts > gateway > rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames 9ms
+ ✓ test/gateway.test.ts > gateway > replays only missed messages targeted at that bot and advances the cursor 407ms
+ ✓ test/gateway.test.ts > gateway > never redelivers a message after reconnect 610ms
+ ✓ test/gateway.test.ts > gateway > deliver reaches only targeted bots in that room and moves only their cursor 812ms
+ ✓ test/gateway.test.ts > gateway > deliver carries per-bot delivery and the message attachments 7ms
+
+ Test Files  8 passed (8)
+      Tests  58 passed (58)
+```
+
+`npm run typecheck -w server` → 종료 코드 0. 커밋 `c28d9d3`.
+
+**전이 3 — M2 RED** (c28d9d3 + AC-GW-007~017 테스트 열한 개 추가, 핸들러 없음). 종료 코드 1. 열한 개 중 열 개 실패 — 원인은 전부 해당 핸들러 부재다:
+
+```
+ FAIL  test/gateway.test.ts > gateway > stores bot_message, copies files into uploadsDir and publishes to the hub
+TypeError: Cannot read properties of undefined (reading 'body')
+ ❯ test/gateway.test.ts:332:16
+
+ FAIL  test/gateway.test.ts > gateway > bot_message skips only the missing attachment
+TypeError: Cannot read properties of undefined (reading 'body')
+ ❯ test/gateway.test.ts:377:16
+
+ FAIL  test/gateway.test.ts > gateway > status publishes bot_status for working and idle only
+AssertionError: expected [] to deeply equal [ 'working', 'idle' ]
+
+ FAIL  test/gateway.test.ts > gateway > history_request returns the room messages in id order and echoes rid
+ FAIL  test/gateway.test.ts > gateway > history_request with since_id returns only later messages
+ FAIL  test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until
+ FAIL  test/gateway.test.ts > gateway > history_response carries id, author_name, body and created_at
+ FAIL  test/gateway.test.ts > gateway > history_response goes only to the requesting bot
+ FAIL  test/gateway.test.ts > gateway > closeRoom disconnects only that room
+Error: timeout waiting ws message
+ ❯ Timeout._onTimeout test/gateway.test.ts:97:14
+
+ FAIL  test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery
+AssertionError: expected [] to have a length of 1 but got +0
+```
+
+유일한 통과 `✓ isOnline follows the connection, per room and bot` — `isOnline` 은 plan.md §F M1 3단계 범위라 이미 구현돼 있었고, 그 테스트만 M2 배치에 속한다 (plan.md §F M1 은 테스트 여섯 개, M2 는 열한 개로 나눈다). `closeRoom` 테스트는 방 A 절반은 통과하지만 방 B 왕복(`history_request`)이 2000ms 시간 초과로 실패한다 — 원인은 역시 history 핸들러 부재다.
+
+**전이 4 — M2 GREEN 후 M3 배선까지**. M2 GREEN (핸들러 추가 후): 종료 코드 0, `Test Files 8 passed (8)` / `Tests 69 passed (69)`, typecheck 종료 코드 0, 커밋 `41e4188`. M3 RED (AC-GW-018 테스트 추가, 배선 없음): 종료 코드 1 —
+
+```
+ FAIL  test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag
+TypeError: Cannot read properties of undefined (reading 'deliver')
+ ❯ test/gateway.test.ts:644:21
+```
+
+`app.gateway` 부재가 직접 확인된다. M3 GREEN (index.ts·routes-bots.ts 배선 후): 종료 코드 0, `Test Files 8 passed (8)` / `Tests 70 passed (70)`, typecheck 종료 코드 0, 커밋 `0a6e2d7`.
+
+### AC 매트릭스 — 20행 전부 (최종 HEAD 0a6e2d7 에서)
+
+명령 (전 행 동일): `npm test -w server -- --run --reporter=verbose` → 종료 코드 0, `Test Files 8 passed (8)` / `Tests 70 passed (70)`. 행동 기준 18개의 근거는 이 실행의 `✓` 줄 원문이다.
+
+| AC | 상태 | 관측 근거 (✓ 줄 원문) |
+|----|------|----------------------|
+| AC-GW-001 | PASS | `✓ test/gateway.test.ts > gateway > welcomes each token as its own (room, bot) and only on /bot 54ms` |
+| AC-GW-002 | PASS | `✓ … > rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames 8ms` |
+| AC-GW-003 | PASS | `✓ … > replays only missed messages targeted at that bot and advances the cursor 407ms` |
+| AC-GW-004 | PASS | `✓ … > never redelivers a message after reconnect 607ms` |
+| AC-GW-005 | PASS | `✓ … > deliver reaches only targeted bots in that room and moves only their cursor 813ms` |
+| AC-GW-006 | PASS | `✓ … > deliver carries per-bot delivery and the message attachments 9ms` |
+| AC-GW-007 | PASS | `✓ … > stores bot_message, copies files into uploadsDir and publishes to the hub 310ms` |
+| AC-GW-008 | PASS | `✓ … > bot_message skips only the missing attachment 309ms` |
+| AC-GW-009 | PASS | `✓ … > status publishes bot_status for working and idle only 408ms` |
+| AC-GW-010 | PASS | `✓ … > isOnline follows the connection, per room and bot 108ms` |
+| AC-GW-011 | PASS | `✓ … > history_request returns the room messages in id order and echoes rid 9ms` |
+| AC-GW-012 | PASS | `✓ … > history_request with since_id returns only later messages 6ms` |
+| AC-GW-013 | PASS | `✓ … > history_request applies limit before since_id, speaker, since and until 7ms` |
+| AC-GW-014 | PASS | `✓ … > history_response carries id, author_name, body and created_at 8ms` |
+| AC-GW-015 | PASS | `✓ … > history_response goes only to the requesting bot 408ms` |
+| AC-GW-016 | PASS | `✓ … > closeRoom disconnects only that room 7ms` |
+| AC-GW-017 | PASS | `✓ … > relays permission_request to the handler and sendToBot reports delivery 813ms` |
+| AC-GW-018 | PASS | `✓ … > buildServer wires the gateway, archive hook and invite online flag 76ms` |
+| AC-GW-019 | PASS | 아래 네 명령 원문 출력 참조 |
+| AC-GW-020 | PASS | 위 "RED → GREEN 전이 증거" — 네 전이의 원문 출력 |
+
+`npm run typecheck -w server` (HEAD 0a6e2d7) → 종료 코드 0 (출력 없음).
+
+### AC-GW-019 범위 경계 — 네 관측의 원문 출력 (HEAD 0a6e2d7)
+
+```
+$ ls server/src
+auth.ts
+config.ts
+db.ts
+gateway.ts
+index.ts
+mention.ts
+routes-bots.ts
+routes-rooms.ts
+sse.ts
+```
+
+관측 1 성립 — `gateway.ts` 존재, 선행 SPEC 산출물 여섯(`auth.ts`·`config.ts`·`db.ts`·`index.ts`·`routes-bots.ts`·`routes-rooms.ts`) 그대로. `mention.ts`·`sse.ts` 는 형제 SPEC 산출물로 관측 대상 밖이다.
+
+```
+$ git rev-parse --verify "$(cat .moai/specs/SPEC-GATEWAY-001/.spec-base-sha)^{commit}"
+cb90fb3c80e33c25f5e8cf05d9f0a8ce8550350c
+EXIT: 0
+```
+
+관측 2 성립 — 종료 코드 0, 40자리 SHA 출력.
+
+```
+$ git diff --stat cb90fb3c80e33c25f5e8cf05d9f0a8ce8550350c -- server/src/db.ts
+EXIT: 0
+```
+
+관측 3 성립 — 종료 코드 0 **및 표준 출력 빈 출력** (`db.ts` 무변경, REQ-GW-023). 기준 SHA 확인을 먼저 통과했으므로 빈 출력이 통과로 성립한다.
+
+```
+$ git diff --name-only cb90fb3c80e33c25f5e8cf05d9f0a8ce8550350c -- server/src
+server/src/gateway.ts
+server/src/index.ts
+server/src/routes-bots.ts
+EXIT: 0
+```
+
+관측 4 성립 — 정확히 세 줄, 그 밖의 파일 없음.
+
+### Gaps (미검증)
+
+- **커버리지 수치를 측정하지 않았다.** 이 카드의 형제 SPEC(MENTION·SSE)과 같은 기준(전체 스위트 통과 + verbose `✓` 줄)을 적용했고, `acceptance.md` 품질 게이트가 커버리지 수치를 요구하지 않아 `--coverage` 실행은 하지 않았다.
+- **실제 채널 플러그인(카드 t4) 과의 상호동작은 관측하지 않았다.** 범위 밖이며, `Gateway` 시그니처 계약(REQ-GW-021)이 그 소비자를 위한 유일한 결합면이다.
+- **같은 토큰 두 프로세스 동시 접속** 엣지 케이스는 실행으로 관측하지 않았다 — `spec.md` §5 가 수용으로 명시한 항목이다.
+- **M2 RED 에서 AC-GW-010 이 통과했다** (위 전이 3 참조) — plan.md §F 가 `isOnline` 구현은 M1·테스트는 M2 에 배치했기 때문이며, 결함이 아니라 계획의 배치 그대로다. 증거 정확성을 위해 그대로 기록한다.
+
+### Residual-risk (잔여 위험)
+
+- **`ws.close()` 직후의 `isOnline` 관측 경합** — 서버가 소켓을 닫을 때 클라이언트 close 이벤트가 서버 소켓 close 이벤트보다 먼저 관측될 수 있어, 게이트웨이가 서버 주도로 닫는 모든 경로(파싱 실패·미인증·closeRoom·onClose)에서 `conns.delete` 를 `ws.close()` 보다 먼저 동기 실행한다. 클라이언트 주도 종료(AC-GW-010)는 비동기 close 정리 + 테스트의 100ms 대기에 의존한다 — 루프백에서 안정적이지만 극단적으로 느린 환경에서는 이론적 경합이 남는다.
+- **타이밍 의존 테스트** — `bot_message`·`status`·`permission_request` 검증은 200~300ms 고정 대기를 쓴다(acceptance.md 원문 그대로). 구현은 프레임 도착 즉시 동기 처리하므로 로컬에서 안정적이나, 극단적으로 느린 CI 에서는 대기 시간이 부족할 수 있다. plan.md §E 의 완화(가능한 곳은 이벤트 대기)를 적용해 이력·전달 경로는 전부 이벤트 대기다.
+- **`history_request` 의 `limit` 비정상 입력** — `Number(...) || 100` 가디드로 `NaN`·`0` 을 기본값 100 으로 돌린다. 스펙은 기본 100·상한 500 만 정의했고 비정상 입력의 처우는 규정하지 않아, 이 해석이 남는다.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-27
+spec_id: SPEC-GATEWAY-001
+tier: L
+card: t3
+spec_base_sha: cb90fb3c80e33c25f5e8cf05d9f0a8ce8550350c
+head_sha: 0a6e2d7e325980b41c92bb35591e99f0fb9a4739
+implementation_commits:
+  - "c28d9d3 — M1: feat: bot gateway with token auth and cursor replay (card t3)"
+  - "41e4188 — M2: feat: gateway bot_message, status, history and permission relay (card t3)"
+  - "0a6e2d7 — M3: feat: wire gateway into buildServer and invite online flag (card t3)"
+evidence:
+  test_command: "npm test -w server -- --run --reporter=verbose"
+  test_result: "exit 0 — Test Files 8 passed (8), Tests 70 passed (70); gateway 18/18 ✓ 줄 원문 §E.2 에 기록"
+  typecheck_command: "npm run typecheck -w server"
+  typecheck_result: "exit 0"
+  red_green_transitions: "4/4 관측 — §E.2 RED → GREEN 전이 증거 (원문 출력)"
+  boundary_check: "AC-GW-019 네 관측 통과 — §E.2 범위 경계 원문 출력"
+ac_matrix: "20/20 PASS — §E.2 AC 매트릭스"
+changed_files: "server/src/gateway.ts (신규) · server/src/index.ts · server/src/routes-bots.ts · server/test/gateway.test.ts (신규)"
+docs_commit_sha: "pending-backfill-run-docs"
+```
 
 ---
 
