@@ -1,10 +1,10 @@
 ---
 id: SPEC-CORE-001
 title: "minidiscord 저장소 스캐폴드와 SQLite 스키마 기반"
-version: "0.1.0"
+version: "0.2.0"
 status: completed
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-27
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -21,6 +21,7 @@ tier: M
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
 | 0.1.0 | 2026-08-26 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan.md` Task 1-2 에서 도출 (칸반 카드 `t1`, 마일스톤 M1). | manager-spec |
+| 0.2.0 | 2026-08-27 | REQ-CORE-010 개정 — 수신 호스트를 `0.0.0.0` 고정에서 `127.0.0.1` 기본 + `MINIDISCORD_HOST` 확장으로 바꿨다. 근거: `.moai/reports/t3/sync-audit.md` F-03, `.moai/reports/t3/sync-reaudit.md` N-04. 구현(`server/src/config.ts:6`, `server/src/index.ts:67`)은 이미 개정 내용을 따르고 있어 SPEC 을 코드에 맞춘 개정이다. AC-CORE-015 에 3단계(호스트 관측)를 추가했다. | manager-spec |
 
 ---
 
@@ -84,7 +85,9 @@ minidiscord는 내 PC에서 도는 자체 호스팅 채팅 서버다. 서버는 
 클라이언트가 `GET /api/health` 를 호출하면, 서버는 상태 코드 `200` 과 본문 `{ "ok": true }` 를 응답해야 한다.
 
 **REQ-CORE-010** (Where — 진입점 직접 실행)
-`server/src/index.ts` 가 프로세스 진입점으로 직접 실행된 경우, 서버는 `config.port` 와 호스트 `0.0.0.0` 으로 수신을 시작해야 한다. 테스트가 모듈을 가져오기만 할 때는 수신하지 않는다.
+`server/src/index.ts` 가 프로세스 진입점으로 직접 실행된 경우, 서버는 `config.port` 와 `config.host` 로 수신을 시작해야 한다. `config.host` 는 `MINIDISCORD_HOST` 가 설정된 환경에서는 그 값이어야 하고, 설정되지 않으면 루프백 `127.0.0.1` 이어야 한다. 테스트가 모듈을 가져오기만 할 때는 수신하지 않는다.
+
+> 기본값이 `0.0.0.0` 이 아니라 `127.0.0.1` 인 이유: README 가 선언한 "내 PC에서만 도는 서버" 전제 위에서 HTTPS·세션 만료·CSRF·방 멤버십을 범위 밖으로 두었으므로, 코드가 그 전제를 스스로 지켜야 한다. 모든 인터페이스 바인드는 같은 네트워크의 누구나 가입해 모든 방을 읽을 수 있게 만든다(`.moai/reports/t3/sync-audit.md` F-03). 넓혀야 할 때는 `MINIDISCORD_HOST` 로 운영자가 명시적으로 연다.
 
 ### 3.4 데이터베이스 스키마
 

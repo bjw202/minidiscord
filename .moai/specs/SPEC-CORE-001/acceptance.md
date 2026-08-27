@@ -24,7 +24,7 @@
 | AC-CORE-012 | REQ-CORE-015 | `ls server/src` | 정확히 `config.ts`, `db.ts`, `index.ts` 세 파일만 |
 | AC-CORE-013 | REQ-CORE-002 | `node -e "const p=require('./server/package.json');console.log(p.type,Object.keys(p.scripts).sort().join(','))"` | `module dev,test,typecheck` |
 | AC-CORE-014 | RED→GREEN 전이 | 아래 AC-CORE-014 본문 참조 | 구현 전 실패, 구현 후 통과 |
-| AC-CORE-015 | REQ-CORE-010 | 아래 AC-CORE-015 본문 참조 | 직접 실행 시 `{"ok":true}` 관측, 가져오기만 할 때 종료 출력 `0` |
+| AC-CORE-015 | REQ-CORE-010 | 아래 AC-CORE-015 본문 참조 | 직접 실행 시 `{"ok":true}` 관측, 가져오기만 할 때 종료 출력 `0`, 기본 호스트 `127.0.0.1` 과 `MINIDISCORD_HOST` 재정의가 모두 관측됨 |
 
 ---
 
@@ -141,11 +141,11 @@ npx -w server tsx -e "import {openDb} from './server/src/db.js'; const d=openDb(
 
 각 전이의 실제 명령 출력을 `progress.md` `§E.2 Run-phase Evidence` 에 기록한다.
 
-### AC-CORE-015 — 진입점 직접 실행 시에만 수신
+### AC-CORE-015 — 진입점 직접 실행 시에만 수신, 그리고 루프백 기본 바인드
 
 **Given** M1 이 끝나 `server/src/index.ts` 구현과 `dev` 스크립트(`tsx src/index.ts`)가 갖춰져 있다.
 
-**When** 다음 두 단계를 차례로 실행한다.
+**When** 다음 세 단계를 차례로 실행한다.
 
 1단계 — 진입점으로 직접 실행 (비기본 포트에서 수신 시작):
 
@@ -169,7 +169,16 @@ import '../src/index.js'
 perl -e '$t=shift; $pid=fork(); if(!$pid){ setpgrp(0,0); exec(@ARGV) or exit(127) } $SIG{ALRM}=sub{ kill q(ALRM), -$pid }; alarm $t; waitpid($pid,0); exit(($? & 127) ? 128+($? & 127) : ($? >> 8))' 10 npx -w server tsx test/no-listen.ts; echo $?
 ```
 
-**Then** 1단계에서 `curl` 이 `{"ok":true}` 를 출력한다 — 비기본 포트 `4199` 로 응답한다는 점이 수신 포트가 `config.port` 에서 왔다는 증거다. 2단계의 출력이 `0` 이다 — 리스너가 이벤트 루프를 붙잡고 있었다면 프로세스는 스스로 종료하지 못하고 상한 시점에 `SIGALRM` 으로 죽어 출력이 `0` 이 아닌 값(이 머신 실측 `142`)이 된다. 판정은 이분법이다 — 출력이 `0` 이면 통과, 그 외에는 실패.
+3단계 — 수신 호스트 확인 (기본값과 환경변수 재정의):
+
+```bash
+npx -w server tsx -e "import(process.cwd()+'/src/config.ts').then(m=>console.log(m.config.host))"
+MINIDISCORD_HOST=0.0.0.0 npx -w server tsx -e "import(process.cwd()+'/src/config.ts').then(m=>console.log(m.config.host))"
+```
+
+> 형태 주: `-w server` 가 작업 디렉터리를 `server/` 로 옮기므로 `process.cwd()` 기준 절대 경로로 동적 임포트한다. 정적 `import ... from './server/src/config.js'` 형태는 `[eval]` 모듈에서 상대 경로가 풀리지 않아 `MODULE_NOT_FOUND` 로 실패한다(이 머신 실측). 위 두 명령은 이 트리에서 실제로 실행해 각각 `127.0.0.1` 과 `0.0.0.0` 을 출력하는 것을 확인했다.
+
+**Then** 1단계에서 `curl` 이 `{"ok":true}` 를 출력한다 — 비기본 포트 `4199` 로 응답한다는 점이 수신 포트가 `config.port` 에서 왔다는 증거다. 2단계의 출력이 `0` 이다 — 리스너가 이벤트 루프를 붙잡고 있었다면 프로세스는 스스로 종료하지 못하고 상한 시점에 `SIGALRM` 으로 죽어 출력이 `0` 이 아닌 값(이 머신 실측 `142`)이 된다. 판정은 이분법이다 — 출력이 `0` 이면 통과, 그 외에는 실패. 3단계의 첫 출력이 `127.0.0.1` 이고 둘째 출력이 `0.0.0.0` 이다 — 기본이 루프백이고 `MINIDISCORD_HOST` 로만 넓어진다는 증거다(REQ-CORE-010). 셋 중 하나라도 어긋나면 실패다.
 
 띄운 프로세스의 상한은 전부 perl 알람 셸이 보장한다 — 셸은 자식을 새 프로세스 그룹으로 띄우고(`setpgrp`) 알람 시점에 그 그룹 전체에 `SIGALRM` 을 보낸다. 리스너가 `npm` 의 손자 프로세스여도 그룹째로 죽는다(이 머신에서 실측 — exec 만 하는 단순 알람 셸은 `npm` 만 죽고 손자 node 리스너가 포트를 붙잡은 채 살아남는다). trailing `kill` 을 쓰지 않는다 — 1단계의 `wait $S` 는 알람이 서버를 회수하는 것을 기다리기만 한다.
 
