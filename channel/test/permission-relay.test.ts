@@ -5,6 +5,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { WebSocketServer } from 'ws'
 import { createChannelServer } from '../src/channel-server.js'
 
 // 열어 둔 자원(MCP 클라이언트·게이트웨이 스텁)의 일괄 정리 목록. 등록 역순으로 닫는다.
@@ -69,6 +70,25 @@ function collectUnhandled() {
   process.on('unhandledRejection', on)
   cleanups.push(() => { process.off('unhandledRejection', on) })
   return async () => { await tick(); return seen }
+}
+
+// 게이트웨이 스텁. Task 13 의 것과 같은 형태다.
+function gatewayStub() {
+  const wss = new WebSocketServer({ port: 0 })
+  const sent: Record<string, unknown>[] = []
+  cleanups.push(() => new Promise<void>(r => wss.close(() => r())))
+  wss.on('connection', ws => {
+    ws.on('message', d => {
+      const m = JSON.parse(String(d))
+      sent.push(m)
+      if (m.type === 'hello') ws.send(JSON.stringify({ type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' }))
+    })
+  })
+  return {
+    sent,
+    port: () => (wss.address() as { port: number }).port,
+    push: (msg: unknown) => { for (const c of wss.clients) c.send(JSON.stringify(msg)) },
+  }
 }
 
 const REQ: Params = { request_id: 'abcde', tool_name: 'Bash', description: 'Run shell command', input_preview: 'ls -la' }
@@ -207,5 +227,33 @@ describe('permission relay', () => {
     handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })
     await tick()
     expect(verdicts.length).toBe(1)
+  })
+
+  // AC-CHANPERM-010 — 배선이 두 방향 모두 이어져 있다 (게이트웨이 스텁 왕복)
+  it('wire relays a request out to the gateway and a verdict back to Claude Code', async () => {
+    const { wire } = await import('../src/index.js')
+    const gwStub = gatewayStub()
+    const { channel, gw } = wire({ url: `ws://127.0.0.1:${gwStub.port()}/bot`, token: 'tok' })
+    gw.start()
+    cleanups.push(() => { gw.stop() })
+    await waitFor(() => gwStub.sent.some(m => m.type === 'hello'), '게이트웨이 접속')
+
+    const client = new Client({ name: 't', version: '0' })
+    const verdicts: { params: Record<string, unknown> }[] = []
+    client.setNotificationHandler(PermissionVerdictNotification, n => { verdicts.push(n as never) })
+    const [c, s] = InMemoryTransport.createLinkedPair()
+    await Promise.all([client.connect(c), channel.server.connect(s)])
+    cleanups.push(async () => { await client.close() })
+
+    // 나가는 방향: Claude Code 알림 → 게이트웨이 프레임
+    await sendRequest(client, REQ)
+    await waitFor(() => gwStub.sent.some(m => m.type === 'permission_request'), '요청 프레임 도착')
+    const out = gwStub.sent.find(m => m.type === 'permission_request')
+    expect(out).toEqual({ type: 'permission_request', ...REQ })
+
+    // 돌아오는 방향: 게이트웨이 verdict → Claude Code 알림
+    gwStub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'deny' })
+    await waitFor(() => verdicts.length > 0, '판정 알림 도착')
+    expect(verdicts[0].params).toEqual({ request_id: 'abcde', behavior: 'deny' })
   })
 })

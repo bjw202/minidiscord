@@ -28,6 +28,11 @@ export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClien
       if (m.delivery === 'to') gw.send({ type: 'status', state: 'working' })
       await channel.pushChatMessage(m)
     },
+    // 판정 갈래: 게이트웨이 verdict 를 세션 알림으로 되돌린다. 두 필드만 골라 넘긴다 —
+    // payload 의 type 같은 계약 밖 필드는 세션으로 가지 않는다 (REQ-CHANPERM-004).
+    onVerdict: v => {
+      channel.handlePermissionVerdict({ request_id: v.request_id, behavior: v.behavior })
+    },
   })
   const channel = createChannelServer({
     // 송신 갈래. files 는 경로 문자열을 { local_path } 객체로 바꿔 싣는다 — 게이트웨이가 읽는 필드 이름이다 (REQ-CHANWIRE-011).
@@ -35,6 +40,10 @@ export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClien
     sendToChat: async payload => {
       gw.send({ type: 'bot_message', body: payload.text, files: (payload.files ?? []).map(local_path => ({ local_path })) })
       gw.send({ type: 'status', state: 'idle' })
+    },
+    // 승인 요청 갈래: params 에 type 만 붙여 게이트웨이로 내보낸다 — 서버가 그 값으로 분기한다 (REQ-CHANPERM-004).
+    sendPermissionRequest: params => {
+      gw.send({ type: 'permission_request', ...params })
     },
     // 이력 갈래. 파라미터는 통째로 그대로 넘긴다 — since_id 는 봇의 따라잡기 커서다 (REQ-CHANWIRE-012).
     // 줄 앞의 #번호는 장식이 아니라 계약이다: 채널 지시문이 봇에게 이 번호를 다음 since_id 로 쓰라고 시킨다.
