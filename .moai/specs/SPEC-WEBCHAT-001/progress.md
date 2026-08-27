@@ -130,13 +130,78 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### 실행 주체와 경위
+
+구현 에이전트(manager-develop 역할)가 M1–M3을 커밋하고 M4 스타일 작성 중 API 사용량 한도(429, 21:33 재설정)로 중단됐다. 재설정 후 오케스트레이터(run2 레인 세션)가 잔여 물을 검증·완수했다: 미커밋 style.css 블록 검수 후 커밋(`b4ccc6c`), 전수 검증, 이 §E 기록. 커밋 `407d7a1`·`1ce1b92`·`cfd1c01`은 에이전트의 산출물이다.
+
+### 마일스톤
+
+- **M1** `407d7a1` — 채팅 영역 마크업(#chat 내용물 10개 id)과 테스트 골격. status `draft → in-progress`
+- **M2** `1ce1b92` — renderMessage 구조·봇 역할 색·장식 훅·SSE 수신·bot_status·stale 타이머·방 전환 정리
+- **M3** `cfd1c01` — 멘션 자동완성(캐시 전용·멘션 불가 이름 배제·드롭다운 열림 시 Enter 오전송 차단)과 sendMessage
+- **M4** `b4ccc6c` — 채팅 영역 스타일(`/* ── SPEC-WEBCHAT-001 채팅 영역 ── */` 블록, 토큰 변수만)
+
+### 기록할 선택 두 가지 (§121 5번)
+
+- **`#placeholder` — 제거했다.** `web/index.html:56` 주석에 근거를 남겼다(형제의 영구 기준은 존재를 단언하지 않는다).
+- **DOM 환경 — 파일 단위 `// @vitest-environment jsdom` 도크블록.** `server/vitest.config.ts`는 만들지 않았다. `web-shell.test.ts`와 같은 방식이며 첫 실행의 `environment 10.79s` 랩이 실제 로드를 보인다.
+
+### 전체 스위트 (오케스트레이터 직접 실행, 2026-08-27 22:36)
+
+```
+$ npm test -w server
+ Test Files  12 passed (12)
+      Tests  134 passed (134)      ← 기존 116 + 이 SPEC 18
+```
+
+AC-001…014 는 `server/test/web-chat.test.ts`(604줄, describe 블록이 AC 번호와 1:1)가 기계 판정한다. AC-015(범위 경계)의 관측은 아래 그렙이 대신한다. AC-016은 **MANUAL** — 사람 대조로 유보.
+
+### 경계 관측 (오케스트레이터 직접 실행)
+
+```
+$ grep -oE 'export (async )?(function|const) [A-Za-z$_][A-Za-z0-9$_]*' web/app.js | awk '{print $NF}' | sort
+$ api archiveRoom createBot createRoom initApp initChat loadBots loadRooms login
+  logout openRoom promptText refreshRoomBots register registerMessageDecorator
+  renderBots renderMessage renderRooms sendMessage showAuth showMain state
+  ← 23개 = 형제 18 + 이 SPEC 5 (REQ-WEBCHAT-016)
+
+$ grep -n "innerHTML\|outerHTML\|insertAdjacentHTML" web/app.js | grep -v "= ''"
+(일치 없음 — 비우기 외 HTML 싱크 0건, REQ-WEBCHAT-004)
+
+$ grep -nEi '#([0-9a-f]{3}|[0-9a-f]{6})([^0-9a-z_-]|$)' web/style.css
+(일치 없음 — 원시 16진 0건, REQ-WEBCHAT-015)
+
+$ grep -n "after=\|roomGeneration\|staleTimers\|createRichContext" web/app.js
+420:const { messages } = await api(`/api/rooms/${id}/messages?after=${state.lastEventId}`)
+208-209,223,230,358-361,395,419-421: 방 세대 가드 6곳
+201-203,437-446: stale 타이머 해제·설정
+createRichContext — 일치 없음 ← 배선은 SPEC-WEBRICH-001 소관, 이 SPEC은 독립 마감(AC-002 셋째 테스트)
+```
+
+### Gaps (정직하게)
+
+- **AC-016(MANUAL 시각 대조)은 기계 판정이 아니다** — 사람 눈으로 `#room-bots` 칩 표시(🟢/⚪·입력 중…·응답 없음?)와 2단 레이아웃을 봐야 한다. run-done.md에 유보 항목으로 남긴다.
+- 구현 에이전트의 RED 원문 출력은 M1 골격 시점 분량만 확보됐다(에이전트 중단). M2–M4의 RED 증거는 재현 불가 — 대신 최종 스위트 134/134와 위 경계 관측이 마감 시점 증거다.
+- `npm run typecheck -w server` 을 이 SPEC 마감 시점에 재실행하지 않았다(형제 WEBSHELL 시점 exit 0). WEBRICH 마감 때 `web/rich.d.ts` 포함 전수 재실행 예정.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-27
+spec_id: SPEC-WEBCHAT-001
+card: t5
+cycle_type: tdd
+milestones_completed: [M1, M2, M3, M4]
+run_commits: [407d7a1, 1ce1b92, cfd1c01, b4ccc6c]
+spec_base_sha: 3e9f3f6c5ed49297e1ee61506707e43fbc7220e8
+ac_mechanical_pass: 15/15        # AC-001..014 테스트 그룹 + AC-015 경계 관측. AC-016 MANUAL 유보
+dom_env: file-level-docblock      # server/vitest.config.ts 미사용
+placeholder_disposition: removed
+test_files_added: [server/test/web-chat.test.ts]
+```
 
 ---
 
