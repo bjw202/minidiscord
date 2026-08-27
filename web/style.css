@@ -340,3 +340,132 @@ input:focus { outline: 1px solid var(--md-accent); }
    SPEC-WEBRICH-001 이 hidden 을 떼는 순간 바로 보이는 것이 형제와의 약속이다. */
 
 #send-btn { align-self: flex-end; }
+
+/* SPEC-WEBRICH-001 */
+/* 리치 표면 — 첨부 칩·권한 버튼·초대 다이얼로그. 색은 design-tokens 의 var(--md-*) 만 쓴다
+   (계약 5-2). 이 블록이 @import 줄보다 앞에 오지 않는다 (계약 5-1). */
+
+/* 첨부 링크 칩 — 채팅 배경(--md-bg-main)보다 어두운 패널 배경에 링크색 글자 (design DNA §4) */
+.message a.attachment {
+  display: inline-block;
+  margin-top: var(--md-space-1);
+  padding: var(--md-space-1) var(--md-space-3);
+  background: var(--md-bg-panel);
+  color: var(--md-text-link);
+  border-radius: var(--md-radius-badge);
+  font-size: var(--md-font-size-body);
+  text-decoration: none;
+}
+
+/* 첨부 이미지 — 그 자리에 펼쳐 보인다 (REQ-WEBRICH-003) */
+.message img.attachment-image {
+  display: block;
+  margin-top: var(--md-space-2);
+  max-width: 100%;
+  border-radius: var(--md-radius-input);
+}
+
+/* 권한 판정 버튼 줄 — 요청 system 메시지 아래에 붙는다 (REQ-WEBRICH-009) */
+.verdict-row {
+  display: flex;
+  gap: var(--md-space-2);
+  margin-top: var(--md-space-2);
+}
+
+.verdict-yes {
+  background: var(--md-status-online);
+  color: var(--md-text-primary);
+  border: none;
+  border-radius: var(--md-radius-badge);
+  padding: var(--md-space-1) var(--md-space-4);
+  font-size: var(--md-font-size-body);
+  cursor: pointer;
+}
+
+.verdict-no {
+  background: var(--md-status-error);
+  color: var(--md-text-primary);
+  border: none;
+  border-radius: var(--md-radius-badge);
+  padding: var(--md-space-1) var(--md-space-4);
+  font-size: var(--md-font-size-body);
+  cursor: pointer;
+}
+
+.verdict-yes:disabled,
+.verdict-no:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 초대 다이얼로그 — 채팅 영역과 같은 층의 배경 (design DNA §2) */
+#invite-dialog {
+  background: var(--md-bg-main);
+  color: var(--md-text-primary);
+  border: var(--md-border-width) solid var(--md-divider);
+  border-radius: var(--md-radius-input);
+  padding: var(--md-space-5);
+  min-width: 320px;
+}
+
+#invite-dialog h2 {
+  margin: 0 0 var(--md-space-3);
+  font-size: var(--md-font-size-body);
+  font-weight: var(--md-font-weight-name);
+}
+
+/* 봇 선택 목록 — 사이드바와 같은 어두운 층에 항목 호버 (design DNA §1) */
+.invite-choices {
+  list-style: none;
+  margin: 0 0 var(--md-space-3);
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.invite-choice {
+  padding: var(--md-space-2) var(--md-space-3);
+  border-radius: var(--md-radius-badge);
+  cursor: pointer;
+  font-size: var(--md-font-size-body);
+}
+
+.invite-choice:hover { background: var(--md-bg-hover); }
+
+/* 명령 상자 — 가장 어두운 사이드바 배경, 줄바꿈 보존(pre) 으로 네 줄 이상 그대로 (REQ-WEBRICH-012) */
+#invite-command {
+  margin: var(--md-space-2) 0;
+  padding: var(--md-space-3);
+  background: var(--md-bg-sidebar);
+  color: var(--md-text-primary);
+  border-radius: var(--md-radius-badge);
+  font-size: var(--md-font-size-timestamp);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* 지금 복사 경고 — 토큰은 다시 보여지지 않는다 (REQ-WEBRICH-013) */
+.invite-notice {
+  margin: var(--md-space-2) 0 0;
+  color: var(--md-status-idle);
+  font-size: var(--md-font-size-timestamp);
+}
+
+/* 복사·초대 실패 문구 — 조용한 성공의 척이 없게 (REQ-WEBRICH-014) */
+.invite-error {
+  margin: var(--md-space-2) 0 0;
+  color: var(--md-status-error);
+  font-size: var(--md-font-size-timestamp);
+}
+
+#copy-command {
+  margin-top: var(--md-space-2);
+  background: var(--md-accent);
+  color: var(--md-text-primary);
+  border: none;
+  border-radius: var(--md-radius-badge);
+  padding: var(--md-space-2) var(--md-space-4);
+  font-size: var(--md-font-size-body);
+  cursor: pointer;
+}
+/* /SPEC-WEBRICH-001 */

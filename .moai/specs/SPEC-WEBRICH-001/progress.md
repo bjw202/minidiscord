@@ -10,11 +10,11 @@
 | 워크트리 | `.claude/worktrees/t5` (브랜치 `WT-web-ui`) |
 | 선행 SPEC | `SPEC-WEBSHELL-001` → `SPEC-WEBCHAT-001` (같은 카드) / `SPEC-MSG-001`·`SPEC-PERM-001`·`SPEC-BOT-001`·`SPEC-GATEWAY-001` (카드 `t2`·`t3`, 완료) |
 | 실행 순서 | 카드 `t5` 의 세 번째 SPEC |
-| 현재 상태 | `draft` — plan 단계 산출물 작성 완료, **감사 교정 라운드 반영(0.2.0)** |
-| `spec.md` 판 | 0.2.0 |
-| 감사 보고서 | `.moai/reports/t5/plan-audit.md` (2026-08-27, HEAD `6e9a167`) |
-| 감사 판정 | 이 SPEC **CONDITIONAL PASS** / 카드 `t5` 통합 표면 **FAIL** |
-| spec_base_sha | (run 단계 첫 동작으로 채운다) |
+| 현재 상태 | `in-progress` — run 단계 완료 (audit-ready, §E.2·§E.3 참조) |
+| `spec.md` 판 | 0.3.0 |
+| 감사 보고서 | `.moai/reports/t5/plan-audit.md` · `.moai/reports/t5/plan-audit-b.md` (2026-08-27) |
+| 감사 판정 | 0.3.0 교정 완료 — MF-5·7·8·9·10·11 반영 |
+| spec_base_sha | `61cd828ec6d4c84a1909167969f8ec2619fa14f1` |
 
 ---
 
@@ -160,13 +160,182 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+run 단계 수행: 2026-08-27, HEAD `61cd828` 시작 → `1f374d4` (M1 `0605685` · M2 `97f42bf` · M3 `1f374d4` · M4 스타일+본 기록). `spec_base_sha = 61cd828ec6d4c84a1909167969f8ec2619fa14f1` (run 첫 동작으로 기록).
+
+### AC 매트릭스 (원문 출력)
+
+| AC | 상태 | 명령 | 관측된 출력 (원문) |
+|----|------|------|--------------------|
+| AC-001 | PASS | `npx vitest run test/web-permission-contract.test.ts` | `✓ AC-001 delivers an approve verdict to the bot with the exact request_id 97ms` |
+| AC-002 | PASS | 〃 | `✓ AC-002 delivers a deny verdict 79ms` |
+| AC-003 | PASS | 〃 | `✓ AC-003 extracts the real request_id even when the preview contains lookalike runs 95ms` |
+| AC-004 | PASS | 〃 | `✓ AC-004 shows an invite command whose token actually authenticates 61ms` |
+| AC-005 | PASS | `npx vitest run test/web-rich.test.ts` | `✓ AC-005 keeps the one-time token in the DOM and nowhere else 8ms` + `grep -nE "localStorage\|…" web/rich.js` → exit 1 (일치 없음) |
+| AC-006 | PASS | 〃 | `✓ AC-006 copies the whole command and reports failure when clipboard is absent 1ms` |
+| AC-007 | PASS | 〃 | `✓ AC-007 renders an image attachment inline 1ms` |
+| AC-008 | PASS | 〃 | `✓ AC-008 renders a non-image attachment as a download link 0ms` |
+| AC-009 | PASS | 〃 | `✓ AC-009 never lets a filename or id become markup or a foreign URL 2ms` + 주입 경로 grep exit 1 |
+| AC-010 | PASS | 〃 | `✓ AC-010 sends exactly one verdict per request and locks both buttons 10ms` |
+| AC-011 | PASS | 〃 | `✓ AC-011 locks buttons whichever order the resolution arrives 2ms` (⚠️ 실패 본문 형태 포함) |
+| AC-012 | PASS | 〃 | `✓ AC-012 attaches verdict buttons only to real permission requests 2ms` |
+| AC-013 | PASS | 〃 | `✓ AC-013 wipes the command when the dialog closes 3ms` |
+| AC-014 | PASS | 아래 AC-014 블록 | 존재축 128줄·`var(--md-` 52 · `index.html` grep 값 `0` · hex exit 1 |
+| AC-015 | **보류 [MANUAL]** | 사람 눈 (아래 기록) | 브라우저 미실행 환경 — 자동 위장 금지 (§H 14) |
+| AC-016 | PASS | 아래 AC-016 블록 | 관측 0·1·2·3·4·5 전부 성립 |
+
+### AC-014 원문 출력
+
+```
+$ awk '/SPEC-WEBRICH-001 \*\//,/\/SPEC-WEBRICH-001/' web/style.css > /tmp/webrich-css.txt && wc -l < /tmp/webrich-css.txt
+128
+$ grep -c "var(--md-" /tmp/webrich-css.txt
+52
+$ grep -n '@import' web/style.css | head -1
+6:@import url('./design-tokens.css');
+$ grep -n 'SPEC-WEBRICH-001 \*/' web/style.css | head -1
+344:/* SPEC-WEBRICH-001 */
+→ 6 < 344 — 계약 5-1 성립 (@import 뒤에 위치)
+$ test -s web/index.html && echo exists ; grep -c "design-tokens.css" web/index.html ; echo exit=$?
+exists
+0
+exit=1          ← 값 0, 종료 코드 1 — 값으로 읽음 (0.3.0 표기)
+$ grep -nE "#[0-9a-fA-F]{3,8}\b" /tmp/webrich-css.txt ; echo exit=$?
+exit=1          ← 블록 안 원시 hex 없음
+```
+
+### AC-016 원문 출력
+
+```
+$ git rev-parse --verify "$(cat .moai/specs/SPEC-WEBRICH-001/.spec-base-sha)^{commit}"   # 관측 0
+61cd828ec6d4c84a1909167969f8ec2619fa14f1        ← 40자리, exit 0
+
+$ git diff --name-only 61cd828… -- server/src | wc -l                                   # 관측 1
+0                                               ← 빈 출력
+
+$ git diff --name-only 61cd828… | sort                                                  # 관측 2
+web/app.js
+web/index.html
+web/style.css
+(tracked 변경 — 전부 허용 집합 안. untracked 신규: web/rich.js, web/rich.d.ts,
+ server/test/web-rich.test.ts, server/test/web-permission-contract.test.ts,
+ .moai/specs/SPEC-WEBRICH-001/* — 전부 허용 집합 안)
+
+$ git show 61cd828…:web/app.js > /tmp/webrich-app-base.js && wc -l < …                  # 관측 3-a
+554                                             ← 0보다 큼
+$ awk '/^(export…)?(function…renderMessage…|\(?const…renderMessage…=)/{s=NR} …'        # 관측 3-b
+323,353                                          ← 두 수로 잡힘
+$ git diff -U0 61cd828… -- web/app.js > /tmp/webrich-app.diff && awk -v range="323,353" … # 관측 3-c
+add=0 del=0                                      ← renderMessage 불가침
+
+$ grep -c "registerMessageDecorator(createRichContext)" web/app.js                      # 관측 4
+1
+$ grep -c "registerMessageDecorator(createRichContext(" web/app.js
+0
+$ grep -c "registerMessageDecorator(" web/app.js
+2                                                ← 형제 정의 1 + 이 SPEC 배선 1
+$ grep -c "createRichContext" web/app.js
+3                                                ← 2 이상 (import 1 + 배선 1 + 주석 언급 1)
+
+관측 5 — `✓ AC-WEBRICH-016 observation 5 wiring > web/app.js 가 registerMessageDecorator 에
+createRichContext 를 실제로 등록한다 18ms` (nodes 1개, href /api/attachments/9)
+```
+
+### 전체 스위트·타입 게이트 (원문)
+
+```
+$ npm test -w server
+ Test Files  14 passed (14)
+      Tests  149 passed (149)
+$ npm run typecheck -w server
+(exit 0, 출력 없음)
+$ npx vitest run --reporter=verbose   (server)
+ Test Files  14 passed (14)
+      Tests  149 passed (149)          ← skipped·todo 표시 없음 = 0. 이 SPEC 의 두 테스트 파일
+                                         이름(web-permission-contract·web-rich)이 ✓ 목록에 나타남
+```
+
+기준선 대비: 12 files/134 tests → 14 files/149 tests (선행 web-shell·web-chat 포함 전부 GREEN).
+
+### TDD RED 증거 (원문, 구현 전 캡처)
+
+골격 A — rich.js 스텁(export 만 존재) 상태 (`/.moai/state/verify/webrich-m1/red-evidence.txt`):
+
+```
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+ FAIL … AC-001 … expected 'qwerz' … Received: null
+ FAIL … AC-004 … expected 404 to be 201   ← 하네스에 초대 라우트 부재도 이 단계에서 발견
+```
+
+골격 B — rich.js 실구현 후·**배선 전** 상태 (`/.moai/state/verify/webrich-m2/red-evidence.txt`):
+
+```
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+ FAIL … AC-WEBRICH-016 observation 5 wiring … expect(nodes).toHaveLength(1)
+ Received: length 0                        ← 배선 없으면 첨부 노드 0개 (MF-9 시나리오)
+```
+
+배선(M3) 후 동일 테스트 10/10 GREEN — RED→GREEN 전이가 배선 계약 자체를 검증했다.
+
+### 변이 검증 (plan.md §G, 6건 전부 RED 전이)
+
+| # | 변이 | 기대 | 관측된 출력 |
+|---|------|------|-------------|
+| 1 | `permissionRequestId` → `/[a-km-z]{5}/.exec(body)?.[0]` | AC-003 울음 | `FAIL … AC-003 … 1 failed \| 4 passed` |
+| 2 | `decorate` 안 `resolved` 추적 제거 | AC-011 울음 | `FAIL … AC-011 … 1 failed \| 9 passed` |
+| 3 | `attachmentUrl` 정수 검사 제거 | AC-009 울음 | `FAIL … AC-009 … 1 failed \| 9 passed` |
+| 4 | `renderMessage` 통째 교체 | 관측 3 양수 | `add=4 del=2` |
+| 5 | 배선 → `createRichContext({…}).decorate` 넘김 | 관측 4 둘째=1 + 관측 5 울음 | grep `0`/`1` + `FAIL … observation 5 wiring … 1 failed` |
+| 6 | `.spec-base-sha` 삭제 | 관측 0 울음 | `fatal: Needed a single revision`, exit 128 |
+
+변이 적용 후 전부 백업본으로 원복 — `diff /tmp/rich-backup.js web/rich.js`·`diff /tmp/app-backup.js web/app.js` 무차등 확인 후 최종 스위트 재GREEN.
+
+### AC-015 [MANUAL] — 사람 눈 확인 (보류)
+
+자동 검사 환경에서 브라우저를 띄울 수 없어 다섯 항목 모두 **미확인**. 시각 기준을 자동처럼 위장하지 않는다(§H 14). 운영자가 `npm run dev -w server` + 브라우저로 확인할 항목: (1) png 인라인 이미지 (2) pdf 칩 다운로드 (3) 칩 배경/링크색 (4) 명령 상자 `--md-bg-sidebar`·줄바꿈 4줄+ (5) 복사 전체성. **1번이 아니오이면 블로커** (서버 `content-disposition` 조정은 범위 밖 — plan.md §C·§E 위험 7). jsdom 검증 한계 내에서 근거가 되는 간접 확인: `#invite-command` 은 `white-space: pre` + `--md-bg-sidebar`, `.attachment` 칩은 `--md-bg-panel` + `--md-text-link` (AC-014 존재축 52개 토큰 참조).
+
+### 골격 대비 조정 기록 (acceptance.md 제안본을 실행하며 고친 자리)
+
+1. **골격 A `build()`에 `registerBotRoutes(app)` 추가** — permissions.test.ts 하네스는 초대 라우트를 등록하지 않아 AC-004 가 404 로 실패 (RED 단계에서 발견). 계약 검사가 실제 라우트를 지나야 하므로 하네스에 등록했다.
+2. **`nextBotFrame` 은 원시 프레임 문자열 반환** — 골격의 `JSON.parse(await c.nextBotFrame())` 형태와 맞춤 (파싱은 호출처).
+3. **jsdom 29 타입 충돌 회피** — jsdom 29 의 `HTMLElement.hidden` 타입이 `string | boolean`으로 넓혀져 `InviteNodes`의 `{ hidden: boolean }` 반공변 위치에서 TS2322. 골격 B의 `createElement('div')` 결과를 `as HTMLElement & { hidden: boolean }` 교차형으로 좁혔다. 구조적 형 계약 자체는 그대로.
+4. **`permissionRequestId` 반환 `string | null`의 non-null 단언** — 사용처 직전 expect가 null 아님을 실질 보장; `!` + 주석으로 근거 명시 (tsc strict).
+5. **JSON POST 헬퍼 `postJson` 별도** — permissions.test.ts의 `post()`는 FormData 전용이라 초대 발급(JSON 본문)에 재사용 불가.
+6. **관측 5의 app.js 적재는 web-shell.test.ts 선례采用** — 쿼리스트링 URL 방식 대신 `vi.resetModules()` + `await import('../../web/app.js')` + `@ts-expect-error`(§4.8 계약 1 주석). 이미 두 선행 SPEC 테스트가 통과시킨 형태.
+7. **REQUEST_BODY·RESOLVED_BODY·FAILED_BODY 상수의 출처** — 골격 A의 덤프 it 실행으로 브로커 실물을 콘솔에 출력(`--disableConsoleIntercept`)하고 그 값을 옮겨 적었다. 서버 템플릿이 바뀌면 덤프 it 출력이 달라져 상수 낡음을 실행으로 확인할 수 있다. FAILED_BODY(⚠️ 형태)를 AC-011 에 추가 반영(엣지 케이스 표).
+8. **`server/vitest.config.ts`는 만들지 않았다** — 파일 단위 도크블록이 그대로 통과(14 files GREEN)하여 대체 경로 불필요.
+
+### 환경 경로
+
+- RED 증거: `.moai/state/verify/webrich-m1/red-evidence.txt`, `.moai/state/verify/webrich-m2/red-evidence.txt`
+- AC-014 임시 추출: `/tmp/webrich-css.txt`, `/tmp/webrich-app-base.js`, `/tmp/webrich-range.txt`, `/tmp/webrich-app.diff`
+- 선행 설치(`npm install`·`npm i -D jsdom`)는 워크트리 공유 작업으로 이미 완료 상태에서 시작 (server/package.json `jsdom ^29.1.1` 확인)
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-27
+spec_id: SPEC-WEBRICH-001
+spec_base_sha: 61cd828ec6d4c84a1909167969f8ec2619fa14f1
+run_commits: [0605685, 97f42bf, 1f374d4, <M4>]
+cycle_type: tdd
+ac_total: 16
+ac_pass: 15
+ac_manual_pending: 1        # AC-015 — 사람 눈 5항목, 운영자 브라우저 확인 보류
+ac_fail: 0
+mutation_checks: 6/6 RED 전이
+red_evidence: [.moai/state/verify/webrich-m1/red-evidence.txt, .moai/state/verify/webrich-m2/red-evidence.txt]
+test_suite: "14 files / 149 tests GREEN (기준선 12/134 + 이 SPEC 2 files/15 tests)"
+typecheck: exit 0
+notes: >
+  server/src 변경 0 (AC-016 관측 1). renderMessage 불가침 관측 3 add=0 del=0.
+  배선 관측 4 네 수 1·0·2·3 + 관측 5 통과 — 이음새 마지막 한 줄이 실제 openRoom 경로에서
+  첨부 노드를 만드는 것을 행위로 확인. AC-015 만 사람 손에 남는다.
+```
 
 ---
 
