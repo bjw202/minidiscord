@@ -12,7 +12,14 @@ export const PERMISSION_REPLY_RE = /^\s*(y|yes|n|no)\s+([a-km-z]{5})\s*$/i
 // id(l 포함·길이≠5)의 등록 — 사람이 안내대로 쳐도 아무 일도 일어나지 않는 결함 — 도 여기서 함께 막는다 (T7-F-02).
 const PERMISSION_REQUEST_ID_RE = /^[a-km-z]{5}$/
 
+// 도구 이름 형식 검사 — tool_name 은 접두 없는 1번째 줄 안에 실리므로 봇이 채울 문자를 문자셋·길이로 좁힌다.
+// 어긋나도 요청은 거부하지 않는다 — 판정은 request_id 로 흐르고 tool_name 은 표시용 메타데이터일 뿐이라
+// 고정 자리표시자로 바꿔 넣는 쪽이 맞다 (재판정 §S3.1, T7-F-09)
+const TOOL_NAME_RE = /^[A-Za-z0-9_.\-]{1,40}$/
+
 // 봇이 쓴 줄의 접두 표식 — 접두가 붙은 줄은 봇이 쓴 줄, 접두 없는 줄만 서버가 쓴 줄이다.
+// 불변식의 두 절반은 각각 강제점이 있다 — 봇 줄은 접두 표식으로 갈라지고, 접두 없는 줄 안의 봇 텍스트 자리는
+// 진입부 형식 검사가 통제한다(tool_name 문자셋·길이 검사 — 재판정 §S3.1, T7-F-09).
 // 줄바꿈 중화만으로는 줄 없는 description 이 안내 문구와 똑같은 한 줄을 통째로 차지하는 것을 막지 못하므로
 // 봇이 채우는 두 줄(description·input_preview)에 붙여 서버 문구와 시각적으로 갈라 놓는다 (sync-audit 재감사 §R3, 정정 2라운드)
 const BOT_MARK = '│ '
@@ -54,11 +61,16 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
         postSystem(info.roomId, `⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않아 등록하지 않았습니다 ("${oneLine(requestId).slice(0, 24)}")`)
         return
       }
+      // tool_name 검사는 요청 거부가 아니라 자리표시자 대체다 — 접두 없는 1번째 줄이 봇이 쓴 안내를 담지
+      // 않도록 그 자리를 문자셋·길이로 좁힌다. 요청은 그대로 등록된다 (T7-F-09)
+      const rawToolName = String(params.tool_name ?? '')
+      const toolName = TOOL_NAME_RE.test(rawToolName) ? rawToolName : '(형식에 맞지 않는 도구 이름)'
       // 대기 등록이 system 저장보다 먼저다 — 저장이 실패해도 대기 항목은 남아야 터미널 승인 경로가 살아 있다 (plan.md §B)
       open.set(keyOf(info.roomId, requestId), info)
       const body = [
-        // 1·4 번째 줄은 서버가 통째로 쓰므로 접두가 없다 — 접두 없는 줄이 곧 서버가 쓴 줄이라는 불변식의 절반이다
-        `🔒 봇이 도구 사용 승인을 요청합니다: ${oneLine(params.tool_name)}`,
+        // 1·4 번째 줄에는 접두가 없다 — 1번째 줄의 봇 텍스트 자리(tool_name)는 진입부 문자셋 검사가 통제하고
+        // 4번째 줄은 서버 문구만으로 이뤄진다. 접두 없는 줄이 곧 서버가 쓴 줄이라는 불변식이다 (T7-F-09)
+        `🔒 봇이 도구 사용 승인을 요청합니다: ${oneLine(toolName)}`,
         BOT_MARK + oneLine(params.description),
         BOT_MARK + oneLine(params.input_preview),
         `승인하려면 "yes ${requestId}", 거절하려면 "no ${requestId}" 라고 답해주세요.`,
