@@ -371,7 +371,7 @@ data_dir_isolation: "AC-SSE-009 테스트 안에서 MINIDISCORD_DATA_DIR 을 mkd
 commits:
   - 3260bebf4987958c8a38e5db26517c6dff23b1ab  # feat: SSE hub with per-room subscription (card t3) — 구현 + 프론트매터 draft→in-progress
   - 3b890c8973e84d2705f249b400a3628736d43340  # feat: wire SSE event stream route into buildServer (card t3)
-  - pending-backfill-evidence-commit          # docs(SPEC-SSE-001): run-phase 증거 기록 (§E.2·§E.3) — 백필 커밋이 이 줄을 채움
+  - baba5c53c8163f539561998d79b6ba9c36c4e553  # docs(SPEC-SSE-001): run-phase 증거 기록 (§E.2·§E.3) — SHA 백필 커밋이 이 줄을 채움
 ```
 
 ---
