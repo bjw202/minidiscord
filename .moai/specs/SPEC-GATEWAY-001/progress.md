@@ -595,3 +595,57 @@ exit=0
   코드이고 `spec.md` 본문은 manager-spec 소유라, 요구사항 번호 부여는 후속 몫으로 남긴다 —
   현재 근거는 이 §E.5 와 감사 보고서다.
 - **재감사를 아직 받지 않았다.** 이 절을 쓰는 시점에 판정은 여전히 FAIL 이다.
+
+---
+
+## §E.6 Re-audit Response — 재감사 CONDITIONAL PASS 대응
+
+재감사(`.moai/reports/t3/sync-reaudit.md`, HEAD `2a3c0fc`)가 **CONDITIONAL PASS** 를 냈다
+(가중 조화평균 74.8, 직전 66.8; Functionality 74 / Security 72 / Craft 78 / Consistency 78, 임계 70·70·60·60).
+직전 차단 3건 중 F-01·F-03 은 CLOSED, F-02 는 **PARTIALLY CLOSED** 판정이었다.
+
+새 지적 6건(N-01..N-06) 중 5건을 이 라운드에서 닫았다.
+
+| # | 내용 | 처리 |
+|---|------|------|
+| N-01 | 봇 첨부 메시지의 SSE 발행 프레임이 `stored_path` 를 그대로 내보냄 (`gateway.ts:166`) | 닫음 — SELECT 를 `id, filename` 으로 축소 |
+| N-02 | `resolve()` 는 어휘적 정규화라 심볼릭 링크를 따라가지 않는데 `copyFileSync` 는 따라감 → 뿌리 안 링크로 바깥 내용을 끌어옴 | 닫음 — 뿌리와 출처 양쪽을 `realpathSync` 로 비교 |
+| N-03 | fail-closed 기본값이 아무 신호 없이 봇 첨부를 끔 | 닫음 — 기동 시 `console.warn` 한 줄 |
+| N-04 | `SPEC-CORE-001` REQ-CORE-010 이 여전히 `0.0.0.0` 을 요구 (status 도 `completed`) | **닫지 않음 — 리드 판정 대기.** SPEC 본문 개정은 manager-spec 소유이며 이 카드 범위 밖이다 |
+| N-05 | README 한 문장이 코드보다 넓게 약속 | 닫음 — N-01 수정으로 참이 되었고, SSE·봇 프레임의 비대칭을 문장에 명시 |
+| N-06 | `2a3c0fc` 이 `.moai/specs/.moai/state/` 잔여물 3개를 **추적 대상으로** 만듦 | 닫음 — `git rm --cached` + `.gitignore` 에 `**/.moai/state/` (루트 `.moai/state/` 는 예외) |
+
+**N-01 은 직전 감사가 이름 붙인 결함 부류가 같은 카드 안에서 재생산된 것이다.** F-02 를 고치면서
+`routes-messages.ts` 의 HTTP 응답 두 곳만 보고 `gateway.ts` 의 허브 발행 프레임을 놓쳤다 —
+"한 파일 안에서 봉인을 확인하면 그 파일의 입구만 확인된다"는 지적을 읽고도 같은 모양으로 반복했다.
+`attachments` 표를 읽어 밖으로 내보내는 자리를 전수 조사하는 것이 옳은 검사였다.
+
+### 재실행 결과
+
+```
+$ unset MOAI_KANBAN … && npm test -w server -- --run
+      Tests  102 passed (102)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+98 → 102. 새 테스트 2건(`AC-GW-023` 심볼릭 링크, `AC-GW-024` 허브 프레임)은 **수정을 되돌려
+실패하는 것까지 관측했다.**
+
+```
+# realpathSync → resolve 로 되돌린 상태
+AssertionError: expected [ '겉보기정상.txt', '진짜.txt' ] to deeply equal [ '진짜.txt' ]
+# 허브 SELECT 에 stored_path 를 되돌린 상태
+AssertionError: expected { id: 1, filename: '첨부.txt', …(1) } to not have property "stored_path"
+      Tests  1 failed | 101 skipped (102)
+```
+
+### 이 라운드에서 닫지 않은 것
+
+- **N-04 (SPEC-CORE-001 REQ-CORE-010)** — 리드 판정 대기. 코드가 이제 그 요구사항을 위반한다.
+- **비차단 F-04..F-11** — 리드가 F-04·F-05 를 별도 백로그 카드로 적립했고 나머지는 그대로다.
+- **세 번째 재감사를 받지 않았다.** 이 절을 쓰는 시점의 최신 판정은 CONDITIONAL PASS 이며,
+  그 판정이 관측한 트리에는 위 5건의 수정이 아직 들어 있지 않다.
