@@ -2,7 +2,7 @@
 id: SPEC-CHANNEL-001
 title: "minidiscord 채널 플러그인 코어 — 공식 Channels 계약을 구현하는 MCP 서버"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
