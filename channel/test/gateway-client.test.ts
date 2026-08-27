@@ -157,6 +157,22 @@ describe('gateway client', () => {
     await waitFor(() => srv.messages.some(m => m.type === 'still_alive'))
   })
 
+  // 회귀: JSON 아닌 프레임 한 개가 프로세스를 끝내지 않는다 (감사 F-05)
+  // 리스너 안의 throw 는 uncaughtException 으로 올라간다 — 재접속조차 없이 봇이 사라진다.
+  it('drops a malformed frame and keeps processing the next valid one', async () => {
+    const srv = startServer()
+    const got: any[] = []
+    const { client } = await connected(srv, { onMessage: m => got.push(m) })
+    const sock = srv.sockets[0]
+    sock.send('not-json{')                                   // 먼저 깨진 프레임
+    const frame = { type: 'message', id: 1, body: 'x', author_name: 'a', delivery: 'to' }
+    sock.send(JSON.stringify(frame))                          // 그 뒤 정상 프레임
+    await waitFor(() => got.length === 1)
+    expect(got[0]).toEqual(frame)                             // 깨진 프레임 뒤에도 배달된다
+    expect(client.send({ type: 'still_alive' })).toBe(true)   // 연결도 살아 있다
+    await waitFor(() => srv.messages.some(m => m.type === 'still_alive'))
+  })
+
   // AC-CHANCLIENT-006 — send 의 true/false 가 실제 전송과 일치한다
   it('sends only while open, and reports it truthfully', async () => {
     const srv = startServer()

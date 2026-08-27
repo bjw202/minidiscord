@@ -239,6 +239,36 @@ describe('channel wiring', () => {
     expect(mod.resolveUrl({ MINIDISCORD_SERVER: 'ws://example/bot' })).toBe('ws://example/bot')
   })
 
+  // 회귀: MCP 상대가 끊긴 뒤 채팅 한 건이 프로세스를 끝내지 않는다 (감사 F-06)
+  // gateway-client 는 onMessage 를 await 하지 않으므로 여기서 생긴 거부는 아무도 받지 않는다.
+  // 판정 갈래는 .catch(() => {}) 로 막혀 있고(AC-CHANPERM-009) 수신 갈래도 같아야 한다.
+  it('a chat message with no MCP peer raises no unhandled rejection', async () => {
+    const stub = gatewayStub()
+    // 어떤 transport 도 붙이지 않는다 — 이 상태에서 notification() 은 'Not connected' 로 거부된다
+    const { channel, gw } = wire({ url: `ws://127.0.0.1:${stub.port()}/bot`, token: 'tok' })
+    gw.start()
+    cleanups.push(() => gw.stop())
+    await waitFor(() => stub.sent.some(m => m.type === 'hello'), 'hello 도착')
+
+    // 전제 확인: 이 상태의 pushChatMessage 는 실제로 거부된다 — 이 테스트가 무엇을 재는지 못 박는다
+    await expect(
+      channel.pushChatMessage({ id: 1, author_name: 'a', body: 'x', delivery: 'to' }),
+    ).rejects.toThrow()
+
+    const rejections: unknown[] = []
+    const onRejection = (e: unknown) => { rejections.push(e) }
+    process.on('unhandledRejection', onRejection)
+    cleanups.push(() => { process.off('unhandledRejection', onRejection) })
+
+    stub.push({ type: 'message', id: 9, body: '일정 정리해줘', author_name: 'alice', delivery: 'to' })
+    await waitFor(() => stub.sent.some(m => m.type === 'status' && m.state === 'working'), 'working 프레임')
+    await new Promise(r => setTimeout(r, 200))   // 처리되지 않은 거부는 다음 턴에야 보고된다
+
+    expect(rejections).toEqual([])
+    expect(gw.send({ type: 'still_alive' })).toBe(true)      // 배선은 계속 살아 있다
+    await waitFor(() => stub.sent.some(m => m.type === 'still_alive'), 'still_alive 도착')
+  })
+
   // AC-CHANWIRE-014 — 빌드 산출물이 MCP 를 말하고, 토큰은 게이트웨이만 잠근다
   it('the built artifact speaks MCP; the token gates only the gateway', async () => {
     const stub = gatewayStub()

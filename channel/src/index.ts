@@ -23,10 +23,12 @@ export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClien
     url: opts.url,
     token: opts.token,
     // 수신 갈래 + 상태 갈래. TO 이면 세션에 넘기기 전에 working 을 먼저 보낸다 (REQ-CHANWIRE-008).
-    // gateway-client 가 이 콜백을 await 하지 않으므로 여기서 생긴 거부는 처리되지 않는다 — 알려진 위험 (plan.md §D 5번).
+    // gateway-client 가 이 콜백을 await 하지 않으므로 여기서 생긴 거부는 아무도 받지 않는다.
+    // MCP 상대가 먼저 끊긴 뒤 채팅이 오면 pushChatMessage 가 거부되므로 명시적으로 삼킨다 —
+    // 판정 갈래의 .catch(() => {}) (channel-server.ts) 와 같은 형태의 방어다.
     onMessage: async (m: ChatMessage) => {
       if (m.delivery === 'to') gw.send({ type: 'status', state: 'working' })
-      await channel.pushChatMessage(m)
+      await channel.pushChatMessage(m).catch(() => {})
     },
     // 판정 갈래: 게이트웨이 verdict 를 세션 알림으로 되돌린다. 두 필드만 골라 넘긴다 —
     // payload 의 type 같은 계약 밖 필드는 세션으로 가지 않는다 (REQ-CHANPERM-004).

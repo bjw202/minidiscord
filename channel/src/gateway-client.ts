@@ -58,7 +58,10 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient {
       ws.send(JSON.stringify({ type: 'hello', token: opts.token }))   // 첫 프레임은 곧 인증이다
     })
     ws.on('message', d => {
-      const msg = JSON.parse(String(d))
+      // JSON 아닌 프레임 하나로 프로세스가 끝나지 않게 한다 — 리스너 안의 throw 는
+      // uncaughtException 으로 올라가 재접속조차 없이 봇이 사라진다. 아래 error 핸들러와 같은 방향의 방어다.
+      let msg: any
+      try { msg = JSON.parse(String(d)) } catch { return }
       if (msg.type === 'welcome') opts.onWelcome?.(msg)
       else if (msg.type === 'message') opts.onMessage?.(msg)
       else if (msg.type === 'permission_verdict') opts.onVerdict?.(msg)
