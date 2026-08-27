@@ -1,6 +1,7 @@
 node_modules/
 data/
 dist/
+coverage/
 
 # 도구가 cwd 기준으로 만드는 세션 상태 캐시 — 소스 트리 어디에 생기든 추적하지 않는다 (sync-reaudit N-06)
 **/.moai/state/

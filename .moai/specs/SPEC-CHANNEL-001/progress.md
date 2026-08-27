@@ -216,7 +216,7 @@ card: t4
 cycle_type: tdd
 spec_base_sha: 0794ecd406ee47bb4158136b71da5949ca4ae15c
 m1_commit_sha: a5e40f1
-m2_commit_sha: pending-backfill-m2   # 이 커밋 자신이 M2 커밋 — SHA 는 커밋 후 확정 (schema D3 backfill 면제 조항)
+m2_commit_sha: 7b28692   # 백필 (schema D3 — 원 커밋은 자기 SHA 를 알 수 없어 pending-backfill-m2 로 기록됨)
 ac_total: 16
 ac_pass: 16
 ac_fail: 0
