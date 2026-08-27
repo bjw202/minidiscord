@@ -329,4 +329,39 @@ describe('permission relay', () => {
     expect(n.json().consumed_by).toBe('permission')
     expect(await deny).toEqual({ type: 'permission_verdict', request_id: 'fghij', behavior: 'deny' })
   })
+
+  // 두 방이 같은 request_id 를 동시에 걸어도 서로를 덮어쓰지 않고 각자 풀려야 한다 (t7 결함1)
+  it('same request_id in two rooms keeps both requests resolvable', async () => {
+    const { app, broker, port, cookie } = await build()
+    const a = seedRoomAndBot('A', 'pm')
+    const b = seedRoomAndBot('B', 'qa')
+    const wsA = await wsConnect(port, a.token)
+    const wsB = await wsConnect(port, b.token)
+    broker.onGatewayRequest({ roomId: a.roomId, botId: a.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    broker.onGatewayRequest({ roomId: b.roomId, botId: b.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+
+    const verdictA = nextMessage(wsA)
+    const resA = await post(app, a.roomId, cookie, 'yes abcde')
+    expect(resA.json().consumed_by).toBe('permission')
+    expect(await verdictA).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+
+    const verdictB = nextMessage(wsB)
+    const resB = await post(app, b.roomId, cookie, 'yes abcde')
+    expect(resB.json().consumed_by).toBe('permission')
+    expect(await verdictB).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+  })
+
+  // 대소문자 섞인 id 로 등록해도 답이 풀리고 판정의 id 는 소문자로 나간다 (t7 결함2, REQ-PERM-006)
+  it('mixed-case request_id resolves and the verdict carries the lowercase id', async () => {
+    const { app, broker, port, cookie } = await build()
+    const { roomId, botId, token } = seedRoomAndBot()
+    const ws = await wsConnect(port, token)
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'AbCdE', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const verdict = nextMessage(ws)
+    const res = await post(app, roomId, cookie, 'yes AbCdE')
+    expect(res.json().consumed_by).toBe('permission')
+    expect(await verdict).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+    const c = db.prepare("SELECT COUNT(*) c FROM messages WHERE author_type='user'").get() as { c: number }
+    expect(c.c).toBe(0)
+  })
 })

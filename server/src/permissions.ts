@@ -17,8 +17,11 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
   const db = app.db
   const hub = app.hub
   // 대기 레지스트리 — 프로세스 메모리 맵이며 디스크에 저장되지 않는다 (REQ-PERM-003).
+  // 키는 방 이름공간 합성키(방:소문자 id) — 같은 request_id 가 여러 방에 걸려도 서로를 덮어쓰지 않는다 (REQ-PERM-006)
   // 재시작으로 비는 것은 수용된 설계다 — 세션 쪽 승인 대화상자는 살아 있어 터미널에서 직접 승인할 수 있다
   const open = new Map<string, ConnInfo>()
+  // 합성키 — 키에 방 번호가 박혀 있으므로 다른 방의 답은 맵 조회 자체가 놓친다. 소비·전송 없이 대기 항목이 살아 남는 것이 곧 REQ-PERM-011 이다
+  const keyOf = (roomId: number, requestId: string) => `${roomId}:${requestId.toLowerCase()}`
 
   // system 메시지 저장 + 같은 방에 SSE 발행. 이벤트 이름은 기존 'message' 하나 — 새 이벤트 타입을 만들지 않는다 (REQ-PERM-013)
   function postSystem(roomId: number, body: string): void {
@@ -30,7 +33,7 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
   return {
     onGatewayRequest(info, params) {
       // 대기 등록이 system 저장보다 먼저다 — 저장이 실패해도 대기 항목은 남아야 터미널 승인 경로가 살아 있다 (plan.md §B)
-      open.set(params.request_id, info)
+      open.set(keyOf(info.roomId, params.request_id), info)
       const body = [
         `🔒 봇이 도구 사용 승인을 요청합니다: ${params.tool_name}`,
         params.description,
@@ -44,10 +47,9 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
       const m = PERMISSION_REPLY_RE.exec(text)
       if (!m) return false                       // 판정 형식이 아니면 흘려보낸다 (REQ-PERM-010)
       const requestId = m[2].toLowerCase()       // 대문자로 답해도 봇은 소문자로 알아본다 (REQ-PERM-006)
-      const info = open.get(requestId)
+      const info = open.get(keyOf(roomId, requestId))
       if (!info) return false                    // 모르는 ID — 재시작 직후와 같은 경로다 (REQ-PERM-003·010)
-      if (info.roomId !== roomId) return false   // 다른 방의 답은 소비도 전송도 하지 않고 항목을 남긴다 (REQ-PERM-011)
-      open.delete(requestId)                     // 해제는 전송 시도 직후 — 성공 여부와 무관 (plan.md §B). 남기면 같은 답을 무한 재시도할 수 있다
+      open.delete(keyOf(roomId, requestId))      // 해제는 전송 시도 직후 — 성공 여부와 무관 (plan.md §B). 남기면 같은 답을 무한 재시도할 수 있다
       const behavior = m[1][0].toLowerCase() === 'y' ? 'allow' : 'deny'   // 정규식이 y|yes|n|no 로 좁혔으니 첫 글자로 갈린다 (REQ-PERM-006·007)
       const sent = app.gateway.sendToBot(info.roomId, info.botId, { type: 'permission_verdict', request_id: requestId, behavior })
       // 반환값을 읽는다 — 버리면 봇이 죽은 동안 누른 승인이 화면상 성공으로 보인다 (plan.md §D 3번, REQ-PERM-009)
