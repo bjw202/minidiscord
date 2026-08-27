@@ -52,8 +52,24 @@
       <ul id="bot-list"></ul>
       <button id="logout-btn" type="button">로그아웃</button>
     </nav>
+    <!-- #chat 요소는 SPEC-WEBSHELL-001 소유(§4.8 계약 4). 안쪽 내용물은 SPEC-WEBCHAT-001 소유다.
+         #placeholder 는 제거했다 — 형제의 영구 기준은 그 존재를 단언하지 않는다. -->
     <main id="chat">
-      <p id="placeholder">왼쪽에서 방을 선택하세요</p>
+      <header id="room-header">
+        <h2 id="room-title"></h2>
+        <div id="room-bots"></div>
+        <!-- 봇 초대 모달의 결합은 SPEC-WEBRICH-001 몫이다 — 이 SPEC 은 자리만 둔다 (REQ-WEBCHAT-001) -->
+        <button id="invite-btn" type="button">초대</button>
+      </header>
+      <div id="messages"></div>
+      <footer id="composer">
+        <!-- 멘션 자동완성 드롭다운 — 토큰이 감지될 때만 보인다 (REQ-WEBCHAT-009) -->
+        <div id="autocomplete" hidden></div>
+        <textarea id="msg-input" rows="1" placeholder="메시지 보내기"></textarea>
+        <!-- 파일 첨부의 결합은 SPEC-WEBRICH-001 몫이다 — 이 SPEC 은 자리만 둔다 (REQ-WEBCHAT-001) -->
+        <input id="file-input" type="file" hidden>
+        <button id="send-btn" type="button">보내기</button>
+      </footer>
     </main>
   </div>
 
