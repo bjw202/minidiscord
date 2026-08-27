@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t3` |
 | 선행 SPEC | `SPEC-CORE-001` → `SPEC-AUTH-001` → `SPEC-SSE-001` → `SPEC-GATEWAY-001` → (메시지 라우트) |
 | 실행 순서 | 카드 `t3` 의 SPEC 중 **마지막** |
-| 현재 상태 | `draft` — plan 단계 완료 (§E.1 audit-ready) |
+| 현재 상태 | `in-progress` — run 단계 (M1 완료) |
 
 ---
 
@@ -33,7 +33,7 @@ plan_reaudit_verdict: "MF-1·2·3·5 RESOLVED 확인, 차단급 회귀 R-1(set-c
 req_count: 14
 ac_count: 14
 tier_budget: "16 REQ / 16 AC"
-spec_base_sha: "<run 단계 첫 동작으로 채운다>"
+spec_base_sha: "398b584fb763cce25c5f92802993c425c994484e"
 open_questions: 4   # spec.md §5 첫 항목 — 지시서의 네 기능이 원본에 없음, 리드 판정 대기
 ```
 
@@ -133,6 +133,20 @@ _&lt;pending run-phase&gt;_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _&lt;pending sync-phase&gt;_
+
+---
+
+## §F Phase 4 Mode Selection
+
+- 입력: tier M / 범위 3개 파일 (permissions.ts·테스트 신규, 배선·가로채기 수정) / 도메인 1 (server) / 언어 TypeScript / 병렬 이득 낮음
+- direct: 미선택 — 다중 파일 신규 코드+테스트 작성
+- serial: 선택 — 코딩 중심 구현의 기본값; 카드 t3 다섯 SPEC의 마지막. 선행 GATEWAY(setPermissionHandler 창구)·MSG(메시지 라우트 가로채기 지점) 산출물을 계약으로 소비
+- fanout: 미선택 — 단일 도메인 구현 작업 (코딩 병렬성 경고)
+- sweep: 미선택 — 30파일 미만, 기계적 일괄 변환 아님
+
+Decision: serial
+Implementation Kickoff Approval: 통과 — 리드 디스패치 gate 필드로 운영자 승인 전달됨 (2026-08-27)
+기록 시점 HEAD: 398b584 (SPEC-MSG-001 run 완료 직후)
 
 ---
 

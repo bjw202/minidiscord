@@ -9,18 +9,21 @@ import { registerBotRoutes } from './routes-bots.js'
 import { registerMessageRoutes } from './routes-messages.js'
 import { createSseHub } from './sse.js'
 import { createGateway, type Gateway } from './gateway.js'
+import { createPermissionBroker, type PermissionBroker } from './permissions.js'
 import { config } from './config.js'
 
 // FastifyInstance.db — requireAuth 와 이후 도메인 라우트가 req.server.db 로 공유하는 단일 연결
 // FastifyInstance.hub — SSE 허브. 프로세스당 하나며 Task 8·9·10 이 app.hub.publish 로 결합한다
 // FastifyInstance.gateway — 봇 게이트웨이. routes-messages·permissions·routes-bots 초대 online 이 소비한다
 // FastifyInstance.uploadsDir — 업로드 디렉터리. 메시지 라우트가 req.server.uploadsDir 로 읽는다 (REQ-MSG-006 정의 상자)
+// FastifyInstance.permissions — 권한 릴레이 브로커. 메시지 라우트의 가로채기가 req.server.permissions 로 접근한다
 declare module 'fastify' {
   interface FastifyInstance {
     db: Db
     hub: ReturnType<typeof createSseHub>
     gateway: Gateway
     uploadsDir: string
+    permissions: PermissionBroker
   }
 }
 
@@ -45,6 +48,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   // 메시지 라우트 — multipart 등록이 라우트 등록보다 앞서야 한다 (REQ-MSG-015). 뒤에 오면 요청 시점에 req.parts() 가 없다
   await app.register(multipart)
   registerMessageRoutes(app)
+  // 권한 릴레이 브로커 — 게이트웨이 승인 요청을 방에 띄우고 yes/no 답을 판정으로 되돌린다 (REQ-PERM-004).
+  // 데코레이션이 빠지면 라우트 쪽 옵셔널 체이닝이 조용히 undefined 를 내어 릴레이 전체가 아무 오류 없이 죽는다
+  const broker = createPermissionBroker(app)
+  app.decorate('permissions', broker)
+  gateway.setPermissionHandler((info, params) => broker.onGatewayRequest(info, params))
   // 방별 이벤트 스트림. hijack 을 먼저 호출해 소켓 소유권을 넘긴다 — 허브가 reply.raw 에 직접 쓴다
   app.get('/api/rooms/:id/events', { preHandler: [requireAuth] }, async (req, reply) => {
     reply.hijack()
