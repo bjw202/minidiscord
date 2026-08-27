@@ -173,6 +173,36 @@ describe('channel server', () => {
     expect(note!.params.meta.sender).toBe('alice')
   })
 
+  // AC-CHANNEL-004 — initialize 응답의 capabilities (인프로세스 회귀 짝)
+  // 셸 기준(acceptance.md AC-CHANNEL-004)은 빌드 산출물을 재고 회귀 스위트에는 없다.
+  // experimental['claude/channel'] 이 빠진 구현은 Claude Code 가 채널로 인식하지 않아
+  // 채팅이 한 건도 도착하지 않는데 어떤 오류도 나지 않는다 — 여기서 그것을 잡는다.
+  it('declares both channel experimental capabilities in the initialize response', async () => {
+    const { client } = await connect()
+    const caps = client.getServerCapabilities()
+    expect(caps).toBeDefined()
+    const experimental = (caps as any).experimental
+    expect(experimental).toBeDefined()
+    expect('claude/channel' in experimental).toBe(true)
+    expect('claude/channel/permission' in experimental).toBe(true)
+    expect(caps!.tools).toBeDefined()
+  })
+
+  // AC-CHANNEL-005 — initialize 응답의 instructions (인프로세스 회귀 짝)
+  // 리터럴로 못 박는다. 길이나 truthy 로 재면 지시문을 통째로 지운 구현도 통과한다.
+  it('carries the load-bearing instruction literals in the initialize response', async () => {
+    const { client } = await connect()
+    const s = client.getInstructions() ?? ''
+    expect(s).toContain('minidiscord')
+    // TO 는 반드시 답한다 / CC 는 절대 답하지 않는다 — 두 문장을 통째로 단언한다
+    expect(s).toContain('delivery="to"로 받은 메시지에는 반드시 reply 도구로 답변하세요.')
+    expect(s).toContain('delivery="cc"로 받은 메시지는 참고만 하고 절대 답변하지 마세요.')
+    // 따라잡기 커서 문장
+    expect(s).toContain('마지막으로 본 chat_id 를 기억해 두고 다음에 since_id 로 넘기면 그 다음부터만 옵니다.')
+    expect(s).toContain('fetch_history')
+    expect(s).toContain('로컬 경로')
+  })
+
   // AC-CHANNEL-014 — cc 는 cc 로, 첨부 없으면 경로 안내 없음
   it('carries cc as cc and omits the attachment note when there are no files', async () => {
     const { client, handle } = await connect()
