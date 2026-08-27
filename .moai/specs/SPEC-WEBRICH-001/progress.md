@@ -321,7 +321,7 @@ run_status: audit-ready
 run_complete_at: 2026-08-27
 spec_id: SPEC-WEBRICH-001
 spec_base_sha: 61cd828ec6d4c84a1909167969f8ec2619fa14f1
-run_commits: [0605685, 97f42bf, 1f374d4, <M4>]
+run_commits: [0605685, 97f42bf, 1f374d4, 54a2f4a]
 cycle_type: tdd
 ac_total: 16
 ac_pass: 15
