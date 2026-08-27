@@ -1,7 +1,7 @@
 ---
 id: SPEC-CORE-001
 title: "minidiscord 저장소 스캐폴드와 SQLite 스키마 기반"
-version: "0.2.0"
+version: "0.3.0"
 status: completed
 created: 2026-08-26
 updated: 2026-08-27
@@ -22,6 +22,7 @@ tier: M
 |------|------|-----------|--------|
 | 0.1.0 | 2026-08-26 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan.md` Task 1-2 에서 도출 (칸반 카드 `t1`, 마일스톤 M1). | manager-spec |
 | 0.2.0 | 2026-08-27 | REQ-CORE-010 개정 — 수신 호스트를 `0.0.0.0` 고정에서 `127.0.0.1` 기본 + `MINIDISCORD_HOST` 확장으로 바꿨다. 근거: `.moai/reports/t3/sync-audit.md` F-03, `.moai/reports/t3/sync-reaudit.md` N-04. 구현(`server/src/config.ts:6`, `server/src/index.ts:67`)은 이미 개정 내용을 따르고 있어 SPEC 을 코드에 맞춘 개정이다. AC-CORE-015 에 3단계(호스트 관측)를 추가했다. | manager-spec |
+| 0.3.0 | 2026-08-27 | REQ-CORE-005 정렬 — 설정 객체 열거를 실제 export 6개(`port`, `host`, `dataDir`, `dbPath`, `uploadsDir`, `botFilesDir`)로 맞췄다. 근거: `server/src/config.ts` 실제 export 관측. 새 요구사항이 아니라 관측 사실 정렬이다. AC-CORE-007 에 키 열거 확인을 추가했다. | manager-spec |
 
 ---
 
@@ -68,7 +69,9 @@ minidiscord는 내 PC에서 도는 자체 호스팅 채팅 서버다. 서버는 
 ### 3.2 설정 (config)
 
 **REQ-CORE-005** (Ubiquitous)
-`server/src/config.ts` 는 `port`, `dataDir`, `dbPath`, `uploadsDir` 네 개의 값을 가진 설정 객체를 내보내야 한다.
+`server/src/config.ts` 는 `port`, `host`, `dataDir`, `dbPath`, `uploadsDir`, `botFilesDir` 여섯 개의 값을 가진 설정 객체를 내보내야 한다.
+
+> `host` 의 기본값·확장 규칙은 REQ-CORE-010 이 정한다. `botFilesDir` 는 봇 첨부의 허용 뿌리이며 미설정이면 봇 첨부를 전부 거부하는 fail-closed 값이다(`.moai/reports/t3/sync-audit.md` F-01) — 이 SPEC 은 두 값이 설정 객체에 존재한다는 사실만 규정하고, 그 의미는 각 소관 요구사항이 정한다.
 
 **REQ-CORE-006** (Where — 환경변수 설정 여부)
 `MINIDISCORD_PORT` 가 설정된 환경에서 설정 객체의 `port` 는 그 값의 수치 변환 결과여야 하고, `MINIDISCORD_DATA_DIR` 가 설정된 환경에서 `dataDir` 는 그 값이어야 한다. 두 변수가 없으면 각각 `3000` 과 `./data` 여야 한다.

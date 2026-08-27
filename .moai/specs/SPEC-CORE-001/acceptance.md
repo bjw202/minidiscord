@@ -16,7 +16,7 @@
 | AC-CORE-004 | REQ-CORE-009 | `npm test -w server` | `health.test.ts` 의 `GET /api/health returns ok` 통과 |
 | AC-CORE-005 | REQ-CORE-012 | `npm test -w server` | `db.test.ts` 의 `creates all tables` 통과 |
 | AC-CORE-006 | REQ-CORE-013 | `npm test -w server` | `db.test.ts` 의 `is idempotent (reopen same file)` 통과 |
-| AC-CORE-007 | REQ-CORE-005..007 | 아래 AC-CORE-007 본문 참조 | 기본값과 환경변수 재정의가 모두 관측됨 |
+| AC-CORE-007 | REQ-CORE-005..007 | 아래 AC-CORE-007 본문 참조 | 여섯 개 키가 모두 존재하고, 기본값과 환경변수 재정의가 모두 관측됨 |
 | AC-CORE-008 | REQ-CORE-008 | `node -e "import('./server/src/index.ts')"` 대신 typecheck + 테스트 통과로 간접 확인 | `buildServer` 를 이름으로 가져오는 `health.test.ts` 가 통과 |
 | AC-CORE-009 | REQ-CORE-011 | `grep -c "export function openDb" server/src/db.ts` | `1` |
 | AC-CORE-010 | REQ-CORE-014 | 아래 AC-CORE-010 본문 참조 | `wal` |
@@ -66,19 +66,24 @@
 **When** `npm test -w server` 를 실행한다.
 **Then** `db.test.ts` 의 테스트 `is idempotent (reopen same file)` 가 통과한다. 같은 경로로 `openDb` 를 다시 호출한 뒤 `SELECT name FROM rooms` 결과가 정확히 `[{ name: 'r1' }]` 이다.
 
-### AC-CORE-007 — 설정 기본값과 환경변수 재정의
+### AC-CORE-007 — 설정 키 구성, 기본값, 환경변수 재정의
 
 **Given** `server/src/config.ts` 가 있다.
-**When** 다음 두 명령을 차례로 실행한다.
+**When** 다음 세 명령을 차례로 실행한다.
 
 ```bash
-npx -w server tsx -e "import {config} from './server/src/config.js'; console.log(config.port, config.dataDir, config.dbPath, config.uploadsDir)"
-MINIDISCORD_PORT=4100 MINIDISCORD_DATA_DIR=/tmp/md npx -w server tsx -e "import {config} from './server/src/config.js'; console.log(config.port, config.dataDir, config.dbPath, config.uploadsDir)"
+npx -w server tsx -e "import(process.cwd()+'/src/config.ts').then(m=>console.log(Object.keys(m.config).sort().join(',')))"
+npx -w server tsx -e "import(process.cwd()+'/src/config.ts').then(({config:c})=>console.log(c.port, c.dataDir, c.dbPath, c.uploadsDir))"
+MINIDISCORD_PORT=4100 MINIDISCORD_DATA_DIR=/tmp/md npx -w server tsx -e "import(process.cwd()+'/src/config.ts').then(({config:c})=>console.log(c.port, c.dataDir, c.dbPath, c.uploadsDir))"
 ```
 
-**Then** 첫 출력이 `3000 ./data ./data/minidiscord.db ./data/uploads` 이고, 둘째 출력이 `4100 /tmp/md /tmp/md/minidiscord.db /tmp/md/uploads` 이다.
+**Then** 첫 출력이 `botFilesDir,dataDir,dbPath,host,port,uploadsDir` 이다 — 설정 객체가 REQ-CORE-005 가 규정한 여섯 개 키를 정확히 그만큼 가진다는 증거다(정렬한 이름 목록이라 순서 흔들림이 판정에 끼어들지 않는다). 둘째 출력이 `3000 ./data ./data/minidiscord.db ./data/uploads` 이고, 셋째 출력이 `4100 /tmp/md /tmp/md/minidiscord.db /tmp/md/uploads` 이다. 셋 중 하나라도 어긋나면 실패다.
 
-> 구현자 주: 위 인라인 실행 형태가 워크스페이스 해석 문제로 동작하지 않으면, 동등한 단언을 담은 `server/test/config.test.ts` 를 추가하고 `npm test -w server` 통과로 대체한다. 대체 시 관측 대상 값 여덟 개는 그대로 유지한다.
+`host` 의 기본값과 `MINIDISCORD_HOST` 재정의는 AC-CORE-015 3단계가 관측한다 — 여기서는 키의 존재만 본다.
+
+> 형태 주: `-w server` 가 작업 디렉터리를 `server/` 로 옮기므로 `process.cwd()` 기준 절대 경로로 동적 임포트한다. 정적 `import ... from './server/src/config.js'` 형태는 `[eval]` 모듈에서 상대 경로가 풀리지 않아 `MODULE_NOT_FOUND` 로 실패한다(이 머신 실측). 위 세 명령은 이 트리에서 실제로 실행해 각각 위 결과를 출력하는 것을 확인했다.
+
+> 구현자 주: 위 인라인 실행 형태가 어떤 환경에서 동작하지 않으면, 동등한 단언을 담은 `server/test/config.test.ts` 를 추가하고 `npm test -w server` 통과로 대체한다. 대체 시 관측 대상(키 여섯 개 + 값 여덟 개)은 그대로 유지한다.
 
 ### AC-CORE-008 — `buildServer` 이름 붙은 내보내기
 
