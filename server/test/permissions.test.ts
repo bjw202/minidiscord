@@ -387,8 +387,10 @@ describe('permission relay', () => {
     const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
     const lines = row.body.split('\n')
     expect(lines.length).toBe(4)                                  // REQ-PERM-002 네 줄 구조가 무너지지 않는다
-    const instructing = lines.filter(l => l.includes('승인하려면'))
-    expect(instructing.length).toBe(1)                            // 안내 줄은 서버가 쓴 한 줄뿐이다
+    // 안내 문구로 "시작하는" 줄은 서버가 쓴 한 줄뿐이어야 한다 — 위조 텍스트는 중화 표식과 함께
+    // 설명 줄 안에 갇혀 있고 독립된 안내 줄이 되지 못한다 (includes 로는 중화된 텍스트까지 걸리므로 startsWith 로 판정)
+    const instructing = lines.filter(l => l.startsWith('승인하려면'))
+    expect(instructing.length).toBe(1)
     expect(instructing[0]).toContain('yes abcde')
   })
 
