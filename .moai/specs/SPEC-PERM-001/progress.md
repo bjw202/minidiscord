@@ -322,7 +322,7 @@ open_questions: 4   # 리드 판정 대기 — 전용 엔드포인트·멤버십
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-27
-sync_commit_sha: "<sync 커밋 직후 백필>"
+sync_commit_sha: "b93ac457d4e142ef4c56ee15d63786ba43e0f0e5"
 spec_id: SPEC-PERM-001
 card: t3
 milestone: M3

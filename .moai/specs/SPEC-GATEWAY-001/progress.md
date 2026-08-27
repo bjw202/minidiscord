@@ -426,7 +426,7 @@ docs_commit_sha: "33f536dee5d7b12d3e26ed7608153124eddd630b"
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-27
-sync_commit_sha: "<sync 커밋 직후 백필>"
+sync_commit_sha: "43eb27a1fdce2633cce97801e44052dcba2059a5"
 spec_id: SPEC-GATEWAY-001
 card: t3
 milestone: M3

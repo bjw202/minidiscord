@@ -354,7 +354,7 @@ gaps: "감사 이월 5건(3·4·5·6·8) + AC-MSG-008 RED 공히 통과 — §E.
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-27
-sync_commit_sha: "<sync 커밋 직후 백필>"
+sync_commit_sha: "26e8d90339503320e4d5635f72c782208b0580a6"
 spec_id: SPEC-MSG-001
 card: t3
 milestone: M3

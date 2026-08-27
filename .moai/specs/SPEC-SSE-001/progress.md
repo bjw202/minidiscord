@@ -381,7 +381,7 @@ commits:
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-27
-sync_commit_sha: "<sync 커밋 직후 백필>"
+sync_commit_sha: "309fcb78747e928421992c71a710e1e28fb99352"
 spec_id: SPEC-SSE-001
 card: t3
 milestone: M3
