@@ -423,7 +423,85 @@ docs_commit_sha: "33f536dee5d7b12d3e26ed7608153124eddd630b"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-27
+sync_commit_sha: "<sync 커밋 직후 백필>"
+spec_id: SPEC-GATEWAY-001
+card: t3
+milestone: M3
+worktree: .claude/worktrees/t3 (WT-msg-gateway-relay)
+head_at_sync_evidence: "8c4798a"
+sync_session: 9d51afd1-8226-4e22-946e-2ed4574a878e
+lens: "--security --deep"
+docs_updated: [README.md, CHANGELOG.md]
+status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+```
+
+### Claim (주장)
+
+`SPEC-GATEWAY-001` 의 run 단계 산출물이 sync 세션의 **독립 재실행**으로 확인되었다. 봇 게이트웨이 테스트 18건이 전부 통과하고 타입 검사가 깨끗하며, 토큰 인증·재접속 커서·이력 조회에 대한 보안 렌즈 검토에서 차단 사항이 나오지 않았다.
+
+### Evidence (증거)
+
+sync 세션이 직접 실행해 관측했다. 원문은 `.moai/state/verify/9d51afd1/test-verbose.txt` 에 남겼다.
+
+```
+$ npm test -w server -- --run --reporter=verbose
+ ✓ test/gateway.test.ts > gateway > welcomes each token as its own (room, bot) and only on /bot 59ms
+ ✓ test/gateway.test.ts > gateway > rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames 14ms
+ ✓ test/gateway.test.ts > gateway > replays only missed messages targeted at that bot and advances the cursor 407ms
+ ✓ test/gateway.test.ts > gateway > never redelivers a message after reconnect 608ms
+ ✓ test/gateway.test.ts > gateway > deliver reaches only targeted bots in that room and moves only their cursor 813ms
+ ✓ test/gateway.test.ts > gateway > deliver carries per-bot delivery and the message attachments 9ms
+ ✓ test/gateway.test.ts > gateway > stores bot_message, copies files into uploadsDir and publishes to the hub 309ms
+ ✓ test/gateway.test.ts > gateway > bot_message skips only the missing attachment 306ms
+ ✓ test/gateway.test.ts > gateway > status publishes bot_status for working and idle only 408ms
+ ✓ test/gateway.test.ts > gateway > isOnline follows the connection, per room and bot 106ms
+ ✓ test/gateway.test.ts > gateway > history_request returns the room messages in id order and echoes rid 6ms
+ ✓ test/gateway.test.ts > gateway > history_request with since_id returns only later messages 5ms
+ ✓ test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until 6ms
+ ✓ test/gateway.test.ts > gateway > history_response carries id, author_name, body and created_at 4ms
+ ✓ test/gateway.test.ts > gateway > history_response goes only to the requesting bot 408ms
+ ✓ test/gateway.test.ts > gateway > closeRoom disconnects only that room 9ms
+ ✓ test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery 812ms
+ ✓ test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag 76ms
+ Test Files  10 passed (10)
+      Tests  98 passed (98)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+보안 렌즈 — 토큰을 평문으로 보관하지 않는 것을 코드에서 직접 확인했다.
+
+```
+$ grep -n "sha256Hex" server/src/gateway.ts
+7:import { sha256Hex } from './routes-bots.js'
+88:    ).get(sha256Hex(String(token ?? ''))) as
+```
+
+접속 프레임의 토큰은 sha256 해시로 조회한다 — 서버에 평문 토큰이 남지 않는다. 철회된 토큰과 보관된 방의 토큰을 함께 거절하는 것은 `rejects unknown, revoked and archived-room tokens…` 한 줄이 양성으로 지킨다.
+
+### Baseline-attribution (baseline 귀속)
+
+- 측정 트리: 워크트리 `.claude/worktrees/t3`, 분기 `WT-msg-gateway-relay`, HEAD `8c4798a`.
+- run 단계 §E.3 은 `70 passed / 70`, `gateway 18/18` 을 기록했다. sync 시점 `test/gateway.test.ts` 자체 건수는 **18 로 변함이 없다** — 총계 98 은 형제 SPEC 2벌(MSG 13·PERM 15)이 위에 얹힌 결과다.
+- AC 20/20 판정과 범위 경계 네 관측은 §E.2 의 run 시점 기록이며, sync 세션이 다시 재지 않았다.
+
+### Gaps (미검증)
+
+- 커버리지 수치 미측정 (`@vitest/coverage-v8` 미설치).
+- **실제 Claude Code 세션이 붙은 적은 없다.** 게이트웨이 상대편(채널 플러그인)은 카드 `t4` 의 몫이고, 프로토콜이 실제로 맞물리는지는 카드 `t6` E2E 에서 처음 관측된다. 지금까지의 근거는 전부 테스트 하네스가 흉내 낸 클라이언트다.
+- 토큰 해시 조회는 상수 시간 비교가 아니다. 조회 키가 해시값이라 타이밍으로 새어 나갈 원본 토큰이 없다고 판단했으나, 이 판단 자체를 계측으로 확인하지는 않았다.
+
+### Residual-risk (잔여 위험)
+
+- 재접속 커서는 봇별로 전진한다. 같은 토큰으로 두 프로세스가 동시에 붙는 경우는 이번 범위에서 정의하지 않았다 — 한쪽이 커서를 밀면 다른 쪽이 놓친다.
+- `since_id` 이력 조회의 커서 의미는 카드 `t4` MCP 도구와 `t6` 검증이 같은 해석을 공유해야 한다.
+- 이 분기는 아직 머지되지 않았다.
 
 ---
 
