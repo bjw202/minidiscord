@@ -369,7 +369,7 @@ docs_updated: [README.md, CHANGELOG.md]
 status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
 # --- 아래 4줄은 3차 감사 PASS 후 갱신 (§E.7). 위 sync_commit_sha 는 최초 마감 커밋이며,
 # 그 마감은 sync-audit FAIL 로 되돌려졌다가 이 재마감으로 다시 닫혔다.
-revalidated_at_head: "<재마감 커밋 직후 백필>"
+revalidated_at_head: "ed7566b3bc12e0b7ce9d86597a61ca79aa226bff"
 revalidated_verdict: "PASS — .moai/reports/t3/sync-audit-3.md (기준 HEAD 8c15698)"
 revalidated_tests: "104 passed / 104, exit 0 · typecheck exit 0 (sync 세션 직접 실행)"
 revalidated_evidence: .moai/state/verify/9d51afd1/test-final.txt · typecheck-final.txt
