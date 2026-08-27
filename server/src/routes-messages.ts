@@ -1,11 +1,12 @@
-// 메시지 API — multipart 전송, 멘션 → 전달 대상 매핑, SSE·게이트웨이 팬아웃 (Task 9)
-import { createWriteStream, mkdirSync, statSync } from 'node:fs'
+// 메시지 API — multipart 전송, 멘션 → 전달 대상 매핑, SSE·게이트웨이 팬아웃, 목록 커서, 첨부 다운로드 (Task 9)
+import { createReadStream, createWriteStream, mkdirSync, statSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { pipeline } from 'node:stream/promises'
-import { basename, extname, join } from 'node:path'
+import { basename, extname, join, resolve, sep } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { requireAuth } from './auth.js'
 import { parseMentions } from './mention.js'
+import type { Db } from './db.js'
 
 // 확장자 → MIME 표 (REQ-MSG-006). 비교는 소문자로 정규화한 뒤 하고 표에 없으면 application/octet-stream
 const MIME: Record<string, string> = {
@@ -106,4 +107,61 @@ export function registerMessageRoutes(app: FastifyInstance): void {
 
     return reply.code(200).send({ ok: true, message })
   })
+
+  // 목록 — 그 방의 메시지 중 id 가 after 보다 큰 것을 오름차순으로 최대 200개 (REQ-MSG-011).
+  // id 는 messages.id 그대로다 — 별도 방별 번호를 만들지 않는다 (REQ-MSG-012).
+  // 방 존재 여부도 상태도 보지 않는다 — 없는 방은 빈 배열이지 오류가 아니다 (spec.md §5 범위 밖 명시)
+  app.get('/api/rooms/:id/messages', { preHandler: [requireAuth] }, async req => {
+    const db = req.server.db
+    const roomId = Number((req.params as { id: string }).id)
+    const raw = (req.query as { after?: string }).after
+    // 숫자가 아닌 after 는 NaN → SQLite 가 NULL 로 다뤄 id > NULL 이 항상 거짓이라 빈 배열 (엣지 케이스)
+    const after = raw === undefined ? 0 : Number(raw)
+    const rows = db.prepare('SELECT * FROM messages WHERE room_id = ? AND id > ? ORDER BY id ASC LIMIT 200')
+      .all(roomId, after) as { id: number; author_type: string; author_user_id: number | null; author_bot_id: number | null }[]
+    return {
+      messages: rows.map(m => ({
+        ...m,
+        author_name: displayName(db, m),
+        attachments: db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(m.id),
+      })),
+    }
+  })
+
+  // 다운로드 — 기록된 mime 과 content-disposition attachment(RFC 5987 filename*) 로 응답 (REQ-MSG-008)
+  app.get('/api/attachments/:id', { preHandler: [requireAuth] }, async (req, reply) => {
+    const db = req.server.db
+    const id = Number((req.params as { id: string }).id)
+    const att = db.prepare('SELECT * FROM attachments WHERE id = ?').get(id) as
+      | { filename: string; stored_path: string; mime: string }
+      | undefined
+    // 404 본문의 키를 message 로 쓰는 것은 Fastify 기본 오류 봉투와 같은 형태다 — AC-MSG-015 4번이
+    // dl.json().message 를 읽어 'Route … not found' 대조를 하므로 이 값은 문자열이어야 한다
+    if (!att) return reply.code(404).send({ message: '파일을 찾을 수 없습니다' })
+    // 읽기 시점 봉인 — 절대 경로로 풀어 업로드 디렉터리 아래가 아니면 파일을 열지 않고 404 (REQ-MSG-009).
+    // REQ-MSG-007 의 쓰기 봉인과 서로의 백스톱이다 — 어느 한쪽이 뚫려도 다른 쪽이 남는다
+    if (!resolve(att.stored_path).startsWith(resolve(req.server.uploadsDir) + sep)) {
+      return reply.code(404).send({ message: '파일을 찾을 수 없습니다' })
+    }
+    reply.header('content-type', att.mime)
+    reply.header('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(att.filename)}`)
+    return reply.send(createReadStream(att.stored_path))
+  })
+}
+
+// author_type 에 따른 작성자 이름 (REQ-MSG-011) — gateway.ts 의 authorName 과 같은 로직이지만
+// 순환 참조를 피하려고 의도적으로 여기 다시 쓴다. 공용 모듈로 추출하지 않는다 (spec.md §6)
+function displayName(
+  db: Db,
+  m: { author_type: string; author_user_id: number | null; author_bot_id: number | null },
+): string {
+  if (m.author_type === 'user') {
+    const u = db.prepare('SELECT username FROM users WHERE id = ?').get(m.author_user_id) as { username: string } | undefined
+    return u?.username ?? '사용자'
+  }
+  if (m.author_type === 'bot') {
+    const b = db.prepare('SELECT name FROM bots WHERE id = ?').get(m.author_bot_id) as { name: string } | undefined
+    return b?.name ?? '봇'
+  }
+  return '시스템'
 }

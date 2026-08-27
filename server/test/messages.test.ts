@@ -149,6 +149,30 @@ describe('messages', () => {
     expect((db.prepare('SELECT COUNT(*) c FROM messages').get() as { c: number }).c).toBe(1)
   })
 
+  it('saves uploaded file as attachment and serves download', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seed()
+    const src = join(dir, 'memo.txt')
+    writeFileSync(src, '파일 내용')
+
+    const res = await postMessage(app, cookie, roomId, '파일 올림 @TO(pm)', src)
+    expect(res.statusCode).toBe(200)
+
+    const att = db.prepare('SELECT * FROM attachments').get() as any
+    expect(att.filename).toBe('첨부.txt')
+    expect(att.size).toBe(Buffer.byteLength('파일 내용'))
+    expect(att.mime).toBe('text/plain')
+
+    const dl = await app.inject({ method: 'GET', url: `/api/attachments/${att.id}`, headers: { cookie } })
+    expect(dl.statusCode).toBe(200)
+    expect(dl.body).toBe('파일 내용')
+    expect(dl.headers['content-disposition']).toContain("filename*=UTF-8''")
+
+    // 없는 첨부는 404
+    const missing = await app.inject({ method: 'GET', url: '/api/attachments/9999', headers: { cookie } })
+    expect(missing.statusCode).toBe(404)
+  })
+
   it('refuses to store an upload outside the uploads directory', async () => {
     const { app, cookie, uploadsDir } = await build()
     const { roomId } = seed()
@@ -168,6 +192,24 @@ describe('messages', () => {
 
     // 3) 그 경로에 파일이 실제로 있다 — "아무 데도 안 썼다"로 통과하는 것을 배제
     expect(existsSync(att.stored_path)).toBe(true)
+  })
+
+  it('refuses to serve an attachment whose stored path escapes the uploads directory', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seed()
+
+    // 업로드 디렉터리 밖의 파일
+    const outside = join(dir, 'secret.txt')
+    writeFileSync(outside, '비밀입니다')
+
+    await postMessage(app, cookie, roomId, '첨부 행을 붙일 메시지')
+    const messageId = (db.prepare('SELECT id FROM messages').get() as { id: number }).id
+    const bad = db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, ?, ?)')
+      .run(messageId, 'secret.txt', outside, 5, 'text/plain').lastInsertRowid as number
+
+    const dl = await app.inject({ method: 'GET', url: `/api/attachments/${bad}`, headers: { cookie } })
+    expect(dl.statusCode).toBe(404)
+    expect(dl.body).not.toContain('비밀입니다')
   })
 
   it('publishes to the sse hub and delivers to the gateway exactly once', async () => {
@@ -202,5 +244,110 @@ describe('messages', () => {
     expect((delivered[0][1] as any).body).toBe('@TO(pm) 확인해줘')
     expect((delivered[0][1] as any).author_name).toBe('alice')
     expect(delivered[0][2]).toEqual([{ botId, delivery: 'to' }])
+  })
+
+  it('lists messages after cursor', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seed()
+    await postMessage(app, cookie, roomId, '첫째')
+    await postMessage(app, cookie, roomId, '둘째')
+
+    const ids = (db.prepare('SELECT id FROM messages ORDER BY id').all() as { id: number }[]).map(r => r.id)
+    expect(ids[1]).toBeGreaterThan(ids[0])   // 커서가 방 안에서 단조 증가한다
+
+    const list = await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/messages?after=${ids[0]}`, headers: { cookie } })
+    const msgs = list.json().messages
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0].body).toBe('둘째')
+    expect(msgs[0].id).toBe(ids[1])
+
+    // after 가 없으면 처음부터
+    const all = (await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/messages`, headers: { cookie } })).json().messages
+    expect(all.map((m: any) => m.body)).toEqual(['첫째', '둘째'])
+  })
+
+  it('list is scoped to the room and carries author_name', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seed()
+    const otherRoom = db.prepare("INSERT INTO rooms (name) VALUES ('B')").run().lastInsertRowid as number
+
+    await postMessage(app, cookie, roomId, 'A 방 메시지')
+    await postMessage(app, cookie, otherRoom, 'B 방 메시지')
+
+    const a = (await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/messages`, headers: { cookie } })).json().messages
+    expect(a.map((m: any) => m.body)).toEqual(['A 방 메시지'])
+    expect(a[0].author_name).toBe('alice')
+    expect(Array.isArray(a[0].attachments)).toBe(true)
+
+    const b = (await app.inject({ method: 'GET', url: `/api/rooms/${otherRoom}/messages`, headers: { cookie } })).json().messages
+    expect(b.map((m: any) => m.body)).toEqual(['B 방 메시지'])
+  })
+
+  it('all three message routes reject unauthenticated requests', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seed()
+
+    // 대조군을 만들기 위해 인증된 상태로 메시지와 첨부를 하나 만든다
+    const src = join(dir, 'a.txt')
+    writeFileSync(src, 'x')
+    await postMessage(app, cookie, roomId, '준비', src)
+    const attId = (db.prepare('SELECT id FROM attachments').get() as { id: number }).id
+
+    const form = new FormData()
+    form.append('body', '몰래 보내기')
+
+    // 쿠키 없음 → 세 라우트 전부 401
+    const noAuth = [
+      await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/messages`, payload: form }),
+      await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/messages` }),
+      await app.inject({ method: 'GET', url: `/api/attachments/${attId}` }),
+    ]
+    expect(noAuth.map(r => r.statusCode)).toEqual([401, 401, 401])
+
+    // 대조군 — 같은 세 요청이 쿠키가 있으면 401 이 아니다
+    const withAuth = [
+      await postMessage(app, cookie, roomId, '정상 전송'),
+      await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/messages`, headers: { cookie } }),
+      await app.inject({ method: 'GET', url: `/api/attachments/${attId}`, headers: { cookie } }),
+    ]
+    expect(withAuth.every(r => r.statusCode !== 401)).toBe(true)
+
+    // 거부된 전송은 저장되지 않았다
+    expect((db.prepare("SELECT COUNT(*) c FROM messages WHERE body='몰래 보내기'").get() as { c: number }).c).toBe(0)
+  })
+
+  it('buildServer wires the message routes, multipart and uploadsDir', async () => {
+    process.env.MINIDISCORD_DATA_DIR = join(dir, 'srv')
+    const { buildServer } = await import('../src/index.js')
+    const app = await buildServer()
+
+    // 1) uploadsDir 데코레이터가 config 값을 가리킨다 (REQ-MSG-015 항목 1)
+    const { config } = await import('../src/config.js')
+    expect((app as any).uploadsDir).toBe(config.uploadsDir)
+
+    // 가입·로그인. set-cookie 정규화는 rooms-bots.test.ts 의 build() 와 같다
+    await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'bob', password: 'pw123456' } })
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'bob', password: 'pw123456' } })
+    const ck = setCookieOf(login).split(';')[0]
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie: ck }, payload: { name: 'A' } })).json()
+
+    // 2) multipart 가 라우트보다 먼저 등록됐다 — 실제 form 전송이 왕복한다 (REQ-MSG-015 항목 2·3)
+    const form = new FormData()
+    form.append('body', '실서버 왕복')
+    const sent = await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/messages`, headers: { cookie: ck }, payload: form })
+    expect(sent.statusCode).toBe(200)
+    expect(sent.json().message.body).toBe('실서버 왕복')
+
+    // 3) 목록 라우트가 등록돼 있고 방금 것을 돌려준다
+    const list = await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/messages`, headers: { cookie: ck } })
+    expect(list.statusCode).toBe(200)
+    expect(list.json().messages.map((m: any) => m.body)).toEqual(['실서버 왕복'])
+
+    // 4) 다운로드 라우트가 등록돼 있다 — 없는 id 라도 404 이지 "라우트 없음" 이 아니다
+    const dl = await app.inject({ method: 'GET', url: '/api/attachments/9999', headers: { cookie: ck } })
+    expect(dl.statusCode).toBe(404)
+    expect(dl.json().message).not.toContain('Route GET:/api/attachments/9999 not found')
+
+    await app.close()
   })
 })
