@@ -1,5 +1,6 @@
-// 커버리지 측정 설정 — 진입점 src/index.ts 는 StdioServerTransport 를 붙이는 배선만
-// 담당하므로 측정 대상에서 제외한다 (import 시 stdio 를 잡아 프로세스가 매달린다).
+// 커버리지 측정 설정 — src/** 전체를 측정한다. src/index.ts 의 진입점 블록(62-67행)은
+// 자식 프로세스로 구동될 때만 실행되므로(REQ-CHANWIRE-002 진입점 가드) 인프로세스 계측에
+// 잡히지 않는다. 그 줄들이 미커버로 표시되는 것은 정상이며, 자식 프로세스 기준이 따로 검증한다.
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
@@ -7,7 +8,6 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**'],
-      exclude: ['src/index.ts'],
     },
   },
 })
