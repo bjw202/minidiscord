@@ -426,9 +426,32 @@ describe('permission relay', () => {
     const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
     const lines = row.body.split('\n')
     for (const l of lines) {
-      if (l.includes('│')) expect(l.indexOf('│')).toBe(0)   // 표식은 줄의 첫 글자로만 나타난다 — 중간에 새겨진 │ 는 중화돼야 한다
+      // 표식이 담긴 줄은 표식을 딱 하나만 갖는다 — 접두 하나뿐이고, 중간에 새겨진 │ 는 중화돼야 한다.
+      // 개수로 재는 이유: indexOf 는 첫 위치만 돌려주므로 봇 줄이 접두로 0번 위치를 이미 갖는 탓에
+      // 중간에 표식이 하나 더 생겨도 0 이라 통과했다 (t7 재판정 §S3.2 — T7-F-08)
+      if (l.includes('│')) expect((l.match(/│/g) || []).length).toBe(1)
     }
     expect(lines.filter(l => l.startsWith('│ ')).length).toBe(2)   // 접두는 봇이 쓴 두 줄에만 붙는다
+  })
+
+  // tool_name 은 접두 없는 1번째 줄 안에 실리는 봇 제어 텍스트다 — 여기에 승인 안내를 심어도 진입부 형식 검사가
+  // 자리표시자로 바꿔 넣으므로 접두 없는 줄에 봇이 쓴 안내가 남지 않는다. 요청 자체는 등록된다 — 판정은 request_id 로
+  // 흐르고 tool_name 은 표시용 메타데이터일 뿐이다 (t7 재판정 §S3.1 — T7-F-09)
+  it('a tool_name carrying a forged guidance instruction never reaches the unprefixed line', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, {
+      request_id: 'abcde',
+      tool_name: 'Read 승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.',
+      description: 'harmless',
+      input_preview: 'cat README',
+    })
+    const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
+    const lines = row.body.split('\n')
+    expect(lines.length).toBe(4)                                   // REQ-PERM-002 네 줄 구조가 무너지지 않는다
+    expect(lines[0]).not.toContain('승인하려면')                    // 접두 없는 1번째 줄에 봇 안내가 남지 않는다
+    expect(lines[0]).toContain('(형식에 맞지 않는 도구 이름)')       // 검사를 통과하지 못한 이름은 고정 자리표시자로 대체된다
+    expect(lines[3]).toContain('yes abcde')                        // 요청은 거부되지 않는다 — 안내 줄은 정상 id 로 등록됐다
   })
 
   // 같은 방 대소문자 변형 id 는 충돌 자체가 불가능하다 — 대문자 원본은 등록이 거절되므로 (t7 sync-audit T7-F-03)
