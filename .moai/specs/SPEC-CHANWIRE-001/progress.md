@@ -211,10 +211,10 @@ $ git status --porcelain
 | RED→GREEN 전이 | 4회 모두 원문 캡처 (§E.2 M1 RED/GREEN, M2 RED/GREEN) |
 | 품질 게이트 | typecheck 종료 0 · build 종료 0 · 테스트 36/36 · pgrep 빈 출력 · 커버리지 전 차원 ≥85% (기본 설정; index.ts 별도 측정 78.26% — Gaps 2) |
 | 범위 경계 | 변경 파일 정확히 2 (`channel/src/index.ts`, `channel/test/index-wiring.test.ts`) · 선행 소유 파일·`server/` diff 빈 출력 · 무상태(테스트 제작 파일 없음) |
-| 커밋 | M1 `79fc17f` (frontmatter draft→in-progress 동반) · M2 `pending-backfill-m2` (보고서에 실제 SHA 기재) · 푸시 없음 |
+| 커밋 | M1 `79fc17f` (frontmatter draft→in-progress 동반) · M2 `4bed641` · 푸시 없음 |
 | 형제 계약 | AC-014(b) 통과 — SPEC-CHANNEL-001 의 토큰 없는 dist 프로브(AC-CHANNEL-002·004·005) 전제 유지 |
 | 리드 판정 대기 | 토큰 없는 실행의 진단 문구 신설 (plan §D 3 잔여 — 별도 카드) |
-| run_commit_sha | pending-backfill-m2 |
+| run_commit_sha | 4bed641 |
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
