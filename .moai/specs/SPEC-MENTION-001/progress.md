@@ -350,7 +350,61 @@ commits:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_&lt;pending sync-phase&gt;_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-27
+sync_commit_sha: "<sync 커밋 직후 백필>"
+spec_id: SPEC-MENTION-001
+card: t3
+milestone: M3
+worktree: .claude/worktrees/t3 (WT-msg-gateway-relay)
+head_at_sync_evidence: "8c4798a"
+sync_session: 9d51afd1-8226-4e22-946e-2ed4574a878e
+lens: "--security --deep"
+docs_updated: [README.md, CHANGELOG.md]
+status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+```
+
+### Claim (주장)
+
+`SPEC-MENTION-001` 의 run 단계 산출물이 sync 세션의 **독립 재실행**으로 확인되었다. `parseMentions` 의 테스트 6건이 전부 통과하고 타입 검사가 깨끗하며, 보안 렌즈 검토에서 이 SPEC 범위의 차단 사항이 나오지 않았다.
+
+### Evidence (증거)
+
+sync 세션이 run 세션의 보고를 인용하지 않고 직접 실행해 관측했다. 원문은 `.moai/state/verify/9d51afd1/test-verbose.txt` 에 남겼다.
+
+```
+$ npm test -w server -- --run --reporter=verbose
+ ✓ test/mention.test.ts > parseMentions > parses a single TO 1ms
+ ✓ test/mention.test.ts > parseMentions > parses CC 0ms
+ ✓ test/mention.test.ts > parseMentions > parses multiple mentions in order, duplicates kept 0ms
+ ✓ test/mention.test.ts > parseMentions > ignores plain @name and non-TO/CC keywords while catching a real mention 0ms
+ ✓ test/mention.test.ts > parseMentions > rejects empty and space-containing names while catching a valid one 0ms
+ ✓ test/mention.test.ts > parseMentions > korean bot names work 0ms
+ Test Files  10 passed (10)
+      Tests  98 passed (98)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+### Baseline-attribution (baseline 귀속)
+
+- 측정 트리: 워크트리 `.claude/worktrees/t3`, 분기 `WT-msg-gateway-relay`, HEAD `8c4798a`.
+- run 단계 §E.3 은 이 SPEC 시점에서 `43 passed / 43` 을 기록했다. sync 시점 총계 `98` 은 형제 SPEC 4벌(SSE 9·GATEWAY 18·MSG 13·PERM 15)이 그 위에 얹힌 결과이며, `test/mention.test.ts` 자체 건수는 **6 으로 변함이 없다** — run 시점 신규 6건과 일치한다.
+- 보안 렌즈: `server/src/mention.ts` 는 순수 함수이고 I/O·네트워크·파일 접근이 없다. 신뢰 경계를 넘지 않으므로 이 SPEC 단독으로는 검토 대상 표면이 없다.
+
+### Gaps (미검증)
+
+- 커버리지 수치는 이번에도 재지 않았다 (`@vitest/coverage-v8` 미설치, 새 의존성 설치 금지). 테스트와 요구사항의 일대일 대조표(§E.2 AC 매트릭스)가 대신이다.
+- run 단계에서 관측된 RED → GREEN 전이 원문은 sync 세션이 **재현하지 않았다.** §E.2 의 기록을 그대로 둔다 — sync 가 확인한 것은 최종 GREEN 상태뿐이다.
+
+### Residual-risk (잔여 위험)
+
+- 멘션 문법은 `@TO`/`@CC` 두 키워드에 결합돼 있다. 카드 `t4` 채널 플러그인과 `t5` 웹 UI 자동완성이 같은 문법을 가정하므로, 문법을 바꾸면 세 곳이 함께 움직여야 한다.
+- 이 분기는 아직 머지되지 않았다. 워크트리가 유일한 사본이다.
 
 ---
 
