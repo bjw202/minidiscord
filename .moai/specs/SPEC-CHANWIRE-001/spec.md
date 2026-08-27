@@ -2,7 +2,7 @@
 id: SPEC-CHANWIRE-001
 title: "minidiscord 채널 배선 — MCP 채널 서버와 게이트웨이 클라이언트를 묶어 실행 가능한 봇 바이너리를 만든다"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
