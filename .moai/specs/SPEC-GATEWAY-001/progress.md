@@ -416,7 +416,7 @@ evidence:
   boundary_check: "AC-GW-019 네 관측 통과 — §E.2 범위 경계 원문 출력"
 ac_matrix: "20/20 PASS — §E.2 AC 매트릭스"
 changed_files: "server/src/gateway.ts (신규) · server/src/index.ts · server/src/routes-bots.ts · server/test/gateway.test.ts (신규)"
-docs_commit_sha: "pending-backfill-run-docs"
+docs_commit_sha: "33f536dee5d7b12d3e26ed7608153124eddd630b"
 ```
 
 ---
