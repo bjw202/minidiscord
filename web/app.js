@@ -271,6 +271,7 @@ export function initApp() {
     if (name) await createBot(name, '')
   })
   $('logout-btn').addEventListener('click', () => { logout() })
+  initInvite()   // 리치 표면(SPEC-WEBRICH-001)의 초대 다이얼로그 핸들러 — initApp 은 계약 6 의 아홉 함수 밖이다
 
   // 세션이 살아 있으면 메인 화면으로, 아니면 인증 화면으로.
   // 401 이면 api() 가 이미 showAuth() 를 불렀지만 네트워크 실패 등 다른 오류도
@@ -551,4 +552,72 @@ function notifyError(err) {
   const toast = $('error-toast')
   toast.textContent = err instanceof Error ? err.message : String(err)
   toast.hidden = false
+}
+
+// ══ 리치 표면 (SPEC-WEBRICH-001) ═══════════════════════════════════════
+// 이 SPEC 이 app.js 에 더하는 것은 이 블록 전부다 — renderMessage 본체는 한 줄도
+// 건드리지 않는다 (REQ-WEBRICH-002). 모듈 최상위가 배선의 자리다.
+import { createRichContext, buildInviteChoices, applyInviteResult, clearInviteResult, copyText } from './rich.js'
+
+// 배선 계약 (spec.md REQ-WEBRICH-002) — 방을 열 때마다 openRoom 3-1단계가
+// factory({ api, doc }) 를 불러 그 방 전용 컨텍스트를 새로 만든다. 넘기는 값은 팩토리
+// createRichContext 그 자체이지 호출 결과(.decorate)가 아니다 — 결과를 넘기면 그 방의
+// 컨텍스트가 undefined 가 되어 첨부와 권한 버튼이 아무 오류 없이 영원히 안 뜬다 (감사 MF-9).
+registerMessageDecorator(createRichContext)
+
+// 초대 다이얼로그 — showModal/close 는 이 파일에만 둔다. rich.js 는 노드 조립과 상태만
+// 다루게 해서 어떤 수용 기준도 showModal 을 부르지 않게 한다 (plan.md §D 10).
+// 노드 쌍은 InviteNodes 구조적 형(textContent·hidden) 그대로 넘긴다 (REQ-WEBRICH-001).
+function inviteNodes() {
+  return { commandEl: $('invite-command'), resultEl: $('invite-result') }
+}
+
+// 복사·초대 실패는 #invite-result 안의 오류 문구 요소에 보인다 — 삼켜지는 실패가 없게 (plan.md §D 9, REQ-WEBRICH-014).
+function showInviteError(message) {
+  const err = document.querySelector('#invite-result .invite-error')
+  if (!err) return
+  err.textContent = message
+  err.hidden = false
+}
+
+function hideInviteError() {
+  const err = document.querySelector('#invite-result .invite-error')
+  if (!err) return
+  err.textContent = ''
+  err.hidden = true
+}
+
+async function pickInvite(bot) {
+  try {
+    // 초대 발급 호출은 이 SPEC 자신의 함수 안에 둔다 — 아홉 액션 함수 본문은 그대로다 (§4.8 계약 6)
+    const res = await api(`/api/rooms/${state.currentRoomId}/invites`, { method: 'POST', body: { bot_id: bot.id } })
+    hideInviteError()
+    applyInviteResult(inviteNodes(), res)
+  } catch (err) {
+    showInviteError(err instanceof Error ? err.message : String(err))
+  }
+}
+
+function initInvite() {
+  const dialog = $('invite-dialog')
+
+  // 닫힐 때 명령을 DOM 에서 지운다 — 평문 토큰이 페이지 수명 내내 남지 않게 (REQ-WEBRICH-015)
+  dialog.addEventListener('close', () => clearInviteResult(inviteNodes()))
+
+  $('invite-btn').addEventListener('click', () => {
+    hideInviteError()
+    clearInviteResult(inviteNodes())
+    const choices = dialog.querySelector('.invite-choices')
+    choices.replaceChildren(buildInviteChoices({ bots: state.bots, doc: document, onPick: pickInvite }))
+    dialog.showModal()
+  })
+
+  $('copy-command').addEventListener('click', async () => {
+    // 실패는 반드시 화면에 보인다 — 사용자가 복사했다고 믿고 닫는 것이 이 표면의 가장 위험한 실패다 (REQ-WEBRICH-014)
+    const ok = await copyText($('invite-command').textContent ?? '', {
+      nav: navigator,
+      onFail: () => showInviteError('클립보드 복사에 실패했습니다 — 명령을 직접 선택해 복사하세요'),
+    })
+    if (ok) hideInviteError()
+  })
 }

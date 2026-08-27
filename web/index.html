@@ -83,6 +83,20 @@
     </form>
   </dialog>
 
+  <!-- 봇 초대 다이얼로그 — SPEC-WEBRICH-001 소유. 새 id 는 invite-dialog·invite-command·invite-result·
+       copy-command 네 개뿐이고 문서 전체에서 유일하다 (§4.8 계약 4). 명령 문자열은 이 화면이 사는 유일한 집이다 (REQ-WEBRICH-013). -->
+  <dialog id="invite-dialog">
+    <h2>봇 초대</h2>
+    <ul class="invite-choices"></ul>
+    <div id="invite-result" hidden>
+      <p class="invite-notice">아래 명령을 지금 복사하세요 — 토큰은 다시 보여지지 않습니다.</p>
+      <pre id="invite-command"></pre>
+      <p class="invite-error" hidden></p>
+      <button id="copy-command" type="button">명령 복사</button>
+    </div>
+    <form method="dialog"><button type="submit">닫기</button></form>
+  </dialog>
+
   <!-- 액션 오류 토스트 — 삼켜지는 오류가 없게 한다 (plan.md §D 4번) -->
   <div id="error-toast" hidden></div>
 </body>
