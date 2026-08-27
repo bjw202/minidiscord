@@ -240,3 +240,127 @@ PROBE_EXIT=1
 ---
 
 _감사자: sync 세션 (카드 t7). 이 보고의 모든 PASS 는 §5 의 실행 원문에 귀속된다._
+
+---
+
+# 재감사 (정정 라운드 후) — 2026-08-28
+
+| 항목 | 값 |
+|------|-----|
+| 대상 | 정정 커밋 `5afcd38` → `0e24196` → `18bcc2d`, 보고 `1ce4973` |
+| 트리 | `.claude/worktrees/t7`, HEAD `1ce4973` (감사 실행은 `18bcc2d` 상태의 소스에 대해 수행) |
+| 렌즈 | `--security` (유지) |
+| 증거 | `.moai/state/verify/t7/reaudit-{test-full,typecheck,probe,mutation}.txt` |
+
+## R1. 재판정
+
+**판정: FAIL (유지)** — **가중 조화평균 76.7 / 100** (라운드 1: 62.1… 아니고 68.0 → 76.7)
+
+판정이 유지되는 이유는 하나다. `T7-F-02`·`T7-F-03` 은 **완전히 닫혔고**(감사자 직접 재현·재관측), `T7-F-01` 도 **크게 줄었지만 여전히 실행으로 재현된다**. `default.md` §Hard Thresholds 의 "Security FAIL = Overall FAIL" 은 High 잔존만으로 발동한다.
+
+정정 라운드의 작업 품질 자체는 높다 — RED 선행 순서가 커밋에 남아 있고, 변이 감별력을 감사자가 직접 재관측했으며, 남는 위험을 §7.6 에 **스스로 공개**했다. 점수가 68.0 → 76.7 로 오른 것이 그 반영이다.
+
+| 차원 | 가중치 | 라운드1 | 재감사 | 근거 |
+|------|--------|--------|--------|------|
+| Functionality | 40% | 80 | **88** | `npm test -w server` → `Tests 109 passed (109)`, `TEST_EXIT=0` (감사자 실행). 카드 범위의 미이행 절반이 착수됨 |
+| **Security (must-pass)** | 25% | 38→45 | **55** | Medium·Low 2건 종결. High 1건은 축소됐으나 잔존(§R3) |
+| Craft | 20% | 82 | **88** | 변이 감별력 재관측(4건 정확히 실패), 잔여 위험 자기 공개 |
+| Consistency | 15% | 88 | **90** | `PERMISSION_REPLY_RE`·브로커 계약·스키마 무변경 확인 |
+
+`1 / (0.40/88 + 0.25/55 + 0.20/88 + 0.15/90) = 1 / 0.0130303 = 76.75`
+
+## R2. 종결 확인 — 감사자가 직접 재현한 것
+
+| 항목 | 판정 | 감사자 관측 |
+|---|---|---|
+| `T7-F-02` 판정 불가능한 요청 | **종결** | `PERMISSION_REQUEST_ID_RE = /^[a-km-z]{5}$/` 가 `permissions.ts:47` 에서 등록 전에 걸린다. 라운드 1 탐침 P1(`'hello'`)의 경로가 사라졌다 |
+| `T7-F-03` 대소문자 충돌 | **종결** | 대문자 원본이 등록 자체를 거부당하므로 `keyOf` 의 소문자화로 뭉개질 짝이 생기지 않는다 |
+| 변이 감별력 (C4 주장) | **확인** | `git show 18bcc2d -- server/src/permissions.ts \| git apply -R` 후 `npm test -w server -- permissions` → `Tests 4 failed \| 16 passed (20)`, `MUTATION_EXIT=1`. 실패한 4건은 신규 회귀 4건과 정확히 일치. 복원 후 `git diff --stat HEAD` 빈 출력 |
+| 전체 스위트·타입 | **확인** | `Tests 109 passed (109)` `TEST_EXIT=0` / `TYPECHECK_EXIT=0` |
+
+라운드 1 관용 철회(대소문자 섞인 원본 등록을 허용에서 거부로 뒤집은 것)는 타당하다 — 공식 형식이 소문자이고, 감사 §2.3 이 예측한 소멸 조건과 일치한다.
+
+## R3. `T7-F-01` — 축소됐으나 종결되지 않음 (High, blocking 유지)
+
+**무엇이 닫혔나**: 줄바꿈 중화(`oneLine`)로 봇 텍스트는 더 이상 **줄을 늘릴 수 없다**. `REQ-PERM-002` 의 네 줄 구조가 강제되고, 가짜 요청 블록 통째를 덧붙이던 라운드 1 탐침 P2 의 경로는 사라졌다.
+
+**무엇이 남았나**: `description` 은 **그 자체로 한 줄 전체**다(`permissions.ts:56`). 줄바꿈이 하나도 없어도 그 줄을 안내 문구와 똑같이 채울 수 있다.
+
+증거 — 감사자 탐침 R1 이 출력한 실제 본문(`.moai/state/verify/t7/reaudit-probe.txt`):
+
+```
+🔒 봇이 도구 사용 승인을 요청합니다: Read
+승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.
+cat README
+승인하려면 "yes abcde", 거절하려면 "no abcde" 라고 답해주세요.
+```
+
+`startsWith('승인하려면')` 인 줄이 **2개**다(`expected 2 to be 1`). 둘 중 위쪽은 봇이 썼고, 아래쪽은 서버가 썼다. 사람에게 둘을 가릴 표식이 없다.
+
+**단일 봇으로 완결되는 공격 경로**: 봇 하나가 요청 A(파괴적 도구, id `zzzzz`)와 요청 B(무해해 보이는 Read, id `abcde`)를 함께 보내고, B 의 `description` 에 `승인하려면 "yes zzzzz"` 를 심는다. 사람은 B 를 읽고 `yes zzzzz` 를 쳐서 **A 를 승인한다**. 두 번째 공모자도, 줄바꿈도 필요 없다.
+
+**공개 여부**: 런 단계가 §7.6 에 "줄 없는 단일 행 description 이 안내 문구처럼 읽히는 것은 중화로 막지 않는다"고 **먼저 적었다**. 은폐가 아니라 공개된 잔여 위험이다.
+
+**감사자 책임 명시**: 라운드 1 §2.1 의 권고가 "줄바꿈을 제거하**거나** 인용 블록으로 감싸"라고 둘을 택일로 제시했다. 정정 라운드는 그 문장대로 하나를 골랐다. 권고 문장이 부정확했던 것이지 이행이 부실했던 것이 아니다 — 그러나 결함의 존부는 권고 문장이 아니라 재현이 정한다.
+
+**남은 수정 경로 (택일 아님, 둘 중 하나로 충분)**:
+- 봇 텍스트를 서버 문구와 **시각적으로 분리**한다 — 각 줄에 고정 접두(예: `│ `)를 붙여, 접두 없는 줄만 서버가 쓴 줄이 되게 한다. 접두 자체도 봇 텍스트에서 중화한다.
+- 안내 문구를 **본문 밖으로** 옮긴다 — 판정 안내를 봇이 채울 수 없는 별도 필드나 고정 위치로 뺀다(단 `REQ-PERM-013` 의 "새 이벤트 타입 금지"와 `REQ-PERM-002` 의 네 줄 구조 개정을 수반하므로 SPEC 개정 필요).
+
+## R4. 신규 관측
+
+| # | 심각도 | 확신도 | 내용 |
+|---|---|---|---|
+| `T7-F-06` | Low | **미검증(소비자 부재)** | `oneLine` 이 중화하는 것은 `\r\n?\|\n` 뿐이다. 유니코드 줄 구분자 U+2028·U+2029 는 본문에 그대로 남는다(탐침 R2 로 잔존 확인). 이것이 실제 줄바꿈으로 **보이는지**는 렌더러가 정하는데, 웹 UI 는 이 나무에 아직 없다(카드 `t5` 소관) — 따라서 **결함으로 판정하지 않는다**. t5 착수 시 확인 대상으로 넘긴다 |
+| `T7-F-07` | Low | 문서 대조 | 테스트 주석(`permissions.test.ts`, 커밋 `0e24196`)이 "안내 문구로 시작하는 줄은 서버가 쓴 한 줄뿐이어야 한다"고 적었으나, R1 이 그 명제를 반증했다. 테스트가 **실제로 재는 것**은 "줄바꿈으로는 안내 줄을 만들 수 없다"이며 이것은 구현과 정확히 맞다. 주석이 구현보다 강한 보증을 주장하는 것이 문제다 — 다음 독자가 그 문장을 믿는다 |
+
+`0e24196`(테스트 판정을 `includes` → `startsWith` 로 좁힌 것)이 **구현에 맞춘 약화인가**는 따로 확인했다. 중화 설계상 갇힌 봇 텍스트가 ` ⏎ ` 와 함께 한 줄 안에 남으므로 `includes` 는 올바른 구현도 실패시킨다 — 측정 도구 교정이 맞다. 다만 그 교정으로 얻은 명제는 §R3 이 반증한 것보다 약하다(위 `T7-F-07`).
+
+## R5. 재감사 Evidence
+
+```
+$ unset MOAI_KANBAN … && npm test -w server
+ Test Files  10 passed (10)
+      Tests  109 passed (109)
+TEST_EXIT=0
+
+$ npm run typecheck -w server
+TYPECHECK_EXIT=0
+
+$ (수정 되돌림) npm test -w server -- permissions
+     × refuses a mixed-case request_id and registers nothing
+     × refuses to register an id the reply format can never match
+     × flattens newlines in bot-supplied text so no forged instruction line appears
+     × same-room case variants cannot collide because non-lowercase ids are refused
+      Tests  4 failed | 16 passed (20)
+MUTATION_EXIT=1
+   → 복원 후 git diff --stat HEAD -- server/src/permissions.ts : 빈 출력
+
+$ (감사 탐침 3건) npm test -w server -- _audit_t7_probe2
+     × R1 a newline-free description still forges a guidance line   ← expected 2 to be 1
+     × R2 unicode line separators survive the oneLine neutralizer
+     × R3 malformed requests still write a system row each time     ← 50행
+PROBE2_EXIT=1
+   → 탐침 파일은 삭제, 재현 코드는 .moai/state/verify/t7/probe-permissions.snippet.ts 및 본 절에 보존
+```
+
+## R6. Gaps — 이번 재감사가 관측하지 않은 것
+
+- 커버리지 미측정(라운드 1과 동일).
+- `T7-F-06` 의 렌더링 영향 — 소비자(웹 UI)가 이 나무에 없어 판정 불가.
+- `T7-F-04`(대기 맵 무한 증가)는 여전히 부하 재현 없음. 탐침 R3 에서 형식 밖 요청 50건이 system 행 50건을 만드는 것은 관측했으나(거부 안내도 행을 쓴다), 이는 큐 카드 `t12` 범위이며 이번 정정이 악화시키지도 개선하지도 않았다.
+- 실환경 결합은 t6 E2E 소관.
+
+## R7. 리드 결정이 필요한 지점 (갱신)
+
+| 선택지 | 내용 |
+|---|---|
+| A' | `T7-F-01` 잔여를 이 카드에서 마저 닫는다 — §R3 의 두 경로 중 접두 분리 쪽은 SPEC 개정 없이 `permissions.ts` 안에서 끝난다. 재감사 후 PASS 재판정 |
+| B' | 여기서 카드를 닫고 잔여 High 를 새 카드로 분리한다. 이 경우 카드 t7 은 **F-04 를 절반만 닫은 채 닫힌 카드**로 기록되므로, 제목과 큐 항목에 그 사실을 남겨야 한다 |
+| C' | 「봇은 신뢰한다」를 프로젝트 전제로 확정하고 잔여를 Low 로 재평가한다 — 라운드 1 §7 과 동일한 미결 전제이며, t3 sync 가 봇 첨부를 봉인한 판단과의 정합성을 함께 정리해야 한다 |
+
+`T7-F-07`(테스트 주석이 구현보다 강한 주장)은 어느 선택지에서도 한 줄 수정으로 끝난다.
+
+---
+
+_재감사자: sync 세션 (카드 t7). §R2·§R5 의 모든 관측은 이 세션이 이 트리에서 직접 실행한 것이다._
