@@ -10,7 +10,7 @@
 | 워크트리 | `.claude/worktrees/t3` |
 | 선행 SPEC | `SPEC-CORE-001` → `SPEC-AUTH-001` → `SPEC-ROOM-001` (카드 `t1`·`t2`) |
 | 실행 순서 | 카드 `t3` 의 첫 SPEC — Task 8·9·10 이 이 SPEC 의 `publish` 계약에 결합한다 |
-| 현재 상태 | `in-progress` — run 단계 (M1 허브 완료, M2 배선 대기) |
+| 현재 상태 | `in-progress` — run 단계 완료 (M1·M2, AC 12/12 PASS, §E.3 audit-ready) |
 | spec_base_sha | `ca6b841e2986a10ddcc7592f615234f75a3f8f7c` |
 
 ---
@@ -158,13 +158,221 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+모든 명령은 워크트리 루트 `.claude/worktrees/t3` (브랜치 `WT-msg-gateway-relay`) 에서 실행했다. 진입 기준선: HEAD `ca6b841` — `npm test -w server -- --run` → **6파일 / 43테스트 통과** (SPEC-MENTION-001 완료 직후 상태). 최종 상태 검증(AC 매트릭스 GREEN 근거 전부)은 **HEAD `3b890c8`** 에서 캡처했다.
+
+### AC 매트릭스 — 12/12 PASS
+
+| AC | 판정 | 관측 근거 (아래 원문 블록 참조) | 캡처 HEAD |
+|----|------|-------------------------------|-----------|
+| AC-SSE-001 | PASS | `✓ delivers a published event to the room subscriber` | `3b890c8` |
+| AC-SSE-002 | PASS | `✓ opens the stream with SSE headers and a connected comment` | `3b890c8` |
+| AC-SSE-003 | PASS | `✓ never leaks another room event into this room stream` | `3b890c8` |
+| AC-SSE-004 | PASS | `✓ frames events exactly as event/data/blank-line` | `3b890c8` |
+| AC-SSE-005 | PASS | `✓ delivers to every subscriber of the room` | `3b890c8` |
+| AC-SSE-006 | PASS | `✓ removes the subscriber when the connection closes` | `3b890c8` |
+| AC-SSE-007 | PASS | `✓ publishing to a room with no subscribers is a silent no-op` | `3b890c8` |
+| AC-SSE-008 | PASS | `✓ rejects an unauthenticated event-stream request` | `3b890c8` |
+| AC-SSE-009 | PASS | `✓ wires the hub and the events route into buildServer` | `3b890c8` |
+| AC-SSE-010 | PASS | 네 관측 모두 성립 (`sse.ts` 존재·기준 SHA 확인 exit 0·`db.ts` diff 빈 출력·변경 파일 정확히 2줄) | `3b890c8` |
+| AC-SSE-011 | PASS | 네 전이(RED-1·GREEN-2·RED-3·GREEN-4) 순서대로 관측, 원문 아래 | 각 단계 |
+| AC-SSE-012 | PASS | import 정확히 1줄 = `node:http` 타입 import, 금지 패턴 일치 없음 (exit 1) | `3b890c8` |
+
+AC-SSE-001~009 의 명령은 공통으로 `npm test -w server -- --run --reporter=verbose` 다. 관측 대상 줄(`sse.test.ts` `✓` 9줄 + 요약)만 발췌했다 — 발췌하지 않은 줄은 전부 이 SPEC 이 손대지 않은 기존 테스트의 `✓` 줄이다.
+
+### AC-SSE-011 전이 1 — M1 RED (모듈 부재)
+
+명령: `npm test -w server -- --run` (sse.test.ts 작성 직후, sse.ts 부재). 종료 코드 `1`.
+
+```
+ ❯ test/sse.test.ts (0 test)
+⎯⎯⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯
+ FAIL  test/sse.test.ts [ test/sse.test.ts ]
+Error: Cannot find module '../src/sse.js' imported from /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t3/server/test/sse.test.ts
+ ❯ test/sse.test.ts:7:1
+      5| import { tmpdir } from 'node:os'
+      6| import { join } from 'node:path'
+      7| import { createSseHub } from '../src/sse.js'
+       | ^
+      8| import { registerAuthRoutes, requireAuth } from '../src/auth.js'
+      9| import { openDb } from '../src/db.js'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯⎯
+ Test Files  1 failed | 6 passed (7)
+      Tests  43 passed (43)
+```
+
+원인이 출력에 직접 보인다 — `Cannot find module '../src/sse.js'`.
+
+### AC-SSE-011 전이 2 — M1 GREEN (허브 구현)
+
+명령: `npm test -w server -- --run --reporter=verbose` (sse.ts 생성 직후, 커밋 `3260beb` 직전 작업 트리 — 내용은 커밋과 동일). 이어서 `npm run typecheck -w server` → 종료 코드 `0`.
+
+```
+ ✓ test/sse.test.ts > sse > delivers a published event to the room subscriber 116ms
+ ✓ test/sse.test.ts > sse > opens the stream with SSE headers and a connected comment 48ms
+ ✓ test/sse.test.ts > sse > never leaks another room event into this room stream 47ms
+ ✓ test/sse.test.ts > sse > frames events exactly as event/data/blank-line 50ms
+ ✓ test/sse.test.ts > sse > delivers to every subscriber of the room 46ms
+ ✓ test/sse.test.ts > sse > removes the subscriber when the connection closes 55ms
+ ✓ test/sse.test.ts > sse > publishing to a room with no subscribers is a silent no-op 45ms
+ ✓ test/sse.test.ts > sse > rejects an unauthenticated event-stream request 45ms
+ Test Files  7 passed (7)
+      Tests  51 passed (51)
+```
+
+### AC-SSE-011 전이 3 — M2 RED (배선 부재)
+
+명령 1: `npx vitest run --run test/sse.test.ts -t 'wires the hub'` (AC-SSE-009 테스트 추가 직후, index.ts 미변경). 종료 코드 `1`.
+
+```
+ ❯ server/test/sse.test.ts (9 tests | 1 failed | 8 skipped) 131ms
+     × wires the hub and the events route into buildServer 130ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯
+ FAIL  server/test/sse.test.ts > sse > wires the hub and the events route into buildServer
+Error: 스트림이 프레임 없이 닫혔다
+ ❯ readFrame server/test/sse.test.ts:59:21
+     57|   for (;;) {
+     58|     const { value, done } = await reader.read()
+     59|     if (done) throw new Error('스트림이 프레임 없이 닫혔다')
+       |                     ^
+     60|     buf += Buffer.from(value).toString()
+     61|     if (buf.endsWith('\n\n')) return buf
+ ❯ server/test/sse.test.ts:215:12
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 skipped (9)
+```
+
+명령 2 (같은 RED 상태에서 원인을 출력에 직접 보이게 한 보조 관측 — `server/` 안에서 `MINIDISCORD_DATA_DIR=$(mktemp -d) npx tsx probe-red-404.mts`, 프로브는 관측 후 즉시 삭제):
+
+```
+GET /api/rooms/1/events → 404 | content-type: application/json; charset=utf-8
+app.hub → undefined
+```
+
+라우트 미등록(`404`)과 `app.hub` 미정의 둘 다 AC-SSE-011 이 명시한 원인이고, 프로브 원문에 그대로 보인다.
+
+### AC-SSE-011 전이 4 — M2 GREEN (최종 상태, HEAD `3b890c8`)
+
+명령: `npm test -w server -- --run --reporter=verbose` → 종료 코드 `0`. 이어서 `npm run typecheck -w server` → 종료 코드 `0`.
+
+```
+ ✓ test/sse.test.ts > sse > delivers a published event to the room subscriber 116ms
+ ✓ test/sse.test.ts > sse > opens the stream with SSE headers and a connected comment 51ms
+ ✓ test/sse.test.ts > sse > never leaks another room event into this room stream 49ms
+ ✓ test/sse.test.ts > sse > frames events exactly as event/data/blank-line 49ms
+ ✓ test/sse.test.ts > sse > delivers to every subscriber of the room 51ms
+ ✓ test/sse.test.ts > sse > removes the subscriber when the connection closes 57ms
+ ✓ test/sse.test.ts > sse > publishing to a room with no subscribers is a silent no-op 45ms
+ ✓ test/sse.test.ts > sse > rejects an unauthenticated event-stream request 46ms
+ ✓ test/sse.test.ts > sse > wires the hub and the events route into buildServer 46ms
+ Test Files  7 passed (7)
+      Tests  52 passed (52)
+```
+
+### AC-SSE-010 — 범위 경계와 스키마 불변 (HEAD `3b890c8`)
+
+관측 1 — `ls server/src` (종료 코드 `0`):
+
+```
+auth.ts config.ts db.ts index.ts mention.ts routes-bots.ts routes-rooms.ts sse.ts
+```
+
+`sse.ts` 가 있다. `mention.ts` 는 형제 SPEC(SPEC-MENTION-001) 산출물로 이 관측의 판정 대상이 아니다 (v0.2.0 교정, 감사 지적 MF-4). 항목 수는 세지 않는다.
+
+관측 2 — `git rev-parse --verify "$(cat .moai/specs/SPEC-SSE-001/.spec-base-sha)^{commit}"` (종료 코드 `0`):
+
+```
+ca6b841e2986a10ddcc7592f615234f75a3f8f7c
+```
+
+관측 3 — `git diff --stat ca6b841e2986a10ddcc7592f615234f75a3f8f7c -- server/src/db.ts` (종료 코드 `0`, **출력 없음**):
+
+```
+(빈 출력)
+```
+
+관측 4 — `git diff --name-only ca6b841e2986a10ddcc7592f615234f75a3f8f7c -- server/src` (종료 코드 `0`):
+
+```
+server/src/index.ts
+server/src/sse.ts
+```
+
+정확히 두 줄이다. (관측 3·4 에 SHA 를 직접 적은 것은 `$(cat …)` 을 품은 `git diff` 가 워크트리 격리 가드에 걸리기 때문이라 acceptance.md 본문이 명시한다 — 실제로 이번 실행에서도 해당 형태는 가드가 거부했다.)
+
+### AC-SSE-012 — 순수 메모리 구조이며 하트비트가 없다 (HEAD `3b890c8`)
+
+명령 1 — `grep -c "^import" server/src/sse.ts` (종료 코드 `0`):
+
+```
+1
+```
+
+명령 2 — `grep -n "^import" server/src/sse.ts` (종료 코드 `0`):
+
+```
+2:import type { ServerResponse } from 'node:http'
+```
+
+명령 3 — `grep -nE "setInterval|setTimeout|^retry:|\\nretry:|\\nid:" server/src/sse.ts` (종료 코드 `1`, 일치 없음):
+
+```
+(빈 출력 — 일치 없음)
+```
+
+### 데이터 디렉터리 격리 결정 (M2 단계 1 — plan.md §E 에서 run 단계로 위임된 항목)
+
+**결정**: AC-SSE-009 테스트 안에서 `process.env.MINIDISCORD_DATA_DIR` 을 `mkdtempSync` 임시 경로로 설정하고, `cleanups` 에 이전 값 복원 + 임시 디렉터리 삭제를 등록한다. `buildServer()` 는 그 뒤에 호출한다.
+
+**근거**: `config.dataDir` 은 게터로 지연 평가된다 (`server/src/config.ts` 4-5행 — "테스트가 import 이후에 MINIDISCORD_DATA_DIR 을 설정해도 반영되도록"). 모듈 import 시점이 아니라 `buildServer()` 호출 시점에 값을 읽으므로, 테스트 본문에서 설정한 환경변수가 그대로 반영된다. vitest 는 파일별 격리(`isolate`)로 실행되므로 다른 테스트 파일로의 누출이 없고, 복원 코드가 같은 테스트 안에서 값을 되돌린다. 저장소의 진짜 `data/` 디렉터리는 AC-SSE-009 실행 중 한 번도 열리지 않는다 — 임시 경로 아래 `minidiscord.db`·`uploads/` 가 만들어지고 `cleanups` 가 삭제한다.
+
+### Gaps (미관측)
+
+- **커버리지 수치를 측정하지 않았다.** 이 워크스페이스에 커버리지 도구 배선(vitest coverage provider)이 없고, `acceptance.md` 품질 게이트도 이 SPEC 에 커버리지 명령을 요구하지 않는다. 85% 기준의 기계적 측정값은 없다.
+- **verbose 전체 출력(약 55줄) 중 관측 대상 줄(`sse.test.ts` `✓` 9줄 + 요약 2줄)만 발췌해 기록했다.** 발췌하지 않은 줄은 전부 이 SPEC 이 손대지 않은 기존 테스트의 `✓` 줄이다.
+- **전이 2(M1 GREEN) 출력은 커밋 `3260beb` 직전 작업 트리에서 캡처했다.** 내용은 커밋과 동일하지만, 커밋된 SHA 에서 재실행한 것은 아니다 — 최종 상태(전이 4)는 HEAD `3b890c8` 에서 재검증했으므로 이 차이는 매트릭스 판정에 영향을 주지 않는다.
+- **보조 프로브 2건(`probe-sse-close.mts`, `probe-red-404.mts`)은 커밋하지 않고 삭제했다.** 원문 출력은 이 §E.2 에 보존했지만 재현 스크립트는 보존하지 않았다. 첫 프로브는 구현 착수 전 `app.close()` 가 열린 SSE 연결과 함께 완료되는지 확인한 것으로, 골격의 `afterEach` 정리 순서(app.close 먼저, abort 나중)가 이 환경(Fastify 5.12 / Node 24)에서 교착 없이 끝남을 관측했다 — 골격을 한 글자도 바꾸지 않은 근거다.
+
+### Residual-risk (잔여 위험)
+
+- **이미 끊긴 응답에 `publish` 하는 경합** — `close` 정리와 `publish` 가 겹치는 창은 이론적으로 남는다 (plan.md §E 수용 항목). 이번 실행 전체에서 해당 예외는 관측되지 않았다.
+- **`app.close()` 가 열린 SSE 연결과 함께 완료된다는 관측은 이 환경(Fastify 5.12.1 / Node 24.12)에서만 확인했다.** 다른 Node/Fastify 판에서의 재관측은 하지 않았다 — 구버전 조합에서 골격의 정리 순서가 교착될 수 있다면 그때 블로커로 보고한다.
+- **비숫자 `:id`(NaN 방 번호) 동작** — `Number('abc')` → `NaN` 이 `Map` 키로 쓰이는 경로는 엣지 케이스 표로 문서화만 했고 별도 테스트는 없다 (acceptance 엣지 케이스 표가 "수용"으로 명시한 설계).
+- **빈 집합 방 항목 삭제(`rooms.delete`)와 빈 집합 잔존을 구분하지 않는다** — `subscriberCount` 는 둘 다 `0` 을 돌려준다. acceptance 본문이 관측 가치가 없어 의도적으로 구분하지 않았다고 명시한 상태 그대로다.
+- **구현의 `reply.hijack()` 필수성** — 하이재킹 없이도 견디는지는 여전히 확인하지 않았다(확인할 이유가 없어졌다). 하이재킹을 넣은 채 52 테스트가 통과했다는 관측만 있다 (plan.md §D 2번의 "미검증" 항목이 실제 문제를 일으키지 않았음을 관측한 상태).
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-27
+spec_id: SPEC-SSE-001
+tier: M
+card: t3
+milestone: M3
+cycle_type: tdd
+spec_base_sha: ca6b841e2986a10ddcc7592f615234f75a3f8f7c
+run_commit_sha: 3b890c8973e84d2705f249b400a3628736d43340
+evidence_head_sha: 3b890c8973e84d2705f249b400a3628736d43340
+evidence: .moai/specs/SPEC-SSE-001/progress.md §E.2 (RED 2건·GREEN 2건 원문 + AC 매트릭스 12/12 PASS)
+files_created:
+  - server/src/sse.ts
+  - server/test/sse.test.ts
+files_modified:
+  - server/src/index.ts        # 배선만 — createSseHub import·declare module hub·decorate·이벤트 라우트 등록
+files_unchanged_invariant:
+  - server/src/db.ts           # SCHEMA 불변 — AC-SSE-010 관측 3 (기준 SHA 대비 diff 빈 출력·exit 0)
+test_result: "52 passed / 52 (7 files; 진입 기준선 6파일 43테스트 포함, 이 SPEC 신규 9)"
+typecheck: "exit 0"
+boundary: "git diff --name-only <spec_base_sha> -- server/src → 정확히 2줄 (index.ts, sse.ts) · exit 0"
+data_dir_isolation: "AC-SSE-009 테스트 안에서 MINIDISCORD_DATA_DIR 을 mkdtemp 임시 경로로 설정·복원 (config.dataDir 게터 지연 평가) — 진짜 data/ 미개방"
+commits:
+  - 3260bebf4987958c8a38e5db26517c6dff23b1ab  # feat: SSE hub with per-room subscription (card t3) — 구현 + 프론트매터 draft→in-progress
+  - 3b890c8973e84d2705f249b400a3628736d43340  # feat: wire SSE event stream route into buildServer (card t3)
+  - pending-backfill-evidence-commit          # docs(SPEC-SSE-001): run-phase 증거 기록 (§E.2·§E.3) — 백필 커밋이 이 줄을 채움
+```
 
 ---
 
