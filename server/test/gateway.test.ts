@@ -24,7 +24,7 @@ afterEach(() => { db.close(); rmSync(dir, { recursive: true, force: true }) })
 
 // hub.publish 를 감싸 발행 내역을 기록한다. SseHub 가 publish 를 속성으로 갖는
 // 평범한 객체라는 SPEC-SSE-001 의 계약에 의존한다 (plan.md §D 4번).
-async function build() {
+async function build(opts: { botFiles?: 'off' } = {}) {
   const app = Fastify()
   app.db = db
   await app.register(cookie)
@@ -40,7 +40,7 @@ async function build() {
   // botFilesDir: 봇이 첨부로 보낼 수 있는 파일의 허용 뿌리. 테스트는 임시 트리 전체를 허용해
   // 기존 첨부 테스트의 원본 파일(dir 바로 아래)이 그대로 통과하게 둔다 — 경계 밖 파일은
   // 아래 AC-GW-021 테스트가 이 트리 바깥에 따로 만든다.
-  const gateway = createGateway(app, { uploadsDir: join(dir, 'up'), botFilesDir: dir })
+  const gateway = createGateway(app, { uploadsDir: join(dir, 'up'), botFilesDir: opts.botFiles === 'off' ? undefined : dir })
   app.decorate('gateway', gateway)
   await app.listen({ port: 0 })
   const port = (app.server.address() as { port: number }).port
@@ -488,6 +488,62 @@ describe('gateway', () => {
 
     ws.close()
     await app.close()
+  })
+
+  // AC-GW-025 — botFilesDir 미설정이면 봇 첨부를 전부 거부한다 (sync-audit-3 N-08)
+  it('bot_message attaches nothing at all when botFilesDir is unset', async () => {
+    const { app, port } = await build({ botFiles: 'off' })
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+    // 켜져 있었다면 통과했을 파일이다 — 위 AC-GW-021 의 대조군과 같은 자리에 있다.
+    const good = join(dir, '켜져있으면통과.txt')
+    writeFileSync(good, 'ok')
+
+    ws.send(JSON.stringify({ type: 'bot_message', body: '첨부 시도', files: [{ local_path: good, name: '켜져있으면통과.txt' }] }))
+    await new Promise(r => setTimeout(r, 300))
+
+    const row = db.prepare("SELECT * FROM messages WHERE room_id=? AND author_type='bot'").get(room) as any
+    // 본문은 저장된다 — 꺼진 것은 첨부뿐이다.
+    expect(row.body).toBe('첨부 시도')
+    expect(db.prepare('SELECT COUNT(*) c FROM attachments WHERE message_id=?').get(row.id)).toEqual({ c: 0 })
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GW-026 — 허용 뿌리와 이름이 겹치는 형제 디렉터리는 통과하지 못한다 (sync-audit-3 N-08)
+  it('bot_message refuses a sibling directory whose path merely prefixes botFilesDir', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+
+    // dir 의 형제이면서 문자열로는 dir 을 접두사로 갖는 디렉터리. 경로 구분자를 붙이지 않고
+    // 비교하면 여기가 뚫린다 — gateway.ts 주석이 방어한다고 적어 둔 바로 그 경우다.
+    const sibling = `${dir}evil`
+    mkdirSync(sibling, { recursive: true })
+    const outside = join(sibling, 'secret.txt')
+    writeFileSync(outside, 'SIBLING-CANARY-4d1e')
+    const good = join(dir, '진짜뿌리안.txt')
+    writeFileSync(good, 'ok')
+
+    try {
+      ws.send(JSON.stringify({
+        type: 'bot_message', body: '형제 시도',
+        files: [{ local_path: outside, name: 'secret.txt' }, { local_path: good, name: '진짜뿌리안.txt' }],
+      }))
+      await new Promise(r => setTimeout(r, 300))
+
+      const row = db.prepare("SELECT * FROM messages WHERE room_id=? AND author_type='bot'").get(room) as any
+      const atts = db.prepare('SELECT filename, stored_path FROM attachments WHERE message_id=?').all(row.id) as { filename: string; stored_path: string }[]
+      expect(atts.map(a => a.filename)).toEqual(['진짜뿌리안.txt'])
+      for (const a of atts) {
+        expect(readFileSync(a.stored_path, 'utf8')).not.toContain('SIBLING-CANARY-4d1e')
+      }
+    } finally {
+      rmSync(sibling, { recursive: true, force: true })
+      ws.close()
+      await app.close()
+    }
   })
 
   // AC-GW-009 — status 는 두 값만 발행한다
