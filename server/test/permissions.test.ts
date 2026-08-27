@@ -155,4 +155,178 @@ describe('permission relay', () => {
     expect(frame).toContain('event: message')
     expect(frame).toContain('abcde')
   })
+
+  it('user yes reply sends verdict to the bot and is not stored as user message', async () => {
+    const { app, broker, cookie } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // sendToBot가 실제로 가는지는 게이트웨이 연결이 없으므로 false(전송 실패)지만 메시지 소비 자체를 검증
+    const res = await post(app, roomId, cookie, 'yes abcde')
+    expect(res.json().consumed_by).toBe('permission')
+    const userMsgs = db.prepare("SELECT COUNT(*) c FROM messages WHERE author_type='user'").get() as { c: number }
+    expect(userMsgs.c).toBe(0)
+  })
+
+  it('non-matching text is not consumed', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seedRoomAndBot()
+    const res = await post(app, roomId, cookie, '그냥 대화')
+    expect(res.json().ok).toBe(true)
+  })
+
+  it('yes with unknown id is not consumed (falls through as chat)', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seedRoomAndBot()
+    const res = await post(app, roomId, cookie, 'yes xxxxx')
+    expect(res.json().ok).toBe(true) // 일반 메시지로 저장됨
+  })
+
+  it('delivers an allow verdict to the connected bot', async () => {
+    const { app, broker, port, cookie } = await build()
+    const { roomId, botId, token } = seedRoomAndBot()
+    const ws = await wsConnect(port, token)
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const seen = nextMessage(ws)
+    await post(app, roomId, cookie, 'yes abcde')
+    expect(await seen).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+  })
+
+  it('delivers a deny verdict as deny, not as allow', async () => {
+    const { app, broker, port, cookie } = await build()
+    const { roomId, botId, token } = seedRoomAndBot()
+    const ws = await wsConnect(port, token)
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const seen = nextMessage(ws)
+    await post(app, roomId, cookie, 'no abcde')
+    const v = await seen
+    expect(v).not.toBeNull()
+    expect(v.behavior).toBe('deny')          // 항상 allow 를 보내는 구현은 여기서 걸린다
+    expect(v.request_id).toBe('abcde')
+  })
+
+  it('consumes the reply instead of storing it as a user message', async () => {
+    const { app, broker, cookie } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const res = await post(app, roomId, cookie, 'yes abcde')
+    expect(res.json().consumed_by).toBe('permission')
+    const c = db.prepare("SELECT COUNT(*) c FROM messages WHERE author_type='user'").get() as { c: number }
+    expect(c.c).toBe(0)
+  })
+
+  it('accepts a verdict once and lets a repeat fall through as chat', async () => {
+    const { app, broker, port, cookie } = await build()
+    const { roomId, botId, token } = seedRoomAndBot()
+    const ws = await wsConnect(port, token)
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const first = nextMessage(ws)
+    await post(app, roomId, cookie, 'yes abcde')
+    expect((await first).behavior).toBe('allow')
+
+    const second = nextMessage(ws)
+    const res = await post(app, roomId, cookie, 'yes abcde')
+    expect(res.json().consumed_by).toBeUndefined()
+    expect(await second).toBeNull()                       // 두 번째 판정은 가지 않는다
+    const c = db.prepare("SELECT COUNT(*) c FROM messages WHERE author_type='user'").get() as { c: number }
+    expect(c.c).toBe(1)                                   // 두 번째 답은 대화로 저장됐다
+  })
+
+  it('never resolves a request from a different room', async () => {
+    const { app, broker, port, cookie } = await build()
+    const a = seedRoomAndBot('A', 'pm')
+    const b = seedRoomAndBot('B', 'qa')
+    const ws = await wsConnect(port, a.token)
+    broker.onGatewayRequest({ roomId: a.roomId, botId: a.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+
+    const leaked = nextMessage(ws)
+    const cross = await post(app, b.roomId, cookie, 'yes abcde')   // 방 B 에서 답한다
+    expect(cross.json().consumed_by).toBeUndefined()
+    expect(await leaked).toBeNull()                                 // 방 A 의 봇에게 아무것도 가지 않았다
+
+    const proper = nextMessage(ws)
+    await post(app, a.roomId, cookie, 'yes abcde')                  // 대기 항목은 살아 있어야 한다
+    expect((await proper).behavior).toBe('allow')
+  })
+
+  it('refuses an unauthenticated verdict and leaves the request pending', async () => {
+    const { app, broker, port, cookie } = await build()
+    const { roomId, botId, token } = seedRoomAndBot()
+    const ws = await wsConnect(port, token)
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+
+    const leaked = nextMessage(ws)
+    const form = new FormData(); form.append('body', 'yes abcde')
+    const anon = await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/messages`, payload: form })  // 쿠키 없음
+    expect(anon.statusCode).toBe(401)
+    expect(await leaked).toBeNull()                       // 판정이 봇에 가지 않았다
+
+    const proper = nextMessage(ws)
+    await post(app, roomId, cookie, 'yes abcde')          // 대기 항목은 손상되지 않았다
+    expect((await proper).behavior).toBe('allow')
+  })
+
+  it('falls through non-matching text and unknown ids without touching the pending request', async () => {
+    const { app, broker, port, cookie } = await build()
+    const { roomId, botId, token } = seedRoomAndBot()
+    const ws = await wsConnect(port, token)
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+
+    const leaked = nextMessage(ws)
+    const plain = await post(app, roomId, cookie, '그냥 대화')
+    expect(plain.json().consumed_by).toBeUndefined()
+    const unknown = await post(app, roomId, cookie, 'yes xxxxx')      // 형식은 맞으나 모르는 ID
+    expect(unknown.json().consumed_by).toBeUndefined()
+    expect(await leaked).toBeNull()                                    // 어느 쪽도 판정을 보내지 않았다
+
+    const c = db.prepare("SELECT COUNT(*) c FROM messages WHERE author_type='user'").get() as { c: number }
+    expect(c.c).toBe(2)                                                // 둘 다 대화로 저장됐다
+
+    const seen = nextMessage(ws)
+    const real = await post(app, roomId, cookie, 'yes abcde')          // 대기 항목은 소모되지 않았다
+    expect(real.json().consumed_by).toBe('permission')
+    expect((await seen).behavior).toBe('allow')
+  })
+
+  it('marks an undelivered verdict differently from a delivered one', async () => {
+    const { app, broker, port, cookie } = await build()
+    const on = seedRoomAndBot('A', 'pm')
+    const off = seedRoomAndBot('B', 'qa')
+    const ws = await wsConnect(port, on.token)                       // A 의 봇만 접속
+
+    broker.onGatewayRequest({ roomId: on.roomId, botId: on.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    broker.onGatewayRequest({ roomId: off.roomId, botId: off.botId }, { request_id: 'fghij', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    await post(app, on.roomId, cookie, 'yes abcde')
+    await post(app, off.roomId, cookie, 'yes fghij')
+
+    const delivered = db.prepare("SELECT body FROM messages WHERE room_id=? AND author_type='system' ORDER BY id DESC LIMIT 1").get(on.roomId) as { body: string }
+    const dropped = db.prepare("SELECT body FROM messages WHERE room_id=? AND author_type='system' ORDER BY id DESC LIMIT 1").get(off.roomId) as { body: string }
+    expect(delivered.body).toContain('abcde')
+    expect(dropped.body).toContain('fghij')
+    expect(dropped.body).not.toBe(delivered.body.replace('abcde', 'fghij'))   // 두 결과 문구가 서로 다르다
+    expect(dropped.body).toContain('전달하지 못했습니다')                       // 실패를 뜻하는 표식을 담는다
+
+    const retry = await post(app, off.roomId, cookie, 'yes fghij')            // 대기 항목은 이미 해제됐다
+    expect(retry.json().consumed_by).toBeUndefined()
+  })
+
+  it('accepts all four verdict words, normalizes case, and rejects ids containing l', async () => {
+    const { app, broker, port, cookie } = await build()
+    const { roomId, botId, token } = seedRoomAndBot()
+    const ws = await wsConnect(port, token)
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'fghij', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+
+    const bad = await post(app, roomId, cookie, 'yes abcdl')        // l 은 식별자 문자가 아니다
+    expect(bad.json().consumed_by).toBeUndefined()
+
+    const allow = nextMessage(ws)
+    const y = await post(app, roomId, cookie, '  Y ABCDE  ')        // 승인 축약형 + 대문자 + 공백
+    expect(y.json().consumed_by).toBe('permission')
+    expect(await allow).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+
+    const deny = nextMessage(ws)
+    const n = await post(app, roomId, cookie, 'N FGHIJ')            // 거절 축약형 + 대문자
+    expect(n.json().consumed_by).toBe('permission')
+    expect(await deny).toEqual({ type: 'permission_verdict', request_id: 'fghij', behavior: 'deny' })
+  })
 })

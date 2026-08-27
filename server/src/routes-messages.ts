@@ -56,6 +56,13 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       }
     }
 
+    // 권한 판정 가로채기 — multipart 파싱 직후(방 active 확인 뒤)·멘션 파싱 앞 (REQ-PERM-005).
+    // requireAuth preHandler 를 이미 통과했다 — 미인증 요청은 401 로 끝나고 대기 항목은 손상되지 않는다 (REQ-PERM-012).
+    // 옵셔널 체이닝은 의도적이다 — permissions 데코레이터 없이 조립된 서버에서도 이 라우트는 동작한다
+    if (req.server.permissions?.tryHandleUserReply(roomId, body)) {
+      return reply.code(200).send({ ok: true, consumed_by: 'permission' })   // 소비된 답은 사용자 메시지로 저장하지 않는다
+    }
+
     // 빈 전송 — body 도 파일도 없으면 400 (REQ-MSG-005)
     if (!body.trim() && savedFiles.length === 0) {
       return reply.code(400).send({ error: '내용이나 파일이 필요합니다' })

@@ -40,9 +40,22 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
       postSystem(info.roomId, body)
     },
 
-    // M1 껍데기 — 판정 해석과 전송은 M2 에서 구현한다 (plan.md §F M1 단계 3)
-    tryHandleUserReply(_roomId: number, _text: string): boolean {
-      return false
+    tryHandleUserReply(roomId, text) {
+      const m = PERMISSION_REPLY_RE.exec(text)
+      if (!m) return false                       // 판정 형식이 아니면 흘려보낸다 (REQ-PERM-010)
+      const requestId = m[2].toLowerCase()       // 대문자로 답해도 봇은 소문자로 알아본다 (REQ-PERM-006)
+      const info = open.get(requestId)
+      if (!info) return false                    // 모르는 ID — 재시작 직후와 같은 경로다 (REQ-PERM-003·010)
+      if (info.roomId !== roomId) return false   // 다른 방의 답은 소비도 전송도 하지 않고 항목을 남긴다 (REQ-PERM-011)
+      open.delete(requestId)                     // 해제는 전송 시도 직후 — 성공 여부와 무관 (plan.md §B). 남기면 같은 답을 무한 재시도할 수 있다
+      const behavior = m[1][0].toLowerCase() === 'y' ? 'allow' : 'deny'   // 정규식이 y|yes|n|no 로 좁혔으니 첫 글자로 갈린다 (REQ-PERM-006·007)
+      const sent = app.gateway.sendToBot(info.roomId, info.botId, { type: 'permission_verdict', request_id: requestId, behavior })
+      // 반환값을 읽는다 — 버리면 봇이 죽은 동안 누른 승인이 화면상 성공으로 보인다 (plan.md §D 3번, REQ-PERM-009)
+      const body = !sent
+        ? `⚠️ 봇이 접속해 있지 않아 판정을 전달하지 못했습니다 (${requestId})`
+        : behavior === 'allow' ? `✅ 승인 전송됨 (${requestId})` : `⛔ 거절 전송됨 (${requestId})`
+      postSystem(info.roomId, body)
+      return true
     },
   }
 }
