@@ -218,4 +218,18 @@ $ git status --porcelain
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+| 항목 | 값 |
+|------|-----|
+| sync 판정 | **FAIL** — 가중 조화평균 62.1 (Functionality 82 · Security 38 **FAIL** · Craft 72 · Consistency 80) |
+| 감사 전문 | `.moai/reports/t4/sync-audit.md` (렌즈 `--security --deep`, 2026-08-27) |
+| sync HEAD | `651b033` |
+| 품질 게이트 (이 sync·이 트리, manager-docs 직접 실행) | `npm test -w channel -- --coverage` → 파일 4 / 테스트 50 통과 · `npm run build -w channel` 종료 0 · `npm run typecheck -w channel` 종료 0 |
+| 커버리지 (제외 없는 실측) | stmts 93.39% (99/106) · branch 84.31% (43/51) · funcs 93.75% (30/32) · lines 95.5% (85/89) — `index.ts` 는 stmts 80% / branch 68.42% |
+| 진입점 프로브 | `channel/dist/index.js` MCP `initialize` → `serverInfo.name = minidiscord-channel` + capabilities 2종 — **오케스트레이터 관측값**(manager-docs 미재실행) |
+| 이 카드에서 닫은 것 | F-06 (Medium, blocking) — MCP 상대가 끊긴 뒤 채팅 도착 시 처리되지 않은 거부로 프로세스 종료. `pushChatMessage(m).catch(() => {})` 로 판정 갈래와 대칭 방어 (`2a6bf4b`) |
+| 이 카드에서 닫은 것 | F-10 (Medium, blocking) — 커버리지 `exclude` 의 명시 사유가 반증되어 헤드라인이 과대표기됨. 제외 제거 후 전 파일 재측정 (`f91236e`) — 위 커버리지 수치가 그 값 |
+| 열려 있는 것 | F-03 (High) — 이력 렌더링이 개행 구분 평문이라 본문 한 건이 가짜 `#번호` 이력 줄을 만들고 커서까지 오염시킴 (`index.ts:50-55`) |
+| 열려 있는 것 | F-07 (Medium) — `resolveUrl` 이 `MINIDISCORD_SERVER` 를 검증 없이 통과시킴 (`index.ts:14-18`) |
+| 열려 있는 것 | F-12 (Low) — `test/index-wiring.test.ts:155-157` 동어반복 단언 |
+| 증거 경로 | `.moai/state/verify/t4-sync/`, `.moai/state/verify/t4-sync-fix/`, `.moai/state/verify/t4-sync-audit/` |
+| 상태 전이 | 없음 — 판정 FAIL·Critical(F-01) 미해결로 `status: in-progress` 유지 |

@@ -215,4 +215,30 @@ gaps: "게이트웨이 끊김 중 요청(버퍼링 없음)·params 필드 누락
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_&lt;pending sync-phase&gt;_
+```yaml
+sync_status: audit-fail-open
+sync_evaluated_at: 2026-08-27
+spec_id: SPEC-CHANPERM-001
+card: t4
+sync_head_sha: 651b033
+audit_verdict: FAIL
+audit_score: 62.1        # 가중 조화평균 (Functionality 82 / Security 38 FAIL / Craft 72 / Consistency 80)
+audit_report: .moai/reports/t4/sync-audit.md
+tests: "4 files / 50 tests passed"
+coverage: "stmts 93.39% (99/106) · branch 84.31% (43/51) · funcs 93.75% (30/32) · lines 95.5% (85/89)"
+build_exit: 0
+typecheck_exit: 0
+remediated_here: []      # 이 SPEC 에 귀속된 차단 발견은 이 카드에서 닫지 않았다
+open_findings:
+  - "F-01 (Critical) — 채널이 자기가 내보낸 적 없는 request_id 의 판정도 그대로 중계한다. 이는 REQ-CHANPERM-008 이 요구하고 AC-CHANPERM-008 이 정상 동작으로 못 박은 계약이므로, 코드만 고치면 AC 가 깨진다 — SPEC 바디 개정이 선행돼야 하는 항목"
+  - "F-14 (High, out-of-diff) — 서버에 방 멤버십 개념이 없어 계정이 있는 누구나 임의 방의 도구 승인을 대신 누를 수 있음 (server/src/routes-messages.ts:29,62 + server/src/permissions.ts:43-58). t7 에 인계된 request_id 결함 2건과는 다른 항목(인가)이라 별도 카드 필요"
+status_transition: none   # in-progress 유지
+```
+
+- 검증 명령과 관측 원문 (본 sync 단계에서 manager-docs 가 이 트리·이 HEAD 에서 직접 실행):
+  - `npm test -w channel -- --coverage` → `Test Files 4 passed (4)` / `Tests 50 passed (50)`, `Statements 93.39% (99/106)` · `Branches 84.31% (43/51)` · `Functions 93.75% (30/32)` · `Lines 95.5% (85/89)`
+  - `npm run build -w channel` → 종료 코드 0
+  - `npm run typecheck -w channel` → 종료 코드 0
+  - `channel/dist/index.js` MCP `initialize` 프로브 → `serverInfo.name = minidiscord-channel`, capabilities `experimental["claude/channel"]`·`experimental["claude/channel/permission"]` — **오케스트레이터 관측값**(manager-docs 는 재실행하지 않음)
+- 증거 경로: `.moai/state/verify/t4-sync/`, `.moai/state/verify/t4-sync-fix/`, `.moai/state/verify/t4-sync-audit/`, 감사 전문 `.moai/reports/t4/sync-audit.md`
+- 상태 전이 없음: 감사 판정이 FAIL 이고 Critical 원인(F-01)이 열려 있어 `status: in-progress` 를 유지한다. `implemented`/`completed` 로 올리면 기록이 사실과 달라진다.

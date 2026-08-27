@@ -372,4 +372,32 @@ gaps: ["JSON 아닌 프레임 — 수용(지정)", "start() 중복 호출 — �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-fail-open
+sync_evaluated_at: 2026-08-27
+spec_id: SPEC-CHANCLIENT-001
+card: t4
+sync_head_sha: 651b033
+audit_verdict: FAIL
+audit_score: 62.1        # 가중 조화평균 (Functionality 82 / Security 38 FAIL / Craft 72 / Consistency 80)
+audit_report: .moai/reports/t4/sync-audit.md
+tests: "4 files / 50 tests passed"
+coverage: "stmts 93.39% (99/106) · branch 84.31% (43/51) · funcs 93.75% (30/32) · lines 95.5% (85/89)"
+build_exit: 0
+typecheck_exit: 0
+remediated_here:
+  - "F-05 (High) — JSON 아닌 프레임 한 개로 봇 프로세스가 종료되던 경로를 try/catch 로 봉인 (2a6bf4b, gateway-client.ts:60-64). run 단계가 '계약상 수용'으로 적었던 갭이 실행 재현으로 결함 판정됨"
+open_findings:
+  - "F-01 (Critical) — welcome 수신 여부를 보지 않고 type 만으로 프레임을 분기: 인증하지 않은 엔드포인트의 permission_verdict{allow}·message 가 그대로 세션에 도달 (gateway-client.ts:60-64)"
+  - "F-07 (Medium) — URL 스킴 검증 부재로 원격 지정 시 hello 첫 프레임의 봇 토큰이 평문으로 나감 (gateway-client.ts:53-58)"
+  - "F-11 (Medium) — AC-CHANCLIENT-014 의 이름이 주장하는 범위보다 실제 관측 범위가 좁음 (내부 stopped 가드 미검증)"
+status_transition: none   # in-progress 유지
+```
+
+- 검증 명령과 관측 원문 (본 sync 단계에서 manager-docs 가 이 트리·이 HEAD 에서 직접 실행):
+  - `npm test -w channel -- --coverage` → `Test Files 4 passed (4)` / `Tests 50 passed (50)`, `Statements 93.39% (99/106)` · `Branches 84.31% (43/51)` · `Functions 93.75% (30/32)` · `Lines 95.5% (85/89)`
+  - `npm run build -w channel` → 종료 코드 0
+  - `npm run typecheck -w channel` → 종료 코드 0
+  - `channel/dist/index.js` MCP `initialize` 프로브 → `serverInfo.name = minidiscord-channel`, capabilities `experimental["claude/channel"]`·`experimental["claude/channel/permission"]` — **오케스트레이터 관측값**(manager-docs 는 재실행하지 않음)
+- 증거 경로: `.moai/state/verify/t4-sync/`, `.moai/state/verify/t4-sync-fix/`, `.moai/state/verify/t4-sync-audit/`, 감사 전문 `.moai/reports/t4/sync-audit.md`
+- 상태 전이 없음: 감사 판정이 FAIL 이고 Critical 원인(F-01)이 열려 있어 `status: in-progress` 를 유지한다. `implemented`/`completed` 로 올리면 기록이 사실과 달라진다.
