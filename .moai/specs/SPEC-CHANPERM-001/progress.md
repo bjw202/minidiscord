@@ -29,7 +29,7 @@ spec_version: "0.2.1"
 req_count: 10
 ac_count: 12
 tier_budget: "16 REQ / 16 AC"
-spec_base_sha: "<pending run-phase M1 step 0>"
+spec_base_sha: "323df7ff7025226f8ee658e150f71f05f7565211"
 plan_audit: .moai/reports/t4/plan-audit.md
 plan_audit_verdict: "CONDITIONAL PASS (채널 SPEC 4종 일괄) — 이 SPEC 몫 주요 3건(M2·M3·M4) 반영 완료, 부기(SDK capability 위험)도 plan.md §E·§F M1 에 등록"
 cross_spec_dependency: "spec.md §3.1 가정-2(전역 키 충돌로 인한 대기 항목 유실)·가정-3(등록 원본키/조회 소문자키 불일치로 판정 미전송) — SPEC-PERM-001 / 카드 t7 소유. 이 SPEC 에서 고치지도 보상하지도 않는다"

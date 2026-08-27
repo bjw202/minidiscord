@@ -1,6 +1,7 @@
 // MCP 채널 서버: 공식 Channels 계약 구현 (spec 4-B)
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import { z } from 'zod'
 
 export const INSTRUCTIONS = [
   '이 세션은 minidiscord 채팅방에 봇으로 참여 중입니다.',
@@ -32,7 +33,20 @@ export interface ChannelDeps {
 export interface ChannelHandle {
   server: Server
   pushChatMessage: (msg: ChatMessage) => Promise<void>
+  handlePermissionVerdict: (v: { request_id: string; behavior: 'allow' | 'deny' }) => void
 }
+
+// 들어오는 승인 요청 알림 스키마. method 를 z.literal 로 고정한다 — 느슨하게 비교하면
+// 자기가 보낸 판정 알림(…/permission, 한 단어 짧다)까지 이 경로를 타고 게이트웨이로 되쏜다 (REQ-CHANPERM-002).
+const PermissionRequestNotification = z.object({
+  method: z.literal('notifications/claude/channel/permission_request'),
+  params: z.object({
+    request_id: z.string(),
+    tool_name: z.string(),
+    description: z.string(),
+    input_preview: z.string(),
+  }),
+})
 
 export function createChannelServer(deps: ChannelDeps): ChannelHandle {
   const mcp = new Server(
@@ -110,5 +124,26 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
     })
   }
 
-  return { server: mcp, pushChatMessage }
+  // 승인 요청 릴레이: Claude Code 의 알림 params 를 deps 로 내보낸다. 받은 것 그대로 —
+  // 절단·마스킹·대소문자 변경·필드 가감 어느 것도 하지 않는다 (REQ-CHANPERM-001·002).
+  // 의존이 없는 배선에서는 조용히 지나친다 (REQ-CHANPERM-003, Task 11 계약의 옵셔널).
+  mcp.setNotificationHandler(PermissionRequestNotification, n => {
+    deps.sendPermissionRequest?.(n.params)
+  })
+
+  // 판정 반환: 게이트웨이가 준 값을 그대로 실어 보낸다. params 는 두 필드뿐이다 —
+  // payload 의 type 같은 계약 밖 필드는 골라 담지 않는다 (REQ-CHANPERM-005·006·007).
+  // 채널은 대기 중인 요청을 기억하지 않으므로(무상태) 판정과 요청의 짝짓기는 판단하지 않는다 (REQ-CHANPERM-008).
+  function handlePermissionVerdict(v: { request_id: string; behavior: 'allow' | 'deny' }): void {
+    // 거부를 명시적으로 받는다: transport 가 없으면 notification() 은 거부된 프로미스를 돌려주고,
+    // void 로 버리면 처리되지 않은 거부가 되어 Node 가 프로세스를 끝낸다 (REQ-CHANPERM-009).
+    mcp
+      .notification({
+        method: 'notifications/claude/channel/permission',
+        params: { request_id: v.request_id, behavior: v.behavior },
+      })
+      .catch(() => {})
+  }
+
+  return { server: mcp, pushChatMessage, handlePermissionVerdict }
 }

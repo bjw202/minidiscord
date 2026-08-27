@@ -2,7 +2,7 @@
 id: SPEC-CHANPERM-001
 title: "minidiscord 채널 권한 릴레이 — Claude Code 의 승인 요청을 게이트웨이로 넘기고 판정을 되돌린다"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
