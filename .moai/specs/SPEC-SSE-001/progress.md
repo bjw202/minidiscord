@@ -10,7 +10,8 @@
 | 워크트리 | `.claude/worktrees/t3` |
 | 선행 SPEC | `SPEC-CORE-001` → `SPEC-AUTH-001` → `SPEC-ROOM-001` (카드 `t1`·`t2`) |
 | 실행 순서 | 카드 `t3` 의 첫 SPEC — Task 8·9·10 이 이 SPEC 의 `publish` 계약에 결합한다 |
-| 현재 상태 | `draft` — plan 단계 산출물 작성 완료 |
+| 현재 상태 | `in-progress` — run 단계 (M1 허브 완료, M2 배선 대기) |
+| spec_base_sha | `ca6b841e2986a10ddcc7592f615234f75a3f8f7c` |
 
 ---
 
@@ -28,7 +29,7 @@ spec_version: "0.2.0"
 req_count: 11
 ac_count: 12
 tier_budget: "16 REQ / 16 AC"
-spec_base_sha: "<run 단계 M1 단계 0 에서 기록>"
+spec_base_sha: ca6b841e2986a10ddcc7592f615234f75a3f8f7c
 plan_audit: .moai/reports/t3-plan-audit-b.md
 plan_audit_verdict: "CONDITIONAL PASS — 필수 수정 1건(MF-4) 반영 완료, 공허한 기준 0/12"
 ```
@@ -170,3 +171,17 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+- 입력: tier M / 범위 3개 파일 (sse.ts 신규, index.ts 수정, sse.test.ts 신규) / 도메인 1 (server) / 언어 TypeScript / 병렬 이득 낮음
+- direct: 미선택 — 다중 파일 신규 코드+테스트 작성
+- serial: 선택 — 코딩 중심 구현의 기본값; 선행 SPEC-MENTION-001 산출물(mention.ts)을 계약으로 소비하고 후행 GATEWAY가 이 SPEC의 publish 계약에 결합
+- fanout: 미선택 — 단일 도메인 구현 작업 (코딩 병렬성 경고)
+- sweep: 미선택 — 30파일 미만, 기계적 일괄 변환 아님
+
+Decision: serial
+Implementation Kickoff Approval: 통과 — 리드 디스패치 gate 필드로 운영자 승인 전달됨 (2026-08-27)
+기록 시점 HEAD: ca6b841 (SPEC-MENTION-001 run 완료 직후)

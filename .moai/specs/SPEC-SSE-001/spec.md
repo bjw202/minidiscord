@@ -2,7 +2,7 @@
 id: SPEC-SSE-001
 title: "minidiscord SSE 허브 — 방별 실시간 이벤트 구독과 발행"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
