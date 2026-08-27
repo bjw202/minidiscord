@@ -319,7 +319,86 @@ open_questions: 4   # 리드 판정 대기 — 전용 엔드포인트·멤버십
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_&lt;pending sync-phase&gt;_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-27
+sync_commit_sha: "<sync 커밋 직후 백필>"
+spec_id: SPEC-PERM-001
+card: t3
+milestone: M3
+worktree: .claude/worktrees/t3 (WT-msg-gateway-relay)
+head_at_sync_evidence: "8c4798a"
+sync_session: 9d51afd1-8226-4e22-946e-2ed4574a878e
+lens: "--security --deep"
+docs_updated: [README.md, CHANGELOG.md]
+status_transition: "in-progress → implemented → completed (단일 sync 커밋)"
+open_questions_carried: 4   # spec.md §5 — 리드 판정 대기, sync 가 닫지 않음
+```
+
+### Claim (주장)
+
+`SPEC-PERM-001` 의 run 단계 산출물이 sync 세션의 **독립 재실행**으로 확인되었다. 권한 릴레이 테스트 15건이 전부 통과하고 타입 검사가 깨끗하다. 다만 승인 권한을 누가 가지는가라는 미결 질문 4건은 **닫히지 않은 채 그대로 넘어간다** — 아래 Gaps 에 명시한다.
+
+### Evidence (증거)
+
+sync 세션이 직접 실행해 관측했다. 원문은 `.moai/state/verify/9d51afd1/test-verbose.txt` 에 남겼다.
+
+```
+$ npm test -w server -- --run --reporter=verbose
+ ✓ test/permissions.test.ts > permission relay > gateway request creates a system message in the room 102ms
+ ✓ test/permissions.test.ts > permission relay > system message carries all four parts and both reply forms 48ms
+ ✓ test/permissions.test.ts > permission relay > publishes the request to the room SSE stream 66ms
+ ✓ test/permissions.test.ts > permission relay > user yes reply sends verdict to the bot and is not stored as user message 53ms
+ ✓ test/permissions.test.ts > permission relay > non-matching text is not consumed 49ms
+ ✓ test/permissions.test.ts > permission relay > yes with unknown id is not consumed (falls through as chat) 48ms
+ ✓ test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot 52ms
+ ✓ test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow 52ms
+ ✓ test/permissions.test.ts > permission relay > consumes the reply instead of storing it as a user message 49ms
+ ✓ test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat 1549ms
+ ✓ test/permissions.test.ts > permission relay > never resolves a request from a different room 1560ms
+ ✓ test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending 1559ms
+ ✓ test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request 1558ms
+ ✓ test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one 48ms
+ ✓ test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l 48ms
+ Test Files  10 passed (10)
+      Tests  98 passed (98)
+exit=0
+
+$ npm run typecheck -w server
+> tsc --noEmit
+exit=0
+```
+
+보안 렌즈 — 판정 경로를 코드에서 직접 읽었다. 확인한 것 네 가지:
+
+1. **미인증 판정은 닿지 않는다.** 판정 가로채기는 `POST /api/rooms/:id/messages` 안에 있고 그 라우트는 `preHandler: [requireAuth]` 를 단다 — 쿠키 없는 요청은 `401` 로 끝나며 대기 항목이 손상되지 않는다. `refuses an unauthenticated verdict and leaves the request pending` 이 양성으로 지킨다.
+2. **방 경계를 넘지 않는다.** `if (info.roomId !== roomId) return false` — 다른 방의 답은 소비도 전송도 하지 않는다.
+3. **재사용되지 않는다.** `open.delete(requestId)` 가 전송 시도 **직후** 실행돼, 같은 판정을 두 번 쓸 수 없다.
+4. **전달 실패를 성공으로 위장하지 않는다.** `sendToBot` 의 반환값을 읽어 봇이 끊겨 있으면 `⚠️ … 전달하지 못했습니다` 로 표시한다.
+
+### Baseline-attribution (baseline 귀속)
+
+- 측정 트리: 워크트리 `.claude/worktrees/t3`, 분기 `WT-msg-gateway-relay`, HEAD `8c4798a`.
+- run 단계 §E.3 은 `tests_before: 83 → tests_after: 98`, `test_files 9 → 10` 을 기록했다. sync 재실행이 **정확히 그 최종 수치**(10 파일 / 98 테스트)를 관측했다 — run 시점 주장과 일치한다.
+- AC 14/14 판정은 §E.2 의 run 시점 기록이며, sync 세션이 개별 AC 를 다시 판정하지는 않았다.
+- §G·§G.2 감사 라운드에서 닫힌 결함(MF-1·2·3·5, R-1)의 교정 자체는 sync 가 재현하지 않았다 — 확인한 것은 교정 이후 트리의 최종 GREEN 상태다.
+
+### Gaps (미검증)
+
+- 커버리지 수치 미측정 (`@vitest/coverage-v8` 미설치).
+- **미결 질문 4건이 열린 채다** (`spec.md` §5, 리드 판정 대기):
+  1. 판정 전용 엔드포인트를 따로 둘 것인가 — 지금은 메시지 전송 경로에서 텍스트를 가로챈다.
+  2. **승인 권한을 방 멤버로 제한할 것인가** — 지금은 로그인한 사용자면 누구나 승인할 수 있다. 보안 관점에서 이 넷 중 가장 무거운 항목이다.
+  3. 대기 요청에 시간 제한을 둘 것인가 — 지금은 무기한이며 서버 재시작으로만 비워진다.
+  4. 봇 연결이 끊길 때 그 봇의 대기 항목을 정리할 것인가 — 지금은 남는다.
+- 실제 Claude Code 세션의 승인 대화상자와 맞물리는지는 관측하지 않았다. 카드 `t6` E2E 의 몫이다.
+
+### Residual-risk (잔여 위험)
+
+- **대기 레지스트리는 프로세스 메모리다.** 서버가 재시작하면 대기 중이던 승인 요청이 전부 사라진다. 수용된 설계이며(세션 쪽 대화상자는 살아 있어 터미널에서 직접 승인 가능), 사용자에게는 "모르는 ID" 경로로 보인다.
+- `PERMISSION_REPLY_RE` 는 카드 `t5` 웹 UI 파서와 형식을 공유한다. 한쪽만 바꾸면 승인 버튼이 조용히 동작하지 않는다.
+- 요청 ID 는 5글자(`l` 제외 소문자)다. 같은 방에 동시 대기가 많아지면 충돌 가능성이 생기지만, 이번 규모에서는 관측되지 않았다.
+- 이 분기는 아직 머지되지 않았다.
 
 ---
 
