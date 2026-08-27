@@ -629,4 +629,49 @@ describe('gateway', () => {
     ws.close()
     await app.close()
   })
+
+  // AC-GW-018 — 조립: buildServer 배선과 초대 목록의 online
+  it('buildServer wires the gateway, archive hook and invite online flag', async () => {
+    process.env.MINIDISCORD_DATA_DIR = join(dir, 'srv')
+    const { buildServer } = await import('../src/index.js')
+    const app = await buildServer()
+    await app.listen({ port: 0 })
+    const port = (app.server.address() as { port: number }).port
+
+    // Gateway 계약: 다섯 메서드가 전부 함수다 (REQ-GW-021)
+    const gw = (app as any).gateway
+    for (const m of ['deliver', 'closeRoom', 'isOnline', 'sendToBot', 'setPermissionHandler']) {
+      expect(typeof gw[m]).toBe('function')
+    }
+
+    // 가입·로그인 라우트 이름과 set-cookie 정규화는 rooms-bots.test.ts 의 build() 와 같다
+    await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+    const raw = login.headers['set-cookie'] ?? ''
+    const ck = (Array.isArray(raw) ? raw[0] : raw).split(';')[0]
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie: ck }, payload: { name: 'A' } })).json()
+    const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie: ck }, payload: { name: 'pm' } })).json()
+    const inv = (await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie: ck }, payload: { bot_id: bot.id } })).json()
+
+    // 접속 전: online 은 false
+    const before = (await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/invites`, headers: { cookie: ck } })).json()
+    expect(before[0].online).toBe(false)
+
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
+    await new Promise<void>(r => { ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', token: inv.token }))); ws.on('message', () => r()) })
+
+    // 접속 후: 같은 라우트가 true 로 바뀐다 — 상수 false 를 배제하는 분별 단언
+    const during = (await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/invites`, headers: { cookie: ck } })).json()
+    expect(during[0].online).toBe(true)
+    expect(typeof during[0].online).toBe('boolean')
+
+    // 보관 훅: HTTP 로 방을 보관하면 그 방 소켓이 끊긴다
+    const closed = closedPromise(ws)
+    const archived = await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/archive`, headers: { cookie: ck } })
+    expect(archived.statusCode).toBe(200)
+    await closed
+
+    await app.close()
+    delete process.env.MINIDISCORD_DATA_DIR
+  })
 })

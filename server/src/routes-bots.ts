@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify'
 import { createHash, randomBytes } from 'node:crypto'
 import { requireAuth } from './auth.js'
 import { config } from './config.js'
+import type { Gateway } from './gateway.js'
 
 // @MX:ANCHOR: [AUTO] 토큰 해시 공개 계약 — 카드 t3 게이트웨이가 hello { token } 인증에서 같은 함수로 bot_tokens 를 조회한다
 // @MX:REASON: 해시 방식이 이 함수 하나에 고정돼 있어야 발급(여기)과 조회(t3 게이트웨이)가 갈라지지 않는다. 형식을 바꾸면 이미 발급된 초대가 전부 무효가 된다
@@ -67,8 +68,8 @@ export function registerBotRoutes(app: FastifyInstance): void {
       `SELECT t.bot_id, b.name AS bot_name FROM bot_tokens t JOIN bots b ON b.id = t.bot_id
        WHERE t.room_id=? AND t.revoked_at IS NULL ORDER BY b.name`,
     ).all(roomId) as { bot_id: number; bot_name: string }[]
-    // 이 SPEC 범위에서 online 은 항상 false — 실제 판정은 카드 t3 게이트웨이가 채운다
-    return rows.map(r => ({ ...r, online: false }))
+    // online 은 게이트웨이의 접속 판정을 따른다 — 게이트웨이를 데코레이트하지 않은 테스트 조립에서는 false 로 내려간다
+    return rows.map(r => ({ ...r, online: (req.server as { gateway?: Gateway }).gateway?.isOnline(roomId, r.bot_id) ?? false }))
   })
 
   // 초대 철회 — 멱등: 철회할 활성 토큰이 없어도 같은 응답을 낸다 (REQ-BOT-007)
