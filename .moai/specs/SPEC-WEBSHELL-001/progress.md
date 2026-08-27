@@ -205,6 +205,38 @@ $ npm run typecheck -w server
 
 **@fastify/static v10 폴백 확인 (plan.md §D 7 미확인 항목 — 해소)**: AC-002 가 통과했다. `GET /api/nope` 는 `404` 에 비-HTML 본문을 내고 `index.html` 로 폴백하지 않는다. `wildcard` 조정 없이 등록 위치(buildServer 맨 끝)만으로 충분했다. 블로커 없음.
 
+### M2 — 정적 파일 골격
+
+**RED**: AC-003·004 는 M1 골격(영속 id 24개 완비) 위에서 이미 통과했다 — plan.md 가 예상한 범위("M2 의 테스트는 M1 이 만든 index.html 뼈대 위에서 실패한다…별도 전이로 세지 않되 출력은 기록"). M2 의 RED 는 AC-005 grep 관측으로 관측했다:
+
+```
+$ grep -n "@import" web/style.css        → exit 1 (일치 없음)
+$ grep -c 'var(--md-' web/style.css      → 0
+```
+
+**GREEN — AC-005 네 관측 (직접 실행)**:
+
+```
+$ grep -n "@import" web/style.css
+6:@import url('./design-tokens.css');          ← 관측 1: 정확히 한 줄, design-tokens.css 포함
+$ grep -n "{" web/style.css | head -1
+9:* { box-sizing: border-box; }               ← 관측 2: 6 < 9 — @import 가 첫 규칙보다 앞
+$ grep -nEi '#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3})([^0-9a-z_-]|$)' web/style.css
+(hex_exit=1 — 일치 없음)                        ← 관측 3: 원시 16진 색상 0건
+$ grep -c 'var(--md-' web/style.css
+60                                             ← 관측 4: 60 ≥ 12
+```
+
+**교정한 결함**: 초안 style.css 의 머리 주석에 "@import 는…"이라는 문구가 있어 관측 1의 grep 이 주석 줄까지 잡아 **두 줄**을 냈다(정확히 한 줄이어야 한다). 주석 문구를 "디자인 토큰 임포트문은…"으로 고쳐 해결했다. grep 관측이 파일 원문 전체를 본다는 사실을 보여준 사례.
+
+**전체 스위트 (직접 실행)**:
+
+```
+$ npm test -w server
+ Test Files  11 passed (11)
+      Tests  108 passed (108)      ← AC-003·004 추가
+```
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal

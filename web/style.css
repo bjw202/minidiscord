@@ -1,1 +1,206 @@
-/* SPEC-WEBSHELL-001 M2 에서 디자인 토큰을 소비하는 스타일로 채운다 */
+/*
+ * minidiscord 웹 셸 스타일 (SPEC-WEBSHELL-001)
+ * 색·폰트·간격은 전부 design-tokens.css 의 --md-* 토큰으로 참조한다 (REQ-WEBSHELL-004).
+ * 디자인 토큰 임포트문은 어떤 규칙보다도 앞에 와야 한다 — CSS 사양상 뒤에 오면 무시된다.
+ */
+@import url('./design-tokens.css');
+
+/* ── 기본 골격 ─────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: var(--md-font-family);
+  font-size: var(--md-font-size-body);
+  color: var(--md-text-primary);
+  background: var(--md-bg-main);
+}
+
+button {
+  padding: var(--md-space-2) var(--md-space-3);
+  border: none;
+  border-radius: var(--md-radius-badge);
+  background: var(--md-accent);
+  color: var(--md-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+button:hover { filter: brightness(1.15); }
+
+input {
+  padding: var(--md-space-2);
+  border: none;
+  border-radius: var(--md-radius-input);
+  background: var(--md-bg-input);
+  color: var(--md-text-primary);
+  font: inherit;
+}
+input:focus { outline: 1px solid var(--md-accent); }
+
+/* ── 인증 화면 — 가장 밝은 배경 위에 패널 카드 하나 ────── */
+#auth-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-space-5);
+  height: 100vh;
+}
+
+#auth-view form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-2);
+  width: 280px;
+  padding: var(--md-space-5);
+  border-radius: var(--md-radius-input);
+  background: var(--md-bg-panel);
+}
+
+#auth-view h1 {
+  margin: 0 0 var(--md-space-2);
+  font-size: 20px;
+}
+
+#auth-view h2 {
+  margin: 0 0 var(--md-space-2);
+  font-size: var(--md-font-size-body);
+  color: var(--md-text-muted);
+}
+
+/* 서버가 준 오류 문구 — 붉은 상태색 (design DNA §1) */
+#auth-error {
+  margin: var(--md-space-2) 0 0;
+  color: var(--md-status-error);
+}
+
+/* ── 메인 화면 — 사이드바 + 채팅 2단 ─────────────────────
+ * 레이어가 왼쪽으로 갈수록 어두운 게 Discord 다크 테마의 핵심이다 (design DNA §1).
+ * 사이드바에 --md-bg-panel(채널 사이드바 값), 채팅에 --md-bg-main(가장 밝은 값).
+ * 서버 아이콘 레일(--md-bg-sidebar)은 minidiscord 에 없는 컬럼이라 쓰지 않는다. */
+#main-view {
+  display: flex;
+  height: 100vh;
+}
+
+#sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-2);
+  width: var(--md-sidebar-width);
+  padding: var(--md-space-3);
+  overflow-y: auto;
+  background: var(--md-bg-panel);
+}
+
+/* 카테고리 라벨("방"·"봇"·"보관된 방") — 작은 대문자 흐린 텍스트 (design DNA §2) */
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-head h2,
+#archived-box h2 {
+  margin: 0;
+  font-size: var(--md-font-size-label);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--md-text-muted);
+}
+
+.sidebar-head button { font-size: var(--md-font-size-label); }
+
+#archived-box h2 { padding: var(--md-space-1) var(--md-space-2); }
+
+#sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 방 항목 — 호버 시 눈에 띄게 밝아진다 (design DNA §1) */
+.room-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--md-space-2);
+  padding: var(--md-space-1) var(--md-space-2);
+  border-radius: var(--md-radius-badge);
+  cursor: pointer;
+}
+
+.room-item:hover { background: var(--md-bg-hover); }
+
+/* 현재 방 표시 — 호버와 같은 밝기 계열에 흰 텍스트 */
+.room-item.active {
+  background: var(--md-bg-hover);
+  color: var(--md-text-primary);
+  font-weight: var(--md-font-weight-name);
+}
+
+/* 보관된 방은 다시 보관할 수 없다 — 버튼이 없고 흐리게 (REQ-WEBSHELL-009) */
+#archived-list .room-item { color: var(--md-text-muted); }
+#archived-list .room-item:hover { background: none; }
+
+/* 보관 버튼 — 텍스트 크기를 줄여 방 이름과 눈금을 맞춘다 */
+.archive-btn {
+  padding: var(--md-space-1) var(--md-space-2);
+  background: none;
+  color: var(--md-text-muted);
+  font-size: var(--md-font-size-label);
+}
+.archive-btn:hover { color: var(--md-status-error); background: none; }
+
+/* 봇 목록 — 상태 표시는 각 항목 안쪽에 붙는다(형제 SPEC 계약, spec.md §4.8 계약 4) */
+#bot-list { margin-bottom: var(--md-space-3); }
+
+#logout-btn { margin-top: auto; }
+
+/* ── 채팅 영역 — 내용물는 형제 SPEC(SPEC-WEBCHAT-001) 이 채운다 ── */
+#chat { flex: 1; }
+
+#placeholder {
+  margin: var(--md-space-4);
+  color: var(--md-text-muted);
+}
+
+/* ── 이름 입력 다이얼로그 (방 생성·봇 등록 공유) ────────── */
+#prompt-dialog {
+  border: none;
+  border-radius: var(--md-radius-input);
+  padding: var(--md-space-5);
+  background: var(--md-bg-panel);
+  color: var(--md-text-primary);
+}
+
+#prompt-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+
+#prompt-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-2);
+  width: 280px;
+}
+
+#prompt-label {
+  font-size: var(--md-font-size-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--md-text-muted);
+}
+
+/* ── 오류 토스트 — 화면 아래에 떠서 삼켜지는 오류가 없게 한다 ── */
+#error-toast {
+  position: fixed;
+  bottom: var(--md-space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: var(--md-space-2) var(--md-space-4);
+  border-radius: var(--md-radius-badge);
+  background: var(--md-bg-panel);
+  color: var(--md-status-error);
+  border-top: 1px solid var(--md-divider);
+}
