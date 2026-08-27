@@ -22,6 +22,33 @@ function loadDom(): Document {
   return parsed
 }
 
+// 요청을 기록하면서 미리 정한 응답을 돌려주는 fetch. 키는 "<METHOD> <path>".
+// 등록되지 않은 경로에서 던지는 것이 의도다 — 구현이 예상 밖의 엔드포인트를 부르면
+// 테스트가 조용히 통과하지 않고 그 자리에서 실패한다.
+type Stubbed = { status: number; body?: unknown }
+function stubFetch(routes: Record<string, Stubbed>) {
+  const calls: { path: string; opts: RequestInit }[] = []
+  globalThis.fetch = vi.fn(async (path: string, opts: RequestInit = {}) => {
+    calls.push({ path, opts })
+    const key = `${(opts.method ?? 'GET').toUpperCase()} ${path}`
+    const r = routes[key]
+    if (!r) throw new Error(`스텁에 없는 경로: ${key}`)
+    return {
+      ok: r.status >= 200 && r.status < 300,
+      status: r.status,
+      json: async () => r.body ?? {},
+    } as unknown as Response
+  }) as unknown as typeof fetch
+  return calls
+}
+
+// 모듈 수준 state 가 테스트 사이에 새는 것을 막는다.
+async function loadApp() {
+  vi.resetModules()
+  // @ts-expect-error web/app.js 는 브라우저가 직접 읽는 ES 모듈이라 타입 선언을 두지 않는다 (spec.md §4.8 계약 1)
+  return await import('../../web/app.js')
+}
+
 // buildServer() 가 저장소의 진짜 data/ 를 열지 않게 격리한다.
 // config.dataDir 은 게터로 지연 평가되므로 import 이후 설정해도 반영된다
 // (server/src/config.ts, SPEC-SSE-001 progress.md 의 확정된 선례).
@@ -80,5 +107,260 @@ describe('AC-WEBSHELL-002 API not shadowed', () => {
     expect(missing.body).not.toContain('id="auth-view"')
     await app.close()
     restore()
+  })
+})
+
+// 영속 id 24개 (spec.md REQ-WEBSHELL-003 관측 2). `placeholder` 는 여기 없다 —
+// #chat 요소는 이 SPEC 소유지만 #chat 내용물은 SPEC-WEBCHAT-001 소유라, 형제가 내용물을
+// 교체하는 순간 지워진다. 그 존재는 AC-015 관측 5(마감 시점 명령)가 잰다 (감사 MF-6).
+const REQUIRED_IDS = [
+  'auth-view', 'login-form', 'login-username', 'login-password',
+  'register-form', 'reg-username', 'reg-password', 'auth-error',
+  'main-view', 'sidebar', 'room-list', 'archived-box', 'archived-list',
+  'bot-list', 'new-room-btn', 'new-bot-btn', 'logout-btn',
+  'chat',
+  'prompt-dialog', 'prompt-form', 'prompt-label', 'prompt-input', 'prompt-ok',
+  'error-toast',
+]
+
+describe('AC-WEBSHELL-003 id hygiene', () => {
+  it('keeps every element id unique and present', () => {
+    const doc = loadDom()
+    const ids = [...doc.querySelectorAll('[id]')].map(e => e.id)
+    // 중복이 있으면 어떤 값이 중복인지 실패 메시지에 드러나게 한다
+    const dupes = ids.filter((v, i) => ids.indexOf(v) !== i)
+    expect(dupes).toEqual([])
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const id of REQUIRED_IDS) {
+      expect(doc.getElementById(id), `#${id} 가 있어야 한다`).not.toBeNull()
+    }
+  })
+})
+
+describe('AC-WEBSHELL-004 module bootstrap', () => {
+  it('boots app.js as an ES module through initApp', () => {
+    const doc = loadDom()
+    expect(doc.documentElement.lang).toBe('ko')
+    expect(doc.querySelector('meta[charset]')?.getAttribute('charset')).toBe('utf-8')
+    const modules = [...doc.querySelectorAll('script[type="module"]')]
+    expect(modules.length).toBeGreaterThan(0)
+    // 주석 안의 문자열이 아니라 실제 스크립트 요소의 본문/참조를 본다
+    const bootstraps = modules.filter(s => s.textContent?.includes('initApp'))
+    expect(bootstraps.length, 'initApp() 을 부르는 모듈 스크립트가 있어야 한다').toBe(1)
+    expect(bootstraps[0].textContent).toMatch(/import\s*\{[^}]*initApp[^}]*\}\s*from/)
+    // 전역 스크립트로 app.js 를 다시 불러오지 않는다
+    const classic = [...doc.querySelectorAll('script[src]')].filter(s => !s.getAttribute('type'))
+    expect(classic, 'app.js 를 전역 스크립트로 불러오면 안 된다').toEqual([])
+  })
+})
+
+// 이 SPEC 이 소유하는 필수 최소 집합 18개 (spec.md REQ-WEBSHELL-005).
+// 형제 SPEC 은 여기에 이름을 더할 수 있다 — 이 기준은 더해진 이름에 침묵한다.
+const REQUIRED_EXPORTS = [
+  '$', 'api', 'archiveRoom', 'createBot', 'createRoom', 'initApp', 'loadBots',
+  'loadRooms', 'login', 'logout', 'openRoom', 'promptText', 'register',
+  'renderBots', 'renderRooms', 'showAuth', 'showMain', 'state',
+].sort()
+
+describe('AC-WEBSHELL-006 export surface', () => {
+  it('exposes at least the surface the sibling SPECs bind to', async () => {
+    const app = await loadApp()
+    const actual = Object.keys(app)
+    // 1) 필수 이름이 하나도 빠지지 않았다. 빠진 것이 있으면 그 이름이 실패 메시지에 드러난다.
+    const missing = REQUIRED_EXPORTS.filter(n => !actual.includes(n))
+    expect(missing, '필수 export 가 빠졌다').toEqual([])
+    // 2) state 는 객체이고 이 SPEC 이 소유하는 세 필드가 규정된 초기값을 갖는다.
+    //    형제가 더한 필드에는 침묵한다 — toEqual 로 객체 전체를 못 박지 않는다.
+    expect(typeof app.state).toBe('object')
+    expect(app.state.rooms).toEqual({ active: [], archived: [] })
+    expect(app.state.bots).toEqual([])
+    expect(app.state.currentRoomId).toBeNull()
+    // 3) 나머지 열일곱은 전부 함수다.
+    for (const name of REQUIRED_EXPORTS.filter(n => n !== 'state')) {
+      expect(typeof app[name], `${name} 은 함수여야 한다`).toBe('function')
+    }
+  })
+})
+
+describe('AC-WEBSHELL-007 api() request shape', () => {
+  it('serializes, sends credentials, and surfaces the server error text', async () => {
+    const { api } = await loadApp()
+    const calls = stubFetch({
+      'POST /api/rooms': { status: 201, body: { id: 1, name: '프로젝트A' } },
+      'GET /api/bots': { status: 200, body: [] },
+      'POST /api/bots': { status: 409, body: { error: '이미 있는 봇 이름입니다' } },
+    })
+
+    const created = await api('/api/rooms', { method: 'POST', body: { name: '프로젝트A' } })
+    expect(created).toEqual({ id: 1, name: '프로젝트A' })
+    const sent = calls[0]
+    expect(sent.path).toBe('/api/rooms')
+    expect((sent.opts.headers as Record<string, string>)['content-type']).toBe('application/json')
+    expect(sent.opts.body).toBe(JSON.stringify({ name: '프로젝트A' }))
+    expect(sent.opts.credentials).toBe('same-origin')
+
+    // 본문 없는 GET 에는 content-type 을 붙이지 않는다
+    await api('/api/bots')
+    expect((calls[1].opts.headers as Record<string, string> | undefined)?.['content-type']).toBeUndefined()
+    expect(calls[1].opts.credentials).toBe('same-origin')
+
+    // 오류 본문의 error 필드가 그대로 메시지가 된다
+    await expect(api('/api/bots', { method: 'POST', body: { name: 'pm' } }))
+      .rejects.toThrow('이미 있는 봇 이름입니다')
+  })
+})
+
+describe('AC-WEBSHELL-008 401 two-way split', () => {
+  it('shows the auth view on a protected 401 but not on an auth 401', async () => {
+    const { api, showMain } = await loadApp()
+    stubFetch({
+      'GET /api/rooms': { status: 401, body: { error: '로그인이 필요합니다' } },
+      'POST /api/auth/login': { status: 401, body: { error: '사용자 이름 또는 비밀번호가 틀렸습니다' } },
+    })
+
+    showMain()
+    expect(document.getElementById('main-view')!.hidden).toBe(false)
+
+    // 보호 경로의 401 → 인증 뷰로 되돌린다
+    await expect(api('/api/rooms')).rejects.toThrow()
+    expect(document.getElementById('main-view')!.hidden).toBe(true)
+    expect(document.getElementById('auth-view')!.hidden).toBe(false)
+
+    // 인증 경로의 401 → 화면을 건드리지 않는다
+    showMain()
+    await expect(api('/api/auth/login', { method: 'POST', body: { username: 'a', password: 'b' } }))
+      .rejects.toThrow('사용자 이름 또는 비밀번호가 틀렸습니다')
+    expect(document.getElementById('main-view')!.hidden, '로그인 실패가 화면을 되돌리면 안 된다').toBe(false)
+  })
+})
+
+describe('AC-WEBSHELL-009 login flow', () => {
+  it('enters the main view on login and shows the server message on failure', async () => {
+    const app = await loadApp()
+    const ok = stubFetch({
+      'POST /api/auth/login': { status: 200, body: { ok: true } },
+      'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
+      'GET /api/bots': { status: 200, body: [] },
+    })
+    await app.login('alice', 'pw123456')
+    expect(document.getElementById('main-view')!.hidden).toBe(false)
+    expect(document.getElementById('auth-view')!.hidden).toBe(true)
+    const paths = ok.map(c => c.path)
+    expect(paths).toContain('/api/rooms')   // 목록을 실제로 적재했다
+    expect(paths).toContain('/api/bots')
+
+    // 실패 경로
+    const err = document.getElementById('auth-error')!
+    stubFetch({ 'POST /api/auth/login': { status: 401, body: { error: '사용자 이름 또는 비밀번호가 틀렸습니다' } } })
+    await expect(app.login('alice', 'wrong')).rejects.toThrow()
+    expect(err.hidden).toBe(false)
+    expect(err.textContent).toBe('사용자 이름 또는 비밀번호가 틀렸습니다')
+  })
+})
+
+describe('AC-WEBSHELL-010 room list render', () => {
+  it('renders active and archived rooms differently', async () => {
+    const app = await loadApp()
+    app.state.rooms = {
+      active: [
+        { id: 1, name: '프로젝트A', status: 'active', created_at: 'x', archived_at: null },
+        { id: 2, name: '프로젝트B', status: 'active', created_at: 'x', archived_at: null },
+      ],
+      archived: [{ id: 3, name: '옛 프로젝트', status: 'archived', created_at: 'x', archived_at: 'y' }],
+    }
+    app.state.currentRoomId = 2
+    app.renderRooms()
+
+    const active = [...document.getElementById('room-list')!.querySelectorAll('.room-item')]
+    const archived = [...document.getElementById('archived-list')!.querySelectorAll('.room-item')]
+    expect(active).toHaveLength(2)
+    expect(archived).toHaveLength(1)
+    expect(active[0].textContent).toContain('프로젝트A')
+    expect(archived[0].textContent).toContain('옛 프로젝트')
+    // 활성 방에만 보관 버튼이 있다 — 보관된 방을 또 보관하면 서버가 409 를 낸다
+    expect(active[0].querySelector('.archive-btn')).not.toBeNull()
+    expect(archived[0].querySelector('.archive-btn')).toBeNull()
+    // 현재 방 표시
+    expect(active[1].classList.contains('active')).toBe(true)
+    expect(active[0].classList.contains('active')).toBe(false)
+
+    // 다시 그리면 쌓이지 않는다
+    app.renderRooms()
+    expect(document.getElementById('room-list')!.querySelectorAll('.room-item')).toHaveLength(2)
+  })
+})
+
+describe('AC-WEBSHELL-011 room create/archive', () => {
+  it('creates and archives rooms, reloads the list, and surfaces failures', async () => {
+    const app = await loadApp()
+    const calls = stubFetch({
+      'POST /api/rooms': { status: 201, body: { id: 1, name: '프로젝트A' } },
+      'POST /api/rooms/1/archive': { status: 200, body: { ok: true } },
+      'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
+    })
+
+    await app.createRoom('프로젝트A')
+    expect(calls[0].path).toBe('/api/rooms')
+    expect(calls[0].opts.method).toBe('POST')
+    expect(calls[0].opts.body).toBe(JSON.stringify({ name: '프로젝트A' }))
+    expect(calls[1].path, '생성 뒤 목록을 다시 적재해야 한다').toBe('/api/rooms')
+    expect(calls[1].opts.method ?? 'GET').toBe('GET')
+
+    await app.archiveRoom(1)
+    expect(calls[2].path).toBe('/api/rooms/1/archive')
+    expect(calls[2].opts.method).toBe('POST')
+    expect(calls[3].path).toBe('/api/rooms')
+
+    // 서버 오류를 삼키지 않는다 (plan.md §D 4번)
+    const toast = document.getElementById('error-toast')!
+    stubFetch({ 'POST /api/rooms/9/archive': { status: 409, body: { error: '이미 보관된 방입니다' } } })
+    await app.archiveRoom(9)
+    expect(toast.hidden).toBe(false)
+    expect(toast.textContent).toBe('이미 보관된 방입니다')
+  })
+})
+
+describe('AC-WEBSHELL-012 bots', () => {
+  it('renders bots and registers a new one', async () => {
+    const app = await loadApp()
+    app.state.bots = [{ id: 1, name: 'pm', description: '' }, { id: 2, name: '코드리뷰어', description: '리뷰' }]
+    app.renderBots()
+    const items = document.getElementById('bot-list')!.children
+    expect(items).toHaveLength(2)
+    expect(items[0].textContent).toContain('pm')
+    expect(items[1].textContent).toContain('코드리뷰어')
+    app.renderBots()
+    expect(document.getElementById('bot-list')!.children).toHaveLength(2)
+
+    const calls = stubFetch({
+      'POST /api/bots': { status: 201, body: { id: 3, name: 'qa', description: '' } },
+      'GET /api/bots': { status: 200, body: [] },
+    })
+    await app.createBot('qa', '')
+    expect(calls[0].path).toBe('/api/bots')
+    expect(calls[0].opts.method).toBe('POST')
+    expect(calls[0].opts.body).toBe(JSON.stringify({ name: 'qa', description: '' }))
+    expect(calls[1].path, '등록 뒤 목록을 다시 적재해야 한다').toBe('/api/bots')
+  })
+})
+
+describe('AC-WEBSHELL-013 logout', () => {
+  it('logs out, clears the state, and returns to the auth view', async () => {
+    const app = await loadApp()
+    app.showMain()
+    app.state.rooms = { active: [{ id: 1, name: 'x', status: 'active', created_at: 'x', archived_at: null }], archived: [] }
+    app.state.bots = [{ id: 1, name: 'pm', description: '' }]
+    app.state.currentRoomId = 1
+
+    const calls = stubFetch({ 'POST /api/auth/logout': { status: 200, body: { ok: true } } })
+    await app.logout()
+
+    expect(calls[0].path).toBe('/api/auth/logout')
+    expect(calls[0].opts.method).toBe('POST')
+    expect(app.state.rooms).toEqual({ active: [], archived: [] })
+    expect(app.state.bots).toEqual([])
+    expect(app.state.currentRoomId).toBeNull()
+    expect(document.getElementById('auth-view')!.hidden).toBe(false)
+    expect(document.getElementById('main-view')!.hidden).toBe(true)
   })
 })

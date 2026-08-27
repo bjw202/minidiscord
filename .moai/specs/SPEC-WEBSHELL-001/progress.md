@@ -237,6 +237,31 @@ $ npm test -w server
       Tests  108 passed (108)      ← AC-003·004 추가
 ```
 
+### M3 — `app.js` 로직
+
+**RED (AC-016 전이 3)**: 8개 테스트(AC-006~013) 전부 실패. 원인이 출력에 직접 보인다:
+
+```
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-006 export surface
+AssertionError: 필수 export 가 빠졌다: expected [ '$', 'api', 'archiveRoom', …(15) ] to deeply equal []
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-007 api() request shape
+TypeError: api is not a function
+```
+
+acceptance.md 전이 3 예상 문구는 "`../../web/app.js` 모듈 부재(해석 오류)"였으나, M1 시점에 이미 최소 스터브 app.js 를 두었다(AC-001 이 `GET /app.js` 200+비어있지 않은 본문을 요구하므로). 그 결과 RED 원인은 "모듈 부재"가 아니라 **"필수 export 18개 전부 부재"**로 관측됐다 — 판정 원칙("무엇이 없어서 실패했는가"가 출력에 보이는가)은 동일하게 충족한다. 이 조정을 여기에 기록한다.
+
+**GREEN (AC-016 전이 4)**:
+
+```
+$ npm test -w server
+ Test Files  11 passed (11)
+      Tests  116 passed (116)      ← AC-006~013 추가(8개)
+
+$ npm run typecheck -w server
+종료 코드 0 — loadApp 의 import 줄에 단 @ts-expect-error 가 유효하다
+(web/app.js 는 타입 선언 없는 계약 파일, TS7016 실제 발생을 suppress)
+```
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
