@@ -197,6 +197,7 @@ sync 감사(`.moai/reports/t7/sync-audit.md`) FAIL 판정에 따른 정정. 운�
 | C1 | RED — 수정 전에 잔여 두 경로가 모두 재현된다 | `unset MOAI_KANBAN … && npm test -w server -- permissions` → `a newline-free description mimicking the guidance line…` **AssertionError: expected 2 to be 1**(안내 문구로 시작하는 줄 2개 — 재감사 탐침 R1 과 동일 실패), `bot text cannot inject the bot-content marker` **AssertionError: expected 6 to be +0**(표식 `│` 가 줄 중간에 생존). 파일 단위 `Tests 2 failed \| 20 passed (22)`, 전체 스위트 `Tests 2 failed \| 109 passed (111)` (`correction2-red.txt`) |
 | C2 | GREEN — `T7-F-01` 잔여 종결 | `unset MOAI_KANBAN … && npm test -w server` → `Test Files 10 passed (10) / Tests 111 passed (111)`, `TEST_EXIT=0` (`correction2-test-full.txt`). 신규 2건 GREEN, 기존 109건 무손상 — 기존 테스트 중 봇 줄 내용을 정확히 단언하던 것은 없어 수정·완화한 테스트는 없다 |
 | C3 | 타입 검사 | `npm run typecheck -w server` → `TYPECHECK_EXIT=0` (`correction2-typecheck.txt`) |
+| C4 | 변이 감별력 — 접두 분리를 되돌리면 새 테스트 2건만 실패한다 (레인 직접 재관측) | `git diff 5d3e58a b57d6ab -- server/src/permissions.ts \| git apply -R && npm test -w server -- permissions` → `Tests 2 failed \| 20 passed (22)`, `MUT_EXIT=1`; 복원 후 `git diff --stat HEAD -- server/src/permissions.ts` 빈 출력(완전 복원). 실행 시점 2026-08-28, HEAD `767d4f3` 나무에서 |
 
 참고: C1 의 RED 커밋은 의도적으로 실패하는 테스트를 담으므로 pre-commit 품질 게이트(moai gate)가 막았고, 훅이 안내하는 문서화된 오버라이드(`SKIP_MOAI_PRECOMMIT=1`)로 커밋했다 — RED 선행 순서를 커밋 역사에 남기기 위함이다. GREEN 커밋(`b57d6ab`)은 오버라이드 없이 게이트를 통과했다.
 
@@ -221,7 +222,7 @@ sync 감사(`.moai/reports/t7/sync-audit.md`) FAIL 판정에 따른 정정. 운�
 ### 8.5 Gaps — 이번 정정이 관측하지 않은 것
 
 - 커버리지 미측정(감사·라운드 1과 동일 Gap). 접두 경로의 커버리지 수치는 확인하지 않았다.
-- **변이 감별력 미재관측** — 완성된 트리에서 접두를 되돌렸을 때 새 테스트 2건이 실패하는지는 이번 라운드에서 실행하지 않았다. 다만 RED 가 소스 미수정 상태에서 관측됐으므로(§8.2 C1) 두 테스트의 실패 모드 자체는 직접 관측됐다.
+- **변이 감별력** — 완료 보고 직후 레인이 직접 재관측해 Gap 을 닫았다(§8.2 C4): 접두 분리 되돌림 시 새 테스트 2건만 정확히 실패하고 복원이 확인됐다. RED 자체도 소스 미수정 상태에서 직접 관측됐다(§8.2 C1).
 - 렌더러 표시 — `│` 가 실제 화면에서 접두로 **보이는지**는 웹 UI(카드 t5)가 정한다. 이 나무에는 소비자가 없다.
 - 실환경 결합(실 게이트웨이·실 토큰) — 여전히 t6 E2E 소관.
 
