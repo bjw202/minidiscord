@@ -209,7 +209,7 @@ ac_total: 12
 ac_passed: 12
 coverage: "All files 97.46% stmts / 100% lines (channel-server.ts 100% — 이 SPEC 변경 파일; src/index.ts 기존 제외)"
 typecheck: "npm run typecheck -w channel → exit 0"
-run_commit_sha: "pending-backfill-m2"
+run_commit_sha: "72d7b1f"
 gaps: "게이트웨이 끊김 중 요청(버퍼링 없음)·params 필드 누락 시 알림 소실 — 계약상 수용; 서버 쪽 request_id 결함 2건(가정-2·3)은 카드 t7 소유, 이 SPEC 미보상"
 ```
 
