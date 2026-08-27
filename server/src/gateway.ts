@@ -2,14 +2,16 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, statSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, join, resolve, sep } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { sha256Hex } from './routes-bots.js'
 
 export interface MessageRow {
   id: number; room_id: number; author_type: string; author_name: string
   body: string; created_at: string
-  attachments?: { id: number; filename: string; stored_path: string }[]
+  // stored_path 는 이 payload 에 싣지 않는다 — 서버 절대 경로가 HTTP 응답으로 새어 나갔다
+  // (sync-audit F-02). 봇 프레임의 local_path 는 deliver 가 DB 에서 다시 읽어 채운다.
+  attachments?: { id: number; filename: string }[]
 }
 
 export interface ConnInfo { roomId: number; botId: number }
@@ -25,7 +27,10 @@ export interface Gateway {
 }
 
 // @MX:NOTE: [AUTO] 접속 목록은 메모리에만 있다 — 서버 재시작으로 비면 isOnline 전원 false 가 정상 상태다 (REQ-GW-013)
-export function createGateway(app: FastifyInstance, opts: { uploadsDir: string }): Gateway {
+// botFilesDir: 봇이 bot_message 로 첨부할 수 있는 파일의 허용 뿌리. 미지정이면 봇 첨부를 전부
+// 거부한다(fail-closed) — 검사가 없던 동안 봇 토큰 하나로 서버가 읽는 임의 파일을 uploads 안으로
+// 복사해 내려받을 수 있었다 (sync-audit F-01, 유출 재현됨).
+export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; botFilesDir?: string }): Gateway {
   const db = app.db
   const hub = app.hub
   const conns = new Map<WebSocket, ConnInfo & { tokenRowId: number }>()
@@ -136,16 +141,23 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string }
     const r = db.prepare("INSERT INTO messages (room_id, author_type, author_bot_id, body) VALUES (?, 'bot', ?, ?)")
       .run(info.roomId, info.botId, String(msg.body ?? ''))
     const messageId = r.lastInsertRowid as number
+    // 허용 뿌리는 한 번만 정규화한다. 미지정이면 null 이고, 아래 검사가 모든 첨부를 거부한다.
+    const filesRoot = opts.botFilesDir ? resolve(opts.botFilesDir) : null
     for (const f of (msg.files ?? []) as { local_path?: string; name?: string }[]) {
       try {
+        // 출처 경로 봉인 (sync-audit F-01). basename() 은 목적지 이름에만 걸리고 출처에는 걸리지 않아,
+        // 이 검사가 없으면 '../..' 없이 절대 경로만으로도 뿌리 밖 파일이 그대로 복사됐다.
+        // sep 를 붙여 비교한다 — 붙이지 않으면 '<root>-evil' 같은 접두사 일치가 통과한다.
+        const src = resolve(String(f.local_path))
+        if (!filesRoot || !src.startsWith(filesRoot + sep)) continue
         // 다섯 컬럼 전부 채운다 — size·mime 은 NOT NULL 이라 빠뜨리면 INSERT 가 제약 위반으로
         // 던지고 이 catch 가 그것을 삼켜 첨부가 조용히 사라진다 (plan.md §D 9번).
         // size 는 원본의 바이트 크기, mime 은 상수 — 게이트웨이는 내용을 스니핑하지 않는다.
-        const size = statSync(String(f.local_path)).size
-        const stored = join(opts.uploadsDir, `${randomUUID()}-${basename(String(f.local_path))}`)
-        copyFileSync(String(f.local_path), stored)
+        const size = statSync(src).size
+        const stored = join(opts.uploadsDir, `${randomUUID()}-${basename(src)}`)
+        copyFileSync(src, stored)
         db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, ?, ?)')
-          .run(messageId, f.name ?? basename(String(f.local_path)), stored, size, 'application/octet-stream')
+          .run(messageId, f.name ?? basename(src), stored, size, 'application/octet-stream')
       } catch {
         // 파일이 없으면 그 첨부만 건너뛴다 — 메시지와 나머지 첨부는 그대로 (REQ-GW-011)
       }

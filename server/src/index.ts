@@ -41,7 +41,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // 봇 게이트웨이 — 허브 데코레이트 뒤에 만든다 (REQ-GW-022). 방 보관 훅으로 그 방 접속 끊기를 건다.
   // uploadsDir 데코레이터와 게이트웨이가 같은 값을 쓴다 — 갈라지면 경로 봉인 검사가 무엇을 재는지 불분명해진다 (plan.md §D 4번)
   app.decorate('uploadsDir', config.uploadsDir)
-  const gateway = createGateway(app, { uploadsDir: config.uploadsDir })
+  const gateway = createGateway(app, { uploadsDir: config.uploadsDir, botFilesDir: config.botFilesDir })
   app.decorate('gateway', gateway)
   registerRoomRoutes(app, { onArchive: roomId => gateway.closeRoom(roomId) })
   registerBotRoutes(app)
@@ -64,6 +64,6 @@ export async function buildServer(): Promise<FastifyInstance> {
 
 if (process.argv[1]?.includes('index.ts')) {
   const app = await buildServer()
-  await app.listen({ port: config.port, host: '0.0.0.0' })
-  console.log(`minidiscord listening on :${config.port}`)
+  await app.listen({ port: config.port, host: config.host })
+  console.log(`minidiscord listening on ${config.host}:${config.port}`)
 }

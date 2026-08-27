@@ -173,6 +173,41 @@ describe('messages', () => {
     expect(missing.statusCode).toBe(404)
   })
 
+  // sync-audit F-02 — 서버 절대 경로가 HTTP 응답으로 새어 나가지 않는다
+  it('never puts stored_path in the send or list response while keeping the id usable', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seed()
+    const src = join(dir, 'memo.txt')
+    writeFileSync(src, '파일 내용')
+
+    const res = await postMessage(app, cookie, roomId, '파일 올림', src)
+    expect(res.statusCode).toBe(200)
+    const sent = JSON.parse(res.body).message
+
+    // 전송 응답: 첨부는 있는데 stored_path 만 없다. 대조군으로 id·filename 은 실려야 한다 —
+    // 이게 없으면 "첨부를 통째로 빼먹은" 구현도 이 테스트를 통과한다.
+    expect(sent.attachments).toHaveLength(1)
+    expect(sent.attachments[0].filename).toBe('첨부.txt')
+    expect(typeof sent.attachments[0].id).toBe('number')
+    expect(sent.attachments[0]).not.toHaveProperty('stored_path')
+
+    // 목록 응답도 같다.
+    const list = await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/messages`, headers: { cookie } })
+    const listed = JSON.parse(list.body).messages[0]
+    expect(listed.attachments).toHaveLength(1)
+    expect(listed.attachments[0]).not.toHaveProperty('stored_path')
+
+    // 문자열 어디에도 실제 저장 경로가 없다 — 다른 필드 이름으로 새는 경우까지 잡는다.
+    const att = db.prepare('SELECT stored_path FROM attachments').get() as { stored_path: string }
+    expect(res.body).not.toContain(att.stored_path)
+    expect(list.body).not.toContain(att.stored_path)
+
+    // id 하나로 여전히 내려받을 수 있다 — 경로를 감춘 대가로 기능이 죽지 않았음을 확인한다.
+    const dl = await app.inject({ method: 'GET', url: `/api/attachments/${sent.attachments[0].id}`, headers: { cookie } })
+    expect(dl.statusCode).toBe(200)
+    expect(dl.body).toBe('파일 내용')
+  })
+
   it('refuses to store an upload outside the uploads directory', async () => {
     const { app, cookie, uploadsDir } = await build()
     const { roomId } = seed()

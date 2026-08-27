@@ -89,11 +89,13 @@ export function registerMessageRoutes(app: FastifyInstance): void {
     const messageId = r.lastInsertRowid as number
 
     // 첨부 기록 — id 는 run().lastInsertRowid 로 받는다. SELECT last_insert_rowid() 는 strict 모드에서 컴파일되지 않는다 (plan.md §D 5번)
-    const attachments: { id: number; filename: string; stored_path: string }[] = []
+    // 응답에 싣는 것은 id 와 filename 뿐이다 — 클라이언트는 id 하나로 GET /api/attachments/:id 를
+    // 부르면 되고, stored_path 는 서버 디렉터리 구조를 노출할 뿐 쓸모가 없다 (sync-audit F-02).
+    const attachments: { id: number; filename: string }[] = []
     for (const f of savedFiles) {
       const ar = db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, ?, ?)')
         .run(messageId, f.filename, f.stored_path, f.size, MIME[extname(f.filename).toLowerCase()] ?? 'application/octet-stream')
-      attachments.push({ id: ar.lastInsertRowid as number, filename: f.filename, stored_path: f.stored_path })
+      attachments.push({ id: ar.lastInsertRowid as number, filename: f.filename })
     }
 
     // 멘션이 여럿이면 그 수만큼 행이 생긴다 — 같은 봇을 to·cc 로 함께 멘션해도 중복 제거하지 않는다 (엣지 케이스)
@@ -130,7 +132,8 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       messages: rows.map(m => ({
         ...m,
         author_name: displayName(db, m),
-        attachments: db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(m.id),
+        // stored_path 를 뽑지 않는다 — 목록 응답도 서버 절대 경로를 내보내지 않는다 (sync-audit F-02)
+        attachments: db.prepare('SELECT id, filename FROM attachments WHERE message_id = ?').all(m.id),
       })),
     }
   })

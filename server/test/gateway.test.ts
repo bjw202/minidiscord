@@ -37,7 +37,10 @@ async function build() {
   }
   app.decorate('hub', hub)
   registerAuthRoutes(app, db)
-  const gateway = createGateway(app, { uploadsDir: join(dir, 'up') })
+  // botFilesDir: 봇이 첨부로 보낼 수 있는 파일의 허용 뿌리. 테스트는 임시 트리 전체를 허용해
+  // 기존 첨부 테스트의 원본 파일(dir 바로 아래)이 그대로 통과하게 둔다 — 경계 밖 파일은
+  // 아래 AC-GW-021 테스트가 이 트리 바깥에 따로 만든다.
+  const gateway = createGateway(app, { uploadsDir: join(dir, 'up'), botFilesDir: dir })
   app.decorate('gateway', gateway)
   await app.listen({ port: 0 })
   const port = (app.server.address() as { port: number }).port
@@ -381,6 +384,47 @@ describe('gateway', () => {
 
     ws.close()
     await app.close()
+  })
+
+  // AC-GW-021 — 허용 뿌리 밖의 local_path 는 복사하지 않는다 (sync-audit F-01)
+  it('bot_message refuses a local_path outside botFilesDir while still attaching one inside', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+
+    // 카나리는 허용 뿌리(dir) **밖**에 만든다 — 봇이 절대 경로만 알려주면
+    // 서버가 그 내용을 uploads 안으로 복사해 오던 것이 이 결함이다.
+    const outsideDir = mkdtempSync(join(tmpdir(), 'md-outside-'))
+    const canary = join(outsideDir, 'secret.txt')
+    writeFileSync(canary, 'TOP-SECRET-CANARY-9f3a')
+    // 대조군: 허용 뿌리 안의 정상 파일 하나. 이게 없으면 "전부 거부"하는 구현도 통과한다.
+    const good = join(dir, '정상.txt')
+    writeFileSync(good, 'ok')
+
+    try {
+      ws.send(JSON.stringify({
+        type: 'bot_message', body: '유출 시도',
+        files: [{ local_path: canary, name: 'harmless.txt' }, { local_path: good, name: '정상.txt' }],
+      }))
+      await new Promise(r => setTimeout(r, 300))
+
+      const row = db.prepare("SELECT * FROM messages WHERE room_id=? AND author_type='bot'").get(room) as any
+      // 메시지 자체는 저장된다 — 거부되는 것은 그 첨부 하나뿐이다 (REQ-GW-011 과 같은 자리).
+      expect(row.body).toBe('유출 시도')
+      const atts = db.prepare('SELECT filename, stored_path FROM attachments WHERE message_id=?').all(row.id) as { filename: string; stored_path: string }[]
+      // 분별: 정확히 하나만 살아남는다. 2 면 유출이 그대로이고, 0 이면 정상 파일까지 막은 것이다.
+      expect(atts.map(a => a.filename)).toEqual(['정상.txt'])
+      // 내용까지 확인한다 — 파일명만 보면 이름이 바뀐 채 복사된 경우를 놓친다.
+      for (const a of atts) {
+        expect(readFileSync(a.stored_path, 'utf8')).not.toContain('TOP-SECRET-CANARY-9f3a')
+      }
+      // 원본 카나리는 손대지 않는다.
+      expect(readFileSync(canary, 'utf8')).toBe('TOP-SECRET-CANARY-9f3a')
+    } finally {
+      rmSync(outsideDir, { recursive: true, force: true })
+      ws.close()
+      await app.close()
+    }
   })
 
   // AC-GW-009 — status 는 두 값만 발행한다
