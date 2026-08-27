@@ -1,0 +1,162 @@
+# SPEC-CHANCLIENT-001 진행 기록
+
+| 항목 | 값 |
+|------|-----|
+| SPEC-ID | `SPEC-CHANCLIENT-001` |
+| 칸반 카드 | `t4` (마일스톤 M4) |
+| Tier | M (spec.md + plan.md + acceptance.md) |
+| 원본 계획 | `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 12 |
+| 원본 스펙 | `.moai/plan/2026-08-26-minidiscord/spec-v2.md` 4-B (채널 계약) |
+| 워크트리 | `.claude/worktrees/t4` |
+| 코드 의존 | 없음 (원본 Task 12 `Consumes: 없음(독립)`) — 형제 SPEC 의 어떤 심볼도 import 하지 않는다 |
+| 선행 SPEC | `SPEC-CHANNEL-001` — `channel/` 워크스페이스 스캐폴드 (코드 import 가 아닌 착수 가능 조건) |
+| 현재 상태 | `draft` — plan 단계 완료 (§E.1 audit-ready), run 미착수 |
+
+---
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+```yaml
+plan_status: audit-ready
+plan_complete_at: 2026-08-27
+spec_id: SPEC-CHANCLIENT-001
+tier: M
+card: t4
+depends_on: [SPEC-CHANNEL-001]   # 코드 import 가 아니라 channel/ 패키지 스캐폴드 선행
+related_specs: [SPEC-GATEWAY-001, SPEC-CHANWIRE-001, SPEC-CHANPERM-001]
+source_plan: .moai/plan/2026-08-26-minidiscord/plan-v2.md (Task 12)
+source_spec: .moai/plan/2026-08-26-minidiscord/spec-v2.md (4-B)
+spec_version: "0.2.1"
+plan_audit: .moai/reports/t4/plan-audit.md
+plan_audit_verdict: "CONDITIONAL PASS — 주요 1건(M5, depends_on) 반영 완료"
+plan_reaudit_verdict: "PASS — 사소 1건(m3, missed_after_id 근거 문장) 반영 완료"
+req_count: 14
+ac_count: 16
+tier_budget: "16 REQ / 16 AC"
+spec_base_sha: "<run 단계 M1 단계 0 에서 기록>"
+open_questions: 0   # M5 반영으로 depends_on 판단 종결
+```
+
+`spec_base_sha` 는 run 단계 첫 동작으로 채운다.
+
+```bash
+git rev-parse HEAD > .moai/specs/SPEC-CHANCLIENT-001/.spec-base-sha
+```
+
+같은 값을 위 필드에도 옮겨 적는다. 이 SPEC 에서는 그 기준점 위에 검사 **세 개**가 올라간다 — 두 산출물 파일의 존재, `server/` 무변경, 형제 SPEC 소유 파일 무변경(AC-CHANCLIENT-015).
+
+### 작성한 산출물
+
+| 파일 | 내용 |
+|------|------|
+| `.moai/specs/SPEC-CHANCLIENT-001/spec.md` | GEARS 요구사항 14개 (REQ-CHANCLIENT-001..014), 범위 밖 6개 절, 제약, HISTORY 0.2.1 |
+| `.moai/specs/SPEC-CHANCLIENT-001/plan.md` | 의존과 실행 전제, 되돌리기 어려운 결정(백오프 산술 / 프레임 계약), 원본 모순 6건(1·2·3번 차단급·5번 의도적 이탈), 위험 16건, 마일스톤 M1-M2, 안티패턴 25건 |
+| `.moai/specs/SPEC-CHANCLIENT-001/acceptance.md` | 수용 기준 16개 (AC-CHANCLIENT-001..016), 공통 테스트 하네스, Given-When-Then 시나리오, 엣지 케이스 8건, 품질 게이트, Definition of Done |
+| `.moai/specs/SPEC-CHANCLIENT-001/progress.md` | 이 파일 |
+
+### SPEC-ID 검증
+
+```
+$ ID="SPEC-CHANCLIENT-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL
+PASS
+```
+
+### REQ → AC 커버리지
+
+14개 REQ 전부가 하나 이상의 AC 에 매핑됐다.
+
+| REQ | 주제 | 대응 AC |
+|-----|------|---------|
+| REQ-CHANCLIENT-001 | `start()` → 연결 → 첫 프레임 `hello` | AC-CHANCLIENT-001, AC-CHANCLIENT-011 (재접속 후 재전송) |
+| REQ-CHANCLIENT-002 | `UrlRef` 매 시도 재평가 + `opts` 노출 | AC-CHANCLIENT-011 (문자열 교체), AC-CHANCLIENT-013 (함수 재평가) |
+| REQ-CHANCLIENT-003 | `welcome` 을 프레임 그대로 전달 | AC-CHANCLIENT-002 |
+| REQ-CHANCLIENT-004 | `message`/`permission_verdict` 를 프레임 그대로 전달 | AC-CHANCLIENT-003, AC-CHANCLIENT-004 |
+| REQ-CHANCLIENT-005 | `history_response` → rid 조회 → 프레임 전체로 resolve | AC-CHANCLIENT-008 |
+| REQ-CHANCLIENT-006 | 모르는 `type` 은 어떤 콜백에도 가지 않음, 콜백 부재 시 무해 | AC-CHANCLIENT-005 |
+| REQ-CHANCLIENT-007 | `send` 는 OPEN 일 때만 전송하고 `true` | AC-CHANCLIENT-006 |
+| REQ-CHANCLIENT-008 | `history_request` 프레임 모양, 다섯 키 최상위 | AC-CHANCLIENT-007 |
+| REQ-CHANCLIENT-009 | `rid` 유일성과 rid 기반 매칭 | AC-CHANCLIENT-008 |
+| REQ-CHANCLIENT-010 | 미연결 시 즉시 reject, 흔적 없음 | AC-CHANCLIENT-010 |
+| REQ-CHANCLIENT-011 | 10초 타임아웃 | AC-CHANCLIENT-009 |
+| REQ-CHANCLIENT-012 | `close` → `sleep(backoff)` → 재연결, `error` 는 던지지 않음 | AC-CHANCLIENT-011, AC-CHANCLIENT-012 (죽은 주소에서 시작) |
+| REQ-CHANCLIENT-013 | 1000 시작·두 배 증가·30000 상한·open 시 리셋 | AC-CHANCLIENT-012, AC-CHANCLIENT-013 |
+| REQ-CHANCLIENT-014 | `stop()` 뒤 재접속 없음 | AC-CHANCLIENT-014 |
+| (범위 경계·무상태) | `spec.md` §5·§6 | AC-CHANCLIENT-015 |
+| (전 구간) | RED→GREEN 전이 | AC-CHANCLIENT-016 |
+
+### 검증 강도 자기 점검 (스텁 통과 여부)
+
+작성 지시서가 지목한 결함 부류 — "구현 본문이 비어 있어도 통과하는 기준" — 를 개별이 아니라 **부류로** 훑었다. 16개 기준 각각에 대해 "이 기준을 통과시키는 가장 게으른 구현은 무엇인가"를 적고, 그 구현이 어느 기준에 걸리는지 확인했다.
+
+| 게으른 구현 | 걸리는 기준 |
+|------------|------------|
+| `start()` 가 연결만 하고 hello 를 안 보냄 | AC-CHANCLIENT-001 (`messages[0]` 부재 → `waitFor` 타임아웃) |
+| hello 에 필드를 더 얹음 (`{ type, token, version }`) | AC-CHANCLIENT-001 (`toEqual` 은 초과 필드에 실패) |
+| hello 를 다른 프레임 뒤에 보냄 | AC-CHANCLIENT-001 (`messages[0]` 이 다른 프레임) |
+| `welcome` 을 세 필드만 추려 새 객체로 넘김 | AC-CHANCLIENT-002 (`missed_after_id` 소실) |
+| `message` 에서 `files` 를 빠뜨림 | AC-CHANCLIENT-003 (`toEqual` 실패) |
+| `behavior` 를 읽지 않고 늘 `'allow'` 로 넘김 | AC-CHANCLIENT-004 (`'deny'` 단언) |
+| 분배 마지막 갈래를 `else → onMessage` 로 둠 | AC-CHANCLIENT-005 (`seen` 이 `['message','message']`) |
+| 콜백 미지정 시 예외로 죽음 | AC-CHANCLIENT-005 둘째 테스트 (이후 `send` 가 성립하지 않음) |
+| `send` 가 상태를 보지 않고 늘 `true` | AC-CHANCLIENT-006 (`too_late` 단언) |
+| 보내지 못한 payload 를 큐에 쌓아 open 때 전송 | AC-CHANCLIENT-006 (`too_early` 가 `marker` 보다 먼저 도착) |
+| 파라미터를 `{ params: {...} }` 로 감쌈 / `since_id` 누락 / `sinceId` 로 개명 | AC-CHANCLIENT-007 (`rest` 의 `toEqual`) |
+| `rid` 를 고정값으로 둠 | AC-CHANCLIENT-008 (두 rid 가 같음) |
+| 대기 자리를 하나만 둬 두 번째 요청이 첫 번째를 덮어씀 | AC-CHANCLIENT-008 (한쪽이 영영 미결 → 테스트 타임아웃) |
+| `rid` 를 보지 않고 도착 순서로 매칭 | AC-CHANCLIENT-008 (응답을 역순으로 보냄) |
+| `messages` 만 꺼내 resolve | AC-CHANCLIENT-008 (프레임 전체 `toEqual`) |
+| 타임아웃을 걸지 않음 | AC-CHANCLIENT-009 (10,000ms 에 미결) |
+| 타임아웃이 10초보다 짧음(1초·5초) | AC-CHANCLIENT-009 (9,999ms 에 이미 reject) |
+| 미연결인데 대기 맵에 등록만 하고 매달림 | AC-CHANCLIENT-010 (즉시 `rejects` 단언) |
+| `requestHistory` 가 늘 reject | AC-CHANCLIENT-010 (연결 후 요청이 resolve 되어야 함) |
+| 재접속을 시도하지 않고 대기만 함 | AC-CHANCLIENT-011 (두 번째 서버가 연결을 못 받음 → 타임아웃) |
+| `url` 을 한 번 평가해 캐시 | AC-CHANCLIENT-011 (죽은 첫 주소로만 시도), AC-CHANCLIENT-013 |
+| 백오프 없이 즉시 재시도 | AC-CHANCLIENT-011 (`sleeps[0] !== 1000`), AC-CHANCLIENT-012 |
+| 두 배 규칙만 있고 상한 없음 | AC-CHANCLIENT-012 (여섯 번째가 `32000`) |
+| 상한만 있고 증가 없음 (늘 1000) | AC-CHANCLIENT-012 (두 번째가 `1000`) |
+| `maxBackoffMs` 옵션을 무시하고 30000 하드코딩 | AC-CHANCLIENT-012 둘째 클라이언트 (`[1000,2000,4000,…]`) |
+| `open` 에서 백오프를 리셋하지 않음 | AC-CHANCLIENT-013 (`sleeps[before] >= 2000`) |
+| `stop()` 이 플래그만 세우고 재접속 가드가 없음 | AC-CHANCLIENT-014 (`sleeps` 에 `1000` 기록) |
+| `stop()` 이 소켓을 닫지 않음 | AC-CHANCLIENT-014 (`send` 가 `true`) |
+| 형제 SPEC 소유 파일을 함께 만듦 / `process.env` 를 직접 읽음 | AC-CHANCLIENT-015 (변경 목록·`grep` 종료 코드) |
+
+"파일이 존재한다", "함수가 export 돼 있다", "테스트 스위트가 통과한다(이름 없이)" 형태의 기준은 **하나도 쓰지 않았다.** 변경 파일의 **개수**를 세는 기준도 두지 않았다 — AC-CHANCLIENT-015 는 있어야 할 두 파일과 있어서는 안 되는 파일 집합을 보므로, 형제 SPEC 의 착지에 흔들리지 않는다.
+
+**반대 방향(정상 구현을 거짓 실패시키는 기준)도 함께 훑었다.** 이 SPEC 에서 그 위험은 전부 시간에 몰려 있다.
+
+| 거짓 실패를 부르는 형태 | 이 문서의 처리 |
+|---|---|
+| 고정 시간 대기 뒤 단언 (원본의 `setTimeout(r, 100)` × 9곳) | 전부 조건 폴링 `waitFor` 로 대체 (`plan.md` §D 1번) |
+| `wss.close()` 하나로 절단을 기대 | 소켓을 먼저 `terminate()` 하는 `stopServer` (§D 2번) |
+| 실제로 30초를 기다려 상한 확인 | 주입된 `sleep` 의 **인자값** 수열로 관측 (AC-CHANCLIENT-012) |
+| 실제로 10초를 기다려 타임아웃 확인 | 가짜 타이머 9,999 / 10,000 경계 (AC-CHANCLIENT-009) |
+| 가짜 타이머 위에서 서버 종료를 기다림 | `afterEach` 가 `vi.useRealTimers()` 를 정리보다 먼저 실행 |
+| 부정 관측을 "잠깐 기다렸다"로 재기 | 대조군의 양성 사건을 기준선으로 (AC-CHANCLIENT-014), 뒤에 보낸 프레임의 도착을 기준선으로 (AC-CHANCLIENT-005·006) |
+
+### 이 단계에서 하지 않은 것 (Gaps)
+
+- 이 SPEC 의 산출물 코드는 한 줄도 작성하지 않았다. `channel/src/gateway-client.ts` 와 `channel/test/gateway-client.test.ts` 모두 미생성 — run 단계 소관이다.
+- `acceptance.md` 의 어떤 명령도 실행하지 않았다. **`channel/` 워크스페이스가 아직 존재하지 않으므로** `npm test -w channel` 은 현재 실행 자체가 불가능하다(작성 시점 워크트리에 `channel/` 디렉터리 없음, 루트 `package.json` 의 `workspaces` 에는 이름만 등록돼 있음). 이 전제의 충족 여부는 run 단계 진입 전 `plan.md` §A 의 세 명령으로 확인한다.
+- 형제 SPEC(`SPEC-CHANNEL-001`, `SPEC-CHANWIRE-001`, `SPEC-CHANPERM-001`)의 산출물을 읽지 않았다. 셋이 이 세션과 **동시에** 작성되고 있어, 경계는 원본 `plan-v2.md` Task 11·13·14 의 파일 목록에서 직접 인용했다. 형제 SPEC 이 원본에서 벗어난 파일 분할을 했다면 AC-CHANCLIENT-015 의 금지 파일 목록을 다시 맞춰야 한다.
+- **[v0.2.0 에서 닫힘 — M5]** `spec.md` 의 `depends_on` 은 v0.1.0 에서 원본 Task 12 의 `Consumes: 없음(독립)` 을 그대로 따라 비어 있었다. plan-auditor 가 이를 주요 결함으로 지적했고(`.moai/reports/t4/plan-audit.md` M5), `depends_on: [SPEC-CHANNEL-001]` 로 고쳤다. "코드 의존이 아니라 실행 전제"라는 구분 자체는 유효하므로 `spec.md` §3 과 `plan.md` §A 에 그대로 남겼다 — 다만 `depends_on` 이 표현하는 것은 import 그래프가 아니라 **착수 가능 조건**이다. 요구사항·수용 기준은 영향받지 않았다.
+- `plan.md` §D 5번(`this.send` → 지역 함수)은 원본으로부터의 **의도적 이탈**이다. 이탈 범위는 함수의 위치 하나이며 공개 계약은 그대로다. 되돌리기로 하면 "소비자는 구조 분해를 쓰지 않는다"는 제약이 `SPEC-CHANWIRE-001` 로 전파돼야 한다.
+- 원본 Task 12 의 테스트 네 개 중 **두 개(첫 테스트, 마지막 재접속 테스트)는 검증력이 없다**고 판정했다(`plan.md` §D 3번). 회귀 방지선으로 파일에 남길 수는 있으나 판정은 새 기준이 진다 — 원본을 그대로 옮기면 재접속 결함이 통과한다.
+- 엣지 케이스 표의 두 줄("JSON 이 아닌 프레임", "`start()` 중복 호출")은 의도적으로 **미검증**으로 남겼다. 근거는 `plan.md` §E 에 있다.
+
+---
+
+## §E.2 Run-phase Evidence
+
+_<pending run-phase>_
+
+---
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_<pending run-phase>_
+
+---
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+_<pending sync-phase>_
