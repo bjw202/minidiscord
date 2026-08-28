@@ -37,13 +37,14 @@ F-01 의 재현 프로브(`.moai/state/verify/t4-sync-audit/probe-rogue.ts`)는 
 
 ### 4) 반대 방향의 결함도 함께 막는다
 
-잘못 쓴 기준은 **정상 구현을 거짓 실패시킨다.** 이 SPEC 에서 그런 자리는 다섯이며 각각 해당 자리에 경위를 적었다. 뒤의 둘은 v0.2.0 에서 계획 감사가 찾아냈다.
+잘못 쓴 기준은 **정상 구현을 거짓 실패시킨다.** 이 SPEC 에서 그런 자리는 여섯이며 각각 해당 자리에 경위를 적었다. 뒤의 셋은 v0.2.0·v0.3.0 에서 계획 감사가 찾아냈다.
 
 - **부정 관측의 대기 시간.** "오지 않았음"을 재는 기준은 원리상 완벽할 수 없다. 소켓을 건너는 부정 관측은 `settle()` 로 **양성 신호가 실제로 도착하는 데 걸리는 시간의 여러 배**를 기다린 뒤에 잰다. 짝이 되는 양성 기준(AC-CHANAUTH-002)이 같은 하네스에서 `waitFor` 로 통과하므로, 대기 시간이 모자란 경우는 그쪽이 먼저 드러난다.
 - **`resolveUrl` 을 건드리면 형제 기준이 거짓 실패한다.** AC-CHANWIRE-011 이 `MINIDISCORD_SERVER=ws://example/bot` 의 반환값을 글자 그대로 단언한다. 전송 검사는 별도 함수(`isTransportAllowed`)로 두고 `resolveUrl` 은 순수 해석 함수로 남긴다(REQ-CHANAUTH-012). AC-CHANAUTH-011 (c)가 그 비회귀를 직접 관측한다.
 - **하네스의 상대 경로가 자식을 띄우지 못하면 부정 관측이 «잘못된 이유로» 통과한다.** `spawnChild(['channel/dist/index.js'])` 는 cwd `channel/` 에서 `channel/channel/dist/…` 로 풀려 자식이 아예 뜨지 않는다. 그러면 AC-CHANAUTH-011 (a)의 `connections() === 0` 이 방어와 무관하게 초록이 된다. 절대 경로(`DIST`)로 고정했다 — 계획 감사 H-03.
 - **루프백 판정이 URL 의미론과 어긋나면 정상 구현이 거짓 실패한다.** `new URL('ws://[::1]:…').hostname` 은 `"[::1]"` 이므로 루프백 집합에 대괄호 형태가 있어야 한다 — 계획 감사 M-01, 실측은 AC-CHANAUTH-010 본문.
 - **자식 프로세스가 남으면 뒤따르는 기준이 오염된다.** 거두지 못한 프로세스는 스텁 포트로 백오프 재접속을 계속 시도해(상한 30초) 다음 기준의 연결 수를 늘린다. `spawnChild()` 가 `spawn` **직후** `SIGKILL` 정리를 등록한다 — 명령 끝의 `kill` 한 줄은 일찍 끝나는 경로에서 닿지 않으므로 쓰지 않는다(형제 `SPEC-CHANWIRE-001` v0.2.1 과 같은 형태).
+- **대기가 쌓이는 하네스는 정상 구현을 타임아웃으로 거짓 실패시킨다.** AC-CHANAUTH-009 의 129회 발신 루프를 형제 헬퍼 `sendRequest` 로 돌리면 호출마다 `tick()`(50ms)을 await 해 6,450ms 가 흐르고, 기본 `testTimeout` 5,000ms 를 넘긴다 — **상한이 정확히 128 로 구현돼도 실패하며, 그 실패는 상한 결함과 구분되지 않는다.** 그 루프만 `client.notification` 직접 호출로 두고 끝에서 한 번만 기다린다 — 계획 감사 N-7, 경위는 AC-CHANAUTH-009 본문.
 
 `spec_base_sha` 는 이 SPEC 의 run 단계 진입 시점 커밋이다. M1 단계 0 에서 `git rev-parse HEAD` 로 기록하며, 범위 경계 검사는 `HEAD` 가 아니라 그 값을 기준으로 비교한다. 기준 SHA 가 없으면 범위 경계 기준은 통과가 아니라 **실패**다.
 
@@ -154,7 +155,8 @@ async function waitFor(pred: () => boolean, label: string, ms = 3000): Promise<v
 const settle = () => new Promise<void>(r => setTimeout(r, 400))
 
 // Claude Code 가 보내는 승인 요청 알림을 흉내 낸다. 형제 하네스
-// permission-relay.test.ts:47 의 sendRequest 와 같은 형태이며, run 단계는 그쪽을 그대로 옮겨 온다.
+// permission-relay.test.ts:47 의 sendRequest 와 같은 알림을 보내되, 이쪽은 tick() 을 await 하지 않는다
+// — 뒤따르는 waitFor 가 동기화를 맡기 때문이다. 형제 쪽 코드를 그대로 옮겨 오지 않는다.
 // v0.2.0 은 이 자리를 channel.pushPermissionRequest 라는 존재하지 않는 이름으로 적었다 (계획 감사 N-5).
 async function sendRequest(client: Client, params: unknown) {
   await client.notification({
@@ -211,7 +213,7 @@ const REQ = { request_id: 'abcde', tool_name: 'Bash', description: 'Run shell co
 
 ## Given-When-Then 시나리오
 
-### AC-CHANAUTH-001 — 인증하지 않은 상대의 주입이 세션에 닿지 않는다
+### AC-CHANAUTH-001 — 세션을 확립하지 않은 상대의 주입이 세션에 닿지 않는다
 
 **Given** `welcome` 을 보내지 않고 토큰도 검증하지 않는 게이트웨이가 소켓 반대편에 있다.
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
@@ -269,7 +271,7 @@ it('after welcome, the same two frames reach the session exactly once each', asy
 
 > **AC-CHANAUTH-001 과 이 기준은 하나의 관측이다.** 어느 한쪽만 있으면 아무것도 재지 못한다 — 001 만 있으면 모든 프레임을 버리는 구현이, 002 만 있으면 게이트가 없는 현재 구현이 통과한다. 둘이 같은 하네스·같은 프레임·같은 단언 형태를 쓰고 **`welcome` 한 가지만 다른 것**이 이 짝의 설계다. 두 기준을 한쪽만 고치는 변경은 짝을 깨는 것이므로 허용하지 않는다.
 
-**이 기준을 무너뜨리는 변이**: 인증 여부와 무관하게 세 프레임을 전부 버린다. 이 기준만 실패하고 AC-CHANAUTH-001 은 계속 통과한다.
+**이 기준을 무너뜨리는 변이**: 세션 확립 여부와 무관하게 세 프레임을 전부 버린다. 이 기준만 실패하고 AC-CHANAUTH-001 은 계속 통과한다.
 
 **이 형태가 최종 형태다 — run 단계로 미루지 않는다 (v0.2.0, 계획 감사 H-02).** v0.1.0 은 발신 없이 판정을 밀어 넣는 단언을 실어 놓고 **바로 아래 본문에서 그 단언이 틀렸다고 적은 뒤** 최종 형태 확정을 run 단계에 미뤘다. 스스로 틀렸다고 적힌 기준은 아무것도 재지 못하므로 그 형태를 철회하고, 위와 같이 **두 겹을 모두 세운 왕복**으로 지금 확정한다.
 
@@ -280,7 +282,7 @@ it('after welcome, the same two frames reach the session exactly once each', asy
 
 `verdicts` 와 `notes` 를 **한 테스트 안에서 함께** 재는 것이 이 형태의 값이다 — 두 관문이 서로를 가린 채 통과할 수 없다.
 
-### AC-CHANAUTH-003 — 인증 전 이력 응답은 대기를 해소하지 않는다
+### AC-CHANAUTH-003 — 세션 확립 전 이력 응답은 대기를 해소하지 않는다
 
 **Given** 이력 텍스트는 모델 컨텍스트로 곧장 들어가고, 그 안의 `#번호` 는 봇의 따라잡기 커서가 된다.
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
@@ -306,7 +308,8 @@ it('a history_response before welcome resolves nothing; after welcome it resolve
   // 서버가 welcome 을 보내게 한 뒤 같은 소켓으로 다시 민다. 재접속을 기다리지 않는다.
   stub.welcome = true
   stub.helloAgain()                        // 하네스가 저장해 둔 소켓으로 welcome 을 보낸다
-  expect(settled).toBe('pending')          // 아직 해소되지 않았다 — 여기서 기다릴 것은 없다 (아래 주)
+  expect(settled).toBe('pending')          // 아직 해소되지 않았다 — 여기서 기다릴 것은 없다 (아래 주).
+                                           // 이 줄은 방어가 아니라 (가)의 상태 기록이다 — 어떤 변이도 여기서 걸리지 않는다.
   stub.push({ type: 'history_response', rid: rid(), messages: [] })
   await waitFor(() => settled !== 'pending', '이력 응답 해소')
 
@@ -321,7 +324,7 @@ it('a history_response before welcome resolves nothing; after welcome it resolve
 
 **Then** 테스트가 통과한다.
 
-`settled` 를 세 값으로 두는 것이 이 기준의 핵심이다. `expect(p).rejects` 로 재면 **요청 자체가 실패하는 구현**과 **응답이 무시되는 구현**을 구분하지 못한다 — 전자는 인증 뒤에도 이력을 못 가져오는 회귀다.
+`settled` 를 세 값으로 두는 것이 이 기준의 핵심이다. `expect(p).rejects` 로 재면 **요청 자체가 실패하는 구현**과 **응답이 무시되는 구현**을 구분하지 못한다 — 전자는 세션 확립 뒤에도 이력을 못 가져오는 회귀다.
 
 **이 기준을 무너뜨리는 변이**: `history_response` 만 게이트에서 빼고 `message`·`permission_verdict` 는 막는다. (가)만 실패한다. 반대로 `history_response` 를 확립 후에도 영영 막는 구현은 (나)만 실패한다 — **두 갈래가 짝이다.**
 
@@ -331,13 +334,13 @@ it('a history_response before welcome resolves nothing; after welcome it resolve
 
 ### AC-CHANAUTH-004 — 재접속하면 게이트가 다시 닫힌다
 
-**Given** 이 봇은 끊기면 백오프로 다시 붙는다. 인증은 프로세스가 아니라 소켓 하나에 붙는다(REQ-CHANAUTH-003).
+**Given** 이 봇은 끊기면 백오프로 다시 붙는다. 세션 확립은 프로세스가 아니라 소켓 하나에 붙는다(REQ-CHANAUTH-003).
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
 
 ```ts
-it('authentication does not survive a reconnect', async () => {
+it('session establishment does not survive a reconnect', async () => {
   const stub = rogueGateway({ welcome: true })
-  // 1) 첫 소켓은 정상 인증된다
+  // 1) 첫 소켓은 정상적으로 세션이 확립된다
   const w = await attachWireTo(stub)          // attachWire 의 스텁 주입 변형 (하네스 참조)
   await waitFor(() => stub.connections() === 1, '첫 접속')
 
@@ -361,9 +364,9 @@ it('authentication does not survive a reconnect', async () => {
 
 **`notes` 단언이 이 기준을 되살린다 (v0.2.0, 계획 감사 H-01).** v0.1.0 은 `verdicts` 만 쟀는데, M3 이후에는 **②의 발신 집합 대조가 이 판정을 먼저 버린다** — 이 테스트는 `'abcde'` 를 발신한 적이 없기 때문이다. 그러면 게이트가 소켓 단위든 프로세스 단위든 `verdicts.length` 는 똑같이 변하지 않고, **이 기준은 아무것도 구분하지 못한 채 통과한다.** REQ-CHANAUTH-003 의 유일한 기준이 조용히 무력해지는 자리였다.
 
-채팅 축에는 ②가 걸리지 않는다(그래서 카드 `t15` 가 남는다). 따라서 `notes` 는 **①만이 막을 수 있는 값**이고, 인증 상태를 클라이언트 단위로 둔 구현(변이 B)은 여기서만 걸린다.
+채팅 축에는 ②가 걸리지 않는다(그래서 카드 `t15` 가 남는다). 따라서 `notes` 는 **①만이 막을 수 있는 값**이고, 세션 확립 상태를 클라이언트 단위로 둔 구현(변이 B)은 여기서만 걸린다.
 
-**이 기준을 무너뜨리는 변이**: 인증 상태를 `connect()` 안의 지역 변수가 아니라 `createGatewayClient` 클로저의 변수로 올리고 `open`/`close` 에서 되돌리지 않는다. AC-CHANAUTH-001·002 는 계속 통과하고 이 기준만 실패한다 — 그 구현이 정확히 F-01 을 되살리는 구현이다.
+**이 기준을 무너뜨리는 변이**: 세션 확립 상태를 `connect()` 안의 지역 변수가 아니라 `createGatewayClient` 클로저의 변수로 올리고 `open`/`close` 에서 되돌리지 않는다. AC-CHANAUTH-001·002 는 계속 통과하고 이 기준만 실패한다 — 그 구현이 정확히 F-01 을 되살리는 구현이다.
 
 ### AC-CHANAUTH-005 — 게이트가 삼킨 프레임이 프로세스를 죽이지 않는다
 
@@ -417,7 +420,7 @@ it('a verdict for an id the channel never emitted is not relayed', async () => {
 
 **Then** 테스트가 통과한다.
 
-**이 기준을 무너뜨리는 변이**: `handlePermissionVerdict` 의 발신 집합 조회를 지운다(= 현재 코드). 이 기준과 AC-CHANPERM-008 이 함께 실패하고, AC-CHANAUTH-007 은 계속 통과한다.
+**이 기준을 무너뜨리는 변이**: `handlePermissionVerdict` 의 발신 집합 조회를 지운다(= 현재 코드). 이 기준과 AC-CHANAUTH-008·009, AC-CHANPERM-008 이 함께 실패하고, AC-CHANAUTH-007 은 계속 통과한다.
 
 **혼자서는 아무것도 재지 못한다.** 판정 릴레이를 통째로 끊은 구현도 통과한다. 다음 기준이 그 짝이다.
 
@@ -480,7 +483,7 @@ it('an emitted id is consumed on first relay; a replayed verdict is dropped', as
 
 `deny` 를 먼저 보내고 `allow` 로 재생하는 순서가 이 기준의 이유 전부다. 이 회로에서 가장 비싼 오작동은 **사람이 거절한 것이 승인으로 뒤집히는 것**이고, 재생 공격의 실제 형태가 정확히 이 순서다.
 
-**이 기준을 무너뜨리는 변이**: 조회는 하되 집합에서 지우지 않는다(`has` 만 하고 `delete` 를 뺀다). AC-CHANAUTH-006·007 은 계속 통과하고 이 기준만 실패한다.
+**이 기준을 무너뜨리는 변이**: 조회는 하되 집합에서 지우지 않는다(`has` 만 하고 `delete` 를 뺀다). AC-CHANAUTH-006·007 은 계속 통과하고 이 기준과 AC-CHANPERM-008 이 실패한다.
 
 ### AC-CHANAUTH-009 — 발신 집합은 128 에서 가장 오래된 것부터 버린다
 
@@ -665,9 +668,9 @@ git diff --name-only "$(cat .moai/specs/SPEC-CHANAUTH-001/.spec-base-sha)"..HEAD
 | 상황 | 기대 동작 | 덮는 기준 |
 |------|-----------|-----------|
 | `welcome` 이 두 번 온다 | 두 번째는 상태를 바꾸지 않는다. `onWelcome` 은 종전대로 두 번 호출된다 (계약 변경 아님) | 미검증 — `plan.md` §E 에 기록 |
-| `welcome` 전에 도착한 프레임이 인증 후에 재전달되기를 기대한다 | 재전달하지 않는다. 버퍼링은 범위 밖이며, 버퍼링하면 인증 전 프레임이 인증 후에 되살아나 게이트가 무의미해진다 | AC-CHANAUTH-001 (0건 단언) |
+| `welcome` 전에 도착한 프레임이 세션 확립 후에 재전달되기를 기대한다 | 재전달하지 않는다. 버퍼링은 범위 밖이며, 버퍼링하면 확립 전 프레임이 확립 후에 되살아나 게이트가 무의미해진다 | AC-CHANAUTH-001 (0건 단언) |
 | 서버가 `welcome` 을 영영 보내지 않는다 | 봇은 붙어 있되 아무 프레임도 처리하지 않는다. 재접속하지 않는다 — 소켓은 살아 있다 | AC-CHANAUTH-005 (`connections() === 1`) |
-| 발신 집합에 있는 id 의 판정이 게이트웨이 인증 **전에** 온다 | `welcome` 게이트가 먼저 막으므로 발신 집합까지 닿지 않는다. 두 겹이 순서대로 선다 | AC-CHANAUTH-001 |
+| 발신 집합에 있는 id 의 판정이 게이트웨이 세션 확립 **전에** 온다 | `welcome` 게이트가 먼저 막으므로 발신 집합까지 닿지 않는다. 두 겹이 순서대로 선다 | AC-CHANAUTH-001 |
 | `deps.sendPermissionRequest` 가 없는 배선에서 판정이 온다 | 발신 기록이 없으므로 중계되지 않는다. 예외도 나지 않는다 | AC-CHANAUTH-006 + AC-CHANPERM-004 |
 | 사람이 승인 요청 129건을 답하지 않고 쌓아 둔다 | 가장 오래된 것부터 판정이 무시된다. 증상은 "오래된 승인이 안 먹는다"이며 오류는 나지 않는다 | AC-CHANAUTH-009 |
 | `MINIDISCORD_SERVER` 가 `wss://` 인데 인증서가 유효하지 않다 | 이 SPEC 은 스킴만 본다. 인증서 검증은 `ws` 라이브러리 기본 동작에 맡긴다 | 범위 밖 (`spec.md` §5) |
@@ -697,19 +700,19 @@ git diff --name-only "$(cat .moai/specs/SPEC-CHANAUTH-001/.spec-base-sha)"..HEAD
 | A. 프레임 분배의 세션 확립 검사 제거 (= 현재 코드) | AC-CHANAUTH-001 · **003 (가)** · **004** · **005** 네 건 (002 는 통과). 게이트를 통째로 지우는 변이이므로 게이트만이 막는 관측이 **전부** 무너지는 것이 정상이다 — 넷보다 적으면 기준 쪽이 약한 것이다 |
 | B. 세션 확립 상태를 소켓이 아니라 클라이언트 단위로 | AC-CHANAUTH-004 (`notes` 단언이 잡는다) |
 | C. 게이트에서 `return` 대신 `throw` | AC-CHANAUTH-005 (`connections() === 1` 단언). **003 (나)가 함께 실패할 수 있다** — 소켓이 끊긴 뒤 `helloAgain()` 이 죽은 소켓으로 나가기 때문이다. 이 한 자리는 실행으로 확정하지 못했으므로(아래 주) run 단계가 실측한 집합을 원문으로 남긴다 |
-| D. 발신 집합 조회 제거 | AC-CHANAUTH-006 + AC-CHANPERM-008 |
-| E. 조회 후 `delete` 제거 | AC-CHANAUTH-008 |
+| D. 발신 집합 조회 제거 | AC-CHANAUTH-006 · 008 · 009 + AC-CHANPERM-008 |
+| E. 조회 후 `delete` 제거 | AC-CHANAUTH-008 + AC-CHANPERM-008 |
 | F. 진입점의 전송 검사 호출 제거 | AC-CHANAUTH-011 (a) (010 은 통과) |
 | G. 루프백 판정에서 `'[::1]'` 를 뺀다 | AC-CHANAUTH-010 (`ws://[::1]` 행) |
 | H. 호스트 검사를 `url.includes('127.0.0.1')` 로 | AC-CHANAUTH-010 (`127.0.0.1.evil.com` 행) |
 
-> **주 — 이 표의 집합은 소스 대조로 도출했다.** 계획 단계에서는 `node_modules` 가 없어 변이를 한 번도 실행하지 못했다. run 단계가 실측한 집합을 원문으로 §E.2 에 남기고, 표와 어긋나면 기준과 구현 중 어느 쪽이 틀렸는지 판정한 뒤 진행한다. **다만 A 행의 003 (가)·004·005 와 B 행의 004 `notes` 단언은 «기준이 틀렸다» 로 판정해 되돌려서는 안 된다** — 그 셋은 계획 감사 H-01 이 무력한 기준을 되살리려고 넣은 단언이며, 되돌리면 그 교정이 사라진다. 변이는 감사 대상 트리가 아니라 작업 트리에서 적용하고 `git diff` 로 되돌림을 확인한다.
+> **주 — 이 표의 집합은 소스 대조로 도출했다.** 계획 단계에서는 `node_modules` 가 없어 변이를 한 번도 실행하지 못했다. run 단계가 실측한 집합을 원문으로 §E.2 에 남기고, 표와 어긋나면 기준과 구현 중 어느 쪽이 틀렸는지 판정한 뒤 진행한다. **다만 A 행의 003 (가)·004·005, B 행의 004 `notes` 단언, 그리고 D·E 행의 AC-CHANAUTH-008·009 와 AC-CHANPERM-008 재생 차단 단언은 «기준이 틀렸다» 로 판정해 되돌려서는 안 된다** — 앞의 셋은 계획 감사 H-01 이 무력한 기준을 되살리려고 넣은 단언이고, D·E 행의 008·009 와 AC-CHANPERM-008 은 재생 차단 그 자체를 재는 단언이다. 되돌리면 이 카드가 존재하는 이유가 사라진다. 변이는 감사 대상 트리가 아니라 작업 트리에서 적용하고 `git diff` 로 되돌림을 확인한다.
 
 ## Definition of Done
 
 - AC-CHANAUTH-001 부터 AC-CHANAUTH-013 까지 **전부** 통과했고, 각 명령의 원문 출력이 `progress.md` §E.2 에 남았다.
 - 요구사항 REQ-CHANAUTH-001..013 각각이 최소 하나의 AC 에 매핑돼 있고, 그 매핑이 `progress.md` §E.1 에 표로 남았다.
-- **변이 8종(A~H)** 의 실패 기준 집합이 위 표와 일치하고, 모든 변이가 되돌려졌다. **G·H 를 건너뛰면 완료가 아니다** — 그 둘은 M-01·M-02 교정이 실제로 조준되는지를 확인하는 유일한 자리다.
+- **변이 8종(A~H)** 의 실패 기준 집합이 위 표와 일치하고, 모든 변이가 되돌려졌다. **G·H 를 건너뛰면 완료가 아니다** — 그 둘은 M-01·M-02 교정이 실제로 조준되는지를 확인하는 유일한 자리다. **C 행은 예외** — 그 칸은 집합이 아니라 «둘 중 하나» 이므로, 실측 집합을 §E.2 에 원문으로 남기는 것으로 갈음한다.
 - **`SPEC-CHANPERM-001` v0.4.0 의 개정된 AC-CHANPERM-005·006·007·008·009 가 **다섯 건 모두** 통과했고, `channel/test/permission-relay.test.ts` 의 해당 테스트들이 개정본으로 교체된 diff 가 §E.2 에 남았다.**
 - **`SPEC-CHANCLIENT-001` v0.4.0 의 `autoWelcome` 하네스가 `channel/test/gateway-client.test.ts` 에 반영됐고, AC-CHANCLIENT-001..014(vitest 기준 전건)가 통과했다.** 개정 전 하네스에서 깨지던 일곱 건(`spec.md` §3.2 표)의 실패 원문이 교체 **전에** §E.2 에 남았다 — 충돌이 실재했다는 증거다. `AC-CHANCLIENT-015`·`016` 은 그 SPEC 자신의 경계·전이 기록이므로 이 목록에 없다(위 품질 게이트 설명).
 - AC-CHANAUTH-002 의 왕복 형태와 AC-CHANAUTH-003 의 두 갈래가 **계획 단계에서 확정된 그대로** 실행됐다 (v0.2.0 이후 run 단계가 이 형태를 다시 정하지 않는다).
