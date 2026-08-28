@@ -11,8 +11,8 @@
 | 선행 SPEC | `SPEC-CHANNEL-001` · `SPEC-CHANCLIENT-001` · `SPEC-CHANWIRE-001` · `SPEC-CHANPERM-001` (전부 카드 `t4` 에서 착지) |
 | 결합 개정 | `SPEC-CHANPERM-001` v0.3.0 (REQ/AC-008) + v0.4.0 (AC-005·006·007·009, **REQ 무변경**) · `SPEC-CHANCLIENT-001` v0.4.0 (REQ-004·005 + 하네스) — 전부 같은 패스에서 완료 |
 | 계획 감사 | 1차 `.moai/reports/t9/plan-audit.md` — FAIL 0.55, 차단 7건 (대장 `plan-done-2.md`). 2차 `.moai/reports/t9/plan-audit-2.md` — FAIL 0.74, 차단 7건 + optional 3건 (대장 `plan-done-3.md`). 3차 판정 예정 `.moai/reports/t9/plan-audit-3.md` — **마지막 라운드** |
-| 인계 카드 | `t15` — F-01 잔여 절반(사칭 채팅 주입·이력 오염) |
-| 현재 상태 | `draft` v0.3.0 — plan 단계 교정 2회차 완료, 3차(최종) 재감사 대기 |
+| 인계 카드 | `t15` — F-01 잔여: 사칭 채팅 주입 · 이력 오염 · **판정 주입의 잔여 절반**(소켓에서 읽은 진짜 `request_id` 로 위조한 `permission_verdict` + 먼저 도착한 판정이 이기는 성질 — `.moai/reports/t9/sync-audit.md` F-A1·F-A2) |
+| 현재 상태 | `in-progress` v0.3.0 — run 마감 `7f83c43`(스위트 61/61 · typecheck 0 · stmts 93.75%), sync 문서 정정 `2c9a484` + 본 패스. sync 감사 **FAIL**(가중 조화평균 78 · must-pass Security 62 — `.moai/reports/t9/sync-audit.md`), 차단 3건(F-A1·F-A2·F-A9)은 **문서 정정으로 in-card 처리 중**이며 실제 방어는 `t15` 소유. 재감사 미실행이므로 상태 전이 없음 |
 
 ---
 
@@ -54,15 +54,18 @@ deferred:
     reason: "구현 착지 뒤에야 참이 되는 문언이고, CHANGELOG 는 manager-docs 소유"
 handoff:
   - card: t15
-    scope: "F-01 잔여 절반 — 사칭 채팅 주입(message{delivery:'to'})과 이력 오염(history_response)"
-    reason: "welcome 은 토큰 지식의 증거가 아니므로 hello 에 답할 수 있는 상대에게는 ①이 방어가 되지 않는다 (spec.md §2.1·§5)"
+    scope: "F-01 잔여 — 사칭 채팅 주입(message{delivery:'to'}) · 이력 오염(history_response) · 판정 주입의 잔여 절반(소켓에서 읽은 진짜 request_id 로 위조한 permission_verdict + 먼저 도착한 판정이 이기는 성질)"
+    reason: "welcome 은 토큰 지식의 증거가 아니므로 hello 에 답할 수 있는 상대에게는 ①이 방어가 되지 않고, 발신 id 대조는 id 를 모르는 상대만 막는다 (spec.md §2.1·§4.2·§5)"
+    evidence: ".moai/reports/t9/sync-audit.md F-A1·F-A2 (프로브 P-A) — 판정 주입 잔여는 sync 감사가 실행으로 재현했다"
 ```
 
 **`open_questions` 를 실제 값으로 다시 셌다 (계획 감사 H-02).** v0.1.0 도 `0` 을 적었으나 그때는 **사실이 아니었다** — AC-002 의 최종 형태, AC-003 의 양성 갈래, AC-010 판정표의 행 추가, AC-CHANPERM-009 처리, 넷이 열려 있었다. v0.2.0 이 그 넷을 **전부 계획 단계에서 확정했으므로** 이제 `0` 이 참이다. 확정 위치: AC-002 왕복 형태(`acceptance.md`), AC-003 (나) 갈래(같은 문서), AC-010 9행 표(같은 문서), AC-CHANPERM-005·006·007·009 개정(`SPEC-CHANPERM-001` v0.4.0).
 
 **계약 질문 해소 기록.** 카드 `t4` 가 "무상태를 지킬 것인가, 발신 id 를 기억할 것인가"를 열린 채 넘겼고(`SPEC-CHANPERM-001` v0.2.2 §4.3), 이 카드가 **후자로 답했다**. 근거와 개정 경계는 `plan.md` §B, 상태를 둘 자리의 근거는 §C 에 있다.
 
-**이 카드가 닫지 않는 것 (성과 서술의 경계).** F-01 은 **절반만** 닫힌다. 승인 판정 주입은 §4.2·§4.3 이 닫고, **사칭 채팅 주입과 이력 오염은 13개 요구사항을 전부 구현한 뒤에도 열려 있으며 카드 `t15` 가 소유한다**(`spec.md` §5). run·sync 단계의 어떤 보고도 이 카드를 "F-01 을 닫았다"로 적어서는 안 된다.
+**이 카드가 닫지 않는 것 (성과 서술의 경계).** F-01 은 **절반만** 닫힌다. 승인 판정 주입은 §4.2·§4.3 이 **발신 id 를 모르는 상대에 대해서만** 좁히고, **사칭 채팅 주입과 이력 오염은 13개 요구사항을 전부 구현한 뒤에도 열려 있으며 카드 `t15` 가 소유한다**(`spec.md` §5). run·sync 단계의 어떤 보고도 이 카드를 "F-01 을 닫았다"로 적어서는 안 된다.
+
+**위 열거는 불완전했다 — sync 감사가 세 번째 잔여를 실측했다 (`.moai/reports/t9/sync-audit.md` F-A1·F-A2, 프로브 P-A).** 이 문단은 v0.3.0 에서 «승인 판정 주입은 닫힌다» 를 전제로 잔여를 둘(사칭 채팅·이력 오염)로만 적었으나, 그 전제가 반증됐다. 공격자는 전송 계층 그 자체이므로 같은 소켓으로 나가는 `permission_request` 프레임에서 **진짜 `request_id` 를 읽어** 그대로 `allow` 로 답할 수 있고, 발신 집합 대조는 id 를 **모르는** 상대만 막는다. 감사 관측 원문: `PA_GATEWAY_SAW=["hello","status","permission_request"]` · `PA_VERDICTS=[{"request_id":"real-42","behavior":"allow"}]` — 사람은 아무것도 누르지 않았다. 여기에 더해 §4.2 의 소진 동작 때문에 **먼저 도착한 판정이 이기므로**, 120ms 뒤에 보낸 사람의 진짜 `deny` 는 같은 목록에 나타나지 않았다. 따라서 이 카드가 닫지 않는 것은 셋이다 — **사칭 채팅 주입 · 이력 오염 · 판정 주입의 잔여 절반(소켓에서 읽은 진짜 id 로 위조한 `permission_verdict` + 선착 판정 승리)**. 셋 모두 카드 `t15` 소유이며, 실제 방어는 서버 쪽 서명·논스를 요구하므로 REQ-CHANAUTH-013 이 이 카드에 금지한 범위다.
 
 **run 단계가 먼저 확인할 것.** M1 단계 0-3 — 현재 트리에서 F-01 이 여전히 재현되는지. 재현되지 않으면 그 사실이 먼저 설명되어야 한다.
 
@@ -281,6 +284,8 @@ This error originated in "test/transport-auth.test.ts" test file.
 #### M1 시점의 열려 있는 것 (인계)
 
 - **F-01 의 절반은 여전히 열려 있다** — `welcome` 한 줄로 답할 수 있는 상대의 사칭 채팅 주입(`message{delivery:'to'}`)과 이력 오염(`history_response`)은 이 게이트가 막지 못한다(`spec.md` §2.1·§5). 소유 카드 `t15`. AC-CHANAUTH-002 의 채팅 갈래가 ①만 지나는 것이 그 증거이기도 하다.
+
+> **sync 단계 주석 (작성: manager-docs, 카드 `t9` sync 레인 — run 관측은 손대지 않았다).** 위 열거는 잔여를 둘로 적었으나 실제로는 **셋**이다. sync 감사가 프로브 P-A 로 세 번째를 실측했다 — 소켓에서 읽은 진짜 `request_id` 로 위조한 `permission_verdict` 와, 먼저 도착한 판정이 이기는 성질(사람의 뒤늦은 `deny` 유실). 근거 `.moai/reports/t9/sync-audit.md` F-A1·F-A2. 셋 모두 카드 `t15` 소유다.
 - `CHANGELOG.md:15`·`:41` 의 개정 전 무상태 문언 — sync 단계 정정 목록으로 인계(`spec.md` §5, 계획 감사 L-01).
 - 변이 C 의 실측 집합({003(나)})과 변이표 C 행({005}±{003(나)})의 어긋남 — 위 원문 그대로 후속 판정 대기.
 
@@ -613,6 +618,8 @@ $ git diff --name-only 7bbecc3…..HEAD -- channel/package.json
 #### M3 시점의 열려 있는 것 (Gaps·인계)
 
 - **F-01 의 절반은 여전히 열려 있다** — 사칭 채팅 주입·이력 오염은 이 카드의 세 겹 중 어느 것도 걸지 않으며 카드 `t15` 소유다(M1 절 기록 재확인). 이 카드를 «F-01 을 닫았다» 로 보고하지 않는다.
+
+  > **sync 단계 주석 (manager-docs, 카드 `t9` sync 레인).** 이 줄의 열거도 둘이 아니라 **셋**이다 — 사칭 채팅 주입 · 이력 오염 · **판정 주입의 잔여 절반**(소켓에서 읽은 진짜 `request_id` 로 위조한 `permission_verdict` + 선착 판정 승리). 발신 집합 대조는 id 를 **모르는** 상대만 막는다는 것이 sync 감사 프로브 P-A 의 실측이다(`.moai/reports/t9/sync-audit.md` F-A1·F-A2).
 - 상한 128 의 실사용 분포 근거는 재지 않았다(plan §E 두 번째 행) — 129건 이상 쌓아 둔 사용자의 가장 오래된 승인이 조용히 무시되며, 증상이 REQ-CHANAUTH-006 의 정상 동작과 같아 진단이 어렵다. 값의 근거는 `spec.md` REQ-CHANAUTH-008.
 - 감사 F-02·F-03·F-04·F-14 는 여전히 열려 있다.
 
@@ -637,6 +644,8 @@ P6_NOTIFICATIONS=[]
 ```
 
 수정 전(§E.2 M1 단계 0.2 — 판정·채팅 모두 유입)과 짝이 된다. welcome 없이 프레임을 밀어 넣는 로그 서버의 주입이 이제 **0건**이다. 이 프로브는 welcome 을 위조하지 **않는** 상대다 — welcome 을 지어낼 수 있는 상대의 사칭 채팅 주입·이력 오염은 이 카드 어디에도 걸리지 않으며 카드 `t15` 가 소유한다.
+
+> **sync 단계 주석 (manager-docs, 카드 `t9` sync 레인 — 위 `P6_VERDICTS=[]` 관측 자체는 유효하며 손대지 않았다).** 다만 이 문단이 «welcome 을 지어낸 상대» 에게 남겨 둔 것을 둘(사칭 채팅·이력 오염)로만 적은 것은 불완전하다. sync 감사의 프로브 P-A 는 같은 상대가 **승인 판정 주입도 여전히 할 수 있음**을 실측했다 — `PA_VERDICTS=[{"request_id":"real-42","behavior":"allow"}]`, 사람은 아무것도 누르지 않았고 120ms 뒤 보낸 진짜 `deny` 는 목록에 없다(`.moai/reports/t9/sync-audit.md` §2.2 · F-A1·F-A2). 즉 `t15` 로 넘어가는 잔여는 셋이다.
 
 **§G 체크리스트 처분.**
 
@@ -688,11 +697,54 @@ residual:
   - "AC-CHANAUTH-011 (a) 의 절반은 localhost.example.test 의 NXDOMAIN 해석에 의존 (M2 보고)"
 ```
 
+> **sync 단계 주석 (manager-docs, 카드 `t9` sync 레인 — 위 블록은 run 레인이 남긴 기록 그대로 두었다).** 위 `handoff[0].scope` 의 `t15` 인계 범위는 잔여를 둘(사칭 채팅 주입 · 이력 오염)로 적었으나 실제로는 **셋**이다. 세 번째는 **판정 주입의 잔여 절반** — 소켓에서 읽은 진짜 `request_id` 로 위조한 `permission_verdict`, 그리고 먼저 도착한 판정이 이겨 사람의 뒤늦은 판정이 조용히 유실되는 성질이다. sync 감사가 프로브 P-A 로 실측했다(`.moai/reports/t9/sync-audit.md` F-A1·F-A2). 정정된 인계 범위의 정본은 머리 표 «인계 카드» 행과 §E.1 · §E.4 다.
+
 ---
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-fail-open
+sync_evaluated_at: 2026-08-28
+spec_id: SPEC-CHANAUTH-001
+card: t9
+run_head_sha: 7f83c43           # run 마감 (§E.3)
+sync_head_sha: 2c9a484          # sync 1차 문서 정정 커밋 = 감사 HEAD
+audit_verdict: FAIL
+audit_score: 78.0               # 가중 조화평균 (Functionality 88 / Security 62 FAIL / Craft 86 / Consistency 78)
+audit_must_pass: "Security 62 < 70 — 조화평균과 무관하게 전체 FAIL"
+audit_report: .moai/reports/t9/sync-audit.md
+tests: "5 files / 61 tests passed"        # 감사 재측정 (run 레인 값과 일치)
+typecheck_exit: 0                          # 감사 재측정
+coverage: "stmts 93.75% (120/128) · branch 82.08%"   # 감사 재측정
+blocking_findings: [F-A1, F-A2, F-A9]
+optional_findings: [F-A3, F-A4, F-A5, F-A6, F-A7, F-A8, F-A10]
+remediated_here:
+  - "F-A1 — «승인 판정 주입은 닫혔다» 경계 진술 정정: spec.md §1·§5, progress.md §E.1·§E.2·§E.3 주석, CHANGELOG.md 세 자리(:9·:12·:45). 정정 문언은 «발신 id 를 모르는 상대에 대해서만 닫힘»"
+  - "F-A2 — «먼저 도착한 판정이 이기고 온-패스 상대가 사람보다 먼저 도착한다» 를 재생 차단 근거에 병기 (CHANGELOG.md 발신 집합 항목 · spec.md §4.2)"
+  - "F-A9 — 본 §E.4 발행 + 머리 표 «현재 상태» 행 갱신"
+open_findings:
+  - "F-A1·F-A2 의 실제 방어 — 서버 쪽 서명·논스가 필요하므로 REQ-CHANAUTH-013 이 이 카드에 금지한 범위. 카드 t15 소유 (문서 정정만 in-card)"
+  - "F-A3·F-A4·F-A5·F-A6·F-A7·F-A10 — 기준·문서 보강, 후속 테스트 카드 t10/t11 소유"
+  - "F-A8 — 128 축출을 이용한 정당한 판정 무력화. 감사도 도달성을 실측하지 못한 추정. 사칭 채팅 경로와 한 몸이므로 t15 소유"
+  - "카드 t4 감사의 F-02·F-03·F-04·F-14 — 이 SPEC 범위 밖으로 잔존"
+handoff:
+  - card: t15
+    scope: "F-01 잔여 셋 — 사칭 채팅 주입(message{delivery:'to'}) · 이력 오염(history_response) · 판정 주입의 잔여 절반(소켓에서 읽은 진짜 request_id 로 위조한 permission_verdict + 선착 판정 승리)"
+  - card: t10/t11
+    scope: "F-A3(uncaughtException 수집기) · F-A5(진입점 해석 실패 자식 갈래) · F-A4 · F-A6 · F-A7 · F-A10"
+gaps:
+  - "재감사 미실행 — 이 §E.4 는 FAIL 판정을 받은 감사(HEAD 2c9a484)에 대한 응답이며, 정정 뒤의 재감사 결과는 아직 없다"
+  - "감사가 변이 B·F·G·H 를 재실행하지 않았다 (sync-audit.md §6) — 그 네 집합에 대한 판정 없음"
+  - "린터 부재 — 이 워크스페이스에 린트 구성이 없어 Consistency 의 기계 검증은 타입 검사·테스트·파일 경계로만 이루어졌다 (sync-audit.md §7-7)"
+  - "원격 CI 없음 — 브랜치 WT-chanperm-gate 미푸시, 이 워크트리가 유일 사본 (sync-audit.md §7-8)"
+status_transition: none         # in-progress 유지
+```
+
+- 이 §E.4 의 모든 수치는 **sync-auditor 가 이 트리·HEAD `2c9a484` 에서 직접 재측정한 값**이며(`.moai/reports/t9/sync-audit.md` §2.1·§3·§4), manager-docs 는 그 원문을 읽어 옮겼을 뿐 재실행하지 않았다.
+- 핵심 반증 관측 원문 (감사 §2.2, 프로브 P-A): `PA_GATEWAY_SAW=["hello","status","permission_request"]` · `PA_VERDICTS=[{"request_id":"real-42","behavior":"allow"}]` — 사람이 누르지 않은 승인이 세션에 도달했고, 120ms 뒤 보낸 진짜 `deny` 는 같은 목록에 없다.
+- 이 sync 패스가 고친 파일: `CHANGELOG.md`(세 자리) · `progress.md`(§E.2 주석 3곳 · §E.3 주석 1곳 · 본 §E.4 · 머리 표). `spec.md` 와 `progress.md` §E.1 은 같은 sync 패스의 manager-spec 정정본이고, `channel/` 아래 코드·테스트는 **한 줄도 건드리지 않았다**.
+- 상태 전이 없음: 감사 판정이 FAIL 이고 재감사가 돌지 않았으므로 `status: in-progress` 를 유지한다. `implemented`/`completed` 로 올리면 기록이 사실과 달라진다.
 
 ---
 
