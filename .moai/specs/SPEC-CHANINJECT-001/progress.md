@@ -333,7 +333,7 @@ sync_completed_at: 2026-08-28
 spec_id: SPEC-CHANINJECT-001
 card: t10
 sync_base_sha: 3b39046          # sync 진입 HEAD (§E.3 run_head_sha 087ad3d 뒤의 증거·문서 커밋들 포함)
-sync_commit_sha: pending-backfill-t10-sync   # 커밋은 자기 해시를 알 수 없다 — 착지 직후 후속 커밋으로 백필한다
+sync_commit_sha: beb726c        # 문서 동기화 커밋. 자기 해시를 담을 수 없어 이 값만 후속 커밋으로 백필했다
 branch: WT-injection-hardening
 worktree: .claude/worktrees/t10
 pushed: false                   # 리드 지시 — sync 감사 판정 전까지 푸시하지 않는다. 이 워크트리가 브랜치의 유일 사본이다
