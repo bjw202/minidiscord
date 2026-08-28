@@ -64,12 +64,17 @@ export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClien
       gw.send({ type: 'permission_request', ...params })
     },
     // 이력 갈래. 파라미터는 통째로 그대로 넘긴다 — since_id 는 봇의 따라잡기 커서다 (REQ-CHANWIRE-012).
-    // 줄 앞의 #번호는 장식이 아니라 계약이다: 채널 지시문이 봇에게 이 번호를 다음 since_id 로 쓰라고 시킨다.
+    // 결과는 구조화 JSON 문자열 하나다 (REQ-CHANINJECT-004·006): 줄 잇기를 버려 본문의 개행·#숫자·따옴표가
+    // 원소 경계나 커서를 만들지 못하고, 커서는 배열 밖 cursor 필드에서 id 최댓값으로만 나온다 (REQ-CHANINJECT-005).
+    // 빈 이력도 같은 모양의 JSON 이다 — 결과 타입이 갈리면 커서가 다시 텍스트 추측으로 돌아간다 (plan.md §B).
     fetchHistory: async params => {
       const res = await gw.requestHistory(params)
       const messages: { id: number; author_name: string; body: string; created_at: string }[] = res.messages ?? []
-      if (messages.length === 0) return '(기록 없음)'
-      return messages.map(m => `#${m.id} [${m.created_at}] ${m.author_name}: ${m.body}`).join('\n')
+      const cursor = messages.length > 0 ? Math.max(...messages.map(m => m.id)) : null
+      return JSON.stringify({
+        cursor,
+        messages: messages.map(m => ({ id: m.id, at: m.created_at, author: m.author_name, body: m.body })),
+      })
     },
   })
   return { channel, gw }
