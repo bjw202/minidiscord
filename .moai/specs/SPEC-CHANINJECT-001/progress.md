@@ -12,7 +12,7 @@
 | 결합 개정 | `SPEC-CHANNEL-001` v0.3.0 · `SPEC-CHANWIRE-001` v0.4.0 · `SPEC-CHANCLIENT-001` v0.5.0 · `SPEC-CHANAUTH-001` v0.4.0 — 전부 이 카드 plan 단계에서 적용 |
 | 인계 카드 | `t15` — 전송 계층 상대의 신원(사칭 채팅 주입 · 이력 오염 · 판정 주입의 잔여 절반 · F-A8) · `t11` — 서버 쪽 방 인가(감사 F-14) |
 | 계획 감사 | 1회차 `.moai/reports/t10/plan-audit.md` — **FAIL(0.75 < Tier M 0.80)**, 차단 8건 · 비차단 5건. 교정 대장 `.moai/reports/t10/plan-done-2.md` (F-01~F-13 전건 처리), 2회차 판정 대기 |
-| 현재 상태 | **`in-progress`** v0.3.0 (개정) — sync 재진입 중. 경위: plan(2회차 감사 PASS 0.86) → run(M1~M3 착지, 70/70) → sync 라운드 1 마감(`beb726c`, 한때 `completed` v0.2.0) → **sync 감사 FAIL 79.7**(차단 2건) → SPEC 개정 v0.3.0 + `completed → in-progress` amendment(`a12bc0c`) → run 재진입 M4 착지(`04e1403`, 차단 2건 코드 종결) → sync 라운드 2 문서 정정(미커밋). **재감사 대기** |
+| 현재 상태 | **`in-progress`** v0.3.1 (개정) — sync 재감사 3차 **PASS 86.3** 수령, 마감 정리 중. 경위: plan(2회차 감사 PASS 0.86) → run(M1~M3 착지, 70/70) → sync 라운드 1 마감(`beb726c`, 한때 `completed` v0.2.0) → **sync 감사 1차 FAIL 79.7**(차단 2건) → SPEC 개정 v0.3.0 + `completed → in-progress` amendment(`a12bc0c`) → run 재진입 M4 착지(`04e1403`, 차단 2건 코드 종결) → sync 라운드 2 문서 정정 착지(`f5421d1`) → **재감사 2차 FAIL 85.7**(신규 차단 G-01 — 봉투 통로가 셋이고 셋째 `meta.sender` 열림) → G-01 문언 축소 + G-02·G-03·G-05 정정(`a97669b`) + SPEC v0.3.1 개정(`fe7e23c`, plan 레인) → **재감사 3차 PASS 86.3**(차단 0건, 비차단 5건 전부 문서). 셋째 통로와 G-04 는 카드 `t16` 소유 |
 
 ---
 
@@ -547,7 +547,7 @@ sync_completed_at: 2026-08-29
 spec_id: SPEC-CHANINJECT-001
 card: t10
 sync_base_sha: 04e1403          # 이번 라운드 진입 HEAD — M4(차단 2건 코드 종결) 착지 커밋
-sync_commit_sha: pending        # 아직 커밋하지 않았다. 리드 확인 뒤 커밋하고 그 SHA 를 후속 커밋으로 백필한다 (gaps 첫 항목)
+sync_commit_sha: f5421d1        # 라운드 2 산출물 착지 커밋. 리드 확인 뒤 커밋하고 후속 커밋으로 백필했다 (재감사 3차 R3-01 정정)
 branch: WT-injection-hardening
 worktree: .claude/worktrees/t10
 pushed: false                   # 리드 지시 유지 — 재감사 판정 전까지 푸시하지 않는다. 이 워크트리가 브랜치의 유일 사본이다
@@ -598,17 +598,84 @@ quality_gate:
 evidence_dir: .moai/state/verify/t10-sync-2/
 
 gaps:
-  - "sync_commit_sha 를 아직 채우지 못했다 — 리드가 «작업 → 보고 → 확인 → 커밋» 순서를 지시해 이번 라운드의 변경은 전부 미커밋 작업 트리 상태다. 커밋이 착지하면 그 SHA 를 후속 커밋으로 백필하고, 백필이 끝나면 이 항목을 라운드 1 gaps[0] 과 같은 과거형으로 고쳐 적는다"
+  - "sync_commit_sha 는 백필했다 — 리드가 «작업 → 보고 → 확인 → 커밋» 순서를 지시해 이 라운드의 변경은 보고 시점에 미커밋이었고, 리드 확인 뒤 커밋 f5421d1 로 착지해 그 SHA 를 위에 채웠다 (재감사 3차 R3-01 정정)"
   - "린트를 돌리지 않았다 — channel 워크스페이스에 린트 스크립트가 없다(package.json 에 lint 없음). 라운드 1 과 같은 한계다"
   - "커버리지는 이 라운드에서 sync 레인 오케스트레이터가 직접 재측정했다 — npm test -w channel -- --coverage → All files stmts 88.57% / branch 78.08% / funcs 97.22% / lines 89.16%, index.ts 63.63%(미측정 98-123). §E.3 의 M4 실측과 같은 값이다. 그 측정으로 CHANGELOG:47 의 91.11%(M3 시점 값)가 M4 이후 트리와 어긋난 것을 잡아 88.57% 로 정정했다 — 같은 문단이 M4 의 세 갈래 변경을 설명하면서 M4 이전 수치를 인용하는 자기모순이었다"
   - "문서 변경이 옳은지를 재는 자동 기준이 없다 — CHANGELOG·README 문언은 회귀 스위트 밖이고, 소스 원문(channel/src/index.ts:78-91, channel-server.ts:26-28·134-136, gateway-client.ts:68-73) 대조로만 확인했다"
-  - "재감사를 아직 받지 않았다 — 이 블록은 재감사 «직전» 의 신호이고, 판정은 sync-auditor 의 몫이다"
+  - "이 블록은 재감사 «직전» 의 신호였다 — 그 뒤 재감사 2차가 FAIL 85.7 을 냈고(신규 차단 G-01), 그 대응은 아래 라운드 3 블록에 있다 (재감사 3차 R3-01 정정)"
   - "카드 t4 의 sync 재감사는 여전히 이 카드의 범위 밖이다 (spec.md §5)"
 
 residual_risk:
   - "«두 통로를 모두 적었다» 는 이번 정정의 핵심인데, 이것을 재는 자동 기준이 없다 — 다음 개정이 한쪽 통로만 적은 문장으로 되돌려도 테스트는 초록이다. 라운드 1 이 FAIL 을 받은 자리가 정확히 이 부류다"
   - "브랜치를 푸시하지 않았다 — 이 워크트리가 유일 사본이다. 워크트리 처분은 재감사 판정과 병합 뒤로 미뤄야 한다"
-  - "§E.2 §7 의 «작업 트리 기준: HEAD 78e58b3, 미커밋 상태 — M4 커밋 SHA 는 리드 승인 후 백필한다» 문언은 손대지 않았다 — §E.2 는 manager-develop 소유이고 이번 지시에 포함되지 않았다. §E.3 은 백필했으므로 두 절의 시제가 갈려 있다. 리드 판단 항목이다"
+  - "§E.2 §7 의 시제 갈림(«미커밋 상태 — M4 SHA 는 리드 승인 후 백필한다»)은 재감사 2차 G-05 로 잡혀 커밋 a97669b 에서 과거형으로 정정했다 — M4 착지 커밋 04e1403 을 이름으로 적었다. 리드가 이 한 줄에 한해 sync 레인 수정을 승인했다(§E.2 는 본래 manager-develop 소유). 이 항목 자체가 정정 뒤에도 «손대지 않았다» 로 남아 있던 것을 재감사 3차 R3-02 가 잡았다"
+```
+
+### 라운드 3 (2026-08-29) — 재감사 **PASS 86.3**, 장부 시제 정정
+
+```yaml
+sync_status: audited-pass
+sync_round: 3
+audited_at: 2026-08-29
+spec_id: SPEC-CHANINJECT-001
+card: t10
+audit_base_sha: fe7e23c         # 감사가 읽은 HEAD (spec.md v0.3.1 착지, 트리 미커밋 0건)
+branch: WT-injection-hardening
+worktree: .claude/worktrees/t10
+sync_commit_sha: pending-round3  # 이 라운드 정정의 착지 커밋. 리드 확인 뒤 커밋하고 후속 커밋으로 백필한다
+verdict:
+  result: PASS
+  weighted_harmonic_mean: 0.8628   # 임계 0.80
+  dimensions:
+    functionality: 92   # must-pass, 통과
+    security:      90   # must-pass, 통과
+    craft:         84
+    consistency:   72   # 비 must-pass, 임계 미만 — 아래 R3-01·02·03 이 그 사유다
+  blocking_findings: 0
+  report: .moai/reports/t10/sync-audit-3.md
+  evidence: .moai/state/verify/t10-sync-audit-3/
+  arithmetic_recheck: "PASS — sync 레인 오케스트레이터가 독립 검산: 1/(0.40/0.92 + 0.25/0.90 + 0.20/0.84 + 0.15/0.72) = 0.8628. must-pass 두 차원 각각 80 이상"
+path_enumeration:
+  claim: "사람이 통제하는 글자가 모델에 닿는 자리는 셋이고, 그중 둘(알림 params.content · fetch_history 결과의 author·body)이 중화되며 셋째(params.meta.sender)는 열려 있다"
+  status: "감사가 완전성을 확정했다 — 넷째 통로 없음"
+  method: "소스 세 파일 437행 전수 판독 + 모델이 실제로 받는 모든 필드에 공격 문자열을 심은 실측 프로브(probe.log): params keys=[content, meta], meta keys=[chat_id, delivery, sender]. OPEN=true 는 meta.sender 하나뿐. 제외 전제 6건은 생산자(server/)까지 거슬러 검증 — id 는 AUTOINCREMENT, created_at 은 DEFAULT (datetime('now')) 로 INSERT 가 싣지 않으며, delivery 는 정규식 캡처 + DB CHECK 제약이라 셋 다 사람이 정하지 못한다"
+  note: "라운드 1 은 둘 중 하나, 라운드 2 는 셋 중 둘만 막고 «닫았다» 고 적었다. 이 라운드는 그 부류가 세 번째로 재현되지 않았음을 실측으로 확정했다"
+round2_findings:
+  G-01: "닫힘 — spec.md v0.3.1 §1.1·§4.1·§5 · README:170 · CHANGELOG:27 셋이 같은 셈(본문 통로 둘 + 셋째 열림)·같은 소유(t16)로 일치하고 코드와도 맞는다"
+  G-02: "닫힘 — index-wiring.test.ts:257 주석이 author·body 로 좁혀졌다"
+  G-03: "닫힘 — 감사가 주석을 읽지 않고 실측으로 대조: index.ts 미커버 98-123 일치"
+  G-04: "열림 — 거부 갈래 (iii) 문언 기준 부재. 카드 t16 소유로 확정"
+  G-05: "닫힘 — §E.2 §7 과거형 + 04e1403 명명"
+handoff_verified:
+  t16: "moai todo 실행으로 큐에 실재 확인 — 카드 본문이 셋째 통로(meta.sender)와 G-04 를 담고 있다. 이 SPEC 이 t15 에서 지적한 «기록됨 ≠ 수령됨» 실패를 반복하지 않았다"
+  t16_scope_extension: "리드 결정(2026-08-29)으로 R3-04·R3-05 두 건이 t16 실범위에 추가됐다 — R3-04 는 spec.md:298 의 delivery 열거 한 구절(plan 레인 소관, t16 plan 단계에서 REQ-CHANINJECT-002 개정과 함께), R3-05 는 channel-server.ts:131-132 주석 단서 한 줄(optional, t16 코드 작업 시). **큐에 카드 본문을 편집하는 verb 가 없고 done 후 add 는 id 를 재발급해 기존 참조를 깨뜨리므로 카드 본문은 갱신되지 않는다** — t15 선례대로 실범위는 이 SPEC 문서에서 읽는다. t16 착수자는 카드 본문만 보지 말고 이 항목과 위 round3_findings 의 R3-04·R3-05 를 함께 읽어야 한다"
+round3_findings:
+  - "R3-01 [Medium·비차단] progress.md §E.4 라운드 2 의 sync_commit_sha: pending 과 «아직 커밋하지 않았다» — 라운드 2 는 f5421d1 로 착지했다. 이 라운드에서 정정했다"
+  - "R3-02 [Medium·비차단] progress.md §E.4 라운드 2 residual_risk 가 §E.2 §7 을 «손대지 않았다» 고 단언 — a97669b 가 이미 고쳤다. 정정이 스스로 남긴 새 부정확이다. 이 라운드에서 정정했다"
+  - "R3-03 [Low·비차단] progress.md 머리 표가 v0.3.0 «미커밋» 유지 — 실제는 v0.3.1 커밋 완료. 이 라운드에서 정정했다"
+  - "R3-04 [Low·비차단] spec.md:298 제외 열거가 meta.delivery 를 빠뜨림 — 전제 자체는 참(정규식 캡처 + DB CHECK). spec.md 는 plan 레인 소유라 sync 가 손대지 않았다. **리드 결정으로 카드 t16 실범위 이월** — t16 plan 단계에서 REQ-CHANINJECT-002 개정과 함께 처리한다"
+  - "R3-05 [Low·optional] channel-server.ts:131-132 주석이 세 문서가 든 «셋째는 열림» 단서를 담지 않음 — 소스 주석이고 optional 이라 손대지 않았다. **리드 결정으로 카드 t16 실범위 이월** — t16 코드 작업 시 한 줄 추가"
+mutations_this_round:
+  - "A: 이력 author 중화만 제거 → 1건 빨강"
+  - "B: 이력 body 중화만 제거 → 1건 빨강 — 두 절반이 각각 측정된다(굵은 변이가 절반을 가리지 못하게)"
+  - "C: meta.sender 를 중화 → 1건 빨강. spec.md §5 가 «셋째 통로를 닫으려면 AC-CHANINJECT-001/002 를 함께 개정해야 해서 범위 밖» 이라 적은 그 전제가 참임을 확인했다"
+  baseline: "git 객체에서 기준선을 잡고 복원 후 해시 대조 일치. 70/70 초록, 추적 파일 변경 0건"
+quality_gate:
+  scope:        "PASS — git diff --name-only 04e1403 HEAD 에 channel/src/ 가 한 파일도 없다. channel/ 변경은 주석 두 줄(index-wiring.test.ts:257 · vitest.config.ts:1)뿐이고 실행되는 코드 0줄 — sync 레인 오케스트레이터가 git diff 04e1403 HEAD -- channel/ 원문으로 직접 확인했다. 좁힌 감사 범위의 전제가 참이다"
+  server_ban:   "PASS — REQ-CHANINJECT-015 의 server/ 금지: 카드 전 커밋에서 위반 없음"
+  tests:        "PASS — 70/70 (감사 재실행)"
+  coverage:     "PASS — 88.57% ≥ 85% (라운드 2 실측 승계, channel/src 무변경으로 유효)"
+gaps:
+  - "린트를 돌리지 않았다 — channel 워크스페이스에 린트 스크립트가 없다. 세 라운드 공통의 한계다"
+  - "호스트의 실제 봉투 렌더링은 관측하지 못했다 — 이 트리에 Claude Code 호스트가 없다. spec.md §1.2 가 이미 정직하게 들고 있는 미확정이다"
+  - "모델이 지시문의 신뢰 경계 두 문장을 따르는지는 세 라운드 어디서도 관측하지 못했다 — 관측 불가이며 이 카드의 어떤 기준도 그것을 재지 않는다"
+  - "알림 통로 변이 6건(라운드 2 X-1..X-6)을 재실행하지 않았다 — channel/src 가 diff 에 전혀 없음을 확인했기 때문이다. 다만 이 라운드 주장에 직접 걸리는 A·B·C 는 승계하지 않고 새로 돌렸다"
+  - "이 블록 자체는 감사 뒤에 쓰였으므로 재감사를 받지 않았다 — 라운드 3 판정은 이 블록이 없는 상태의 트리(fe7e23c)를 읽고 나온 것이다"
+  - "카드 t4 의 sync 재감사는 여전히 이 카드의 범위 밖이다 (spec.md §5)"
+residual_risk:
+  - "Consistency 72 는 임계 미만이다 — must-pass 가 아니어서 판정을 뒤집지 않았지만, 그 사유인 R3-01·02·03 은 «장부의 시제가 사실보다 뒤처진다» 는 한 부류의 네 번째 재현이다. 방향은 반대다(안전을 부풀리는 것이 아니라 닫힌 것을 열렸다고 적는 쪽) — 그래서 비차단이지만, 재발 자체가 신호다"
+  - "이 부류를 재는 자동 기준이 없다 — 장부의 시제는 회귀 스위트 밖이고, 다음 라운드가 같은 자리를 다시 뒤처지게 두어도 테스트는 초록이다"
+  - "브랜치를 푸시하지 않았다 — 원격이 없어 이 워크트리가 브랜치의 유일 사본이다. 워크트리 처분은 병합 뒤로 미뤄야 한다"
 ```
 
 ## §F Phase 4 Mode Selection
