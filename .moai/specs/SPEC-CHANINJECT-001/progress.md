@@ -12,7 +12,7 @@
 | 결합 개정 | `SPEC-CHANNEL-001` v0.3.0 · `SPEC-CHANWIRE-001` v0.4.0 · `SPEC-CHANCLIENT-001` v0.5.0 · `SPEC-CHANAUTH-001` v0.4.0 — 전부 이 카드 plan 단계에서 적용 |
 | 인계 카드 | `t15` — 전송 계층 상대의 신원(사칭 채팅 주입 · 이력 오염 · 판정 주입의 잔여 절반 · F-A8) · `t11` — 서버 쪽 방 인가(감사 F-14) |
 | 계획 감사 | 1회차 `.moai/reports/t10/plan-audit.md` — **FAIL(0.75 < Tier M 0.80)**, 차단 8건 · 비차단 5건. 교정 대장 `.moai/reports/t10/plan-done-2.md` (F-01~F-13 전건 처리), 2회차 판정 대기 |
-| 현재 상태 | **`draft`** v0.1.0 — plan 단계 산출물 작성 완료 + 감사 1회차 교정 반영, 2회차 감사 대기 |
+| 현재 상태 | **`completed`** v0.2.0 — sync 단계 마감. plan(2회차 감사 PASS 0.86) → run(M1·M2·M3 착지, 70/70 초록) → sync(문서 동기화 + 3단계 마감)까지 끝. sync 감사 대기 |
 
 ---
 
@@ -327,7 +327,69 @@ residual_risk:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_completed_at: 2026-08-28
+spec_id: SPEC-CHANINJECT-001
+card: t10
+sync_base_sha: 3b39046          # sync 진입 HEAD (§E.3 run_head_sha 087ad3d 뒤의 증거·문서 커밋들 포함)
+sync_commit_sha: pending-backfill-t10-sync   # 커밋은 자기 해시를 알 수 없다 — 착지 직후 후속 커밋으로 백필한다
+branch: WT-injection-hardening
+worktree: .claude/worktrees/t10
+pushed: false                   # 리드 지시 — sync 감사 판정 전까지 푸시하지 않는다. 이 워크트리가 브랜치의 유일 사본이다
+documents_changed:
+  - path: CHANGELOG.md
+    what: "[Unreleased] 최상단에 «추가됨 — 채널 주입 방어 (카드 t10)» 절 신설. spec.md §5 가 못 박은 두 문언(깨지는 구성 http:// · 도구 결과 형식 {cursor, messages} + '(기록 없음)' 소멸)을 각각 독립 소제목으로 실었고, 닫은 것 넷(F-02·F-03·F-04 + t9 이월 여덟)과 «이걸로 닫히지 않는 것» 정직성 절, 테스트 수치를 담았다"
+  - path: CHANGELOG.md
+    what: "기존 카드 t9 절의 루프백 문언 정정 — «네 호스트(127.0.0.1·localhost·::1·[::1])» → «세 호스트(127.0.0.1·localhost·[::1])». F-A7 의 CHANGELOG 절반. 근거는 소스 원문 channel/src/index.ts:35"
+  - path: README.md
+    what: "세 자리 — (1) fetch_history 후속 안내를 {cursor, messages} JSON 모양과 «커서는 별도 필드» 로 재작성, (2) MINIDISCORD_SERVER 설명 두 곳(:43·:101)에 스킴 거부 규칙 명시, (3) 머리말(:5)과 «채널 플러그인을 붙이기 전에» 절에서 F-02·F-03·F-04 를 닫힘으로 바꾸되 t4 FAIL 판정·F-01·F-14 는 열린 채로 유지"
+  - path: .moai/specs/SPEC-CHANNEL-001/progress.md
+    what: "open_findings 의 F-02·F-04 두 행에 SPEC-CHANINJECT-001(카드 t10) 해소를 기록. F-08·F-09 는 열린 채 무변경"
+  - path: .moai/specs/SPEC-CHANWIRE-001/progress.md
+    what: "«열려 있는 것» F-03 행을 «닫힌 것 (후속 카드)» 로 바꾸고 SPEC-CHANINJECT-001(카드 t10) 소유·해소를 기록. F-07·F-12 행은 무변경"
+  - path: .moai/specs/SPEC-CHANINJECT-001/spec.md
+    what: "frontmatter status: in-progress → completed (3단계 마감). 본문 무변경 — manager-docs 는 spec 본문을 고치지 않는다"
+  - path: .moai/specs/SPEC-CHANINJECT-001/progress.md
+    what: "머리 표 «현재 상태» 행을 draft/plan → completed/sync 로 갱신 + 본 §E.4 발행"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (updated: 2026-08-28 유지 — 같은 날짜)"
+  plan.md: "n/a — 이 SPEC 의 plan.md 에 frontmatter 블록이 없다"
+  acceptance.md: "n/a — frontmatter 블록 없음"
+  progress.md: "n/a — frontmatter 블록 없음"
+  note: "이 프로젝트는 frontmatter 를 spec.md 하나에만 둔다. 형제 SPEC-CHANAUTH-001(이미 completed)도 같다 — grep -c '^status:' 실측 결과 spec.md 만 1, 나머지 셋은 0. 없는 블록을 새로 만드는 것은 본문 수정이므로 하지 않았다"
+quality_gate:
+  npm_ci:      "PASS — npm ci → 종료 코드 0 (직접 실행, 로그 .moai/state/verify/t10-sync/npm-ci.log)"
+  build:       "PASS — npm run build -w channel → 종료 코드 0, 출력은 'tsc' 한 줄 (build.log)"
+  typecheck:   "PASS — npm run typecheck -w channel → 종료 코드 0, 출력은 'tsc --noEmit' 한 줄 (typecheck.log)"
+  tests:       "PASS — npm test -w channel → 'Test Files  5 passed (5)' / 'Tests  70 passed (70)', 종료 코드 0 (test.log)"
+  coverage:    "PASS — npm test -w channel -- --coverage → All files stmts 91.11% / branch 82.6% / funcs 97.22% / lines 90.59%, 85% 하한 위 (coverage.log). §E.3 의 run 단계 실측과 같은 값 — 이 sync 가 이 트리에서 다시 쟀다"
+  changelog_dup: "PASS — grep -c 'SPEC-CHANINJECT-001' CHANGELOG.md → 0 (발행 전 실행, B12 자기점검 1)"
+  ac_count:      "PASS — acceptance.md 의 서로 다른 AC 식별자 32건(자체 AC-CHANINJECT-001..014 = 14건 + 형제 인용 18건). 0 이 아니므로 공허한 비교가 아니다 (B12 자기점검 2)"
+  paths_exist:   "PASS — CHANGELOG 가 지목한 소스 두 파일 실재 확인: ls channel/src/channel-server.ts channel/src/index.ts → 둘 다 존재 (B12 자기점검 3)"
+evidence_dir: .moai/state/verify/t10-sync/
+changelog_entry_position: "[Unreleased] 바로 아래 첫 절 — 기존 «채널 전송 계층 방어 (카드 t9)» 절 위 (최신 우선)"
+gaps:
+  - "sync_commit_sha 를 이 커밋 안에서 채울 수 없다 — 후속 커밋 백필이다. 백필 전까지 이 자리는 플레이스홀더이고, 그 사실을 여기에 적는다"
+  - "린트를 돌리지 않았다 — 이 저장소의 channel 워크스페이스에 린트 스크립트가 없다(package.json 에 lint 없음). 품질 게이트의 «Unified» 축은 tsc 두 갈래로만 관측된다"
+  - "문서 변경이 옳은지를 재는 자동 기준이 없다 — CHANGELOG·README 문언은 회귀 스위트 밖이고, 소스 원문 대조로만 확인했다(fetch_history 결과 모양은 channel/src/index.ts:74-81, 루프백 세 값은 :35)"
+  - "모델이 새 지시문 두 문장을 따르는지는 이 sync 도 관측하지 못했다 — spec.md §5 가 관측 불가라고 적은 그대로다"
+  - "카드 t4 의 sync 재감사를 실행하지 않았다 — spec.md §5 가 이 카드의 범위 밖으로 두었다"
+residual_risk:
+  - "README 의 F-01 항목은 카드 t9 시점 문언을 그대로 두었다 — «플러그인은 welcome 을 받았는지 보지 않은 채» 라는 기제 서술은 t9 가 게이트를 넣은 뒤로 사실과 어긋난다. F-01 자체는 여전히 Critical·열림이므로 위험 방향의 오도는 아니지만(오히려 실제보다 나쁘게 적혀 있다), 정정 소유자는 t9 이지 이 카드가 아니라고 판단해 손대지 않았다. 리드 판단 항목이다"
+  - "README 의 F-07 항목은 반대로 손댔다 — «주소 스킴을 검사하지 않아서» 라는 기제 서술이 이 sync 가 :43 에 새로 쓴 «스킴은 ws/wss 만 받는다» 와 같은 문서 안에서 정면으로 모순되기 때문이다. 발견 자체는 열린 채로 두었고(토큰 평문 + F-01 미해소), 기제 문장만 사실에 맞췄다. 범위 판단이므로 리드가 되돌릴 수 있다"
+  - "커버리지 91.11% 는 vitest 부모 프로세스만의 값이다 — index.ts 88-108 행(진입점)은 자식 프로세스에서만 돌아 영구히 측정 밖이고, 그 자리를 잠그는 것은 dist 자식을 실제로 띄우는 AC-CHANAUTH-011·AC-CHANINJECT-009 다"
+  - "브랜치를 푸시하지 않았다 — 이 워크트리가 유일 사본이므로 워크트리 처분은 감사 판정과 병합 뒤로 미뤄야 한다"
+handoff:
+  - card: t15
+    scope: "F-01 잔여 셋(welcome 위조 불가능화 · 위조 permission_verdict 와 «먼저 도착한 판정이 이긴다» · F-A8 128 축출). 큐 카드 t15 본문이 ②·③ 을 담지 않는 문제는 §E.1 lead_action_required F-10 그대로 유효하다"
+  - card: t11
+    scope: "F-14 서버 쪽 방 인가"
+  - card: "미정"
+    scope: "F-05 — 프레임 한 개로 프로세스 종료 (t4 감사 §6 권고 3번)"
+  - card: t4
+    scope: "sync 재감사. 이 카드의 sync 는 그 선행 조건이지 재감사 자체가 아니다 — F-01 잔여와 F-14 가 열려 있으므로 이 카드 하나로 t4 판정이 PASS 로 바뀌지 않는다"
+```
 
 ## §F Phase 4 Mode Selection
 
