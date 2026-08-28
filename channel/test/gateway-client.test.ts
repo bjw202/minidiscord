@@ -20,7 +20,13 @@ interface FakeServer {
   url(): string
 }
 
-function startServer(): FakeServer {
+// autoWelcome: hello 를 받으면 welcome 으로 답한다. 기본값이 true 인 것이 v0.4.0 개정이다 —
+// REQ-CHANCLIENT-004·005 의 분배 의무가 세션 확립 뒤에만 성립하므로(SPEC-CHANAUTH-001 §4.1),
+// welcome 을 보내지 않는 서버를 상대로는 프레임 분배 기준이 아무것도 관측하지 못한다.
+// 형제 하네스(index-wiring.test.ts·permission-relay.test.ts)가 이미 쓰는 형태와 같다.
+// false 로 두는 자리는 하나뿐이다 — 자기 welcome 하나만 세는 AC-CHANCLIENT-002.
+function startServer(opts: { autoWelcome?: boolean } = {}): FakeServer {
+  const autoWelcome = opts.autoWelcome ?? true
   const wss = new WebSocketServer({ port: 0 })
   const messages: any[] = []
   const sockets: WebSocket[] = []
@@ -31,6 +37,9 @@ function startServer(): FakeServer {
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       messages.push(m)
+      if (autoWelcome && m.type === 'hello') {
+        ws.send(JSON.stringify({ type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 0 }))
+      }
       for (const h of handlers) h(ws, m)
     })
   })
@@ -98,7 +107,7 @@ describe('gateway client', () => {
 
   // AC-CHANCLIENT-002 — welcome 을 손대지 않고 그대로 넘긴다
   it('passes the welcome frame through untouched, extra fields included', async () => {
-    const srv = startServer()
+    const srv = startServer({ autoWelcome: false })   // 이 기준만 자기 welcome 하나를 직접 보낸다
     const got: any[] = []
     await connected(srv, { onWelcome: w => got.push(w) })
     const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 42 }
@@ -143,8 +152,10 @@ describe('gateway client', () => {
     const sock = srv.sockets[0]
     sock.send(JSON.stringify({ type: 'presence', body: '모르는 프레임' }))   // 먼저 보낸다
     sock.send(JSON.stringify({ type: 'message', id: 1, body: 'x', author_name: 'a', delivery: 'to' }))
-    await waitFor(() => seen.length >= 1)
-    expect(seen).toEqual(['message'])          // 앞서 보낸 미지의 프레임은 세지 않았다
+    await waitFor(() => seen.length >= 2)
+    // 하네스가 hello 에 welcome 으로 답하므로 welcome 이 먼저 온다 (v0.4.0).
+    // 미지의 프레임 presence 는 그 사이에 있었고 세지 않았다.
+    expect(seen).toEqual(['welcome', 'message'])
   })
 
   it('survives frames whose callback was not provided', async () => {

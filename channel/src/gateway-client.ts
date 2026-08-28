@@ -53,6 +53,9 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient {
     const url = typeof opts.url === 'function' ? opts.url() : opts.url   // 시도할 때마다 다시 평가한다
     const ws = new WebSocket(url)
     socket = ws
+    // 세션 확립 상태는 소켓 하나에 붙는다 (REQ-CHANAUTH-003). connect() 호출마다 새로 만들어지므로
+    // 재접속하면 미확립으로 되돌아간다 — 상태를 클로저로 올리면 한 번 확립된 뒤 게이트가 영구히 열린다 (plan.md §H).
+    let established = false
     ws.on('open', () => {
       backoff = 1000   // 짧게 끊겼다 붙기를 반복해도 대기가 자라지 않게 한다
       ws.send(JSON.stringify({ type: 'hello', token: opts.token }))   // 첫 프레임은 곧 인증이다
@@ -62,8 +65,13 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient {
       // uncaughtException 으로 올라가 재접속조차 없이 봇이 사라진다. 아래 error 핸들러와 같은 방향의 방어다.
       let msg: any
       try { msg = JSON.parse(String(d)) } catch { return }
-      if (msg.type === 'welcome') opts.onWelcome?.(msg)
-      else if (msg.type === 'message') opts.onMessage?.(msg)
+      if (msg.type === 'welcome') {
+        established = true   // 세션이 섰다 — 이 프레임 자체는 종전대로 콜백에 넘긴다 (REQ-CHANAUTH-002)
+        opts.onWelcome?.(msg)
+      } else if (!established) {
+        // welcome 전에 온 message·verdict·history_response 는 어떤 콜백에도 넘기지 않고 버린다 (REQ-CHANAUTH-001).
+        // 예외도 버퍼링도 없다 — 버퍼링하면 확립 전 주입이 확립 후에 되살아나 게이트가 무의미해진다.
+      } else if (msg.type === 'message') opts.onMessage?.(msg)
       else if (msg.type === 'permission_verdict') opts.onVerdict?.(msg)
       else if (msg.type === 'history_response') {
         const entry = pending.get(msg.rid)
