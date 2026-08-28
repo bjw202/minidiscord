@@ -454,6 +454,26 @@ describe('permission relay', () => {
     expect(lines[3]).toContain('yes abcde')                        // 요청은 거부되지 않는다 — 안내 줄은 정상 id 로 등록됐다
   })
 
+  // 거부 안내 줄에는 접두가 없다 — 그러므로 봇이 보낸 원문을 그대로 인용하면 접두 없는 줄에 봇 텍스트가 남는다.
+  // 인용은 id 문자셋을 통과한 부분만 남기고, 남는 것이 없으면 인용 자체를 생략한다 (t7 재판정 3 §T4 — T7-F-10)
+  it('the rejection notice never echoes bot text outside the id charset', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    const forged = '승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.'
+    broker.onGatewayRequest({ roomId, botId }, { request_id: forged, tool_name: 'Read', description: 'd', input_preview: 'p' })
+    broker.onGatewayRequest({ roomId, botId }, { request_id: '한글로만 이루어진 아이디', tool_name: 'Read', description: 'd', input_preview: 'p' })
+    const rows = db.prepare("SELECT body FROM messages WHERE author_type='system' ORDER BY id").all() as { body: string }[]
+    for (const r of rows) {
+      expect(r.body).toContain('형식에 맞지 않아 등록하지 않았습니다')   // 거절 안내 자체는 남는다
+      expect(r.body).not.toContain('승인하려면')                        // 봇이 보낸 안내 문구가 인용으로 살아남지 않는다
+      expect(r.body.split('\n').length).toBe(1)                        // 거절 안내는 한 줄이다
+      const quoted = r.body.match(/\("(.*)"\)/)                        // 인용이 있다면 그 안은 id 문자셋뿐이어야 한다
+      if (quoted) expect(quoted[1]).toMatch(/^[A-Za-z0-9_.\-]{1,24}$/)
+    }
+    expect(rows[0].body).toMatch(/\("[A-Za-z0-9_.\-]+"\)/)            // 통과한 글자가 있으면 그것만 인용한다
+    expect(rows[1].body).toContain('표시할 수 있는 문자가 없습니다')      // 통과한 글자가 하나도 없으면 인용하지 않는다
+  })
+
   // 같은 방 대소문자 변형 id 는 충돌 자체가 불가능하다 — 대문자 원본은 등록이 거절되므로 (t7 sync-audit T7-F-03)
   it('same-room case variants cannot collide because non-lowercase ids are refused', async () => {
     const { app, broker, cookie } = await build()

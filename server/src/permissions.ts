@@ -57,8 +57,10 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
       // 형식 검사가 등록보다 먼저다 — 어긋난 id 는 대기 항목을 만들지 않고 거절 안내 한 줄로 끝난다 (T7-F-02·03)
       const requestId = String(params.request_id ?? '')
       if (!PERMISSION_REQUEST_ID_RE.test(requestId)) {
-        // 거절 안내에 들어가는 id 도 줄바꿈 중화·길이 절단을 거친다 — 거절 문구 자체가 위조 경로가 되지 않도록 (T7-F-01)
-        postSystem(info.roomId, `⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않아 등록하지 않았습니다 ("${oneLine(requestId).slice(0, 24)}")`)
+        // 거절 안내 줄에도 접두가 없다 — 그러므로 봇 원문을 그대로 인용하지 않고 id 문자셋을 통과한 부분만 남긴다.
+        // 남는 글자가 하나도 없으면 인용 자체를 생략한다. 진단 가치는 지키되 접두 없는 줄에 봇 텍스트가 실리지 않는다 (T7-F-01·T7-F-10)
+        const shown = requestId.replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 24)
+        postSystem(info.roomId, `⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않아 등록하지 않았습니다 ${shown ? `("${shown}")` : '(표시할 수 있는 문자가 없습니다)'}`)
         return
       }
       // tool_name 검사는 요청 거부가 아니라 자리표시자 대체다 — 접두 없는 1번째 줄이 봇이 쓴 안내를 담지
