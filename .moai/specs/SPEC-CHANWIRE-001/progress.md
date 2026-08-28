@@ -228,7 +228,7 @@ $ git status --porcelain
 | 진입점 프로브 | `channel/dist/index.js` MCP `initialize` → `serverInfo.name = minidiscord-channel` + capabilities 2종 — **오케스트레이터 관측값**(manager-docs 미재실행) |
 | 이 카드에서 닫은 것 | F-06 (Medium, blocking) — MCP 상대가 끊긴 뒤 채팅 도착 시 처리되지 않은 거부로 프로세스 종료. `pushChatMessage(m).catch(() => {})` 로 판정 갈래와 대칭 방어 (`2a6bf4b`) |
 | 이 카드에서 닫은 것 | F-10 (Medium, blocking) — 커버리지 `exclude` 의 명시 사유가 반증되어 헤드라인이 과대표기됨. 제외 제거 후 전 파일 재측정 (`f91236e`) — 위 커버리지 수치가 그 값 |
-| 닫힌 것 (후속 카드) | F-03 (High) — 이력 렌더링이 개행 구분 평문이라 본문 한 건이 가짜 `#번호` 이력 줄을 만들고 커서까지 오염시킴 (`index.ts:50-55`). **`SPEC-CHANINJECT-001` (카드 `t10`) 이 소유·해소** — 이력을 `{cursor, messages}` 구조화 JSON 하나로 바꾸고 커서를 `id` 최댓값의 별도 필드로 분리 (REQ-CHANINJECT-004·005·006). 이 SPEC 의 `REQ-CHANWIRE-012` 와 `AC-CHANWIRE-007·008` 도 같은 카드에서 v0.4.0 으로 개정됨 |
+| 닫힌 것 (후속 카드) | F-03 (High) — 이력 렌더링이 개행 구분 평문이라 본문 한 건이 가짜 `#번호` 이력 줄을 만들고 커서까지 오염시킴 (`index.ts:50-55`). **`SPEC-CHANINJECT-001` (카드 `t10`) 이 소유·해소** — 이력을 `{cursor, messages}` 구조화 JSON 하나로 바꾸고 커서를 `id` 최댓값의 별도 필드로 분리 (REQ-CHANINJECT-004·005·006). 봉투 중화(F-02)도 이 이력 통로에 함께 걸렸다 — v0.3.0 에서 `fetchHistory` 가 각 원소의 `author`·`body` 를 알림 통로와 같은 `neutralizeEnvelope` 한 벌로 중화한다(`index.ts`). 즉 **알림 통로와 `fetch_history` 결과 통로 둘 다** 막혀 있고, 한쪽만 막혀 있던 상태(알림만)는 sync 감사 F-01 이 잡아 v0.3.0 에서 닫았다. `id`·`at` 은 중화하지 않는다 — `id` 는 커서의 유일한 출처다. 이 SPEC 의 `REQ-CHANWIRE-012` 와 `AC-CHANWIRE-007·008` 도 같은 카드에서 v0.4.0 으로 개정됨 |
 | 열려 있는 것 | F-07 (Medium) — `resolveUrl` 이 `MINIDISCORD_SERVER` 를 검증 없이 통과시킴 (`index.ts:14-18`) |
 | 열려 있는 것 | F-12 (Low) — `test/index-wiring.test.ts:155-157` 동어반복 단언 |
 | 증거 경로 | `.moai/state/verify/t4-sync/`, `.moai/state/verify/t4-sync-fix/`, `.moai/state/verify/t4-sync-audit/` |

@@ -12,7 +12,7 @@
 | 결합 개정 | `SPEC-CHANNEL-001` v0.3.0 · `SPEC-CHANWIRE-001` v0.4.0 · `SPEC-CHANCLIENT-001` v0.5.0 · `SPEC-CHANAUTH-001` v0.4.0 — 전부 이 카드 plan 단계에서 적용 |
 | 인계 카드 | `t15` — 전송 계층 상대의 신원(사칭 채팅 주입 · 이력 오염 · 판정 주입의 잔여 절반 · F-A8) · `t11` — 서버 쪽 방 인가(감사 F-14) |
 | 계획 감사 | 1회차 `.moai/reports/t10/plan-audit.md` — **FAIL(0.75 < Tier M 0.80)**, 차단 8건 · 비차단 5건. 교정 대장 `.moai/reports/t10/plan-done-2.md` (F-01~F-13 전건 처리), 2회차 판정 대기 |
-| 현재 상태 | **`completed`** v0.2.0 — sync 단계 마감. plan(2회차 감사 PASS 0.86) → run(M1·M2·M3 착지, 70/70 초록) → sync(문서 동기화 + 3단계 마감)까지 끝. sync 감사 대기 |
+| 현재 상태 | **`in-progress`** v0.3.0 (개정) — sync 재진입 중. 경위: plan(2회차 감사 PASS 0.86) → run(M1~M3 착지, 70/70) → sync 라운드 1 마감(`beb726c`, 한때 `completed` v0.2.0) → **sync 감사 FAIL 79.7**(차단 2건) → SPEC 개정 v0.3.0 + `completed → in-progress` amendment(`a12bc0c`) → run 재진입 M4 착지(`04e1403`, 차단 2건 코드 종결) → sync 라운드 2 문서 정정(미커밋). **재감사 대기** |
 
 ---
 
@@ -426,13 +426,14 @@ run_completed_at: 2026-08-28
 spec_id: SPEC-CHANINJECT-001
 card: t10
 spec_base_sha: bbd21cd80e5d9b78baf2a00eee33bd386943fd28
-run_head_sha: 78e58b3          # v0.3.0 재진입(M4) 증거 관측 시점 HEAD. M4 변경은 미커밋 작업 트리 상태이며 M4 커밋 SHA 는 리드 승인 후 백필한다(pending-backfill-m4 — §E.4 sync_commit_sha 의 백필 패턴과 같다). M1~M3 착지 커밋은 아래 commits 목록
+run_head_sha: 78e58b3          # v0.3.0 재진입(M4) 증거를 관측한 시점의 HEAD. 그 시점 M4 변경은 미커밋 작업 트리 상태였고, M4 는 이후 04e1403 으로 착지했다 — 아래 commits 목록의 넷째 줄이 그 값이다(pending-backfill-m4 해소, 2026-08-29 라운드 2). 착지 후 HEAD 는 04e1403 이다
 branch: WT-injection-hardening
 worktree: .claude/worktrees/t10
-commits:
+commits:                        # 이 SPEC 의 run 단계 착지 커밋 전부 (M1~M4)
   - 0d10507   # M1 봉투 중화·지시문·커서 안내 + frontmatter draft→in-progress
   - f7c7040   # M2 구조화 이력과 분리된 커서
   - 087ad3d   # M3 t9 이월 여덟 건 흡수
+  - 04e1403   # M4 v0.3.0 재진입 — 이력 통로 봉투 중화 + 거부 사유 세 갈래 (sync 감사 차단 2건 코드 종결)
 quality_gate:
   build:        "PASS — npm run build -w channel 종료 코드 0 (직접 실행)"
   typecheck:    "PASS — npm run typecheck -w channel 종료 코드 0 (직접 실행; v0.3.0 재진입 뒤 재실행)"
@@ -469,13 +470,17 @@ residual_risk:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+이 절은 **두 라운드**의 기록을 함께 담는다. 아래 첫 블록이 라운드 1(2026-08-28, 커밋 `beb726c`)이고, 그 뒤의 «라운드 2» 블록이 이번 재진입(2026-08-29)이다. 라운드 1 을 덮어쓰지 않는다 — 무엇이 FAIL 이었고 무엇이 바뀌었는지가 감사 기록의 본체이기 때문이다.
+
+### 라운드 1 (2026-08-28) — 감사 판정 FAIL 79.7
+
 ```yaml
 sync_status: audit-ready
 sync_completed_at: 2026-08-28
 spec_id: SPEC-CHANINJECT-001
 card: t10
 sync_base_sha: 3b39046          # sync 진입 HEAD (§E.3 run_head_sha 087ad3d 뒤의 증거·문서 커밋들 포함)
-sync_commit_sha: beb726c        # 문서 동기화 커밋. 자기 해시를 담을 수 없어 이 값만 후속 커밋으로 백필했다
+sync_commit_sha: beb726c        # 문서 동기화 커밋. 자기 해시를 담을 수 없어 이 값만 후속 커밋 ad88606 으로 백필했다
 branch: WT-injection-hardening
 worktree: .claude/worktrees/t10
 pushed: false                   # 리드 지시 — sync 감사 판정 전까지 푸시하지 않는다. 이 워크트리가 브랜치의 유일 사본이다
@@ -507,12 +512,12 @@ quality_gate:
   tests:       "PASS — npm test -w channel → 'Test Files  5 passed (5)' / 'Tests  70 passed (70)', 종료 코드 0 (test.log)"
   coverage:    "PASS — npm test -w channel -- --coverage → All files stmts 91.11% / branch 82.6% / funcs 97.22% / lines 90.59%, 85% 하한 위 (coverage.log). §E.3 의 run 단계 실측과 같은 값 — 이 sync 가 이 트리에서 다시 쟀다"
   changelog_dup: "PASS — grep -c 'SPEC-CHANINJECT-001' CHANGELOG.md → 0 (발행 전 실행, B12 자기점검 1)"
-  ac_count:      "PASS — acceptance.md 의 서로 다른 AC 식별자 32건(자체 AC-CHANINJECT-001..014 = 14건 + 형제 인용 18건). 0 이 아니므로 공허한 비교가 아니다 (B12 자기점검 2)"
+  ac_count:      "PASS — acceptance.md 의 서로 다른 AC 식별자 25건(자체 AC-CHANINJECT-001..014 = 14건 + 형제 인용 11건). 0 이 아니므로 공허한 비교가 아니다 (B12 자기점검 2). 세는 명령: grep -oE 'AC-[A-Z]+-[0-9]+' .moai/specs/SPEC-CHANINJECT-001/acceptance.md | sort -u | wc -l → 25. [정정 2026-08-29, 라운드 2] 이 자리에 처음 적힌 32(형제 인용 18) 는 재현되지 않는 수치였다 — 이 sync 커밋 시점 트리(beb726c)에서 같은 명령을 다시 돌려도 25 다. 값만 고치지 않고 세는 명령을 함께 적는다: 명령 없는 수치는 다음 개정에서 같은 부류로 재발한다. 판정 조건은 «0 이 아닐 것» 이므로 PASS 자체는 영향받지 않는다"
   paths_exist:   "PASS — CHANGELOG 가 지목한 소스 두 파일 실재 확인: ls channel/src/channel-server.ts channel/src/index.ts → 둘 다 존재 (B12 자기점검 3)"
 evidence_dir: .moai/state/verify/t10-sync/
 changelog_entry_position: "[Unreleased] 바로 아래 첫 절 — 기존 «채널 전송 계층 방어 (카드 t9)» 절 위 (최신 우선)"
 gaps:
-  - "sync_commit_sha 를 이 커밋 안에서 채울 수 없다 — 후속 커밋 백필이다. 백필 전까지 이 자리는 플레이스홀더이고, 그 사실을 여기에 적는다"
+  - "sync_commit_sha 를 이 커밋(beb726c) 안에서는 채울 수 없었다 — 커밋은 자기 해시를 모른다. 후속 커밋 ad88606 이 값을 백필했고, 위 sync_commit_sha: beb726c 는 그 백필 결과다. 플레이스홀더 상태는 ad88606 로 해소되었다"
   - "린트를 돌리지 않았다 — 이 저장소의 channel 워크스페이스에 린트 스크립트가 없다(package.json 에 lint 없음). 품질 게이트의 «Unified» 축은 tsc 두 갈래로만 관측된다"
   - "문서 변경이 옳은지를 재는 자동 기준이 없다 — CHANGELOG·README 문언은 회귀 스위트 밖이고, 소스 원문 대조로만 확인했다(fetch_history 결과 모양은 channel/src/index.ts:74-81, 루프백 세 값은 :35)"
   - "모델이 새 지시문 두 문장을 따르는지는 이 sync 도 관측하지 못했다 — spec.md §5 가 관측 불가라고 적은 그대로다"
@@ -531,6 +536,79 @@ handoff:
     scope: "F-05 — 프레임 한 개로 프로세스 종료 (t4 감사 §6 권고 3번)"
   - card: t4
     scope: "sync 재감사. 이 카드의 sync 는 그 선행 조건이지 재감사 자체가 아니다 — F-01 잔여와 F-14 가 열려 있으므로 이 카드 하나로 t4 판정이 PASS 로 바뀌지 않는다"
+```
+
+### 라운드 2 (2026-08-29) — 차단 2건 코드 종결 후 문서 정정
+
+```yaml
+sync_status: audit-ready
+sync_round: 2
+sync_completed_at: 2026-08-29
+spec_id: SPEC-CHANINJECT-001
+card: t10
+sync_base_sha: 04e1403          # 이번 라운드 진입 HEAD — M4(차단 2건 코드 종결) 착지 커밋
+sync_commit_sha: pending        # 아직 커밋하지 않았다. 리드 확인 뒤 커밋하고 그 SHA 를 후속 커밋으로 백필한다 (gaps 첫 항목)
+branch: WT-injection-hardening
+worktree: .claude/worktrees/t10
+pushed: false                   # 리드 지시 유지 — 재감사 판정 전까지 푸시하지 않는다. 이 워크트리가 브랜치의 유일 사본이다
+
+round_1_outcome:
+  verdict: "FAIL 79.7 (Security 72 — must-pass 미달)"
+  report: .moai/reports/t10/sync-audit.md
+  blocking:
+    - "F-01 (High) — 봉투 중화가 알림 통로에만 걸려 있는데 네 문서가 «닫았다» 고 적었다. fetch_history 결과가 게이트웨이의 author_name·body 를 무변형으로 실어 위조 봉투를 그대로 모델에 넘겼다 (감사 프로브 P-A 로 재현)"
+    - "F-02 (Medium) — 루프백 http:// 주소의 거부 사유가 «비루프백 호스트에는 wss:// 를 쓴다» 로 떨어져 운영자를 반대 방향으로 안내했다"
+  non_blocking_handed_to_this_round:
+    - "F-03 (Medium) — README:170 의 F-01 기제 서술이 오늘의 코드와 어긋난다"
+    - "F-04 (Low) — §E.4 ac_count 인용 수치 32 가 재현되지 않는다"
+    - "F-05 (Low) — §E.4 gaps[0] 이 같은 블록의 :336 과 시제가 갈린다"
+
+code_closure:
+  what: "차단 2건은 문서 문언이 아니라 코드로 닫아야 하는 것이었고, 마일스톤 M4 가 커밋 04e1403 으로 닫았다. 이번 라운드가 손댄 것은 코드가 아니라 그 사실을 적는 문서다 — channel/ 아래는 한 글자도 건드리지 않았다"
+  f01: "channel/src/index.ts 의 fetchHistory 가 각 원소의 author·body 에 neutralizeEnvelope 를 적용한다 — 알림 통로(channel-server.ts)와 같은 함수 한 벌. id·at 은 의도적으로 무변형이다(id 는 커서의 유일한 출처)"
+  f02: "channel/src/index.ts 의 거부 사유 분기가 세 갈래다 — 해석 불가 / 루프백 + 비 ws 스킴(ws:// 를 지목) / 비루프백 평문(wss:// 를 지목)"
+  spec_amendment: a12bc0c        # SPEC v0.2.0 → v0.3.0, status completed → in-progress (amendment)
+
+documents_changed:
+  - path: CHANGELOG.md
+    what: "카드 t10 절 — «봉투 중화 (F-02)» 항목을 두 통로(알림 + fetch_history 결과)를 모두 이름으로 적는 문언으로 고쳤다. «한쪽만 막으면 같은 문자열이 통로만 바꾸어 도착한다» 는 사실과 id·at 을 중화하지 않는 이유를 함께 적었다. «도구 결과 형식» 소제목에도 원소의 author·body 가 중화되어 나온다는 문단을 더했다"
+  - path: README.md
+    what: "세 자리 — (1) F-02·F-03·F-04 닫힘 항목(:171)에 두 통로를 이름으로 명시, (2) fetch_history 안내(:106)에 원소 중화 사실 추가, (3) F-01 항목(:170)의 기제 서술을 오늘의 기제로 교체(아래 f03_correction)"
+  - path: .moai/specs/SPEC-CHANNEL-001/progress.md
+    what: "open_findings 의 F-02 행 — 닫힘 근거를 두 통로로 확장 기술. F-04 행과 나머지는 무변경"
+  - path: .moai/specs/SPEC-CHANWIRE-001/progress.md
+    what: "«닫힌 것 (후속 카드)» F-03 행 — 같은 이력 통로에 봉투 중화도 함께 걸렸다는 사실을 추가. 구조 방어 서술은 무변경"
+  - path: .moai/specs/SPEC-CHANINJECT-001/progress.md
+    what: "§E.3 M4 SHA 백필(04e1403) + commits 목록 넷째 줄 신설, §E.4 라운드 1 의 ac_count 수치 정정(32 → 25, 세는 명령 병기)과 gaps[0] 시제 정정, 본 라운드 2 블록 발행, 머리 표 «현재 상태» 행 갱신"
+
+f03_correction:
+  before: "«플러그인은 welcome 을 받았는지 보지 않은 채 도착한 프레임의 type 만 보고 처리합니다»"
+  why_false: "channel/src/gateway-client.ts:68-73 의 established 플래그가 실재하고, welcome 전에 온 message·permission_verdict·history_response 를 어느 콜백에도 넘기지 않는다. CHANGELOG.md 는 이미 정확히 적고 있었다"
+  after: "카드 t9 의 welcome 게이트·발신 집합 대조가 «request_id 를 모르는 상대» 를 막았지만, 소켓에서 진짜 request_id 를 읽을 수 있는 상대는 위조 판정을 «먼저 도착» 시켜 사람의 판정을 대신하거나 삼킨다"
+  severity_unchanged: "F-01 은 여전히 Critical·열림이다. 기제 문장만 갈아 끼웠고 결론(«사람이 누르지 않은 승인이 밀려들 수 있다»)은 참이므로 그대로 두었다"
+
+quality_gate:
+  npm_ci:      "PASS — npm ci → 종료 코드 0 (직접 실행, npm-ci.log)"
+  build:       "PASS — npm run build -w channel → 종료 코드 0, 출력 'tsc' 한 줄 (build.log). 테스트보다 먼저 돌렸다 — dist 가 없으면 자식 프로세스 기준 3건이 헛되이 실패한다"
+  typecheck:   "PASS — npm run typecheck -w channel → 종료 코드 0, 출력 'tsc --noEmit' 한 줄 (typecheck.log)"
+  tests:       "PASS — npm test -w channel → 'Test Files  5 passed (5)' / 'Tests  70 passed (70)', 종료 코드 0 (test.log)"
+  changelog_dup: "N/A — 이번 라운드는 신규 절 발행이 아니라 기존 카드 t10 절의 문언 정정이다. B12 자기점검 1(중복 발행 방지)은 발행 행위가 없어 적용 대상이 아니다"
+  ac_count:      "PASS — 25건 (자체 14 + 형제 인용 11). 명령: grep -oE 'AC-[A-Z]+-[0-9]+' .moai/specs/SPEC-CHANINJECT-001/acceptance.md | sort -u | wc -l → 25 (이 트리, 이 HEAD 04e1403 에서 직접 실행). 라운드 1 의 32 는 이번에 정정했다"
+  paths_exist:   "PASS — 문서가 지목한 소스 세 파일 실재: ls channel/src/index.ts channel/src/channel-server.ts channel/src/gateway-client.ts → 셋 다 존재"
+evidence_dir: .moai/state/verify/t10-sync-2/
+
+gaps:
+  - "sync_commit_sha 를 아직 채우지 못했다 — 리드가 «작업 → 보고 → 확인 → 커밋» 순서를 지시해 이번 라운드의 변경은 전부 미커밋 작업 트리 상태다. 커밋이 착지하면 그 SHA 를 후속 커밋으로 백필하고, 백필이 끝나면 이 항목을 라운드 1 gaps[0] 과 같은 과거형으로 고쳐 적는다"
+  - "린트를 돌리지 않았다 — channel 워크스페이스에 린트 스크립트가 없다(package.json 에 lint 없음). 라운드 1 과 같은 한계다"
+  - "커버리지는 이 라운드에서 sync 레인 오케스트레이터가 직접 재측정했다 — npm test -w channel -- --coverage → All files stmts 88.57% / branch 78.08% / funcs 97.22% / lines 89.16%, index.ts 63.63%(미측정 98-123). §E.3 의 M4 실측과 같은 값이다. 그 측정으로 CHANGELOG:47 의 91.11%(M3 시점 값)가 M4 이후 트리와 어긋난 것을 잡아 88.57% 로 정정했다 — 같은 문단이 M4 의 세 갈래 변경을 설명하면서 M4 이전 수치를 인용하는 자기모순이었다"
+  - "문서 변경이 옳은지를 재는 자동 기준이 없다 — CHANGELOG·README 문언은 회귀 스위트 밖이고, 소스 원문(channel/src/index.ts:78-91, channel-server.ts:26-28·134-136, gateway-client.ts:68-73) 대조로만 확인했다"
+  - "재감사를 아직 받지 않았다 — 이 블록은 재감사 «직전» 의 신호이고, 판정은 sync-auditor 의 몫이다"
+  - "카드 t4 의 sync 재감사는 여전히 이 카드의 범위 밖이다 (spec.md §5)"
+
+residual_risk:
+  - "«두 통로를 모두 적었다» 는 이번 정정의 핵심인데, 이것을 재는 자동 기준이 없다 — 다음 개정이 한쪽 통로만 적은 문장으로 되돌려도 테스트는 초록이다. 라운드 1 이 FAIL 을 받은 자리가 정확히 이 부류다"
+  - "브랜치를 푸시하지 않았다 — 이 워크트리가 유일 사본이다. 워크트리 처분은 재감사 판정과 병합 뒤로 미뤄야 한다"
+  - "§E.2 §7 의 «작업 트리 기준: HEAD 78e58b3, 미커밋 상태 — M4 커밋 SHA 는 리드 승인 후 백필한다» 문언은 손대지 않았다 — §E.2 는 manager-develop 소유이고 이번 지시에 포함되지 않았다. §E.3 은 백필했으므로 두 절의 시제가 갈려 있다. 리드 판단 항목이다"
 ```
 
 ## §F Phase 4 Mode Selection
