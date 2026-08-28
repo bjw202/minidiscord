@@ -66,6 +66,34 @@ handoff:
 
 **run 단계가 먼저 확인할 것.** M1 단계 0-3 — 현재 트리에서 F-01 이 여전히 재현되는지. 재현되지 않으면 그 사실이 먼저 설명되어야 한다.
 
+### REQ → AC 매핑
+
+> **이 표는 sync 단계에서 보충됐다 (작성: manager-spec, 카드 `t9` sync 레인).** plan 단계 산출물이어야 했으나 세 라운드 모두 표를 만들지 않았고, run 단계가 그 부재를 `.moai/reports/t9/run-done.md` §4.2 로 인계했다. 매핑은 `spec.md` §4 의 각 REQ 본문과 `acceptance.md` 의 각 AC 본문을 직접 읽어 도출했으며, **관측이 없는 조항은 빈칸을 메우지 않고 «관측 없음» 으로 적는다** — 매핑되지 않은 요구사항은 채워 넣을 칸이 아니라 발견 사항이다.
+
+| 요구사항 | 관측하는 AC | 관측의 실체 (읽은 자리) |
+|---|---|---|
+| REQ-CHANAUTH-001 (미확립 소켓의 세 프레임 차단) | AC-CHANAUTH-001 · **003 (가)** | 001 은 `verdicts`·`notes` 가 0건임을, 003 (가)는 `expect(settled).toBe('pending')` 로 이력 대기가 해소되지 않음을 잰다 |
+| REQ-CHANAUTH-002 (`welcome` 이후 종전대로 분배) | AC-CHANAUTH-002 · **003 (나)** | 002 는 같은 프레임이 `welcome` 뒤에는 각 1건 도달함을(001 의 짝), 003 (나)는 확립 후 이력 응답이 해소됨을 잰다 |
+| REQ-CHANAUTH-003 (상태는 소켓 하나에 붙는다) | AC-CHANAUTH-004 | 재접속 후 두 번째 소켓에서 `verdicts`·`notes` 가 둘 다 늘지 않음. `notes` 단언이 클라이언트 단위 구현(변이 B)을 잡는 유일한 자리 |
+| REQ-CHANAUTH-004 (예외 없음 · 프로세스 유지 · 재접속 유지 · stdout 침묵) | **부분** — AC-CHANAUTH-005 (재접속 유지) · AC-CHANAUTH-011 (a)·(b) (stdout 침묵) | **«예외를 던져서는 안 된다» 조항에는 실효 관측이 없다.** 변이 C 실측(HEAD `7f83c43`)에서 `throw` 구현이 005 의 네 단언을 모두 통과했다 — `acceptance.md` AC-CHANAUTH-005 §«열려 있는 것» 참조. 005 가 실제로 보증하는 것은 재접속 미유발까지다 |
+| REQ-CHANAUTH-005 (발신 시 id 기록) | AC-CHANAUTH-007 · (배선 없는 갈래) AC-CHANAUTH-006 + 형제 AC-CHANPERM-004 | 007 은 발신한 id 의 판정이 정확히 1건 나가는 것으로 기록의 성립을 간접 관측한다. `deps` 없는 배선 갈래는 `acceptance.md` 엣지 케이스 표의 해당 행이 지정한다 |
+| REQ-CHANAUTH-006 (미발신 id 판정 미중계) | AC-CHANAUTH-006 · AC-CHANAUTH-009 | 006 은 `'zzzzz'` 판정이 0건임을, 009 는 축출된 `req-0000` 판정이 0건임을 잰다 |
+| REQ-CHANAUTH-007 (정확히 한 번 + 소진) | AC-CHANAUTH-007 · AC-CHANAUTH-008 | 007 이 «한 번, 무변형», 008 이 «두 번째는 재생되지 않는다»(`deny` → `allow` 순서) |
+| REQ-CHANAUTH-008 (상한 128 · 선입선출 축출 · 디스크 미기록) | **부분** — AC-CHANAUTH-009 (상한·축출) | **«디스크에 기록되어서는 안 된다» 조항에는 AC 가 없다.** `acceptance.md` §품질 게이트 «무상태» 행(`git status --porcelain` 에 `channel/` 아래 새 산출물 없음)만이 이 조항에 닿으며, 그것은 AC 가 아니라 게이트 항목이고 회귀 스위트 안에도 없다 |
+| REQ-CHANAUTH-009 (버려진 판정이 프로세스·예외·거부·오알림을 만들지 않음) | AC-CHANAUTH-006 · 008 · 009 (`unhandled` + 정확 집합 단언) | 006 의 `expect(await unhandled()).toEqual([])` 와 008·009 의 `toEqual` 전량 단언. **주의**: 같은 수집기가 동기 uncaught exception 을 잡지 못한다는 것이 변이 C 실측으로 드러났다(위 REQ-004 행과 같은 한계) |
+| REQ-CHANAUTH-010 (비루프백 평문 거부 + stderr 한 줄) | AC-CHANAUTH-010 · AC-CHANAUTH-011 (a) | 010 이 판정 함수 9행 표를, 011 (a)가 진입점이 그 판정을 실제로 지키는지(연결 0건 + stderr 1줄)를 잰다. 둘이 짝이다 |
+| REQ-CHANAUTH-011 (해석 실패 시 미접속 — fail-closed) | **부분** — AC-CHANAUTH-010 (`'not a url'` 행) | 판정 함수 층은 잰다. **진입점 층에는 해석 불가 주소 갈래가 없다** — AC-CHANAUTH-011 의 네 갈래 (a)~(d) 는 모두 해석되는 주소를 쓴다((a)의 `localhost.example.test` 는 해석은 되고 조회만 실패한다). 진입점이 `false` 판정을 지키는 것은 (a)로 관측되므로 공백은 «해석 실패 자체» 한 갈래다 |
+| REQ-CHANAUTH-012 (`resolveUrl` 무변경 · stdio 비차단) | AC-CHANAUTH-011 (c)·(d) | (c)가 `resolveUrl('ws://example/bot')` 반환값을 글자 그대로, (d)가 거부되는 주소로 띄운 자식이 stdio `initialize` 에 답하는지를 잰다 |
+| REQ-CHANAUTH-013 (범위 경계) | AC-CHANAUTH-012 | 네 git 명령 — 기준 SHA 존재, `server/`·`web/` 빈 diff, `channel/src` 정확히 세 파일, `channel/package.json` 빈 diff |
+
+**전건 매핑됐다 — 다만 셋은 조항 단위로 부분 매핑이다.** REQ-CHANAUTH-001..013 열셋 모두 최소 하나의 AC 에 닿으므로 DoD 의 «각각이 최소 하나의 AC 에 매핑돼 있다» 는 충족된다. 그러나 REQ 를 조항 단위로 쪼개 보면 셋에 공백이 있고, 위 표가 그 자리를 «부분» 으로 표시했다. 정리하면:
+
+1. **REQ-CHANAUTH-004 «예외 미발생»** — 실효 관측 없음. 실측으로 확인된 공백이며(변이 C), 메우려면 테스트 변경이 필요하므로 run 단계 몫이다.
+2. **REQ-CHANAUTH-008 «디스크 미기록»** — AC 없음. 품질 게이트 «무상태» 행만 닿고, 그 행은 회귀 스위트 밖이다(`acceptance.md` §«이 문서가 지키는 검증 원칙» 2번이 경계한 부류와 같은 모양이다).
+3. **REQ-CHANAUTH-011 «해석 실패» 의 진입점 갈래** — 판정 함수 층만 관측된다.
+
+**AC-CHANAUTH-013 은 어느 REQ 에도 매핑되지 않는다.** 그것은 요구사항의 관측이 아니라 **관측 순서 자체의 기록**(RED→GREEN 일곱 전이)이며, 이 카드 한 번의 이력 확인이다. 매핑 공백이 아니므로 위 표에 행을 두지 않았다.
+
 ---
 
 ## §E.2 Run-phase Evidence
