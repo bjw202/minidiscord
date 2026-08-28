@@ -9,10 +9,10 @@
 | 재현 프로브 | `.moai/state/verify/t4-sync-audit/probe-rogue.ts` · `p6-rogue.log` |
 | 워크트리 | `.claude/worktrees/t9` (브랜치 `WT-chanperm-gate`) |
 | 선행 SPEC | `SPEC-CHANNEL-001` · `SPEC-CHANCLIENT-001` · `SPEC-CHANWIRE-001` · `SPEC-CHANPERM-001` (전부 카드 `t4` 에서 착지) |
-| 결합 개정 | `SPEC-CHANPERM-001` v0.4.0 (REQ-008 + AC-005·006·007·008·009) · `SPEC-CHANCLIENT-001` v0.4.0 (REQ-004·005 + 하네스) — 둘 다 같은 패스에서 완료 |
-| 계획 감사 | 1차 `.moai/reports/t9/plan-audit.md` — FAIL 0.55, 차단 7건. 교정 대장 `.moai/reports/t9/plan-done-2.md`, 2차 판정 예정 `.moai/reports/t9/plan-audit-2.md` |
+| 결합 개정 | `SPEC-CHANPERM-001` v0.3.0 (REQ/AC-008) + v0.4.0 (AC-005·006·007·009, **REQ 무변경**) · `SPEC-CHANCLIENT-001` v0.4.0 (REQ-004·005 + 하네스) — 전부 같은 패스에서 완료 |
+| 계획 감사 | 1차 `.moai/reports/t9/plan-audit.md` — FAIL 0.55, 차단 7건 (대장 `plan-done-2.md`). 2차 `.moai/reports/t9/plan-audit-2.md` — FAIL 0.74, 차단 7건 + optional 3건 (대장 `plan-done-3.md`). 3차 판정 예정 `.moai/reports/t9/plan-audit-3.md` — **마지막 라운드** |
 | 인계 카드 | `t15` — F-01 잔여 절반(사칭 채팅 주입·이력 오염) |
-| 현재 상태 | `draft` v0.2.0 — plan 단계 교정 1회차 완료, 재감사 대기 |
+| 현재 상태 | `draft` v0.3.0 — plan 단계 교정 2회차 완료, 3차(최종) 재감사 대기 |
 
 ---
 
@@ -22,7 +22,7 @@
 plan_status: audit-ready
 spec_id: SPEC-CHANAUTH-001
 card: t9
-spec_version: 0.2.0
+spec_version: 0.3.0
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 requirements: 13     # REQ-CHANAUTH-001..013
@@ -30,12 +30,18 @@ criteria: 13         # AC-CHANAUTH-001..013
 plan_audit:
   round_1: { report: ".moai/reports/t9/plan-audit.md", verdict: FAIL, score: 0.55, blocking: 7 }
   round_1_response: ".moai/reports/t9/plan-done-2.md"
-  round_2_expected: ".moai/reports/t9/plan-audit-2.md"
+  round_2: { report: ".moai/reports/t9/plan-audit-2.md", verdict: FAIL, score: 0.74, blocking: 7, optional: 3 }
+  round_2_response: ".moai/reports/t9/plan-done-3.md"
+  round_3_expected: ".moai/reports/t9/plan-audit-3.md"   # 최종 라운드 (3/3)
 coupled_revision:
   - spec: SPEC-CHANPERM-001
+    version: 0.3.0
+    items: [REQ-CHANPERM-008, AC-CHANPERM-008]
+    reason: "발신 id 대조가 기존 무상태 계약과 정면 충돌 — 요구사항 층 개정"
+  - spec: SPEC-CHANPERM-001
     version: 0.4.0
-    items: [REQ-CHANPERM-008, AC-CHANPERM-005, AC-CHANPERM-006, AC-CHANPERM-007, AC-CHANPERM-008, AC-CHANPERM-009]
-    reason: "발신 id 대조가 기존 무상태 계약과 충돌(v0.3.0) — 그 계약에 걸리는 형제 기준 넷을 v0.4.0 이 함께 개정(계획 감사 C-02)"
+    items: [AC-CHANPERM-005, AC-CHANPERM-006, AC-CHANPERM-007, AC-CHANPERM-009]
+    reason: "v0.3.0 계약 아래에서 거짓 실패하는 형제 기준 넷 — 검증 층에서만 일어난 개정이며 REQ 는 한 건도 바뀌지 않았다(그쪽 HISTORY v0.4.0, 계획 감사 C-02·N-10)"
   - spec: SPEC-CHANCLIENT-001
     version: 0.4.0
     items: [REQ-CHANCLIENT-004, REQ-CHANCLIENT-005, AC-CHANCLIENT-002, AC-CHANCLIENT-005]
