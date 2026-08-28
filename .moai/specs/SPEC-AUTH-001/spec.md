@@ -179,6 +179,8 @@ SPEC-AUTH-001 (여기) → SPEC-ROOM-001 → SPEC-BOT-001
 - 세션 만료·회전, 로그인 시도 제한(rate limit), CSRF 토큰
 - 비밀번호 변경·재설정, 계정 삭제, 관리자 역할
 - 방별 접근 권한(원본 `spec-v2.md` 2장이 YAGNI 로 명시적으로 배제)
+
+  > **개정 (2026-08-29, `SPEC-ROOMAUTHZ-001`).** 이 항목은 뒤집혔다 — `SPEC-ROOMAUTHZ-001` 이 방별 접근 권한을 만들었다. 이 SPEC 의 `requireAuth` 는 바뀌지 않으며, 멤버십 검사는 그 **뒤에** 오는 별도 preHandler 다. 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
 - HTTPS 및 `secure` 쿠키 속성 — 평문 HTTP 를 수용하는 것이 원본 설계의 결정이다
 
 ### Out of Scope — 운영 관심사

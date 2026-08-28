@@ -133,6 +133,8 @@ const body = behavior === 'allow' ? `✅ 승인 전송됨 (${requestId})` : `⛔
 
 Global Constraints 가 "계약 변경이 필요해 보이면 임의로 바꾸지 말고 중단하고 보고한다"고 지시하므로 만들지 않고 `spec.md` §5 에 소유자와 함께 기록했으며, 리드에 보고했다. 넷 중 어느 것이든 하기로 결정되면 별도 SPEC 이 맞다 — 타임아웃은 채널 계약을, 멤버십은 스키마를 건드린다.
 
+> **개정 (2026-08-29, `SPEC-ROOMAUTHZ-001`).** 위 표의 **"방 멤버십" 행은 뒤집혔다.** 스키마에 검사할 대상이 없다는 근거가 사라졌다 — `SPEC-ROOMAUTHZ-001` 이 `room_members` 표와 `rooms.created_by` 를 더했고, 같은 SPEC 이 `tryHandleUserReply` 시그니처를 개정했다(§C 참조 대상은 그쪽 문서다). 나머지 세 항목(전용 엔드포인트·타임아웃·연결 해제 정리)은 여전히 만들지 않는다. 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
+
 ### 5. `setPermissionHandler` 의 `params` 가 `any`
 
 게이트웨이 쪽 타입은 `(info: ConnInfo, params: any) => void` 이고, 게이트웨이는 수신한 WebSocket 메시지 **전체**(즉 `type: 'permission_request'` 필드를 포함한 객체)를 넘긴다. 브로커 쪽은 네 필드만 선언한 좁은 타입으로 받는다.
