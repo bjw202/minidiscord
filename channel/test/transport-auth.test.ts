@@ -359,11 +359,13 @@ describe('transport auth', () => {
     const bad = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: 'not a url' })
     // (나) 같은 스텁을 겨냥한 정상 주소 — 스텁이 실제로 접속을 받는다는 대조
     const good = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: `ws://127.0.0.1:${stub.port()}/bot` })
+    // (다) 루프백인데 스킴이 http: — 해석에는 성공하므로 (가)의 갈래로 떨어지지 않는다 (v0.3.0 신설)
+    const wrongScheme = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: `http://127.0.0.1:${stub.port()}/bot` })
     await waitFor(() => stub.connections() === 1, '대조 갈래의 루프백 접속')
     await settle()
 
     const err = bad.stderr()
-    expect(stub.connections()).toBe(1)            // (나) 하나뿐이다 — (가)는 아무것도 열지 않았다
+    expect(stub.connections()).toBe(1)            // (나) 하나뿐이다 — (가)·(다)는 아무것도 열지 않았다
     expect(bad.proc.exitCode).toBeNull()          // 살아 있다 (반환 객체가 아니라 proc 에 있다)
     expect(bad.stdout()).toBe('')                 // stdout 은 MCP 통로다 — 한 글자도 안 된다
     expect(err.split('\n').filter(Boolean).length).toBe(1)   // stderr 는 정확히 한 줄
@@ -371,5 +373,15 @@ describe('transport auth', () => {
     expect(err).toContain('해석')                  // 사유가 «해석 실패» 다
     expect(err).not.toContain('wss://')           // 존재하지 않는 호스트를 근거로 안내하지 않는다
     expect(err).not.toContain('루프백')
+
+    // (다) 갈래의 단언 — 사유는 «루프백 + 잘못된 스킴» 이라는 사실과 그 조치를 말해야 한다.
+    const werr = wrongScheme.stderr()
+    expect(wrongScheme.proc.exitCode).toBeNull()  // 이 갈래도 프로세스는 산다
+    expect(wrongScheme.stdout()).toBe('')
+    expect(werr.split('\n').filter(Boolean).length).toBe(1)
+    expect(werr).toContain(`http://127.0.0.1:${stub.port()}/bot`)   // 거부한 값을 알려준다
+    expect(werr).toContain('ws://')               // 운영자가 취할 조치를 정확히 지목한다
+    expect(werr).not.toContain('wss://')          // 조치를 반대로 안내하지 않는다 (sync 감사 F-02)
+    expect(werr).not.toContain('비루프백')          // 127.0.0.1 은 루프백이다 — 사실과 다른 서술 금지
   })
 })

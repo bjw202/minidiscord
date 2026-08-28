@@ -126,13 +126,12 @@ describe('channel server', () => {
     const { client } = await connect()
     const fh = await toolNamed(client, 'fetch_history')
     const d = fh.description ?? ''
-    // 양성 — 커서를 어디서 읽는지 말한다
-    expect(d).toContain('cursor')
-    expect(d).toContain('since_id')
+    // 양성 — 커서를 어디서 읽는지 말한다. 낱말이 아니라 **문장을 통째로** 잰다 (검증 원칙 3).
+    expect(d).toContain('결과는 JSON 한 건이고, 다음 요청의 since_id 로는 결과 JSON 의 cursor 필드 값을 그대로 넘긴다.')
     // 부재 — 본문에서 읽으라는 옛 안내가 사라졌다 (F-03 의 지시 근거)
     expect(d).not.toContain('#번호')
     const sinceIdParam = (fh.inputSchema as any).properties.since_id.description ?? ''
-    expect(sinceIdParam).toContain('cursor')
+    expect(sinceIdParam).toContain('결과 JSON 의 cursor 필드 값을 넘긴다.')
     expect(sinceIdParam).not.toContain('#')
   })
 

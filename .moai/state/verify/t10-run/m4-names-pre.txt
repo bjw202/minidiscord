@@ -30,7 +30,7 @@
 ✓ test/gateway-client.test.ts > gateway client > survives frames whose callback was not provided
 ✓ test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again
 ✓ test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection
-✓ test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+✓ test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single structured element
 ✓ test/index-wiring.test.ts > channel wiring > a TO message reports working to the gateway
 ✓ test/index-wiring.test.ts > channel wiring > cc message is delivered but raises no working status
 ✓ test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty

@@ -23,7 +23,7 @@ export const INSTRUCTIONS = [
 // ASCII 대소문자 무시, 태그 경계가 아니라 부분 문자열(`<channels>` 도 대상이다, fail-closed) — 의
 // 여는 꺾쇠 `<` 만 `&lt;` 로 바꾼다. 삭제·절단·마스킹이 아니므로 사람이 읽을 때 원문의 뜻이 남고,
 // 그 밖의 문자는 한 글자도 건드리지 않는다.
-function neutralizeEnvelope(s: string): string {
+export function neutralizeEnvelope(s: string): string {
   return s.replace(/<\/?channel/gi, m => `&lt;${m.slice(1)}`)
 }
 
