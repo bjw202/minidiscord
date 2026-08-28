@@ -31,13 +31,16 @@
 
 ## 공통 테스트 하네스
 
-아래 모든 시나리오는 `channel/test/gateway-client.test.ts` 의 다음 하네스를 쓴다. `plan-v2.md` Task 12 Step 1 의 `startServer()` 에 **다섯 가지가 더해졌다.**
+아래 모든 시나리오는 `channel/test/gateway-client.test.ts` 의 다음 하네스를 쓴다. `plan-v2.md` Task 12 Step 1 의 `startServer()` 에 **여섯 가지가 더해졌다** (여섯째는 v0.4.0).
 
 1. **일괄 정리 목록 `cleanups`** — 원본은 각 테스트 끝에서 `client.stop(); srv.wss.close()` 를 손으로 부른다. 한 곳만 빠뜨려도 열린 소켓 때문에 vitest 프로세스가 종료되지 않는데, 그 누락은 리뷰에서 눈에 띄지 않는다. 정리 책임을 개별 테스트에서 걷어 냈다.
 2. **`stopServer` 가 소켓을 먼저 끊는다** — `wss.close()` 는 리스닝만 멈추고 이미 수립된 연결은 남을 수 있다. 재접속 기준은 클라이언트가 `close` 를 **보는 것**이 전제라, 확실히 끊는 경로를 따로 두었다.
 3. **`waitFor` (조건 폴링)** — 원본의 고정 시간 대기를 대체한다. 위 검증 원칙 절의 "반대 방향" 항목이 그 이유다.
 4. **`sockets` 배열** — 서버가 수립한 연결을 순서대로 모은다. 재접속 관측과 응답 전송에 쓴다.
 5. **`on(handler)` 훅** — 서버가 받은 프레임에 반응해 응답을 보내야 하는 시나리오(`history_response`)를 위한 자리.
+6. **`autoWelcome` (v0.4.0, 카드 `t9`)** — `hello` 에 `welcome` 으로 답한다. 기본값 `true`. REQ-CHANCLIENT-004·005 의 분배 의무가 세션 확립 뒤에만 성립하도록 개정됐으므로(§4.2), `welcome` 을 보내지 않는 서버 앞에서는 분배 기준이 **아무것도 관측하지 못한다** — 정상 구현인데도 `waitFor` 타임아웃과 10초 reject 로 실패한다. 이 손잡이가 없던 v0.3.0 하네스에서 깨지는 기준은 일곱 건이었다(전건 열거: `SPEC-CHANAUTH-001/spec.md` §3.2).
+
+> **개정 이력 (v0.4.0).** 하네스 변경으로 본문이 함께 바뀐 기준은 **둘뿐**이다 — AC-CHANCLIENT-002(자기 `welcome` 하나만 세도록 `autoWelcome: false`)와 AC-CHANCLIENT-005(`seen` 기대값에 `'welcome'` 이 앞선다). 나머지 다섯(AC-003·004·007·008·010)은 **본문 한 글자도 바뀌지 않고** 하네스만으로 되살아난다. 개정하지 않은 아홉 건(AC-001·006·009·011·012·013·014·015·016)은 `welcome` 없이도 성립하므로 손대지 않았다.
 
 **정리는 개별 테스트가 아니라 `cleanups` 가 한다.** 아래 시나리오 본문에는 `stop()` 도 `close()` 도 한 줄도 나오지 않는다 — 빠뜨릴 수 있는 자리를 없앤 것이다. `afterEach` 는 **가짜 타이머를 먼저 실제 타이머로 되돌린 뒤** 정리를 실행한다. 순서를 뒤집으면 AC-CHANCLIENT-009 가 남긴 가짜 타이머 위에서 서버 종료 콜백을 기다리게 되어 정리가 멈춘다.
 
@@ -63,7 +66,13 @@ interface FakeServer {
   url(): string
 }
 
-function startServer(): FakeServer {
+// autoWelcome: hello 를 받으면 welcome 으로 답한다. 기본값이 true 인 것이 v0.4.0 개정이다 —
+// REQ-CHANCLIENT-004·005 의 분배 의무가 세션 확립 뒤에만 성립하므로(§4.2), welcome 을 보내지
+// 않는 서버를 상대로는 프레임 분배 기준이 아무것도 관측하지 못한다. 형제 하네스
+// (index-wiring.test.ts·permission-relay.test.ts)가 이미 쓰는 형태와 같다.
+// false 로 두는 자리는 하나뿐이다 — 자기 welcome 하나만 세는 AC-CHANCLIENT-002.
+function startServer(opts: { autoWelcome?: boolean } = {}): FakeServer {
+  const autoWelcome = opts.autoWelcome ?? true
   const wss = new WebSocketServer({ port: 0 })
   const messages: any[] = []
   const sockets: WebSocket[] = []
@@ -73,6 +82,9 @@ function startServer(): FakeServer {
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       messages.push(m)
+      if (autoWelcome && m.type === 'hello') {
+        ws.send(JSON.stringify({ type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 0 }))
+      }
       for (const h of handlers) h(ws, m)
     })
   })
@@ -177,7 +189,7 @@ it('sends hello with the token as the very first frame', async () => {
 
 ```ts
 it('passes the welcome frame through untouched, extra fields included', async () => {
-  const srv = startServer()
+  const srv = startServer({ autoWelcome: false })   // 이 기준만 자기 welcome 하나를 직접 보낸다
   const got: any[] = []
   await connected(srv, { onWelcome: w => got.push(w) })
   const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 42 }
@@ -188,6 +200,8 @@ it('passes the welcome frame through untouched, extra fields included', async ()
 ```
 
 **Then** 테스트가 통과한다. `missed_after_id` 를 단언하는 부분이 이 기준의 핵심이다 — 옵션 타입에 그 필드가 없다는 이유로 `{ room_id, bot_id, bot_name }` 세 개만 골라 새 객체로 넘기는 구현은 여기서 걸린다.
+
+**`autoWelcome: false` 인 이유 (v0.4.0).** 하네스 기본값은 `hello` 에 `welcome` 으로 답하는 것인데, 이 기준은 `got.length === 1` 로 **정확히 하나**를 세므로 하네스가 보낸 `welcome` 이 섞이면 두 건이 되어 무너진다. 이 기준의 관측 대상은 세션 확립이 아니라 프레임의 **통과 충실성**이므로, 자기 프레임 하나만 보내는 형태를 유지한다 — 그래서 하네스 손잡이를 껐다. 이 SPEC 에서 `autoWelcome: false` 를 쓰는 자리는 여기 하나뿐이다.
 
 이 기준이 재는 것은 그 필드의 쓰임이 아니라 **통과 충실성**이다. `missed_after_id` 의 소비자는 서버 자신이고(`server/src/gateway.ts:101-108` 이 그 커서 이후를 스스로 재전송한다), 채널 쪽에는 이 값을 읽는 자리가 없다. 그런데도 단언하는 이유는, 클라이언트가 해석하지 않는 필드를 좁혀 버리는 구현은 **지금 실려 오는 필드도 나중에 늘어날 필드도 똑같이 잃기** 때문이다. 그 손실은 **타입 검사로 잡히지 않고**, 클라이언트가 필드의 의미를 모르므로 무엇이 사라졌는지 스스로 알 수도 없다. `missed_after_id` 는 그 부류를 잡기 위한 관측 대상이지, 이 SPEC 이 지키는 기능이 아니다(REQ-CHANCLIENT-003).
 
@@ -248,8 +262,10 @@ it('routes by type only — an unknown frame reaches no callback', async () => {
   const sock = srv.sockets[0]
   sock.send(JSON.stringify({ type: 'presence', body: '모르는 프레임' }))   // 먼저 보낸다
   sock.send(JSON.stringify({ type: 'message', id: 1, body: 'x', author_name: 'a', delivery: 'to' }))
-  await waitFor(() => seen.length >= 1)
-  expect(seen).toEqual(['message'])          // 앞서 보낸 미지의 프레임은 세지 않았다
+  await waitFor(() => seen.length >= 2)
+  // 하네스가 hello 에 welcome 으로 답하므로 welcome 이 먼저 온다 (v0.4.0).
+  // 미지의 프레임 presence 는 그 사이에 있었고 세지 않았다.
+  expect(seen).toEqual(['welcome', 'message'])
 })
 
 it('survives frames whose callback was not provided', async () => {
@@ -282,7 +298,9 @@ it('drops a malformed frame and keeps processing the next valid one', async () =
 
 **Then** 세 테스트가 통과한다.
 
-첫 테스트의 판정 근거는 **순서**다. 한 소켓 위의 두 프레임은 보낸 순서대로 도착하므로, 미지의 프레임은 `message` 보다 먼저 처리된다. 마지막 갈래를 `else { opts.onMessage?.(msg) }` 로 둔 구현에서는 `seen` 이 `['message','message']` 가 되어 `toEqual` 이 실패한다. 고정 시간 대기 없이 부정 관측을 하는 방법이기도 하다 — 뒤에 보낸 프레임의 도착이 앞의 것이 이미 처리됐다는 증거다.
+첫 테스트의 판정 근거는 **순서**다. 한 소켓 위의 프레임은 보낸 순서대로 도착하므로, 하네스의 `welcome` → 미지의 `presence` → `message` 순으로 처리된다. 미지의 프레임은 `message` 보다 먼저 처리되므로, 마지막 갈래를 `else { opts.onMessage?.(msg) }` 로 둔 구현에서는 `seen` 이 `['welcome','message','message']` 가 되어 `toEqual` 이 실패한다.
+
+**기대값에 `'welcome'` 이 앞서는 것이 v0.4.0 개정이다.** 세션 확립 전제(§4.2)가 붙었으므로 `welcome` 없이는 `message` 자체가 분배되지 않고, 그러면 이 기준은 구현이 옳아도 `waitFor` 타임아웃으로 실패한다. `welcome` 을 세지 않도록 `onWelcome` 을 빼는 방법도 있었지만 그렇게 하지 않았다 — 그 콜백을 등록해 두는 것이 "미지의 프레임이 **세 콜백 어디로도** 새지 않는다"를 재는 형태이기 때문이다. 고정 시간 대기 없이 부정 관측을 하는 방법이기도 하다 — 뒤에 보낸 프레임의 도착이 앞의 것이 이미 처리됐다는 증거다.
 
 둘째 테스트는 콜백이 없을 때 예외로 죽지 않는지를 본다. 관측 대상은 "예외가 안 났다"가 아니라 **그 뒤에도 소켓으로 프레임을 보낼 수 있는가**다 — 죽은 클라이언트는 그 단언을 통과할 수 없다.
 

@@ -1,10 +1,10 @@
 ---
 id: SPEC-CHANCLIENT-001
 title: "minidiscord 게이트웨이 클라이언트 — 채널 플러그인이 봇 게이트웨이에 붙어 있게 하는 WebSocket 배관"
-version: "0.3.0"
+version: "0.4.0"
 status: in-progress
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -22,6 +22,7 @@ related_specs: [SPEC-GATEWAY-001, SPEC-CHANWIRE-001, SPEC-CHANPERM-001]
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.4.0 | 2026-08-28 | **계약 개정 — 세션 확립 전제 (카드 `t9`, 계획 감사 C-03).** v0.3.0 §5 는 F-01 을 "이 카드에서 해소하지 않았다"로 기록하고 별도 카드에 넘겼다. 그 카드가 `t9`(`SPEC-CHANAUTH-001`)이고, **그쪽 REQ-CHANAUTH-001 이 이 SPEC 의 REQ-CHANCLIENT-004·005 와 정면 충돌한다** — 이쪽은 프레임이 도착하면 **조건 없이** 분배하라고 요구하고, 저쪽은 `welcome` 이 오기 전에는 **어떤 콜백에도 전달하지 말라**고 요구한다. `t9` 의 첫 계획(`SPEC-CHANAUTH-001` v0.1.0)은 `SPEC-CHANPERM-001` 만 개정하고 이 SPEC 을 건드리지 않았고, 계획 감사가 그 누락을 Critical 로 지목했다. **개정 내용은 둘이다.** (1) **REQ-CHANCLIENT-004·005** 에 세션 확립 전제를 달았다 — 분배 의무는 `welcome` 이 도착한 소켓에 대해서만 성립하며, 그전에 도착한 세 프레임은 버린다. **통과 충실성 조항(필드를 잃거나 바꾸지 않는다)은 한 글자도 바뀌지 않는다** — 바뀐 것은 "언제 분배하는가"뿐이다. (2) `acceptance.md` 공통 하네스의 `startServer()` 가 `hello` 에 `welcome` 으로 답하도록 `autoWelcome` 손잡이를 달았고(기본값 `true` — 형제 하네스 `index-wiring.test.ts`·`permission-relay.test.ts` 가 이미 쓰는 형태다), 그에 따라 **AC-CHANCLIENT-002·005 두 건의 본문**이 바뀌었다. 하네스 변경만으로 되살아나는 기준이 다섯 건 더 있다(AC-003·004·007·008·010 — 전건 열거는 `SPEC-CHANAUTH-001/spec.md` §3.2). **요구사항 14개·수용 기준 16개는 개수 그대로다.** 구현과 테스트 교체는 `SPEC-CHANAUTH-001` 의 run 단계(M1)가 수행한다. | manager-spec |
 | 0.3.0 | 2026-08-27 | **sync 감사 마감 라운드 (F-05).** `.moai/reports/t4/sync-audit.md` 가 이 SPEC 에서 High 1건을 실행으로 재현했다 — `gateway-client.ts` 의 `ws.on('message')` 리스너가 `JSON.parse` 를 무방비로 부르고 있어, JSON 아닌 프레임 **한 개**로 `uncaughtException` 이 나 프로세스가 끝난다(`P4_EXIT=1`). 재접속조차 없다, 프로세스가 없기 때문이다. v0.2.1 까지 엣지 케이스 표는 이것을 "미검증 — 수용" 으로 적었으나, 수용 기록이 결함을 결함이 아니게 만들지는 않는다 — 같은 파일이 형제 위험은 모두 막아 두었고(`ws.on('error')`), 서버 쪽 같은 자리도 `try/catch` 다. **REQ-CHANCLIENT-006 에 파싱 실패 조항을 더하고 AC-CHANCLIENT-005 에 셋째 테스트를 더해 닫았다**(변이 `M-F05 revert try/catch` 로 조준 확인, 이 테스트 한 건만 실패). 요구사항 14개·수용 기준 16개 그대로다 — Tier M 상한(16/16)을 넘지 않으려고 새 AC 를 만드는 대신 같은 요구사항을 재는 AC-005 를 넓혔다. 함께 미해소 결함 F-01(상대 인증 부재)·F-07(평문 토큰)을 §5 에 기록했다 — **이 카드는 그 둘을 고치지 않았다.** | manager-spec |
 | 0.2.1 | 2026-08-27 | **2차 감사 사소 교정 (근거 문장 한 곳).** 2차 판정은 PASS 였고, 사소 지적 m3 하나만 닫았다 — `REQ-CHANCLIENT-003` 의 근거 문장이 `missed_after_id` 커서를 "쓰는 `SPEC-CHANWIRE-001` 쪽"이라고 적었으나 **그런 소비자는 존재하지 않는다.** 실제 소비자는 서버 자신으로, `server/src/gateway.ts:101-108` 이 `welcome` 을 보낸 직후 그 커서 이후의 메시지를 스스로 재전송한다(직접 확인). 요구사항 자체와 실제 영향은 그대로이므로 근거만 바로잡고, 이 요구사항이 겨냥하는 것이 그 필드 하나가 아니라 **해석하지 않는 프레임의 통과 충실성**이라는 점을 §4.1·§5·`acceptance.md` AC-CHANCLIENT-002·`plan.md` §E 에 다시 적었다. **요구사항·수용 기준은 개수·내용 모두 그대로다.** | manager-spec |
 | 0.2.0 | 2026-08-27 | **plan-audit 교정 라운드 (프론트매터 한 줄).** `.moai/reports/t4/plan-audit.md` 가 주요 1건(M5)을 지적했다 — `depends_on: []` 이 실행 순서를 보증하지 않는다는 것. "코드 의존이 아니라 실행 전제"라는 v0.1.0 의 관찰은 옳지만 결론이 틀렸다: `depends_on` 이 표현하는 것은 import 그래프가 아니라 **착수 가능 조건**이고, 비워 두면 스케줄러가 이 SPEC 을 `SPEC-CHANNEL-001` 보다 먼저 띄울 수 있어 수용 기준 16개가 전부 실행 불가가 된다. `depends_on: [SPEC-CHANNEL-001]` 로 고쳤고, 그 의존이 코드 import 가 아니라 패키지 스캐폴드 선행이라는 구분은 §3 과 `plan.md` §A 에 그대로 남겼다. **요구사항·수용 기준은 개수·내용 모두 그대로다**(REQ-CHANCLIENT-001..014, AC-CHANCLIENT-001..016). | manager-spec |
@@ -129,11 +130,19 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 
 ### 4.2 수신 프레임 분배
 
-**REQ-CHANCLIENT-004** (When — 이벤트 구동)
-`type: 'message'` 프레임이 도착하면 `onMessage` 를, `type: 'permission_verdict'` 프레임이 도착하면 `onVerdict` 를, 각각 그 프레임 객체 그대로 호출해야 한다. `files` 배열, `delivery` 값, `behavior` 값을 포함해 어떤 필드도 잃거나 바꾸지 않아야 한다.
+> **세션 확립 전제 (v0.4.0, 카드 `t9`).** 아래 두 조항의 분배 의무는 **`welcome` 프레임이 이미 도착한 소켓**에 대해서만 성립한다. 그전에 도착한 `message`·`permission_verdict`·`history_response` 는 버린다 — 상세와 근거는 `SPEC-CHANAUTH-001` REQ-CHANAUTH-001·002·003 이 소유하며, 이 SPEC 은 그 전제를 받아 적는다. **전제는 "언제 분배하는가"만 좁힌다. 통과 충실성(어떤 필드도 잃거나 바꾸지 않는다)은 전혀 바뀌지 않는다.**
+>
+> 이 전제가 `welcome` 을 인증의 증거로 삼는 것은 **아니다.** `welcome` 프레임에는 토큰 지식의 증거가 없고, 게이트가 사는 것은 `hello` 에 응답하지 않는 상대의 차단 하나뿐이다 (`SPEC-CHANAUTH-001` §2.1).
 
-**REQ-CHANCLIENT-005** (When — 이벤트 구동)
-`type: 'history_response'` 프레임이 도착하면 클라이언트는 그 프레임의 `rid` 로 대기 맵을 조회해, 있으면 그 항목의 타이머를 해제하고 맵에서 지운 뒤 **그 프레임 객체 전체**로 `resolve` 해야 한다. `messages` 필드만 꺼내 넘겨서는 안 된다.
+**REQ-CHANCLIENT-004** (While — 상태 구동 + When — 이벤트 구동)
+현재 소켓으로 `welcome` 이 도착한 뒤에 `type: 'message'` 프레임이 도착하면 `onMessage` 를, `type: 'permission_verdict'` 프레임이 도착하면 `onVerdict` 를, 각각 그 프레임 객체 그대로 호출해야 한다. `files` 배열, `delivery` 값, `behavior` 값을 포함해 어떤 필드도 잃거나 바꾸지 않아야 한다.
+
+`welcome` 이 아직 도착하지 않은 동안 같은 두 프레임이 도착하면 **어떤 콜백도 호출해서는 안 된다** (REQ-CHANAUTH-001).
+
+**REQ-CHANCLIENT-005** (While — 상태 구동 + When — 이벤트 구동)
+현재 소켓으로 `welcome` 이 도착한 뒤에 `type: 'history_response'` 프레임이 도착하면 클라이언트는 그 프레임의 `rid` 로 대기 맵을 조회해, 있으면 그 항목의 타이머를 해제하고 맵에서 지운 뒤 **그 프레임 객체 전체**로 `resolve` 해야 한다. `messages` 필드만 꺼내 넘겨서는 안 된다.
+
+`welcome` 이 아직 도착하지 않은 동안 도착한 `history_response` 는 **대기 맵을 조회해서도, 어떤 약속을 해소해서도 안 된다.** 그 요청은 평소대로 10초 타임아웃으로 reject 된다 (REQ-CHANCLIENT-011 무변경).
 
 **REQ-CHANCLIENT-006** (Unwanted — shall not)
 위 네 가지 `type` 중 어느 것에도 해당하지 않는 프레임은 **어떤 콜백에도 전달되어서는 안 된다**. 분배는 `type` 값에 의한 배타 분기이며, 마지막 갈래를 `else` 로 두어 남는 것을 `onMessage` 로 흘려보내서는 안 된다.
@@ -209,7 +218,14 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 - `server/src/gateway.ts` 전체 — `hello` 토큰 검증, `welcome` 발행, `history_request` 처리와 `since_id` 필터, `missed_after_id` 재전송
 - 이 SPEC 의 테스트는 실제 게이트웨이가 아니라 테스트 안의 가짜 `WebSocketServer` 를 상대한다. 두 쪽이 실제로 맞물리는지는 원본 Task 18 의 E2E 가 본다
 
-### Out of Scope — 상대 인증과 접속 상태 게이팅 (감사 F-01, 미해소)
+### Out of Scope — 상대 인증과 접속 상태 게이팅 (감사 F-01 — 카드 `t9`·`t15` 로 인계 완료)
+
+> **v0.4.0 갱신.** 아래 v0.3.0 서술은 이 결함을 "미해소, 별도 카드 소유"로 남겼다. 그 별도 카드가 **`t9`(`SPEC-CHANAUTH-001`)** 로 확정됐고, 아래 두 항목의 처리 결과는 이렇다.
+>
+> - **접속 상태 게이팅** — `t9` 가 소유하며, 그 귀결로 **이 SPEC 의 REQ-CHANCLIENT-004·005 에 세션 확립 전제가 붙었다**(§4.2, v0.4.0). 즉 이 항목은 더 이상 "범위 밖"이 아니라 **이 SPEC 의 계약 일부**다. 구현은 여전히 `t9` 의 run 단계가 한다.
+> - **`wss://` 스킴 검증** — `t9` 의 REQ-CHANAUTH-010 이 소유한다. `channel/src/index.ts` 를 고치므로 이 SPEC 의 범위 밖인 것은 그대로다.
+>
+> **그리고 게이팅이 서도 상대 인증은 여전히 없다.** `welcome` 프레임에는 토큰 지식의 증거가 없으므로(`SPEC-CHANAUTH-001` §2.1), `hello` 에 답할 수 있는 상대는 게이트를 열고 사칭 `message` 와 `history_response` 를 그대로 밀어 넣을 수 있다. **그 남은 절반은 카드 `t15` 가 소유한다** (`SPEC-CHANAUTH-001` §5). 아래 v0.3.0 서술의 위협 기술은 그 범위에서 여전히 유효하다.
 
 `.moai/reports/t4/sync-audit.md` F-01(Critical)은 이 파일의 프레임 분배가 **`welcome` 을 받았는지 보지 않고** `type` 만으로 분기한다는 점을 지적했다. 봇은 `hello` + 토큰으로 자신을 인증하지만 서버는 봇에게 자신을 인증하지 않으므로, 소켓 상대가 진짜 게이트웨이인지 검사하는 자리가 이 SPEC 에는 없다. `MINIDISCORD_SERVER` 로 원격을 가리키는 지원 구성(AC-CHANWIRE-011)에서는 같은 망의 누구나·평문 경로의 MITM·재시작 직후 포트를 선점한 프로세스가 전부 그 자리에 설 수 있다.
 
