@@ -711,7 +711,7 @@ card: t9
 run_head_sha: 7f83c43           # run 마감 (§E.3)
 sync_head_sha: 2c9a484          # sync 1차 문서 정정 커밋 = 1차 감사 HEAD
 sync_reaudit_head_sha: 3b7d44a  # 2차 문서 정정 커밋 = 재감사 HEAD (확인 패스는 이 HEAD + 미커밋 작업 트리)
-sync_commit_sha: 5e70be0   # 이 커밋 자신을 가리키므로 커밋 직후 sync 레인이 실제 SHA 로 백필한다
+sync_commit_sha: 5e70be0   # 마감 sync 커밋. 자기 자신을 가리키는 값이라 커밋 안에서는 알 수 없어 플레이스홀더로 두었다가 후속 커밋 69745ea 에서 sync 레인이 백필했다
 audit_verdict: PASS
 audit_score: 87.3               # 확인 패스 가중 조화평균 (Functionality 90 / Security 85 / Craft 86 / Consistency 86) — sync-audit-2.md §12.6
 audit_score_trajectory: "78.0 (FAIL · 2c9a484) → 85.9 (FAIL · 3b7d44a) → 87.3 (PASS · 3b7d44a + 미커밋 작업 트리)"
@@ -783,7 +783,7 @@ status_transition: "in-progress → implemented → completed — 3-phase close,
 - 이 §E.4 의 모든 수치는 **sync-auditor 가 직접 관측한 값**을 옮긴 것이다 — 1차는 HEAD `2c9a484`(`.moai/reports/t9/sync-audit.md` §2.1·§3·§4), 2차와 확인 패스는 HEAD `3b7d44a`(`.moai/reports/t9/sync-audit-2.md` §2·§4·§12.6). manager-docs 는 그 원문을 읽어 옮겼을 뿐 어떤 명령도 재실행하지 않았다.
 - 핵심 반증 관측 원문 (감사 §2.2, 프로브 P-A): `PA_GATEWAY_SAW=["hello","status","permission_request"]` · `PA_VERDICTS=[{"request_id":"real-42","behavior":"allow"}]` — 사람이 누르지 않은 승인이 세션에 도달했고, 120ms 뒤 보낸 진짜 `deny` 는 같은 목록에 없다.
 - 이 sync 패스가 고친 파일 (재감사 F-B2 로 목록 보정): `CHANGELOG.md`(세 자리) · `progress.md`(§E.1 · §E.2 주석 3곳 · §E.3 주석 1곳 · 본 §E.4 · 머리 표) · `spec.md`(§1 세 겹 표 ② 칸 · §4.2 선착 판정 병기 · §5 표와 «살아남는 것» (c) · §8 참조 목록 `t15` 행) · `plan.md`(위험표 `welcome` 위조 행 · 완료 조건 체크리스트) · `acceptance.md`(변이표 C 행 · AC-CHANAUTH-005 설명 · DoD 아래 주석). `channel/` 아래 코드·테스트는 **한 줄도 건드리지 않았다** — `git diff 7f83c43..HEAD -- channel/` 빈 출력(재감사 §2 실측).
-- **상태 전이: `in-progress` → `implemented` → `completed`.** 재감사가 실행됐고 최종 판정이 **PASS**(가중 조화평균 87.3 · 차단 0건 · must-pass 두 차원 통과 — `sync-audit-2.md` §12.6·§12.7)이므로 3-phase close 를 단일 sync 커밋에서 적용한다. `sync_commit_sha` 는 자기 자신을 가리키는 값이라 커밋 안에서는 알 수 없으므로 `5e70be0` 로 두고 커밋 직후 sync 레인이 백필한다.
+- **상태 전이: `in-progress` → `implemented` → `completed`.** 재감사가 실행됐고 최종 판정이 **PASS**(가중 조화평균 87.3 · 차단 0건 · must-pass 두 차원 통과 — `sync-audit-2.md` §12.6·§12.7)이므로 3-phase close 를 단일 sync 커밋에서 적용한다. `sync_commit_sha` 는 자기 자신을 가리키는 값이라 커밋 안에서는 알 수 없으므로 플레이스홀더로 두었고, 마감 커밋 `5e70be0` 착지 직후 후속 커밋 `69745ea` 에서 sync 레인이 백필했다.
 - **종결의 범위 — 반드시 갈라 읽을 것.** 이 SPEC 의 `completed` 는 **13개 요구사항이 전부 구현되고 감사를 통과했다**는 뜻이며, 카드 `t4` 감사의 **F-01 이 닫혔다는 뜻이 아니다.** 소켓에서 읽은 진짜 `request_id` 로 판정을 위조하는 Critical 급 공격, 그리고 사칭 채팅 주입·이력 오염은 **지금도 성립하며** 카드 `t15` 가 소유한다. 감사자의 표현대로 이 PASS 는 «정직하게 인계했다» 에 대한 판정이지 «막았다» 에 대한 판정이 아니다 (`sync-audit-2.md` §12.7).
 
 ---
