@@ -1,0 +1,28 @@
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+
+
+ Test Files  10 passed (10)
+      Tests  113 passed (113)
+   Start at  09:20:48
+   Duration  7.54s (transform 657ms, setup 0ms, import 1.35s, tests 15.94s, environment 0ms)
+
+TEST_EXIT=0
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+
+························
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  09:20:56
+   Duration  7.28s (transform 41ms, setup 0ms, import 85ms, tests 7.14s, environment 0ms)
+
+
+HEAD=dde5ac4
+permissions.ts blob=319307b88398b9b69e92b02d8877802379986c5f
+작업트리 청결(server/): 0 건
