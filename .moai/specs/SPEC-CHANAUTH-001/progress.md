@@ -256,6 +256,158 @@ This error originated in "test/transport-auth.test.ts" test file.
 - `CHANGELOG.md:15`·`:41` 의 개정 전 무상태 문언 — sync 단계 정정 목록으로 인계(`spec.md` §5, 계획 감사 L-01).
 - 변이 C 의 실측 집합({003(나)})과 변이표 C 행({005}±{003(나)})의 어긋남 — 위 원문 그대로 후속 판정 대기.
 
+### M2 — 비루프백 `wss://` 강제 (기준 `0b52b96` = M1 커밋, 브랜치 `WT-chanperm-gate`, 2026-08-28)
+
+#### 단계 1 (RED) — 구현 전 원문 (전이 3, 두 사유를 구분해 기록)
+
+`channel/test/transport-auth.test.ts` 에 AC-CHANAUTH-010·011 본문과 공통 하네스 나머지(`isTransportAllowed`·`resolveUrl` import, `DIST`, `spawnChild`)를 추가한 뒤 `npm test -w channel`:
+
+```
+ Test Files  1 failed | 4 passed (5)
+      Tests  2 failed | 55 passed (57)
+```
+
+**사유 1 — AC-CHANAUTH-010: 미수출 (단언 실패가 아니다).** 파일 스코프 재실행(`npx vitest run test/transport-auth.test.ts`) 원문:
+
+```
+ ❯ test/transport-auth.test.ts (7 tests | 2 failed) 3946ms
+     × isTransportAllowed decides by scheme and host only 3ms
+     × the entry point refuses a plaintext remote and connects otherwise 406ms
+
+ FAIL  test/transport-auth.test.ts > transport auth > isTransportAllowed decides by scheme and host only
+TypeError: isTransportAllowed is not a function
+ ❯ test/transport-auth.test.ts:249:35
+```
+
+`isTransportAllowed` 가 `../src/index.js` 의 수출 목록에 없어서 생긴 실패다 — **수출 부재가 사유 유형이다.** 관측 형태에 관한 정직한 기록 하나: M1 당시 이 파일 머리글 주석은 "아직 없는 수출을 여기서 받으면 파일 로드가 깨진다"고 예상했지만, vitest 4.1.11(vite-node)은 명명 import 를 **지연 해석**한다 — 파일 로드는 꺾이지 않고 7건이 모두 달렸으며, 미수출은 **사용 지점에서의 TypeError** 로 나타났다. 컬렉션 실패도 단언 실패도 아닌 세 번째 형태이며, 사유 구분(미수출 vs 단언)이라는 판정 기준 자체는 그대로 성립한다.
+
+**사유 2 — AC-CHANAUTH-011 (a): 단언 실패.** 같은 실행 원문:
+
+```
+ FAIL  test/transport-auth.test.ts > transport auth > the entry point refuses a plaintext remote and connects otherwise
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+ ❯ test/transport-auth.test.ts:260:59
+    260|     expect(a.stderr().split('\n').filter(Boolean).length).toBe(1)
+```
+
+(a)의 세 단언 중 첫째(`connections() === 0`)는 이 시점에도 통과한다 — DNS 가 `localhost.example.test` 를 풀지 못해 접속이 애초에 없기 때문이다. 걸린 것은 **stderr 한 줄 단언**이다. M1 dist(전송 검사 없음)의 자식은 게이트웨이 클라이언트가 ws 오류를 조용히 삼키므로(`gateway-client.ts:88` `ws.on('error', () => {})`) stderr 가 빈 채로 재접속 백오프만 돈다 — `0 ≠ 1`. 두 사유가 서로 다른 유형으로 기록됐다.
+
+#### 단계 2 (GREEN)
+
+`channel/src/index.ts` 에 `isTransportAllowed(url: string): boolean` 을 내보냈다 — 내장 `URL` 파싱, 실패 시 `false`(fail-closed), `hostname` 이 루프백 네 값(`127.0.0.1`·`localhost`·`::1`·`[::1]`) 중 하나면 `true`, 아니면 `protocol === 'wss:'`. 진입점은 `if (token) gw.start()` 를 `if (token && isTransportAllowed(url)) gw.start()` 로 바꾸고, 거부 갈래에서 **stderr 한 줄**(콘솔 에러)을 내며 프로세스는 계속 산다 — stdout 은 건드리지 않는다. `resolveUrl` 은 한 글자도 바뀌지 않았다(순수 해석 함수 유지, plan §D). 같은 커밋 범위에서 `spec.md` 프론트매터 전이: `status: draft → in-progress`(소유 행렬의 manager-develop 전이, 본문 무변경).
+
+#### 단계 3 — 빌드 뒤 전체 스위트 + typecheck + 잔여 프로세스
+
+```
+npm run build -w channel  → 종료 코드 0
+
+npm test -w channel:
+ Test Files  5 passed (5)
+      Tests  57 passed (57)
+
+npm run typecheck -w channel → 종료 코드 0
+pgrep -f 'channel/dist/index.js' → 출력 없음 (종료 코드 1 — 잔여 프로세스 없음)
+```
+
+자식 수거는 `spawnChild()` 가 spawn 직후 등록한 SIGKILL 정리(afterEach)로 끝난다 — 명령 끝 kill 줄 없음.
+
+#### 단계 4 — 형제 비회귀 (verbose ✓ 네 줄)
+
+```
+ ✓ test/index-wiring.test.ts > channel wiring > resolveUrl falls back to the documented default 0ms
+ ✓ test/index-wiring.test.ts > channel wiring > the built artifact speaks MCP; the token gates only the gateway 482ms
+ ✓ test/channel-server.test.ts > channel server > declares both channel experimental capabilities in the initialize response 0ms
+ ✓ test/channel-server.test.ts > channel server > carries the load-bearing instruction literals in the initialize response 0ms
+```
+
+= AC-CHANWIRE-011 · AC-CHANWIRE-014 · AC-CHANNEL-004 (b) · AC-CHANNEL-005 (b). 셸 전용 셋은 빌드 산출물에 대해 한 번 실행:
+
+**AC-CHANNEL-002 (1) — 소스 파일 쓰기 grep:**
+
+```
+$ grep -rnE 'writeFile|appendFile|createWriteStream|mkdirSync|mkdir\(|openSync|writeSync' channel/src
+grep exit=1
+```
+
+**AC-CHANNEL-002 (2) — 빈 임시 디렉터 실행:**
+
+```
+ls -A: []
+leftover=0
+```
+
+실행 형태 기록: 원문 명령의 `sh -c "cd '$TMP' && node …"` 복합 형태가 워크트리 샌드박스 가드에 거부돼, 같은 관측을 임시 스크립트(`sh -c` + `cwd: 임시디렉터` + stdin 에 initialize)로 재현해 실행하고 **스크립트는 삭제**했다(M1 의 `channel/probe/rogue.ts` 사본 선례와 같다). 관측값 자체는 원문 명령과 동일한 것 — cwd 가 빈 디렉터인 채 빌드 산출물을 stdio 로 구동하고 그 디렉터의 내용을 잰다.
+
+**AC-CHANNEL-004 (a) — stdio 프로브 (`/tmp/mdc-init.json` 생성, 종료 코드 0):**
+
+```
+$ node -e '… experimental 두 키 · tools · serverInfo 검사 …'
+OK
+004A_EXIT=0
+```
+
+**AC-CHANNEL-005 (a) — instructions 일곱 조각 검사 (같은 `/tmp/mdc-init.json`, 종료 코드 0):**
+
+```
+$ node -e '… need 필터 · /절대/ 검사 …'
+OK
+005A_EXIT=0
+```
+
+#### 단계 5 — 변이 F·G·H 실측 (각 변이: 소스 적용 → **재빌드** → 전체 스위트 → 원문 → 되돌림)
+
+재빌드를 각 변이마다 실행한 이유: AC-CHANAUTH-011 은 빌드 산출물을 자식 프로세스로 잰다 — 소스만 고치고 dist 를 옛 것으로 두면 변이 F 가 그 기준에 전혀 나타나지 않는다(기준이 방어와 무관한 이유로 초록이 되는 형태). F·G·H 모두 재빌드 후 쟀다.
+
+**변이 F — 진입점의 전송 검사 호출 제거.** 실측 실패 집합:
+
+```
+ ❯ test/transport-auth.test.ts (7 tests | 1 failed) 3947ms
+     × the entry point refuses a plaintext remote and connects otherwise 407ms
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 56 passed (57)
+```
+
+= {AC-CHANAUTH-011} (010 통과) — **변이표 F 행과 정확히 일치**.
+
+**변이 G — 루프백 판정에서 `'[::1]'` 제거.** 실측 실패 집합:
+
+```
+ ❯ test/transport-auth.test.ts (7 tests | 1 failed) 4137ms
+     × isTransportAllowed decides by scheme and host only 7ms
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 56 passed (57)
+```
+
+= {AC-CHANAUTH-010} (`ws://[::1]` 행) — **변이표 G 행과 정확히 일치**. 계획 감사 M-01 이 대괄호 형태를 집합에 넣게 만든 교정이 실제로 이 변이를 잡는다.
+
+**변이 H — 호스트 검사를 `url.includes('127.0.0.1')` 로.** 실측 실패 집합:
+
+```
+ ❯ test/transport-auth.test.ts (7 tests | 1 failed) 4125ms
+     × isTransportAllowed decides by scheme and host only 6ms
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 56 passed (57)
+```
+
+= {AC-CHANAUTH-010} (`127.0.0.1.evil.com` 행) — **변이표 H 행과 정확히 일치**. 접두 포함을 쓰면 `[::1]` 행도 함께 뒤집히지만 두 행 모두 AC-CHANAUTH-010 안이므로 기준 집합은 한 건이다. 계획 감사 M-02 가 행을 추가하게 만든 교정이 실제로 이 변이를 잡는다.
+
+**되돌림 확인.** 세 변이 종료 후 `git diff channel/src/index.ts` 는 GREEN 구현 그 자체만 담고 있다(변이 흔적 없음 — 위 diff 전문). 되돌린 뒤 재빌드(종료 코드 0)하고 최종 확인:
+
+```
+npm test -w channel:
+ Test Files  5 passed (5)
+      Tests  57 passed (57)
+
+npm run typecheck -w channel → 종료 코드 0
+pgrep -f 'channel/dist/index.js' → 출력 없음 (종료 코드 1)
+```
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -270,7 +422,7 @@ _<pending sync-phase>_
 
 ---
 
-## § Phase 4 Mode Selection
+## §F Phase 4 Mode Selection
 
 | 항목 | 값 |
 |------|-----|

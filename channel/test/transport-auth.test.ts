@@ -1,16 +1,22 @@
-// SPEC-CHANAUTH-001 전송 인증 테스트 — acceptance.md 공통 하네스 + AC-CHANAUTH-001~005 (M1).
-// §4.2(발신 id 대조, M3)와 §4.3(wss 강제, M2)의 관측은 이 파일에 이후 마일스톤이 잇는다.
-// isTransportAllowed·resolveUrl import 와 DIST·spawnChild 는 M2 가 본문과 함께 가져간다 —
-// 아직 없는 수출을 여기서 받으면 파일 로드가 깨져 RED 의 형태(단언 실패)가 사라진다.
+// SPEC-CHANAUTH-001 전송 인증 테스트 — acceptance.md 공통 하네스 + AC-CHANAUTH-001~005 (M1),
+// AC-CHANAUTH-010~011 (M2 — §4.3 wss 강제). §4.2(발신 id 대조, M3)는 이 파일에 이후 마일스톤이 잇는다.
 import { describe, it, expect, afterEach } from 'vitest'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { WebSocketServer, type WebSocket as WS } from 'ws'
-import { wire } from '../src/index.js'
+import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+// isTransportAllowed 는 M2 가 새로 내보내는 판정 함수, resolveUrl 은 그 비회귀를 재는 형제 계약이다.
+import { wire, isTransportAllowed, resolveUrl } from '../src/index.js'
 
 const cleanups: (() => Promise<void> | void)[] = []
 afterEach(async () => { for (const c of cleanups.splice(0).reverse()) await c() })
+
+// 빌드 산출물의 절대 경로. vitest 의 cwd 는 channel/ 이므로 'channel/dist/index.js' 는
+// channel/channel/dist/index.js 로 풀린다 — 자식이 아예 뜨지 않아 (a) 갈래가 "잘못된 이유로"
+// 통과해 버린다. 형제 하네스(index-wiring.test.ts:62)와 같은 형태로 고정한다 (계획 감사 H-03).
+const DIST = fileURLToPath(new URL('../dist/index.js', import.meta.url))
 
 // 진짜 zod 스키마여야 한다 — SDK 가 schema.shape.method.value 로 메서드를 읽는다.
 // params 에 .passthrough() 를 붙이지 않으면 "무엇이 왔는가"를 단언할 수 없다.
@@ -107,6 +113,18 @@ function collectUnhandled() {
   process.on('unhandledRejection', on)
   cleanups.push(() => { process.off('unhandledRejection', on) })
   return async () => { await settle(); return seen }
+}
+
+// 자식 프로세스. spawn 직후 수거를 등록한다 — 명령 끝의 kill 은 일찍 끝나는 경로에 닿지 않는다.
+// stdout 도 함께 모은다 — REQ-CHANAUTH-004 의 stdout 침묵 조항을 재는 유일한 자리다 (계획 감사 M-03).
+function spawnChild(args: string[], env: NodeJS.ProcessEnv) {
+  const p = spawn(process.execPath, args, { env: { ...process.env, ...env }, stdio: ['pipe', 'pipe', 'pipe'] })
+  cleanups.push(() => { p.kill('SIGKILL') })
+  let err = ''
+  let out = ''
+  p.stderr.on('data', d => { err += String(d) })
+  p.stdout.on('data', d => { out += String(d) })
+  return { proc: p, stderr: () => err, stdout: () => out }
 }
 
 const REQ = { request_id: 'abcde', tool_name: 'Bash', description: 'Run shell command', input_preview: 'ls -la' }
@@ -213,5 +231,50 @@ describe('transport auth', () => {
     expect(notes).toEqual([])
     expect(await unhandled()).toEqual([])
     expect(stub.connections()).toBe(1)        // 끊기지도, 다시 붙지도 않았다
+  })
+
+  // AC-CHANAUTH-010 — 전송 판정표 (9행, 계획 감사 M-01·M-02 확정분 포함)
+  it('isTransportAllowed decides by scheme and host only', () => {
+    const table: [string, boolean][] = [
+      ['ws://127.0.0.1:3000/bot', true],       // 기본값 — 반드시 허용된다
+      ['ws://localhost:3000/bot', true],
+      ['ws://[::1]:3000/bot', true],
+      ['wss://example.com/bot', true],
+      ['ws://example.com/bot', false],         // 평문 원격 — 감사 F-07
+      ['ws://10.0.0.5:3000/bot', false],
+      ['wss://127.0.0.1:3000/bot', true],
+      ['ws://127.0.0.1.evil.com/bot', false],  // 접두가 루프백처럼 보이는 원격 — 아래 설명
+      ['not a url', false],                    // fail-closed
+    ]
+    expect(table.map(([u]) => [u, isTransportAllowed(u)])).toEqual(table)
+  })
+
+  // AC-CHANAUTH-011 — 진입점이 판정을 실제로 지킨다 (AC-010 의 짝). 빌드가 전제다.
+  it('the entry point refuses a plaintext remote and connects otherwise', async () => {
+    // (a) 비루프백 + ws:// → 연결 0건, stderr 한 줄
+    const stubA = rogueGateway({ welcome: true })
+    const hostA = `ws://127.0.0.1:${stubA.port()}/bot`.replace('127.0.0.1', 'localhost.example.test')
+    const a = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: hostA })
+    await settle()
+    expect(stubA.connections()).toBe(0)
+    expect(a.stderr().split('\n').filter(Boolean).length).toBe(1)
+    expect(a.stdout()).toBe('')                 // REQ-CHANAUTH-004 — stdout 은 MCP 통로다
+
+    // (b) 루프백 + ws:// → 연결 1건 (기본 구성이 계속 동작하는지)
+    const stubB = rogueGateway({ welcome: true })
+    const b = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: `ws://127.0.0.1:${stubB.port()}/bot` })
+    await waitFor(() => stubB.connections() === 1, '루프백 접속')
+    expect(b.stdout()).toBe('')                 // 접속하는 갈래에서도 stdout 은 조용하다
+
+    // (c) 형제 기준 비회귀 — resolveUrl 은 순수 해석 함수로 남는다 (AC-CHANWIRE-011)
+    expect(resolveUrl({ MINIDISCORD_SERVER: 'ws://example/bot' } as NodeJS.ProcessEnv)).toBe('ws://example/bot')
+
+    // (d) 거부되는 주소로 띄운 자식도 stdio 로는 말이 통한다 (REQ-CHANAUTH-012)
+    const d = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: hostA })
+    d.proc.stdin.write(JSON.stringify({
+      jsonrpc: '2.0', id: 1, method: 'initialize',
+      params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '0' } },
+    }) + '\n')
+    await waitFor(() => d.stdout().includes('"result"'), 'stdio initialize 응답')
   })
 })

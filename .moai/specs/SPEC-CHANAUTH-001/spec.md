@@ -2,7 +2,7 @@
 id: SPEC-CHANAUTH-001
 title: "minidiscord 채널 전송 계층 방어 — 승인 판정 주입을 닫고 원격 전송에 wss 를 강제한다"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec
