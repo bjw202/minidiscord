@@ -2,9 +2,9 @@
 id: SPEC-WEBSHELL-001
 title: "minidiscord 웹 UI 껍데기 — 정적 서빙, 로그인, 방 목록, 봇 목록"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"

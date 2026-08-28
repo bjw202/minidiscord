@@ -58,7 +58,13 @@ export function permissionRequestId(body) {
 
 // 판정 결과 세 템플릿에서 ID 를 뽑는다 (REQ-WEBRICH-010). ✅ 승인 전송됨 · ⛔ 거절 전송됨 ·
 // ⚠️ … 전달하지 못했습니다 — 이모지는 일치에 쓰지 않고 공통 꼬리만 쓴다 (plan.md §E 위험 2).
-const RESOLUTION_RE = /(?:승인 전송됨|거절 전송됨|전달하지 못했습니다) \(([a-km-z]{5})\)/
+//
+// 양끝을 문자열 앞뒤에 고정하고 `.` 로만 앞을 채운다. 브로커의 판정 본문은 세 템플릿 모두
+// 정확히 한 줄이고, 요청 본문은 '\n' 으로 이어붙인 네 줄이다 — `.` 이 줄바꿈류(\n·\r·U+2028·
+// U+2029)를 건너지 못하므로 요청 본문은 어떤 봇 필드에 무엇이 들어 있든 여기에 걸리지 않는다.
+// 고정이 없던 0.1.0 은 봇이 input_preview 에 '✅ 승인 전송됨 (…)' 을 적는 것만으로 자기 요청을
+// 판정 완료로 위장시켜 승인·거절 버튼을 통째로 지울 수 있었다 (t5 sync 탐침 Q4, 버튼 0개 관측).
+const RESOLUTION_RE = /^.*(?:승인 전송됨|거절 전송됨|전달하지 못했습니다) \(([a-km-z]{5})\)$/
 
 export function permissionResolutionId(body) {
   const m = RESOLUTION_RE.exec(String(body))

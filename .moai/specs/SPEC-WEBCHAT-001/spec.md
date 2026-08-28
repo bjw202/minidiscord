@@ -2,9 +2,9 @@
 id: SPEC-WEBCHAT-001
 title: "minidiscord 웹 UI — 채팅 화면, SSE 수신, @ 자동완성, 봇 상태"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 author: manager-spec
 priority: P1
 phase: "v0.1.0 target"

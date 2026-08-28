@@ -2,9 +2,9 @@
 id: SPEC-WEBRICH-001
 title: "minidiscord 웹 UI — 첨부 표시·봇 초대 다이얼로그·권한 승인 버튼"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 author: manager-spec
 priority: P1
 phase: "v0.1.0 target"
