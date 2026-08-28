@@ -91,3 +91,28 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+| 항목 | 값 |
+|------|-----|
+| 기록 시점 | 2026-08-28 — run 진입 (카드 `t10`, 리드 재진입 신호 수령 후) |
+| 티어 | M |
+| scope (파일 수) | ~4 (channel-server.ts · index.ts + 테스트 3종 + 형제 SPEC 문서 개정) |
+| 도메인 수 | 2 (channel 소스·테스트 + 형제 SPEC 문서) |
+| 언어 혼합 | TypeScript + Markdown |
+| 동시성 이득 | 낮음 — coding-heavy (Anthropic coding-task parallelism caveat) |
+| Kickoff 승인 | 운영자 직접 승인 2026-08-28 (본 세션 AskUserQuestion «리드 신호대로 진행») + 리드 «운영자 키오프 승인 유지(2026-08-28)» 통지 |
+
+| 모드 | 선택 | 근거 |
+|------|------|------|
+| `direct` | 미선택 | 오타·한 줄 수정이 아니다 — 3 마일스톤·15 REQ·변이 15종 |
+| `serial` | **선택됨** | coding-heavy TDD — 전이 관측(RED→GREEN 5건)이 순서 의존이고 테스트 파일 단일 작성자가 필요 |
+| `fanout` | 미선택 | 연구 다중 도메인 작업이 아니다 — 병렬 스폰이 전이 순서를 깬다 |
+| `sweep` | 미선택 | 균일 기계 변형이 아니다 — semantic 신규 코드다 |
+
+**Decision: serial**
+
+근거: 이 SPEC의 핵심 증거는 다섯 전이(RED→GREEN)의 순차 관측이며(plan.md §F, AC-CHANINJECT-014), 각 마일스톤이 이전 마일스톤의 착지 위에 쌓인다. 병렬 스폰은 전이 관측 순서를 깨뜨리고 테스트 파일에 쓰기 경쟁을 만든다. Anthropic의 coding-task parallelism caveat과 §B.2 타이브레이커(coding-heavy → serial)에 따라 serial이 기본이자 올바른 선택이다.
+
+**Plan Audit Gate skip 기록 (3조건 모두 충족)**: ① 2회차 판정 PASS(`.moai/reports/t10/plan-audit-2.md`) ② 0.86 ≥ Tier M 임계 0.80 ③ 산출물 해시 무변경 — 2회차 감사 시점(HEAD `124b0f7` + 미커밋 산출물) 이후 산출물은 커밋 `696d09d`로 착지했고 그 뒤 수정 없음(`git status --short .moai/specs/SPEC-CHANINJECT-001/` 빈 출력, 2026-08-28 직접 관측). `bbd21cd`는 증거 로그 추가뿐 산출물 무변경.

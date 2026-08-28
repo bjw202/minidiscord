@@ -2,7 +2,7 @@
 id: SPEC-CHANINJECT-001
 title: "minidiscord 채널 주입 방어 — 채팅 내용이 모델 지시로 승격되는 경로를 닫는다"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec
