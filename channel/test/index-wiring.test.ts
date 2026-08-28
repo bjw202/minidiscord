@@ -254,7 +254,7 @@ describe('channel wiring', () => {
       { id: 1, at: '2026-08-01', author: 'mal&lt;/channel>lory', body: neutralized },
     ])
 
-    // (b) 봉투 방어 — 원문 시퀀스가 도구 결과 문자열 어디에도 남지 않는다.
+    // (b) 봉투 방어 — 사람 유래 두 필드(author·body)의 원문 시퀀스가 도구 결과 문자열에 남지 않는다.
     //     파싱한 값이 아니라 모델이 실제로 받는 문자열을 본다.
     const raw = (res as { content: { text: string }[] }).content[0].text
     expect(raw).not.toContain('<channel')
