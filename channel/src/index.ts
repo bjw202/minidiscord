@@ -17,9 +17,11 @@ export function resolveUrl(env: NodeJS.ProcessEnv = process.env): string {
   return env.MINIDISCORD_SERVER ?? DEFAULT_SERVER
 }
 
-// 전송 판정: 스킴과 호스트 두 값만 본다 (REQ-CHANAUTH-010·011). 루프백 네 값은 평문 ws 를 허용하고
-// 그 외 원격은 wss 뿐이다(감사 F-07). Node 의 URL 은 IPv6 호스트를 대괄호째 돌려주므로 '[::1]' 형태가
-// 집합에 있어야 한다(계획 감사 M-01). 해석 불가면 거부 — fail-closed.
+// 전송 판정: 스킴과 호스트 두 값만 본다 (REQ-CHANAUTH-010·011). 루프백 세 값(127.0.0.1·localhost·[::1])은
+// ws 또는 wss 만 허용하고(F-A6 — 루프백 분기도 스킴을 본다), 그 외 원격은 wss 뿐이다(감사 F-07).
+// Node 의 URL 은 IPv6 호스트를 대괄호째 돌려주므로 '[::1]' 형태가 집합에 있어야 하고(계획 감사 M-01),
+// 대괄호 없는 IPv6 루프백 표기는 어떤 입력도 만나지 않는 사문이라 목록에 두지 않는다(F-A7, REQ-CHANINJECT-014).
+// 해석 불가면 거부 — fail-closed.
 // resolveUrl 을 건드리지 않는 이유는 plan.md §D — 형제 기준 AC-CHANWIRE-011 이 반환값을 글자 그대로 단언한다.
 // @MX:NOTE: [AUTO] 판정만 하는 순수 함수다 — 진입점이 실제로 부르는지는 AC-CHANAUTH-011 이 따로 잰다
 export function isTransportAllowed(url: string): boolean {
@@ -29,7 +31,8 @@ export function isTransportAllowed(url: string): boolean {
   } catch {
     return false
   }
-  if (['127.0.0.1', 'localhost', '::1', '[::1]'].includes(u.hostname)) return true
+  const schemeOk = u.protocol === 'ws:' || u.protocol === 'wss:'
+  if (['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname)) return schemeOk
   return u.protocol === 'wss:'
 }
 
@@ -91,5 +94,17 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // stdio 는 잠그지 않는다. 거부 갈래는 stderr 한 줄로 알리고 프로세스는 계속 산다 — 종료시키면 stdio 로
   // 말을 걸던 상대가 이유 없이 끊긴 것으로 본다. stdout 은 MCP 전송 통로라 한 글자도 쓸 수 없다 (REQ-CHANAUTH-004).
   if (token && isTransportAllowed(url)) gw.start()
-  else if (token) console.error(`minidiscord-channel: 게이트웨이 주소를 거부했다 — ${url} (비루프백 호스트에는 wss:// 를 쓴다)`)
+  else if (token) {
+    // 거부 사유를 갈래별로 가른다 (REQ-CHANINJECT-012, 감사 F-A10). 해석 불가 주소에는 호스트가
+    // 아예 없으므로 «비루프백 호스트에는 wss://» 안내는 사실과 어긋난다 — 해석 실패를 말한다.
+    // 스킴 거부 갈래는 기존 문언을 유지한다 (plan.md §F M3 단계 4).
+    let reason: string
+    try {
+      new URL(url)
+      reason = `${url} (비루프백 호스트에는 wss:// 를 쓴다)`
+    } catch {
+      reason = `${url} (주소를 해석하지 못했다)`
+    }
+    console.error(`minidiscord-channel: 게이트웨이 주소를 거부했다 — ${reason}`)
+  }
 }
