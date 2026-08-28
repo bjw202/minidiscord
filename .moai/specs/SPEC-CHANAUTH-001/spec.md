@@ -2,7 +2,7 @@
 id: SPEC-CHANAUTH-001
 title: "minidiscord 채널 전송 계층 방어 — 승인 판정 주입을 닫고 원격 전송에 wss 를 강제한다"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec
@@ -359,7 +359,7 @@ v0.1.0 은 이 충돌을 **아예 적지 않았다.** 계획 감사가 지목했
 - `.moai/reports/t4/sync-audit.md` — F-01(Critical, 이 SPEC 의 원본), F-07(Medium, `wss://`), F-14(범위 밖), §5.5 잔여 위험
 - `.moai/reports/t9/plan-audit.md` — 이 SPEC v0.1.0 의 계획 감사(FAIL 0.55). C-01(`welcome` 근거 문장 철회), C-02(`SPEC-CHANPERM-001` 형제 기준 4건), C-03(`SPEC-CHANCLIENT-001` 미개정), H-01~H-03, M-01~M-03, L-01·L-02. **§9 의 처리 순서를 v0.2.0 이 그대로 따랐다**
 - `.moai/reports/t9/plan-done-2.md` — v0.2.0 교정 라운드의 발견별 처리 대장(정정/반박/이연)
-- 칸반 카드 `t15` — F-01 의 남은 절반(사칭 채팅 주입·이력 오염) 소유 카드 (§5)
+- 칸반 카드 `t15` — F-01 의 잔여 **셋**(사칭 채팅 주입 · 이력 오염 · 판정 주입의 잔여 절반 — 소켓에서 읽은 진짜 `request_id` 로 위조한 `permission_verdict` + 선착 판정 승리) 소유 카드 (§5). v0.3.0 은 이 줄을 둘로 적었다 — 세 번째는 sync 감사 F-A1·F-A2 가 프로브 P-A 로 실측했다(`.moai/reports/t9/sync-audit.md` §2.2)
 - `.moai/state/verify/t4-sync-audit/probe-rogue.ts` · `p6-rogue.log` — 실행 재현 프로브와 그 원문. AC-CHANAUTH-001 의 형태가 여기서 나왔다
 - `.moai/specs/SPEC-CHANPERM-001/` — 개정 대상. REQ/AC-CHANPERM-008 (v0.3.0)
 - `.moai/specs/SPEC-CHANCLIENT-001/` — `createGatewayClient` 계약

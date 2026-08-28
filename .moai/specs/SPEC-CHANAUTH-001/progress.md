@@ -12,7 +12,7 @@
 | 결합 개정 | `SPEC-CHANPERM-001` v0.3.0 (REQ/AC-008) + v0.4.0 (AC-005·006·007·009, **REQ 무변경**) · `SPEC-CHANCLIENT-001` v0.4.0 (REQ-004·005 + 하네스) — 전부 같은 패스에서 완료 |
 | 계획 감사 | 1차 `.moai/reports/t9/plan-audit.md` — FAIL 0.55, 차단 7건 (대장 `plan-done-2.md`). 2차 `.moai/reports/t9/plan-audit-2.md` — FAIL 0.74, 차단 7건 + optional 3건 (대장 `plan-done-3.md`). 3차 판정 예정 `.moai/reports/t9/plan-audit-3.md` — **마지막 라운드** |
 | 인계 카드 | `t15` — F-01 잔여: 사칭 채팅 주입 · 이력 오염 · **판정 주입의 잔여 절반**(소켓에서 읽은 진짜 `request_id` 로 위조한 `permission_verdict` + 먼저 도착한 판정이 이기는 성질 — `.moai/reports/t9/sync-audit.md` F-A1·F-A2) |
-| 현재 상태 | `in-progress` v0.3.0 — run 마감 `7f83c43`(스위트 61/61 · typecheck 0 · stmts 93.75%), sync 문서 정정 `2c9a484` + 본 패스. sync 감사 **FAIL**(가중 조화평균 78 · must-pass Security 62 — `.moai/reports/t9/sync-audit.md`), 차단 3건(F-A1·F-A2·F-A9)은 **문서 정정으로 in-card 처리 중**이며 실제 방어는 `t15` 소유. 재감사 미실행이므로 상태 전이 없음 |
+| 현재 상태 | **`completed`** v0.3.0 — 13개 요구사항(REQ-CHANAUTH-001..013) 전부 구현·감사 완료. run 마감 `7f83c43`(스위트 61/61 · typecheck 0 · stmts 93.75%), sync 문서 정정 `2c9a484` → `3b7d44a` → 본 패스. sync 감사 최종 **PASS**(가중 조화평균 **87.3** · 차단 0건 · must-pass Functionality 90·Security 85 모두 통과 — `.moai/reports/t9/sync-audit-2.md` §12). 판정 궤적 78 FAIL → 85.9 FAIL → 87.3 PASS. 상태 전이 `in-progress → implemented → completed` 를 단일 sync 커밋에서 적용. **주의: 이 종결은 F-01 의 종결이 아니다** — 진짜 `request_id` 를 읽어 판정을 위조하는 Critical 급 잔여와 사칭 채팅 주입·이력 오염은 그대로 열려 있고 카드 `t15` 소유다 |
 
 ---
 
@@ -704,47 +704,87 @@ residual:
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_status: audit-fail-open
+sync_status: audit-pass-closed
 sync_evaluated_at: 2026-08-28
 spec_id: SPEC-CHANAUTH-001
 card: t9
 run_head_sha: 7f83c43           # run 마감 (§E.3)
-sync_head_sha: 2c9a484          # sync 1차 문서 정정 커밋 = 감사 HEAD
-audit_verdict: FAIL
-audit_score: 78.0               # 가중 조화평균 (Functionality 88 / Security 62 FAIL / Craft 86 / Consistency 78)
-audit_must_pass: "Security 62 < 70 — 조화평균과 무관하게 전체 FAIL"
-audit_report: .moai/reports/t9/sync-audit.md
-tests: "5 files / 61 tests passed"        # 감사 재측정 (run 레인 값과 일치)
-typecheck_exit: 0                          # 감사 재측정
-coverage: "stmts 93.75% (120/128) · branch 82.08%"   # 감사 재측정
-blocking_findings: [F-A1, F-A2, F-A9]
+sync_head_sha: 2c9a484          # sync 1차 문서 정정 커밋 = 1차 감사 HEAD
+sync_reaudit_head_sha: 3b7d44a  # 2차 문서 정정 커밋 = 재감사 HEAD (확인 패스는 이 HEAD + 미커밋 작업 트리)
+sync_commit_sha: pending-backfill-sync-t9   # 이 커밋 자신을 가리키므로 커밋 직후 sync 레인이 실제 SHA 로 백필한다
+audit_verdict: PASS
+audit_score: 87.3               # 확인 패스 가중 조화평균 (Functionality 90 / Security 85 / Craft 86 / Consistency 86) — sync-audit-2.md §12.6
+audit_score_trajectory: "78.0 (FAIL · 2c9a484) → 85.9 (FAIL · 3b7d44a) → 87.3 (PASS · 3b7d44a + 미커밋 작업 트리)"
+audit_verdict_history:
+  - round: 1
+    head: 2c9a484
+    verdict: FAIL
+    score: 78.0
+    dimensions: "Functionality 88 / Security 62 (must-pass 미달) / Craft 86 / Consistency 78"
+    blocking: [F-A1, F-A2, F-A9]
+    report: .moai/reports/t9/sync-audit.md
+  - round: 2
+    head: 3b7d44a
+    verdict: FAIL
+    score: 85.9
+    dimensions: "Functionality 90 / Security 82 / Craft 86 / Consistency 82"
+    blocking: [F-B1]
+    report: .moai/reports/t9/sync-audit-2.md   # 본문 §1~§11
+  - round: "2-확인"
+    head: "3b7d44a + 미커밋 작업 트리 (spec.md §8 참조 목록 t15 행 · progress.md §E.4 «고친 파일» 목록)"
+    verdict: PASS
+    score: 87.3
+    dimensions: "Functionality 90 / Security 85 / Craft 86 / Consistency 86"
+    blocking: []
+    report: .moai/reports/t9/sync-audit-2.md   # §12 재감사 확인 = 최종 판정
+audit_must_pass: "Functionality 90 ≥ 70 통과 · Security 85 ≥ 70 통과 — must-pass 두 차원 모두 통과 (1차의 Security 62 < 70 붕괴는 해소)"
+audit_report: .moai/reports/t9/sync-audit.md             # 1차
+audit_report_reaudit: .moai/reports/t9/sync-audit-2.md   # 2차 + §12 확인(최종 판정)
+tests: "5 files / 61 tests passed"        # 재감사 HEAD 3b7d44a 에서 재실행 (sync-audit-2.md §2.2)
+typecheck_exit: 0                          # 1차 감사(HEAD 2c9a484) 실측 — 재감사·확인 패스에서 재실행하지 않음 (sync-audit-2.md §9-1)
+coverage: "stmts 93.75% (120/128) · branch 82.08%"   # 1차 감사(HEAD 2c9a484) 실측 — 소스 블롭 해시 동일성 근거로 귀속, 재측정 아님 (sync-audit-2.md §3)
+blocking_findings: []           # 확인 패스 기준 0건
+closed_findings: [F-A1, F-A2, F-A9, F-B1, F-B2]
+open_accepted_findings: [F-B3]  # 선행 결함(교정이 만든 것이 아님) · optional · 카드 종결을 막지 않음
 optional_findings: [F-A3, F-A4, F-A5, F-A6, F-A7, F-A8, F-A10]
-remediated_here:
-  - "F-A1 — «승인 판정 주입은 닫혔다» 경계 진술 정정: spec.md §1·§5, progress.md §E.1·§E.2·§E.3 주석, CHANGELOG.md 세 자리(:9·:12·:45). 정정 문언은 «발신 id 를 모르는 상대에 대해서만 닫힘»"
-  - "F-A2 — «먼저 도착한 판정이 이기고 온-패스 상대가 사람보다 먼저 도착한다» 를 재생 차단 근거에 병기 (CHANGELOG.md 발신 집합 항목 · spec.md §4.2)"
-  - "F-A9 — 본 §E.4 발행 + 머리 표 «현재 상태» 행 갱신"
+finding_disposition:
+  - "F-A1 [High][blocking] — CLOSED. 경계 진술 정정 4건 전건 착지 + 1차가 훑지 않은 자리(plan.md:88·165 · acceptance.md:730)까지 정정. F-B1 이 닫히면서 함께 종결 (sync-audit-2.md §5 · §12.5)"
+  - "F-A2 [High][blocking] — CLOSED. 선착 판정 위험을 spec.md:218 · CHANGELOG.md:12 에 병기하고, emitted.delete 방어가 되돌려지지 않았음을 원문으로 확인 (sync-audit-2.md §2.3 · §5)"
+  - "F-A9 [Medium][blocking] — CLOSED. 본 §E.4 발행 + 머리 표 «현재 상태» 갱신, 수치 15항목 전건이 1차 실측값으로 추적됨 (sync-audit-2.md §2.5 · §5)"
+  - "F-B1 [Medium][blocking] — CLOSED. spec.md:362 참조 줄이 잔여를 셋으로 적고 §5 네 항목과 전건 정합, grep 5패턴 재실행에서 «범위를 선언하며 둘로 적은 줄» 0건 (sync-audit-2.md §12.2·§12.3·§12.5)"
+  - "F-B2 [Low][optional] — CLOSED. §E.4 «고친 파일» 목록에 plan.md 2자리·acceptance.md 1자리를 보정, 열거한 6개 군 전부를 git diff·원문으로 대조 (sync-audit-2.md §12.4·§12.5)"
+  - "F-B3 [Low][optional] — OPEN(수용). 머리 표 «계획 감사» 행 정체. 1차 감사 이전부터 있던 선행 결함이며 차단이 아니다. t10/t11 로 이월 (sync-audit-2.md §12.5)"
+  - "J2 [Low][optional] — OPEN(수용). §G 체크리스트 행(progress.md:658)의 «절반» 라벨이 출처 plan.md:165(«잔여 셋»)를 더 이상 인용하지 못한다. PASS 판정 자체는 참. t10/t11 로 이월 (sync-audit-2.md §6 J2 · §12.5)"
 open_findings:
-  - "F-A1·F-A2 의 실제 방어 — 서버 쪽 서명·논스가 필요하므로 REQ-CHANAUTH-013 이 이 카드에 금지한 범위. 카드 t15 소유 (문서 정정만 in-card)"
+  - "F-A1·F-A2 의 실제 방어 — 서버 쪽 서명·논스가 필요하므로 REQ-CHANAUTH-013 이 이 카드에 금지한 범위. 카드 t15 소유 (문서 정정만 in-card). **이 SPEC 의 종결은 F-01 의 종결이 아니다**"
   - "F-A3·F-A4·F-A5·F-A6·F-A7·F-A10 — 기준·문서 보강, 후속 테스트 카드 t10/t11 소유"
   - "F-A8 — 128 축출을 이용한 정당한 판정 무력화. 감사도 도달성을 실측하지 못한 추정. 사칭 채팅 경로와 한 몸이므로 t15 소유"
+  - "F-B3 · J2 — 행 정체와 라벨 드리프트 두 건, t10/t11 소유"
   - "카드 t4 감사의 F-02·F-03·F-04·F-14 — 이 SPEC 범위 밖으로 잔존"
 handoff:
   - card: t15
-    scope: "F-01 잔여 셋 — 사칭 채팅 주입(message{delivery:'to'}) · 이력 오염(history_response) · 판정 주입의 잔여 절반(소켓에서 읽은 진짜 request_id 로 위조한 permission_verdict + 선착 판정 승리)"
+    scope: "F-01 잔여 셋 — 사칭 채팅 주입(message{delivery:'to'}) · 이력 오염(history_response) · 판정 주입의 잔여 절반(소켓에서 읽은 진짜 request_id 로 위조한 permission_verdict + 선착 판정 승리). F-A8 도 이 카드"
   - card: t10/t11
-    scope: "F-A3(uncaughtException 수집기) · F-A5(진입점 해석 실패 자식 갈래) · F-A4 · F-A6 · F-A7 · F-A10"
+    scope: "F-A3(uncaughtException 수집기) · F-A5(진입점 해석 실패 자식 갈래) · F-A4 · F-A6 · F-A7 · F-A10 · F-B3(머리 표 «계획 감사» 행) · J2(§G 라벨)"
 gaps:
-  - "재감사 미실행 — 이 §E.4 는 FAIL 판정을 받은 감사(HEAD 2c9a484)에 대한 응답이며, 정정 뒤의 재감사 결과는 아직 없다"
-  - "감사가 변이 B·F·G·H 를 재실행하지 않았다 (sync-audit.md §6) — 그 네 집합에 대한 판정 없음"
-  - "린터 부재 — 이 워크스페이스에 린트 구성이 없어 Consistency 의 기계 검증은 타입 검사·테스트·파일 경계로만 이루어졌다 (sync-audit.md §7-7)"
-  - "원격 CI 없음 — 브랜치 WT-chanperm-gate 미푸시, 이 워크트리가 유일 사본 (sync-audit.md §7-8)"
-status_transition: none         # in-progress 유지
+  - "확인 패스가 F-B1·F-B2 정정 뒤에 **재실행하지 않은 것**: 스위트 · 타입 검사 · 커버리지 · 프로브 P-A · 변이 전부. 이 값들의 유효성은 «수정된 추적 파일이 SPEC 마크다운 두 개(spec.md · progress.md)뿐이고 channel/ diff 가 빈 출력» 이라는 git status·git diff 관측에 기대며, 재측정이 아니다 (sync-audit-2.md §12.1·§12.8)"
+  - "typecheck_exit·coverage 는 1차 감사 HEAD(2c9a484)의 실측값이다 — 재감사·확인 패스에서 재실행하지 않았고 소스 블롭 해시 동일성으로 귀속했다 (sync-audit-2.md §3·§9-1·§9-5)"
+  - "프로브 P-A 미재실행 — «판정 위조 공격이 여전히 성립한다» 는 진술은 코드 동일성으로부터의 추론이지 이 트리의 재관측이 아니다 (sync-audit-2.md §9-2·§12.8-3)"
+  - "변이 B·F·G·H 는 1차·2차 어느 감사에서도 실행되지 않았다 (sync-audit.md §6 · sync-audit-2.md §9-4) — 그 네 집합에 대한 판정 없음"
+  - "변이 A·C·D·E·I 는 1차 측정을 귀속 소비했을 뿐 재실행하지 않았다 (sync-audit-2.md §9-3)"
+  - "린터 부재 — 이 워크스페이스에 린트 구성이 없어 Consistency 의 기계 검증은 테스트·git 대조·grep 으로만 이루어졌다. **통과가 아니라 없음** (sync-audit-2.md §9-7)"
+  - "원격 CI 없음 — 브랜치 WT-chanperm-gate 미푸시, 이 워크트리가 유일 사본 (sync-audit-2.md §9-8)"
+  - "카드 t3·t4·t5·t7 구역과 다른 SPEC 디렉터리는 범위 밖 — 그 구역의 F-01 서술에 대해 판정 없음 (sync-audit-2.md §9-6)"
+  - "카드 t15 수령 미확인 — 인계는 여섯 자리에 기록됐으나 큐 카드 본문과 대조하지 않았다. 인계는 «기록됨» 이지 «수령됨» 이 아니다 (sync-audit-2.md §12.8-7)"
+  - "확인 패스의 판정 대상은 **미커밋 작업 트리**였다 — 커밋 뒤 git show 로 spec.md·progress.md 의 diff 가 sync-audit-2.md §12.2·§12.4 원문과 같은지 대조할 것 (sync-audit-2.md §12.8-5)"
+status_transition: "in-progress → implemented → completed — 3-phase close, 단일 sync 커밋. 실제 적용 자리는 두 곳뿐이다: spec.md frontmatter status 와 본 progress.md(머리 표 + 본 블록). plan.md·acceptance.md 에는 frontmatter 가 아예 없어 전이시킬 status 필드가 존재하지 않는다 — sync 레인이 head -6 으로 직접 확인(빈 출력). 초안의 «4개 산출물 동시 적용» 문언은 사실과 달라 철회한다"
 ```
 
-- 이 §E.4 의 모든 수치는 **sync-auditor 가 이 트리·HEAD `2c9a484` 에서 직접 재측정한 값**이며(`.moai/reports/t9/sync-audit.md` §2.1·§3·§4), manager-docs 는 그 원문을 읽어 옮겼을 뿐 재실행하지 않았다.
+- 이 §E.4 의 모든 수치는 **sync-auditor 가 직접 관측한 값**을 옮긴 것이다 — 1차는 HEAD `2c9a484`(`.moai/reports/t9/sync-audit.md` §2.1·§3·§4), 2차와 확인 패스는 HEAD `3b7d44a`(`.moai/reports/t9/sync-audit-2.md` §2·§4·§12.6). manager-docs 는 그 원문을 읽어 옮겼을 뿐 어떤 명령도 재실행하지 않았다.
 - 핵심 반증 관측 원문 (감사 §2.2, 프로브 P-A): `PA_GATEWAY_SAW=["hello","status","permission_request"]` · `PA_VERDICTS=[{"request_id":"real-42","behavior":"allow"}]` — 사람이 누르지 않은 승인이 세션에 도달했고, 120ms 뒤 보낸 진짜 `deny` 는 같은 목록에 없다.
-- 이 sync 패스가 고친 파일: `CHANGELOG.md`(세 자리) · `progress.md`(§E.2 주석 3곳 · §E.3 주석 1곳 · 본 §E.4 · 머리 표). `spec.md` 와 `progress.md` §E.1 은 같은 sync 패스의 manager-spec 정정본이고, `channel/` 아래 코드·테스트는 **한 줄도 건드리지 않았다**.
-- 상태 전이 없음: 감사 판정이 FAIL 이고 재감사가 돌지 않았으므로 `status: in-progress` 를 유지한다. `implemented`/`completed` 로 올리면 기록이 사실과 달라진다.
+- 이 sync 패스가 고친 파일 (재감사 F-B2 로 목록 보정): `CHANGELOG.md`(세 자리) · `progress.md`(§E.1 · §E.2 주석 3곳 · §E.3 주석 1곳 · 본 §E.4 · 머리 표) · `spec.md`(§1 세 겹 표 ② 칸 · §4.2 선착 판정 병기 · §5 표와 «살아남는 것» (c) · §8 참조 목록 `t15` 행) · `plan.md`(위험표 `welcome` 위조 행 · 완료 조건 체크리스트) · `acceptance.md`(변이표 C 행 · AC-CHANAUTH-005 설명 · DoD 아래 주석). `channel/` 아래 코드·테스트는 **한 줄도 건드리지 않았다** — `git diff 7f83c43..HEAD -- channel/` 빈 출력(재감사 §2 실측).
+- **상태 전이: `in-progress` → `implemented` → `completed`.** 재감사가 실행됐고 최종 판정이 **PASS**(가중 조화평균 87.3 · 차단 0건 · must-pass 두 차원 통과 — `sync-audit-2.md` §12.6·§12.7)이므로 3-phase close 를 단일 sync 커밋에서 적용한다. `sync_commit_sha` 는 자기 자신을 가리키는 값이라 커밋 안에서는 알 수 없으므로 `pending-backfill-sync-t9` 로 두고 커밋 직후 sync 레인이 백필한다.
+- **종결의 범위 — 반드시 갈라 읽을 것.** 이 SPEC 의 `completed` 는 **13개 요구사항이 전부 구현되고 감사를 통과했다**는 뜻이며, 카드 `t4` 감사의 **F-01 이 닫혔다는 뜻이 아니다.** 소켓에서 읽은 진짜 `request_id` 로 판정을 위조하는 Critical 급 공격, 그리고 사칭 채팅 주입·이력 오염은 **지금도 성립하며** 카드 `t15` 가 소유한다. 감사자의 표현대로 이 PASS 는 «정직하게 인계했다» 에 대한 판정이지 «막았다» 에 대한 판정이 아니다 (`sync-audit-2.md` §12.7).
 
 ---
 
