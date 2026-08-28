@@ -622,7 +622,7 @@ card: t10
 audit_base_sha: fe7e23c         # 감사가 읽은 HEAD (spec.md v0.3.1 착지, 트리 미커밋 0건)
 branch: WT-injection-hardening
 worktree: .claude/worktrees/t10
-sync_commit_sha: pending-round3  # 이 라운드 정정의 착지 커밋. 리드 확인 뒤 커밋하고 후속 커밋으로 백필한다
+sync_commit_sha: 471cf36        # 이 라운드 정정의 착지 커밋. 리드 확인 뒤 커밋했고 이 값은 후속 커밋으로 백필했다 — 커밋은 자기 해시를 담을 수 없기 때문이다(라운드 1 의 beb726c→ad88606 과 같은 기계적 백필)
 verdict:
   result: PASS
   weighted_harmonic_mean: 0.8628   # 임계 0.80
