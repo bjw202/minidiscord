@@ -1,0 +1,74 @@
+
+> @minidiscord/channel@0.1.0 test
+> vitest run --reporter=verbose
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+
+ ✓ test/gateway-client.test.ts > gateway client > sends hello with the token as the very first frame 9ms
+ ✓ test/gateway-client.test.ts > gateway client > passes the welcome frame through untouched, extra fields included 11ms
+ ✓ test/gateway-client.test.ts > gateway client > passes the message frame through untouched, files and delivery included 13ms
+ ✓ test/gateway-client.test.ts > gateway client > passes a deny verdict through as deny 13ms
+ ✓ test/gateway-client.test.ts > gateway client > routes by type only — an unknown frame reaches no callback 13ms
+ ✓ test/gateway-client.test.ts > gateway client > survives frames whose callback was not provided 12ms
+ ✓ test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one 19ms
+ ✓ test/channel-server.test.ts > channel server > creates a connectable MCP server identified as minidiscord-channel 8ms
+ ✓ test/channel-server.test.ts > channel server > exposes exactly the reply and fetch_history tools 1ms
+ ✓ test/channel-server.test.ts > channel server > declares the reply input schema as text + optional files 1ms
+ ✓ test/channel-server.test.ts > channel server > reply forwards text and files to sendToChat and answers "sent" 1ms
+ ✓ test/channel-server.test.ts > channel server > declares all five optional fetch_history parameters and requires none 1ms
+ ✓ test/channel-server.test.ts > channel server > documents the #번호 numbering and the since_id cursor in the tool description 1ms
+ ✓ test/channel-server.test.ts > channel server > passes fetch_history arguments through and returns the dependency string verbatim 1ms
+ ✓ test/channel-server.test.ts > channel server > rejects an unknown tool and touches no dependency 1ms
+ ✓ test/channel-server.test.ts > channel server > pushChatMessage notifies with TO meta and the attachment local path 1ms
+ ✓ test/channel-server.test.ts > channel server > declares both channel experimental capabilities in the initialize response 0ms
+ ✓ test/channel-server.test.ts > channel server > carries the load-bearing instruction literals in the initialize response 0ms
+ ✓ test/channel-server.test.ts > channel server > carries cc as cc and omits the attachment note when there are no files 0ms
+ ✓ test/index-wiring.test.ts > channel wiring > gateway message becomes exactly one session notification 34ms
+ ✓ test/gateway-client.test.ts > gateway client > sends only while open, and reports it truthfully 18ms
+ ✓ test/gateway-client.test.ts > gateway client > puts every history parameter on the frame top level, since_id included 11ms
+ ✓ test/gateway-client.test.ts > gateway client > matches responses by rid, not by arrival order 13ms
+ ✓ test/gateway-client.test.ts > gateway client > rejects a history request at 10 seconds, not before 8ms
+ ✓ test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting 7ms
+ ✓ test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again 11ms
+ ✓ test/gateway-client.test.ts > gateway client > doubles the backoff and never exceeds the ceiling 16ms
+ ✓ test/gateway-client.test.ts > gateway client > resets the backoff to 1000 after a successful connection 23ms
+ ✓ test/gateway-client.test.ts > gateway client > never reconnects after stop() — measured against a live control client 15ms
+ ✓ test/permission-relay.test.ts > permission relay > relays a request out and carries the matching verdict back, correlated by the forwarded id 112ms
+ ✓ test/permission-relay.test.ts > permission relay > only the exact permission_request method reaches sendPermissionRequest 152ms
+ ✓ test/index-wiring.test.ts > channel wiring > cc message is delivered but raises no working status 237ms
+ ✓ test/index-wiring.test.ts > channel wiring > a TO message reports working to the gateway 24ms
+ ✓ test/index-wiring.test.ts > channel wiring > reply tool sends a bot_message with mapped file paths 37ms
+ ✓ test/index-wiring.test.ts > channel wiring > idle status follows the bot_message, not precedes it 24ms
+ ✓ test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim 12ms
+ ✓ test/permission-relay.test.ts > permission relay > forwards params verbatim, adding and dropping nothing 52ms
+ ✓ test/index-wiring.test.ts > channel wiring > history lines carry the #id cursor prefix 12ms
+ ✓ test/index-wiring.test.ts > channel wiring > empty history renders the Korean placeholder 13ms
+ ✓ test/permission-relay.test.ts > permission relay > survives a wiring without sendPermissionRequest 103ms
+ ✓ test/transport-auth.test.ts > transport auth > an endpoint that never sends welcome cannot inject a verdict or a chat message 423ms
+ ✓ test/index-wiring.test.ts > channel wiring > importing the module opens no connection 88ms
+ ✓ test/index-wiring.test.ts > channel wiring > resolveUrl falls back to the documented default 0ms
+ ✓ test/permission-relay.test.ts > permission relay > emits exactly one permission notification with exactly two params 102ms
+ ✓ test/permission-relay.test.ts > permission relay > delivers deny as deny 103ms
+ ✓ test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection 236ms
+ ✓ test/permission-relay.test.ts > permission relay > passes request_id through untouched in both directions 103ms
+ ✓ test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each 436ms
+ ✓ test/index-wiring.test.ts > channel wiring > the built artifact speaks MCP; the token gates only the gateway 472ms
+ ✓ test/permission-relay.test.ts > permission relay > relays a verdict only for an id it actually emitted, exactly once 359ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict before transport connect throws nothing and leaves no unhandled rejection 156ms
+ ✓ test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code 80ms
+ ✓ test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves 438ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed 104ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an emitted id is relayed exactly once, verbatim 102ms
+ ✓ test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped 257ms
+ ✓ test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first 213ms
+ ✓ test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect 1417ms
+ ✓ test/transport-auth.test.ts > transport auth > gated frames leave no unhandled rejection and do not stop the client 815ms
+ ✓ test/transport-auth.test.ts > transport auth > isTransportAllowed decides by scheme and host only 0ms
+ ✓ test/transport-auth.test.ts > transport auth > the entry point refuses a plaintext remote and connects otherwise 580ms
+
+ Test Files  5 passed (5)
+      Tests  61 passed (61)
+   Start at  19:54:33
+   Duration  4.35s (transform 188ms, setup 0ms, import 685ms, tests 7.53s, environment 0ms)
+

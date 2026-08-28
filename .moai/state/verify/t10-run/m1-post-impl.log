@@ -1,0 +1,105 @@
+
+> @minidiscord/channel@0.1.0 test
+> vitest run --reporter=verbose
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+
+ ✓ test/gateway-client.test.ts > gateway client > sends hello with the token as the very first frame 9ms
+ ✓ test/gateway-client.test.ts > gateway client > passes the welcome frame through untouched, extra fields included 12ms
+ ✓ test/gateway-client.test.ts > gateway client > passes the message frame through untouched, files and delivery included 13ms
+ ✓ test/gateway-client.test.ts > gateway client > passes a deny verdict through as deny 12ms
+ ✓ test/gateway-client.test.ts > gateway client > routes by type only — an unknown frame reaches no callback 12ms
+ ✓ test/gateway-client.test.ts > gateway client > survives frames whose callback was not provided 12ms
+ ✓ test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one 18ms
+ ✓ test/channel-server.test.ts > channel server > creates a connectable MCP server identified as minidiscord-channel 6ms
+ ✓ test/channel-server.test.ts > channel server > exposes exactly the reply and fetch_history tools 1ms
+ ✓ test/channel-server.test.ts > channel server > declares the reply input schema as text + optional files 1ms
+ ✓ test/channel-server.test.ts > channel server > reply forwards text and files to sendToChat and answers "sent" 1ms
+ ✓ test/channel-server.test.ts > channel server > declares all five optional fetch_history parameters and requires none 1ms
+ × test/channel-server.test.ts > channel server > documents the #번호 numbering and the since_id cursor in the tool description 3ms
+   → expected '채팅 서버에서 이 방의 대화 기록을 가져온다. 멘션 없이 오간 대화…' to contain '#번호'
+ ✓ test/channel-server.test.ts > channel server > points the cursor at the JSON field and never at a #번호 in line text 1ms
+ ✓ test/channel-server.test.ts > channel server > passes fetch_history arguments through and returns the dependency string verbatim 0ms
+ ✓ test/channel-server.test.ts > channel server > rejects an unknown tool and touches no dependency 1ms
+ ✓ test/channel-server.test.ts > channel server > pushChatMessage notifies with TO meta and the attachment local path 1ms
+ ✓ test/channel-server.test.ts > channel server > declares both channel experimental capabilities in the initialize response 0ms
+ ✓ test/channel-server.test.ts > channel server > carries the load-bearing instruction literals in the initialize response 0ms
+ ✓ test/channel-server.test.ts > channel server > carries cc as cc and omits the attachment note when there are no files 0ms
+ ✓ test/channel-server.test.ts > channel server > neutralizes channel envelope sequences in the body, the author name and the file path 0ms
+ ✓ test/channel-server.test.ts > channel server > leaves a body without envelope sequences byte-identical, and never touches meta 0ms
+ ✓ test/channel-server.test.ts > channel server > states the trust boundary and keeps every pre-existing instruction fragment 0ms
+ ✓ test/index-wiring.test.ts > channel wiring > gateway message becomes exactly one session notification 30ms
+ ✓ test/gateway-client.test.ts > gateway client > sends only while open, and reports it truthfully 18ms
+ ✓ test/gateway-client.test.ts > gateway client > puts every history parameter on the frame top level, since_id included 11ms
+ ✓ test/gateway-client.test.ts > gateway client > matches responses by rid, not by arrival order 13ms
+ ✓ test/gateway-client.test.ts > gateway client > rejects a history request at 10 seconds, not before 8ms
+ ✓ test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting 6ms
+ ✓ test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again 12ms
+ ✓ test/gateway-client.test.ts > gateway client > doubles the backoff and never exceeds the ceiling 18ms
+ ✓ test/gateway-client.test.ts > gateway client > resets the backoff to 1000 after a successful connection 22ms
+ ✓ test/gateway-client.test.ts > gateway client > never reconnects after stop() — measured against a live control client 15ms
+ ✓ test/permission-relay.test.ts > permission relay > relays a request out and carries the matching verdict back, correlated by the forwarded id 109ms
+ ✓ test/permission-relay.test.ts > permission relay > only the exact permission_request method reaches sendPermissionRequest 155ms
+ ✓ test/index-wiring.test.ts > channel wiring > cc message is delivered but raises no working status 236ms
+ ✓ test/index-wiring.test.ts > channel wiring > a TO message reports working to the gateway 24ms
+ ✓ test/index-wiring.test.ts > channel wiring > reply tool sends a bot_message with mapped file paths 37ms
+ ✓ test/index-wiring.test.ts > channel wiring > idle status follows the bot_message, not precedes it 25ms
+ ✓ test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim 12ms
+ ✓ test/permission-relay.test.ts > permission relay > forwards params verbatim, adding and dropping nothing 53ms
+ ✓ test/index-wiring.test.ts > channel wiring > history lines carry the #id cursor prefix 12ms
+ ✓ test/index-wiring.test.ts > channel wiring > empty history renders the Korean placeholder 14ms
+ ✓ test/permission-relay.test.ts > permission relay > survives a wiring without sendPermissionRequest 104ms
+ ✓ test/transport-auth.test.ts > transport auth > an endpoint that never sends welcome cannot inject a verdict or a chat message 421ms
+ ✓ test/index-wiring.test.ts > channel wiring > importing the module opens no connection 101ms
+ ✓ test/index-wiring.test.ts > channel wiring > resolveUrl falls back to the documented default 0ms
+ ✓ test/permission-relay.test.ts > permission relay > emits exactly one permission notification with exactly two params 103ms
+ ✓ test/permission-relay.test.ts > permission relay > delivers deny as deny 102ms
+ ✓ test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection 236ms
+ ✓ test/permission-relay.test.ts > permission relay > passes request_id through untouched in both directions 103ms
+ ✓ test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each 436ms
+ ✓ test/permission-relay.test.ts > permission relay > relays a verdict only for an id it actually emitted, exactly once 358ms
+ ✓ test/index-wiring.test.ts > channel wiring > the built artifact speaks MCP; the token gates only the gateway 496ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict before transport connect throws nothing and leaves no unhandled rejection 156ms
+ ✓ test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves 436ms
+ ✓ test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code 82ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed 102ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an emitted id is relayed exactly once, verbatim 102ms
+ ✓ test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped 259ms
+ ✓ test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first 218ms
+ ✓ test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect 1424ms
+ ✓ test/transport-auth.test.ts > transport auth > gated frames leave no unhandled rejection and do not stop the client 816ms
+ ✓ test/transport-auth.test.ts > transport auth > isTransportAllowed decides by scheme and host only 0ms
+ ✓ test/transport-auth.test.ts > transport auth > the entry point refuses a plaintext remote and connects otherwise 582ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/channel-server.test.ts > channel server > documents the #번호 numbering and the since_id cursor in the tool description
+AssertionError: expected '채팅 서버에서 이 방의 대화 기록을 가져온다. 멘션 없이 오간 대화…' to contain '#번호'
+
+Expected: "#번호"
+Received: "채팅 서버에서 이 방의 대화 기록을 가져온다. 멘션 없이 오간 대화를 따라잡거나 컨텍스트를 잃었을 때 맥락을 복구할 때 사용. 결과는 JSON 한 건이고, 다음 요청의 since_id 로는 결과 JSON 의 cursor 필드 값을 그대로 넘긴다."
+
+ ❯ test/channel-server.test.ts:128:15
+    126|     const fh = await toolNamed(client, 'fetch_history')
+    127|     const d = fh.description ?? ''
+    128|     expect(d).toContain('#번호')
+       |               ^
+    129|     expect(d).toContain('since_id')
+    130|     const sinceIdParam = (fh.inputSchema as any).properties.since_id.d…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 64 passed (65)
+   Start at  19:58:25
+   Duration  4.36s (transform 197ms, setup 0ms, import 709ms, tests 7.57s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose

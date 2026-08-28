@@ -1,0 +1,18 @@
+(i) 해석 불가 MINIDISCORD_SERVER="not a url"
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — not a url (주소를 해석하지 못했다)
+"
+STDERR_LINES>>>1
+HAS_WS>>>false  HAS_WSS>>>false  HAS_NONLOOPBACK_WORD>>>false
+---
+(ii) 루프백 + http: MINIDISCORD_SERVER="http://127.0.0.1:3000/bot"
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — http://127.0.0.1:3000/bot (루프백 주소는 ws:// 를 쓴다)
+"
+STDERR_LINES>>>1
+HAS_WS>>>true  HAS_WSS>>>false  HAS_NONLOOPBACK_WORD>>>false
+---
+(iii) 비루프백 평문 ws: MINIDISCORD_SERVER="ws://remote.example.test/bot"
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — ws://remote.example.test/bot (비루프백 호스트에는 wss:// 를 쓴다)
+"
+STDERR_LINES>>>1
+HAS_WS>>>true  HAS_WSS>>>true  HAS_NONLOOPBACK_WORD>>>true
+---

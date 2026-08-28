@@ -1,0 +1,8 @@
+{
+  "name": "minidiscord",
+  "private": true,
+  "workspaces": ["server", "channel"],
+  "scripts": {
+    "test": "npm test --workspaces --if-present"
+  }
+}
