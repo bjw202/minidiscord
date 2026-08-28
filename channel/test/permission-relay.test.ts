@@ -1,4 +1,6 @@
-// SPEC-CHANPERM-001 권한 릴레이 테스트 — acceptance.md 공통 하네스 + AC-CHANPERM-001~009.
+// 권한 릴레이 테스트 — SPEC-CHANPERM-001 acceptance.md 공통 하네스 + AC-CHANPERM-001~010,
+// 그리고 SPEC-CHANAUTH-001 §4.2 의 AC-CHANAUTH-006~009(발신 집합 대조, 파일 끝에 둔다).
+// AC-CHANPERM-005~009 본문은 v0.4.0 개정본이다(발신 전제 추가·AC-007 관측 형태 변경·AC-008 재작성).
 // 원본 plan-v2.md Task 14 Step 1 의 유사 객체 스키마({ method } as any)는 쓰지 않는다 —
 // SDK 가 schema.shape 에서 메서드를 읽으므로 등록 단계에서 깨진다 (plan.md §D 1번). 정본은 이 하네스다.
 import { describe, it, expect, afterEach } from 'vitest'
@@ -153,9 +155,10 @@ describe('permission relay', () => {
     expect(out).toBeDefined()
   })
 
-  // AC-CHANPERM-005 — 판정 알림이 계약대로 나간다
+  // AC-CHANPERM-005 — 판정 알림이 계약대로 나간다 (v0.4.0 — 발신 집합 대조 아래에서도 성립하도록 발신이 앞선다)
   it('emits exactly one permission notification with exactly two params', async () => {
-    const { handle, verdicts } = await attach()
+    const { client, handle, verdicts } = await attach()
+    await sendRequest(client, REQ)                       // 먼저 발신한다 (v0.4.0 전제)
     handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })
     await tick()
 
@@ -164,45 +167,59 @@ describe('permission relay', () => {
     expect(Object.keys(verdicts[0].params).sort()).toEqual(['behavior', 'request_id'])
   })
 
-  // AC-CHANPERM-006 — 거절이 거절로서 도달한다
+  // AC-CHANPERM-006 — 거절이 거절로서 도달한다 (v0.4.0 — 같은 전제)
   it('delivers deny as deny', async () => {
-    const { handle, verdicts } = await attach()
+    const { client, handle, verdicts } = await attach()
+    await sendRequest(client, REQ)                       // 먼저 발신한다 (v0.4.0 전제)
     handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'deny' })
     await tick()
     expect(verdicts[0].params.behavior).toBe('deny')
   })
 
-  // AC-CHANPERM-007 — request_id 를 변형하지 않는다 (양방향)
+  // AC-CHANPERM-007 — request_id 를 변형하지 않는다 (양방향 — v0.4.0 개정: 관측 형태 변경).
+  // 이전 판은 나가는 id('AbC12')와 돌아오는 id('abc12')를 다르게 두었으나, 발신 집합 대조와 원리상
+  // 양립 불가하므로(SPEC-CHANPERM-001 acceptance.md v0.4.0 개정 주석) 같은 id 로 양방향을 잰다.
+  // "서버가 대소문자를 바꿔 되돌릴 때"의 관측은 카드 t7 소관이다.
   it('passes request_id through untouched in both directions', async () => {
     const { client, handle, requests, verdicts } = await attach()
-    await sendRequest(client, { ...REQ, request_id: 'AbC12' })
-    expect(requests[0].request_id).toBe('AbC12')         // 나가는 방향
+    const issued = 'Ab-C12'                              // 대소문자·하이픈 혼합
+    await sendRequest(client, { ...REQ, request_id: issued })
+    expect(requests[0].request_id).toBe(issued)          // 나가는 방향
 
-    handle.handlePermissionVerdict({ request_id: 'abc12', behavior: 'allow' })
+    // 돌아오는 방향은 나간 값을 그대로 되먹인다 — 나가는 경로에서 관측한 값을 쓴다
+    handle.handlePermissionVerdict({ request_id: requests[0].request_id, behavior: 'allow' })
     await tick()
-    expect(verdicts[0].params.request_id).toBe('abc12')  // 돌아오는 방향 — 서버가 준 그대로
+    expect(verdicts[0].params.request_id).toBe(issued)   // 글자 그대로
   })
 
-  // AC-CHANPERM-008 — 모르는 판정이 와도 다른 요청을 건드리지 않는다
-  it('an unknown or already-resolved verdict resolves nothing else and does not crash', async () => {
-    const { client, handle, verdicts } = await attach()
+  // AC-CHANPERM-008 — 발신하지 않은 판정은 세션에 닿지 않는다 (v0.3.0 개정 본문, 카드 t9)
+  it('relays a verdict only for an id it actually emitted, exactly once', async () => {
+    const { client, handle, requests, verdicts } = await attach()
     const unhandled = collectUnhandled()
-    await sendRequest(client, REQ)                       // 실제로 대기 중인 것은 'abcde'
+    await sendRequest(client, REQ)                       // 발신한 것은 'abcde' 하나뿐이다
+    expect(requests.map(r => r.request_id)).toEqual(['abcde'])
 
-    handle.handlePermissionVerdict({ request_id: 'zzzzz', behavior: 'allow' })   // 모르는 id
-    handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })
-    handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'deny' })    // 이미 해소된 id
+    handle.handlePermissionVerdict({ request_id: 'zzzzz', behavior: 'allow' })   // 발신한 적 없다
     await tick()
+    expect(verdicts).toEqual([])                         // 한 건도 나가지 않는다
 
-    const ids = verdicts.map(v => v.params.request_id)
-    expect(ids).toEqual(['zzzzz', 'abcde', 'abcde'])     // 받은 id 그대로, 순서 그대로, 셋 다
-    expect(ids).not.toContain('abcde-1')                 // 어떤 id 도 만들어내지 않는다
+    handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })   // 발신한 id
+    await tick()
+    expect(verdicts.map(v => v.params)).toEqual([{ request_id: 'abcde', behavior: 'allow' }])
+
+    handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'deny' })    // 이미 소진된 id
+    await tick()
+    expect(verdicts.length).toBe(1)                      // 두 번째는 나가지 않는다 (재생 차단)
     expect(await unhandled()).toEqual([])
 
-    // 프로세스가 살아 있는가 — 이후 정상 판정이 여전히 성립하는지로 잰다
+    // 프로세스가 여전히 쓸 만한가 — 새로 발신한 id 로 잰다
+    await sendRequest(client, { ...REQ, request_id: 'qqqqq' })
     handle.handlePermissionVerdict({ request_id: 'qqqqq', behavior: 'deny' })
     await tick()
-    expect(verdicts[3].params).toEqual({ request_id: 'qqqqq', behavior: 'deny' })
+    expect(verdicts.map(v => v.params)).toEqual([
+      { request_id: 'abcde', behavior: 'allow' },
+      { request_id: 'qqqqq', behavior: 'deny' },
+    ])
   })
 
   // AC-CHANPERM-009 — 연결 전 판정이 프로세스를 죽이지 않는다
@@ -224,6 +241,7 @@ describe('permission relay', () => {
     const [c, s] = InMemoryTransport.createLinkedPair()
     await Promise.all([client.connect(c), handle.server.connect(s)])
     cleanups.push(async () => { await client.close() })
+    await sendRequest(client, REQ)                       // 먼저 발신한다 (v0.4.0 전제)
     handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })
     await tick()
     expect(verdicts.length).toBe(1)
@@ -255,5 +273,90 @@ describe('permission relay', () => {
     gwStub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'deny' })
     await waitFor(() => verdicts.length > 0, '판정 알림 도착')
     expect(verdicts[0].params).toEqual({ request_id: 'abcde', behavior: 'deny' })
+  })
+
+  // ─── AC-CHANAUTH-006..009 (SPEC-CHANAUTH-001 §4.2 — 발신 request_id 집합 대조) ───
+  // 이 네 기준은 발신 집합 대조(REQ-CHANAUTH-005..008)를 잰다. 같은 파일에 두는 이유는
+  // 개정된 AC-CHANPERM-008 과 같은 하네스를 공유해야 두 기준이 서로를 가린 채 통과할 수 없기 때문이다
+  // (acceptance.md 공통 테스트 하네스 머리글).
+
+  // AC-CHANAUTH-006 — 발신한 적 없는 판정은 세션으로 나가지 않는다
+  it('a verdict for an id the channel never emitted is not relayed', async () => {
+    const { handle, verdicts, requests } = await attach()
+    const unhandled = collectUnhandled()
+
+    handle.handlePermissionVerdict({ request_id: 'zzzzz', behavior: 'allow' })
+    await tick()
+
+    expect(verdicts).toEqual([])       // 한 건도 나가지 않는다
+    expect(requests).toEqual([])       // 발신한 적도 없다 (전제 확인)
+    expect(await unhandled()).toEqual([])
+  })
+
+  // AC-CHANAUTH-007 — 발신한 id 의 판정은 정확히 한 번, 글자 그대로 (AC-006 의 짝)
+  it('a verdict for an emitted id is relayed exactly once, verbatim', async () => {
+    const { client, handle, requests, verdicts } = await attach()
+    const issued = { ...REQ, request_id: 'Ab-C12' }      // 대소문자·하이픈 혼합 — 무변형 관측
+    await sendRequest(client, issued)
+    expect(requests.map(r => r.request_id)).toEqual(['Ab-C12'])
+
+    handle.handlePermissionVerdict({ request_id: requests[0].request_id, behavior: 'allow' })
+    await tick()
+
+    expect(verdicts.map(v => v.params)).toEqual([{ request_id: 'Ab-C12', behavior: 'allow' }])
+  })
+
+  // AC-CHANAUTH-008 — 같은 id 의 두 번째 판정은 재생되지 않는다
+  it('an emitted id is consumed on first relay; a replayed verdict is dropped', async () => {
+    const { client, handle, verdicts } = await attach()
+    await sendRequest(client, { ...REQ, request_id: 'aaaaa' })
+
+    handle.handlePermissionVerdict({ request_id: 'aaaaa', behavior: 'deny' })
+    await tick()
+    handle.handlePermissionVerdict({ request_id: 'aaaaa', behavior: 'allow' })   // 재생
+    await tick()
+
+    expect(verdicts.map(v => v.params)).toEqual([{ request_id: 'aaaaa', behavior: 'deny' }])
+
+    // 소진이 릴레이 전체를 막은 것이 아님을 새 발신으로 확인한다
+    await sendRequest(client, { ...REQ, request_id: 'bbbbb' })
+    handle.handlePermissionVerdict({ request_id: 'bbbbb', behavior: 'allow' })
+    await tick()
+    expect(verdicts.map(v => v.params)).toEqual([
+      { request_id: 'aaaaa', behavior: 'deny' },
+      { request_id: 'bbbbb', behavior: 'allow' },
+    ])
+  })
+
+  // AC-CHANAUTH-009 — 발신 집합은 128 에서 가장 오래된 것부터 버린다
+  it('the emitted-id set is capped at 128 and evicts oldest first', async () => {
+    const { client, handle, verdicts } = await attach()
+    const id = (n: number) => `req-${String(n).padStart(4, '0')}`
+
+    // 이 루프만 형제 헬퍼 sendRequest 를 쓰지 않는다 — 그 헬퍼는 호출마다 tick()(50ms)을 await 하므로
+    // 129회면 6,450ms 가 흘러 vitest 기본 testTimeout 5,000ms 를 넘긴다 (계획 감사 N-7).
+    // 알림은 InMemoryTransport 위에서 순서가 보존되므로 축출 순서 관측은 그대로 성립한다.
+    for (let n = 0; n < 129; n++) {
+      await client.notification({
+        method: 'notifications/claude/channel/permission_request',
+        params: { ...REQ, request_id: id(n) },
+      } as never)
+    }
+    await tick()                                                                // 129건 처리를 한 번만 기다린다
+
+    handle.handlePermissionVerdict({ request_id: id(0), behavior: 'allow' })     // 축출된 첫 id
+    await tick()
+    expect(verdicts).toEqual([])
+
+    handle.handlePermissionVerdict({ request_id: id(128), behavior: 'allow' })   // 마지막 id
+    await tick()
+    expect(verdicts.map(v => v.params)).toEqual([{ request_id: id(128), behavior: 'allow' }])
+
+    handle.handlePermissionVerdict({ request_id: id(1), behavior: 'deny' })      // 경계 안쪽
+    await tick()
+    expect(verdicts.map(v => v.params)).toEqual([
+      { request_id: id(128), behavior: 'allow' },
+      { request_id: id(1), behavior: 'deny' },
+    ])
   })
 })

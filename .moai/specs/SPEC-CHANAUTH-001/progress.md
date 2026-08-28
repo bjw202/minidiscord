@@ -408,6 +408,186 @@ npm run typecheck -w channel → 종료 코드 0
 pgrep -f 'channel/dist/index.js' → 출력 없음 (종료 코드 1)
 ```
 
+### M3 — 발신 `request_id` 집합 대조 (기준 `e511dbc` = M2 커밋, 브랜치 `WT-chanperm-gate`, 2026-08-28)
+
+#### 단계 1.1-1.2 (RED — 개정 전 문언으로 먼저 관측, 전이 5 전반부)
+
+`channel/test/permission-relay.test.ts` 에 AC-CHANAUTH-006·007·008·009 네 기준을 **추가**했다. 기존 AC-CHANPERM-005·006·007·008·009 다섯 테스트는 이 시점에 한 글자도 손대지 않았다. 실행 (`npm test -w channel -- test/permission-relay.test.ts --reporter=verbose`, 종료 코드 1):
+
+```
+ ✓ test/permission-relay.test.ts > permission relay > relays a request out and carries the matching verdict back, correlated by the forwarded id 110ms
+ ✓ test/permission-relay.test.ts > permission relay > only the exact permission_request method reaches sendPermissionRequest 154ms
+ ✓ test/permission-relay.test.ts > permission relay > forwards params verbatim, adding and dropping nothing 53ms
+ ✓ test/permission-relay.test.ts > permission relay > survives a wiring without sendPermissionRequest 104ms
+ ✓ test/permission-relay.test.ts > permission relay > emits exactly one permission notification with exactly two params 53ms
+ ✓ test/permission-relay.test.ts > permission relay > delivers deny as deny 52ms
+ ✓ test/permission-relay.test.ts > permission relay > passes request_id through untouched in both directions 104ms
+ ✓ test/permission-relay.test.ts > permission relay > an unknown or already-resolved verdict resolves nothing else and does not crash 207ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict before transport connect throws nothing and leaves no unhandled rejection 104ms
+ ✓ test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code 92ms
+ × test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed 58ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an emitted id is relayed exactly once, verbatim 102ms
+ × test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped 156ms
+ × test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first 111ms
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 11 passed (14)
+```
+
+세 실패의 사유 — **전부 단언 실패(AssertionError)** 다:
+
+```
+ FAIL  test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed
+AssertionError: expected [ { …(2) } ] to deeply equal []
+ FAIL  test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped
+AssertionError: expected [ { request_id: 'aaaaa', …(1) }, …(1) ] to deeply equal [ { request_id: 'aaaaa', …(1) } ]
+ FAIL  test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first
+AssertionError: expected [ { …(2) } ] to deeply equal []
+```
+
+**요구된 RED 형태와 정확히 일치한다**: 006·008·009 가 단언 실패로 실패하고, **007(`a verdict for an emitted id is relayed exactly once, verbatim`)은 이 시점에 통과한다** — 발신 집합이 없는 현재 코드도 판정을 한 번씩 그대로 중계하기 때문이다(007 의 최종 판정은 전이 6). 개정 전 AC-CHANPERM 다섯 테스트도 전부 통과한다(위 ✓ 목록).
+
+#### 단계 1.3 — 게이트 구현 직후, 다섯 형제 붕괴 관측 (전이 5 후반부, 교체 전)
+
+단계 2 GREEN 구현(`channel-server.ts` 발신 집합 — 아래 단계 2 절)을 넣은 **직후**, 개정본 교체 **전에** 같은 명령을 다시 실행했다 (종료 코드 1):
+
+```
+ ✓ test/permission-relay.test.ts > permission relay > relays a request out and carries the matching verdict back, correlated by the forwarded id 110ms
+ ✓ test/permission-relay.test.ts > permission relay > only the exact permission_request method reaches sendPermissionRequest 154ms
+ ✓ test/permission-relay.test.ts > permission relay > forwards params verbatim, adding and dropping nothing 52ms
+ ✓ test/permission-relay.test.ts > permission relay > survives a wiring without sendPermissionRequest 104ms
+ × test/permission-relay.test.ts > permission relay > emits exactly one permission notification with exactly two params 59ms
+ × test/permission-relay.test.ts > permission relay > delivers deny as deny 53ms
+ × test/permission-relay.test.ts > permission relay > passes request_id through untouched in both directions 104ms
+ × test/permission-relay.test.ts > permission relay > an unknown or already-resolved verdict resolves nothing else and does not crash 105ms
+ × test/permission-relay.test.ts > permission relay > a verdict before transport connect throws nothing and leaves no unhandled rejection 105ms
+ ✓ test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code 94ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed 103ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an emitted id is relayed exactly once, verbatim 103ms
+ ✓ test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped 257ms
+ ✓ test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first 215ms
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 9 passed (14)
+```
+
+**실패 집합이 정확히 다섯 건이다** — AC-CHANPERM-005·006·007·008·009 의 개정 **전** 본문. v0.1.0 은 008 하나만 예상했으나 다섯 건 모두가 깨지는 것이 정상이다(계획 감사 C-02). 다섯 실패의 사유 원문:
+
+```
+ FAIL  test/permission-relay.test.ts > permission relay > emits exactly one permission notification with exactly two params
+AssertionError: expected +0 to be 1 // Object.is equality
+ FAIL  test/permission-relay.test.ts > permission relay > delivers deny as deny
+TypeError: Cannot read properties of undefined (reading 'params')
+ ❯ test/permission-relay.test.ts:172:24
+ FAIL  test/permission-relay.test.ts > permission relay > passes request_id through untouched in both directions
+TypeError: Cannot read properties of undefined (reading 'params')
+ ❯ test/permission-relay.test.ts:183:24
+ FAIL  test/permission-relay.test.ts > permission relay > an unknown or already-resolved verdict resolves nothing else and does not crash
+AssertionError: expected [ 'abcde' ] to deeply equal [ 'zzzzz', 'abcde', 'abcde' ]
+ FAIL  test/permission-relay.test.ts > permission relay > a verdict before transport connect throws nothing and leaves no unhandled rejection
+AssertionError: expected +0 to be 1 // Object.is equality
+```
+
+읽는 법: 006·007 의 TypeError 는 **발신 기록이 없어 `verdicts[0]` 이 `undefined`** 라는 개정 근거(C-02) 그 자체고, 008 의 `expected [ 'abcde' ] to deeply equal [ 'zzzzz', 'abcde', 'abcde' ]` 는 개정 전 문언이 «모르는 id 도 중계된다» 를 정상으로 못 박았다는 사실을 그대로 보여 준다. 새로 넣은 AC-CHANAUTH 네 기준은 이 시점에 전부 통과한다 — 같은 게이트 위에서 개정 전 형제만 무너진다. **이것이 계약 충돌이 실재했다는 증거다.** 이 원문을 남긴 뒤에야 단계 1.4 교체로 넘어갔다.
+
+#### 단계 1.4 — 다섯 테스트를 v0.4.0 개정본으로 교체
+
+`SPEC-CHANPERM-001/acceptance.md` v0.4.0 본문 그대로 교체했다. 005·006·009 는 `await sendRequest(client, REQ)` 발신 한 줄이 앞에 붙었다. **007 은 관측 형태가 바뀌었다** — 나가는 `'AbC12'` / 돌아오는 `'abc12'` 의 다른 값 짝을 없애고, 같은 id `'Ab-C12'`(대소문자·하이픈 혼합)를 **양방향으로** 재되, 되먹이는 값은 나가는 경로에서 관측한 `requests[0].request_id` 로 쓴다. "서버가 대소문자를 바꿔 되돌릴 때"의 잃은 관측은 카드 `t7` 소관이다. 008 은 테스트 이름까지 바뀐 재작성 본문이다(`an unknown or already-resolved…` → `relays a verdict only for an id it actually emitted, exactly once`).
+
+#### 단계 2 (GREEN) — 발신 집합 구현
+
+`channel/src/channel-server.ts` — `wire()` 가 아니라 **채널 서버**에 둔다(plan §C — 하네스가 관측하는 유일한 지점). `createChannelServer` 지역에 `const emitted = new Set<string>()`(상한 128, 초과 시 `Set` 삽입 순서의 첫 원소 축출). `sendPermissionRequest` 를 부르는 알림 핸들러는 **의존이 있을 때만** `params.request_id` 를 글자 그대로 집합에 넣는다(정규화 없음 — REQ-CHANPERM-007). `handlePermissionVerdict` 는 집합에 없으면 아무것도 하지 않고 반환하고, 있으면 **지운 뒤** 종전대로 중계한다(`.catch(() => {})` 유지 — REQ-CHANPERM-009). 136행의 무상태 주석(plan §G 기준, 실제 위치는 구현 시점 기준)을 개정 후 문언으로 고쳤다 — 채널이 기억하는 것은 상한 있는 발신 집합 하나뿐이고 디스크 무상태는 그대로다.
+
+#### 단계 3 — 전체 스위트 + typecheck + 커버리지 (전이 6)
+
+```
+npm test -w channel:
+ Test Files  5 passed (5)
+      Tests  61 passed (61)
+   Start at  13:52:55
+   Duration  4.35s (transform 182ms, setup 0ms, import 636ms, tests 7.57s, environment 0ms)
+
+npm run typecheck -w channel → 종료 코드 0
+```
+
+61 = 기준선 57 + 신규 4. AC-CHANAUTH-006·007·008·009 와 개정된 AC-CHANPERM-005·006·007·008·009 전부 통과. 변이 되돌림 뒤 재실행에서도 동일(13:55:35, 61 passed).
+
+커버리지 실측 (`npm test -w channel -- --coverage`):
+
+```
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   93.75 |    82.08 |   96.96 |   94.44 |
+ channel-server.ts |     100 |    92.85 |    87.5 |     100 | 142
+ gateway-client.ts  |     100 |    96.42 |     100 |   100 | 78
+ index.ts          |   76.47 |       60 |     100 |   77.77 | 80-89
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 93.75% ( 120/128 )
+Branches     : 82.08% ( 55/67 )
+Functions    : 96.96% ( 32/33 )
+Lines        : 94.44% ( 102/108 )
+================================================================================
+```
+
+**stmts 93.75% (120/128) — 게이트 85% 통과.** 제외 범위 병기(감사 F-10): 이 수치는 `vitest.config.ts` 의 `include: ['src/**']` 계측값이다. 미커버 `index.ts` 80-89행은 **진입점 블록**으로, 자식 프로세스로 구동될 때만 실행된다(vitest.config.ts 머리글 주석이 밝힌 정상 상태) — 그 줄들의 실질 검증은 AC-CHANAUTH-011 (a)(b)(d) 의 자식 프로세스 기준이 맡는다.
+
+#### 단계 4 — 변이 D·E 실측 (각 변이: 소스 적용 → 전체 스위트 → 원문 → 되돌림; dist 를 재지 않는 소스 계측이므로 재빌드 불요)
+
+**변이 D — 발신 집합 조회 제거**(`handlePermissionVerdict` 의 `if (!emitted.has(...)) return` 한 줄 삭제, `delete` 유지). 실측 실패 집합:
+
+```
+     × relays a verdict only for an id it actually emitted, exactly once 106ms
+     × a verdict for an id the channel never emitted is not relayed 53ms
+     × an emitted id is consumed on first relay; a replayed verdict is dropped 154ms
+     × the emitted-id set is capped at 128 and evicts oldest first 111ms
+      Tests  4 failed | 57 passed (61)
+```
+
+= {AC-CHANPERM-008, AC-CHANAUTH-006, AC-CHANAUTH-008, AC-CHANAUTH-009} — **변이표 D 행과 정확히 일치**.
+
+**변이 E — 조회 후 `delete` 제거**(`has` 만 남기고 `emitted.delete` 한 줄 삭제). 실측 실패 집합:
+
+```
+     × relays a verdict only for an id it actually emitted, exactly once 208ms
+     × an emitted id is consumed on first relay; a replayed verdict is dropped 156ms
+      Tests  2 failed | 59 passed (61)
+```
+
+= {AC-CHANPERM-008, AC-CHANAUTH-008} — **변이표 E 행과 정확히 일치**.
+
+**되돌림 확인.** 두 변이 종료 후 `git diff channel/src/channel-server.ts` 는 GREEN 구현 그 자체만 담는다(조회·삭제 두 줄 모두 제자리, 변이 흔적 없음). 되돌린 뒤 전체 스위트 재실행 — 61 passed(위 단계 3 절 재실행 줄). `channel/src` 의 남은 변경은 `channel-server.ts` 하나뿐이다.
+
+#### 단계 5 — 범위 경계 (AC-CHANAUTH-012, 커밋 전 관측)
+
+기준 SHA 파일은 `7bbecc3253ac665c84ffc119bc0574190d239b16` — `$(cat .moai/specs/SPEC-CHANAUTH-001/.spec-base-sha)` 의 값과 동일하다(워크트리 샌드박스 가드가 명령 치환 복합형을 거부해 같은 값을 리터럴로 넣어 각 명령을 따로 실행했다; 관측값은 동일 대상).
+
+```
+$ test -s .moai/specs/SPEC-CHANAUTH-001/.spec-base-sha; echo "base=$?"
+base=0
+
+$ git diff --stat 7bbecc3…..HEAD -- server/ web/
+(빈 출력, 종료 코드 0)
+
+$ git diff --name-only 7bbecc3…..HEAD -- channel/src
+channel/src/gateway-client.ts
+channel/src/index.ts
+
+$ git diff --name-only 7bbecc3…..HEAD -- channel/package.json
+(빈 출력, 종료 코드 0)
+```
+
+**커밋 전이므로 channel/src 목록이 두 줄이다** — `channel-server.ts` 는 아직 커밋되지 않은 작업 트리 변경이다. 단계 6 커밋 **뒤** 같은 네 명령을 다시 실행해 세 번째 관측(`channel/src/channel-server.ts` · `gateway-client.ts` · `index.ts` 정확히 세 줄)을 확정했으며 그 원문은 완료 보고(E6)로 넘긴다. `server/`·`web/` 무변경과 `channel/package.json` 무변경은 양쪽 실행에서 동일하게 관측됐다.
+
+#### M3 시점의 열려 있는 것 (Gaps·인계)
+
+- **F-01 의 절반은 여전히 열려 있다** — 사칭 채팅 주입·이력 오염은 이 카드의 세 겹 중 어느 것도 걸지 않으며 카드 `t15` 소유다(M1 절 기록 재확인). 이 카드를 «F-01 을 닫았다» 로 보고하지 않는다.
+- 상한 128 의 실사용 분포 근거는 재지 않았다(plan §E 두 번째 행) — 129건 이상 쌓아 둔 사용자의 가장 오래된 승인이 조용히 무시되며, 증상이 REQ-CHANAUTH-006 의 정상 동작과 같아 진단이 어렵다. 값의 근거는 `spec.md` REQ-CHANAUTH-008.
+- 감사 F-02·F-03·F-04·F-14 는 여전히 열려 있다.
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal

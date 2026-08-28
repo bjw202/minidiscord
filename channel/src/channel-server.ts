@@ -49,6 +49,11 @@ const PermissionRequestNotification = z.object({
 })
 
 export function createChannelServer(deps: ChannelDeps): ChannelHandle {
+  // 발신 집합 — 채널이 내보낸 request_id 문자열들의 상한 있는 목록. 무상태 원칙 개정이
+  // 새로 인정하는 유일한 상태다(SPEC-CHANAUTH-001 plan §B). Set 의 삽입 순서 보장을 그대로 써서
+  // 축출 순서를 유지하고, 상한 128 을 넘으면 가장 오래된 것부터 버린다 (REQ-CHANAUTH-008).
+  const emitted = new Set<string>()
+
   const mcp = new Server(
     { name: 'minidiscord-channel', version: '0.1.0' },
     {
@@ -127,14 +132,26 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
   // 승인 요청 릴레이: Claude Code 의 알림 params 를 deps 로 내보낸다. 받은 것 그대로 —
   // 절단·마스킹·대소문자 변경·필드 가감 어느 것도 하지 않는다 (REQ-CHANPERM-001·002).
   // 의존이 없는 배선에서는 조용히 지나친다 (REQ-CHANPERM-003, Task 11 계약의 옵셔널).
+  // 내보낸 request_id 만 발신 집합에 넣는다 — 정규화 없이 글자 그대로 (REQ-CHANPERM-007).
   mcp.setNotificationHandler(PermissionRequestNotification, n => {
-    deps.sendPermissionRequest?.(n.params)
+    if (deps.sendPermissionRequest) {
+      deps.sendPermissionRequest(n.params)
+      emitted.add(n.params.request_id)
+      if (emitted.size > 128) {
+        const oldest = emitted.values().next().value
+        if (oldest !== undefined) emitted.delete(oldest)
+      }
+    }
   })
 
   // 판정 반환: 게이트웨이가 준 값을 그대로 실어 보낸다. params 는 두 필드뿐이다 —
   // payload 의 type 같은 계약 밖 필드는 골라 담지 않는다 (REQ-CHANPERM-005·006·007).
-  // 채널은 대기 중인 요청을 기억하지 않으므로(무상태) 판정과 요청의 짝짓기는 판단하지 않는다 (REQ-CHANPERM-008).
+  // 채널이 기억하는 것은 위 발신 집합 하나뿐이다 — 그 안의 판정은 중계와 동시에 집합에서
+  // 지워 재생으로 deny 를 allow 로 덮어쓰지 못하게 하고(REQ-CHANAUTH-007), 집합에 없는
+  // 판정은 조용히 버린다 (REQ-CHANPERM-008, v0.3.0 개정). 디스크에는 여전히 아무것도 쓰지 않는다.
   function handlePermissionVerdict(v: { request_id: string; behavior: 'allow' | 'deny' }): void {
+    if (!emitted.has(v.request_id)) return
+    emitted.delete(v.request_id)
     // 거부를 명시적으로 받는다: transport 가 없으면 notification() 은 거부된 프로미스를 돌려주고,
     // void 로 버리면 처리되지 않은 거부가 되어 Node 가 프로세스를 끝낸다 (REQ-CHANPERM-009).
     mcp
