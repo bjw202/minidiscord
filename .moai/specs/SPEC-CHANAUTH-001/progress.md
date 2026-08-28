@@ -590,9 +590,75 @@ $ git diff --name-only 7bbecc3…..HEAD -- channel/package.json
 
 ---
 
+### run 마감 검증 — 오케스트레이터 통합 (HEAD `7f83c43`, 2026-08-28)
+
+**최종 전체 스위트 (run 레인 직접 재측정).** `npm test -w channel -- --reporter=verbose` → 종료 코드 0. 전체 로그 `.moai/state/verify/t9-run/final-verbose.txt`:
+
+```
+ Test Files  5 passed (5)
+      Tests  61 passed (61)
+```
+
+파일별 ✓ 집계(같은 로그): `transport-auth 7 · gateway-client 16 · index-wiring 12 · channel-server 12 · permission-relay 14 = 61`. 형제 기준 비회귀(§G, vitest 대상) — AC-CHANWIRE-011·014, AC-CHANNEL-004 (b)·005 (b), AC-CHANPERM-001..010(v0.4.0), AC-CHANCLIENT-001..014(v0.4.0) 의 ✓ 줄이 이 로그와 각 마일스톤 §E.2 verbose 절에 있다. 셸 전용 `AC-CHANNEL-002`(grep exit=1 · leftover=0)와 004(a)·005(a) 프로브는 M2 §E.2 원문대로.
+
+**F-01 재현 프로브 수정 후 재실행 (§G 짝 완성).** M1 단계 0.2 와 같은 방식 — 내용 무변경 사본(`cmp` 일치 확인)을 `channel/probe/rogue.ts` 에 두고 `cd channel && node --import tsx probe/rogue.ts` 로 실행한 뒤 사본 제거, `git status --porcelain channel/` 빈 출력. 종료 코드 0, `/tmp/p6.log`:
+
+```
+P6_VERDICTS=[]
+P6_NOTIFICATIONS=[]
+```
+
+수정 전(§E.2 M1 단계 0.2 — 판정·채팅 모두 유입)과 짝이 된다. welcome 없이 프레임을 밀어 넣는 로그 서버의 주입이 이제 **0건**이다. 이 프로브는 welcome 을 위조하지 **않는** 상대다 — welcome 을 지어낼 수 있는 상대의 사칭 채팅 주입·이력 오염은 이 카드 어디에도 걸리지 않으며 카드 `t15` 가 소유한다.
+
+**§G 체크리스트 처분.**
+
+| §G 항목 | 처분 |
+|---|---|
+| AC-CHANAUTH-001..013 전부 통과 + 각 원문이 §E.2 에 | PASS — 001..005 (M1), 010·011 (M2), 006..009·012 (M3). 013 은 전이 기록 그 자체로, §E.2 M1/M3 의 RED·형제 관측·GREEN 원문이 그 증거다 |
+| M1 단계 0-3 F-01 재현(수정 전) + 같은 프로브 0건(수정 후) 원문 쌍 | PASS — 위 프로브 재실행으로 짝 완성 |
+| M3 단계 1-3 개정 전 CHANPERM 다섯 건 실패 원문 | PASS — §E.2 M3 단계 1.3 |
+| M1 단계 1b 개정 전 형제 일곱 건 실패 원문 + §3.2 목록 일치 | PASS — §E.2 M1 단계 1b |
+| F-01 절반 열림·t15 소유가 §E.2 에 | PASS — §E.2 M1 잔여 위험 + 본 절 프로브 단락 |
+| `CHANGELOG.md:15`·`:41` sync 인계 | PASS — §E.2 M1 |
+| `channel-server.ts` 무상태 주석 개정 후 문언 | PASS — M3 (52·135·149행) |
+| 변이 8종(A~H) 집합 일치 + 전건 되돌림 | PASS — A·B (M1), F·G·H (M2), D·E (M3) 표 일치·되돌림 확인. **C 행은 §11.2 예외** — 실측 집합 `{003(나)}` 원문 기록, 문서 미수정 |
+| REQ-CHANAUTH-001..013 → AC 매핑 표가 §E.1 에 | **GAP** — §E.1 에 표가 없다(§E.1 은 plan 단계 산출물이라 run 레인이 편집하지 않았다). 매핑의 실체는 spec.md 본문 각 REQ 의 관측 자리 문장이며, sync 단계에서 manager-spec 의 보충을 권고한다 |
+| 형제 기준 비회귀 ✓ 줄 + 셸 전용 `AC-CHANNEL-002` | PASS — 위 |
+| `git diff --stat <base>..HEAD -- server/ web/` 빈 출력 | PASS — run 레인 직접 실행, 빈 출력 (exit 0) |
+| `git status --porcelain` 테스트 생성 파일 없음 + `pgrep` 잔존 없음 | PASS — 추적 파일 변경 0, `pgrep -f 'channel/dist/index.js'` 결과 없음 |
+
+**커밋 목록**: `0b52b96` (M1 welcome 게이트) → `e511dbc` (M2 wss 강제, frontmatter `draft → in-progress` 포함) → `7f83c43` (M3 발신 집합 대조). 세 커밋 모두 pre-commit 훅 정상 통과 — `SKIP_MOAI_PRECOMMIT`·`--no-verify` 미사용.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: complete
+spec_id: SPEC-CHANAUTH-001
+card: t9
+criteria: 13/13 PASS          # AC-CHANAUTH-001..013 — 증거 전원 §E.2
+suite: 61/61 green            # channel, HEAD 7f83c43, run 레인 재측정 (exit 0)
+typecheck: exit 0
+coverage: stmts 93.75%        # 게이트 ≥85% 통과; index.ts 진입점 블록은 AC-CHANAUTH-011 자식 프로세스 기준으로 별도 관측(F-10 헤드라인 병기)
+mutations: "A·B·D·E·F·G·H 표 일치·전건 되돌림 / C 실측 {003(나)} — 보고 전용(문서 미수정, §11.2)"
+scope_proof: "base 7bbecc3..HEAD = 8 파일 (channel src 3 + test 3 + progress.md + spec.md frontmatter 1행); server/·web/·CHANGELOG.md 빈 출력"
+commits: [0b52b96, e511dbc, 7f83c43]
+handoff:
+  - card: t15
+    scope: "F-01 잔여 절반 — 사칭 채팅 주입(message{delivery:'to'})·이력 오염(history_response)은 13 REQ 전부 구현 뒤에도 열려 있음"
+    note: "이 카드의 run·sync 보고는 «F-01 을 닫았다»로 적어서는 안 된다"
+  - phase: sync
+    items:
+      - "L-01 — CHANGELOG.md:15·:41 개정 전 무상태 문언 정정"
+      - "변이 C 실측({003(나)}) 대 변이표 C 행({005}±{003(나)}) 어긋남의 문서 판정 — run 은 원문만 남김"
+      - "§E.1 REQ→AC 매핑 표 보충(권고, manager-spec 소유)"
+gaps:
+  - "§E.1 REQ→AC 매핑 표 부재 — plan 소유라 run 이 편집하지 않음; spec.md 본문 매핑으로 실질 대체"
+  - "감사 F-02·F-03·F-04·F-14 잔존 (§E.2 M3 Gaps 절)"
+residual:
+  - "128 상한의 실사용 분포 미검증 (spec REQ-CHANAUTH-008 근거; §E 리스크 표)"
+  - "브랜치 WT-chanperm-gate 미푸시 — 이 워크트리가 유일 사본"
+  - "AC-CHANAUTH-011 (a) 의 절반은 localhost.example.test 의 NXDOMAIN 해석에 의존 (M2 보고)"
+```
 
 ---
 
