@@ -117,9 +117,9 @@
 
 ### M2 — 비루프백 `wss://` 강제 (우선순위 High)
 
-**단계 1 (RED).** AC-CHANAUTH-010·011 을 쓴다. 010 은 `isTransportAllowed` 미수출로, 011 (a)는 단언 실패로 실패한다. **두 사유를 구분해 기록한다.** 판정표는 **9행으로 이미 확정돼 있다** — `ws://127.0.0.1.evil.com/bot → false` 행 추가 여부를 run 단계에서 정하던 v0.1.0 의 미결은 계획 단계에서 닫았다(계획 감사 M-02). 이 단계에서 새로 정할 것은 없다.
+**단계 1 (RED).** AC-CHANAUTH-010·011 을 쓴다. 010 은 `isTransportAllowed` 미수출로, 011 (a)는 단언 실패로 실패한다. **두 사유를 구분해 기록한다.** 판정표는 이 SPEC 의 run 단계 시점에 **9행으로 확정돼 있었다** — `ws://127.0.0.1.evil.com/bot → false` 행 추가 여부를 run 단계에서 정하던 v0.1.0 의 미결은 계획 단계에서 닫았다(계획 감사 M-02). 그러므로 이 단계에서 새로 정할 것은 없었다. **(v0.4.0, 카드 `t10`: 이 표는 이후 `SPEC-CHANINJECT-001` AC-CHANINJECT-010 이 12행으로 대체한다. 위 서술은 이 SPEC 의 run 단계 당시 상태를 적은 기록이며, 현재 정본은 `acceptance.md` §AC-CHANAUTH-010 의 12행 표다.)**
 
-**단계 2 (GREEN).** `index.ts` 에 `isTransportAllowed(url)` 를 내보내고 — 내장 `URL` 로 파싱, 실패하면 `false`, `hostname` 이 루프백 **네 값**(`127.0.0.1`·`localhost`·`::1`·`[::1]`) 중 하나면 `true`, 아니면 `protocol === 'wss:'` — 진입점의 `if (token) gw.start()` 를 `if (token && isTransportAllowed(url)) gw.start()` 형태로 바꾼다. 거부하는 갈래에서 stderr 한 줄을 낸다.
+**단계 2 (GREEN).** `index.ts` 에 `isTransportAllowed(url)` 를 내보내고 — 내장 `URL` 로 파싱, 실패하면 `false`, `hostname` 이 루프백 **세 값**(`127.0.0.1`·`localhost`·`[::1]`) 중 하나면 `true`, 아니면 `protocol === 'wss:'` — (v0.4.0 정정, 카드 `t10`·감사 F-A7: v0.3.0 은 «네 값» 이라 적고 도달 불가한 맨 `'::1'` 을 함께 세었다. 루프백 분기에도 스킴 검사를 거는 개정은 `SPEC-CHANINJECT-001` REQ-CHANINJECT-013 소유) — 진입점의 `if (token) gw.start()` 를 `if (token && isTransportAllowed(url)) gw.start()` 형태로 바꾼다. 거부하는 갈래에서 stderr 한 줄을 낸다.
 
 **단계 3.** 빌드(`npm run build -w channel`)가 AC-CHANAUTH-011 의 전제다. 빌드 뒤 실행하고, 끝나면 `pgrep -f 'channel/dist/index.js'` 로 남은 프로세스가 없음을 확인한다.
 
@@ -171,7 +171,7 @@ run 단계가 끝나기 전에 다음이 모두 참이어야 한다. 하나라�
 - [ ] 셸 전용 형제 기준 `AC-CHANNEL-002` 의 두 명령을 실행해 `grep exit=1` · `leftover=0` 원문이 §E.2 에 있다.
 - [ ] `git diff --stat <base>..HEAD -- server/ web/` 가 빈 출력이다.
 - [ ] `git status --porcelain` 에 테스트가 만든 파일이 없고, `pgrep -f 'channel/dist/index.js'` 결과가 없다.
-- [ ] 미검증 항목이 §E.2 Gaps 절에 명시적으로 기록됐다 — 특히 감사 F-02·F-03·F-04·F-14 가 여전히 열려 있다는 사실.
+- [ ] 미검증 항목이 §E.2 Gaps 절에 명시적으로 기록됐다 — 특히 감사 F-02·F-03·F-04·F-14 가 여전히 열려 있다는 사실. **(v0.4.0 주 — 카드 `t10`: F-02·F-03·F-04 의 소유자가 `SPEC-CHANINJECT-001`(카드 `t10`)로, F-14 의 소유자가 카드 `t11` 로 확정됐다. 이 SPEC 의 run 단계 기록은 그대로 두고, 소유만 이관됐음을 여기 적는다.)**
 
 ---
 

@@ -171,8 +171,8 @@ async function connected() {
 | AC-CHANWIRE-004 | REQ-CHANWIRE-011 | 아래 본문 | `bot_message.body === '정리 완료'`, `files` 가 `[{ local_path:'/tmp/r.md' }]` 와 정확히 일치 |
 | AC-CHANWIRE-005 | REQ-CHANWIRE-009 | 아래 본문 | 전송 순서에서 `idle` 의 인덱스가 `bot_message` 의 인덱스보다 **큼** |
 | AC-CHANWIRE-006 | REQ-CHANWIRE-012 | 아래 본문 | 게이트웨이가 받은 `history_request` 에 `since_id: 41`, `limit: 5` 가 그대로 실림 |
-| AC-CHANWIRE-007 | REQ-CHANWIRE-012 | 아래 본문 | 도구 결과 텍스트가 `#1 [2026-08-01] alice: 과거` 와 정확히 같음 |
-| AC-CHANWIRE-008 | REQ-CHANWIRE-012 | 아래 본문 | 빈 이력의 도구 결과 텍스트가 정확히 `(기록 없음)` |
+| AC-CHANWIRE-007 | REQ-CHANWIRE-012 | 아래 본문 | 도구 결과를 `JSON.parse` 한 값이 `{cursor:1, messages:[{id,at,author,body}]}` 와 `toEqual` (v0.4.0 개정) |
+| AC-CHANWIRE-008 | REQ-CHANWIRE-012 | 아래 본문 | 빈 이력의 결과를 파싱한 값이 `{cursor:null, messages:[]}` 와 `toEqual` (v0.4.0 개정) |
 | AC-CHANWIRE-009 | REQ-CHANWIRE-006, 008, 011, 012 | 아래 본문 | 갈래를 하나씩 끊은 네 번의 실행에서 실패 기준 집합이 아래 표와 일치 |
 | AC-CHANWIRE-010 | REQ-CHANWIRE-002 | 아래 본문 | 모듈을 처음 적재하는 자식 프로세스가 스텁 연결 0건으로 종료 코드 `0` |
 | AC-CHANWIRE-011 | REQ-CHANWIRE-003 | 아래 본문 | `DEFAULT_SERVER` 와 `resolveUrl({})` 가 기본 주소 문자열과 정확히 일치하고, `resolveUrl` 이 지정값을 그대로 돌려줌 |
@@ -313,13 +313,13 @@ it('fetch_history forwards since_id and limit verbatim', async () => {
 
 **Then** 테스트가 통과한다. 파라미터를 버리고 `gw.requestHistory({})` 를 부르는 구현은 두 단언 모두에서 걸린다. `since_id` 를 다른 이름(`since`, `after_id`)으로 바꿔 싣는 구현도 마찬가지다. 이 커서가 떨어지면 봇은 매번 같은 대화를 다시 읽고, 그 증상은 사람 눈에 "봇이 좀 느리다" 정도로만 보인다.
 
-### AC-CHANWIRE-007 — 이력 줄이 #번호 형식으로 렌더링된다
+### AC-CHANWIRE-007 — 이력이 구조화 JSON 으로 렌더링된다 (v0.4.0 개정)
 
 **Given** 게이트웨이가 메시지 한 건을 돌려준다.
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
 
 ```ts
-it('history lines carry the #id cursor prefix', async () => {
+it('history renders as one structured JSON document', async () => {
   const { stub, obs } = await connected()
   stub.onFrame((ws, m) => {
     if (m.type === 'history_request') ws.send(JSON.stringify({
@@ -328,29 +328,46 @@ it('history lines carry the #id cursor prefix', async () => {
     }))
   })
   const res = await obs.callTool({ name: 'fetch_history', arguments: { limit: 1 } })
-  expect((res.content as any[])[0].text).toBe('#1 [2026-08-01] alice: 과거')
+  expect(parsedHistory(res)).toEqual({
+    cursor: 1,
+    messages: [{ id: 1, at: '2026-08-01', author: 'alice', body: '과거' }],
+  })
 })
 ```
 
-**Then** 테스트가 통과한다. `toBe` 로 전문을 단언하는 것이 이 기준의 핵심이다 — `toContain('과거')` 로 두면 본문만 이어 붙이고 번호를 빠뜨린 구현이 통과하는데, 채널 지시문이 봇에게 "각 줄 앞의 `#번호` 를 다음 `since_id` 로 쓰라"고 시키므로 번호가 없으면 따라잡기 자체가 성립하지 않는다. 여러 건일 때 줄 사이는 개행 하나로 잇는다.
+**Then** 테스트가 통과한다.
 
-### AC-CHANWIRE-008 — 빈 이력은 한국어 문구로 돌아온다
+**파싱한 뒤 `toEqual` 로 재는 것이 이 기준의 핵심이다.** 문자열을 `toBe` 로 재면 JSON 키 **순서** 하나로 정상 구현이 거짓 실패한다. `toEqual` 은 객체를 통째로 비교하므로 «네 키뿐이고 값이 이것들» 이 성립하고, 필드를 빠뜨리거나 몰래 더한 구현이 모두 걸린다. `cursor: 1` 단언이 커서가 배열 밖에서 나오는지를 함께 잰다.
+
+> **v0.4.0 개정 (카드 `t10`) — «수정» 이 아니라 «개정» 이다.** v0.3.0 의 이 기준은 `toBe('#1 [2026-08-01] alice: 과거')` 였고, 개정된 REQ-CHANWIRE-012 아래에서 **반드시 실패한다.** 옛 형식이 왜 폐기됐는지는 그 조항의 v0.4.0 주석과 감사 F-03 이 적었다 — 본문의 개행 하나가 메시지 1건을 이력 2줄로 만들고, 본문의 `#숫자` 가 커서를 오염시킨다. 개정 전 형태의 **실패 원문**은 `SPEC-CHANINJECT-001` AC-CHANINJECT-014 전이 **2b** 가 실행으로 남긴다. 오염 본문에 대한 관측은 `SPEC-CHANINJECT-001` AC-CHANINJECT-004 가 소유하며, 이 기준은 **형식의 고정**만 잰다 — 그 역할 분담은 v0.3.0 §5 가 이미 지적한 대로다.
+
+### AC-CHANWIRE-008 — 빈 이력도 같은 모양의 JSON 이다 (v0.4.0 개정)
 
 **Given** 게이트웨이가 빈 목록을 돌려준다.
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
 
 ```ts
-it('empty history renders the Korean placeholder', async () => {
+it('empty history renders the same JSON shape with a null cursor', async () => {
   const { stub, obs } = await connected()
   stub.onFrame((ws, m) => {
     if (m.type === 'history_request') ws.send(JSON.stringify({ type: 'history_response', rid: m.rid, messages: [] }))
   })
   const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
-  expect((res.content as any[])[0].text).toBe('(기록 없음)')
+  expect(parsedHistory(res)).toEqual({ cursor: null, messages: [] })
 })
 ```
 
-**Then** 테스트가 통과한다. 빈 문자열을 돌려주는 구현은 걸린다 — 세션이 받는 도구 결과가 비면 "도구가 고장 났다"와 "대화가 없다"를 구분할 수 없다.
+**Then** 테스트가 통과한다. 빈 문자열을 돌려주는 구현은 걸린다 — 세션이 받는 도구 결과가 비면 "도구가 고장 났다"와 "대화가 없다"를 구분할 수 없다. 그 성질은 v0.3.0 의 `'(기록 없음)'` 과 같고, 표현만 JSON 으로 통일됐다.
+
+> **v0.4.0 개정 (카드 `t10`).** v0.3.0 의 `toBe('(기록 없음)')` 는 개정된 REQ-CHANWIRE-012 아래에서 실패한다. **한국어 문구를 버린 사유**: 남기면 결과 타입이 «때로는 JSON, 때로는 문장» 이 되고, 모델이 `JSON.parse` 를 시도할 수 있는지가 상황에 따라 달라진다. 그 비일관은 커서를 다시 텍스트 추측으로 되돌리는 압력이 되므로, 빈 결과도 JSON 으로 통일한다(`SPEC-CHANINJECT-001/spec.md` §3.2). 이 SPEC §6 의 «UI 문구는 한국어» 제약도 같은 패스에서 정정했다 — 이 문자열을 읽는 것은 사람이 아니라 모델이다.
+
+> **공통 하네스 추가 (v0.4.0).** 위 두 기준은 `channel/test/index-wiring.test.ts` 의 헬퍼 하나를 쓴다. 정본은 `SPEC-CHANINJECT-001/acceptance.md` §공통 테스트 하네스이며, 같은 파일 안에 한 번만 선언한다.
+>
+> ```ts
+> function parsedHistory(res: unknown): { cursor: number | null; messages: unknown[] } {
+>   return JSON.parse((res as { content: { text: string }[] }).content[0].text)
+> }
+> ```
 
 ### AC-CHANWIRE-009 — 갈래는 서로 독립이며, 끊으면 그 기준이 무너진다
 
@@ -548,7 +565,8 @@ it('a chat message with no MCP peer raises no unhandled rejection', async () => 
 | `requestHistory` 가 10초 타임아웃으로 거부한다 | 거부가 도구 호출 오류로 세션에 전달된다 | 미검증 — 타임아웃 자체는 `SPEC-CHANCLIENT-001` 소유 |
 | 같은 TO 메시지가 재접속 커서 재전송으로 두 번 온다 | 두 번 다 세션에 전달되고 `working` 도 두 번 나간다 | 미검증 — 중복 억제는 서버 커서(`missed_after_id`)가 담당 |
 | `reply` 의 `files` 에 존재하지 않는 경로가 들어온다 | 배선은 그대로 싣고, 게이트웨이가 그 첨부만 건너뛴다 | 서버 SPEC 의 기존 동작 (`handleBotMessage` 의 try/catch) |
-| 이력 응답의 `messages` 가 여러 건이다 | 줄 사이를 개행 하나로 잇는다 | AC-CHANWIRE-007 (한 건으로 형식 고정, 잇는 방식은 §6 제약) |
+| 이력 응답의 `messages` 가 여러 건이다 | JSON 배열의 원소 여러 개가 된다 (v0.4.0 — 줄 잇기가 아니다) | AC-CHANWIRE-007 (한 건으로 형식 고정) · `SPEC-CHANINJECT-001` AC-CHANINJECT-005 (두 건으로 커서 고정) |
+| 이력 본문에 개행·`#숫자`가 들어 있다 | `JSON.stringify` 가 이스케이프하므로 원소 경계도 커서도 만들지 못한다 (v0.4.0) | `SPEC-CHANINJECT-001` AC-CHANINJECT-004·005 |
 | `working` 이 세션 알림보다 먼저 나가는가 (REQ-008 의 순서 조항) | 먼저 나가야 한다 | 미검증 — 두 사건이 서로 다른 전송로를 타 도착 시각 비교가 경쟁 조건이 된다. 코드 리뷰로만 확인 (감사 지적 m4, AC-CHANWIRE-003 본문) |
 | 기본 주소 경로가 실제 접속에 쓰이는가 | `resolveUrl` 이 돌려준 값으로 접속해야 한다 | 미검증 — `resolveUrl` 호출 지점이 하나뿐이라는 사실에 기댄다. 그 지점을 우회하는 구현은 AC-CHANWIRE-011 을 통과한다 |
 | 토큰 없이 띄운 프로세스가 계속 살아 있다 | stdio 를 잡은 채 MCP 로만 답한다 (게이트웨이에는 붙지 않음) | AC-CHANWIRE-014 (b) — v0.1.0 의 "자원 없이 정상 종료"는 계약 개정으로 폐기됐다 |
