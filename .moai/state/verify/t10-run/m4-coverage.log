@@ -1,0 +1,30 @@
+
+> @minidiscord/channel@0.1.0 test
+> vitest run --coverage
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+      Coverage enabled with v8
+
+
+ Test Files  5 passed (5)
+      Tests  70 passed (70)
+   Start at  23:29:42
+   Duration  5.73s (transform 201ms, setup 0ms, import 692ms, tests 8.94s, environment 0ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   88.57 |    78.08 |   97.22 |   89.16 |                   
+ channel-server.ts |     100 |    92.85 |      90 |     100 | 160               
+ gateway-client.ts |     100 |    96.42 |     100 |     100 | 78                
+ index.ts          |   63.63 |    54.83 |     100 |   64.86 | 98-123            
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 88.57% ( 124/140 )
+Branches     : 78.08% ( 57/73 )
+Functions    : 97.22% ( 35/36 )
+Lines        : 89.16% ( 107/120 )
+================================================================================

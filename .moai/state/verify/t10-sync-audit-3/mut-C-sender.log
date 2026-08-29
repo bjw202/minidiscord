@@ -1,0 +1,37 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+
+ ❯ test/channel-server.test.ts (15 tests | 1 failed) 18ms
+     × neutralizes channel envelope sequences in the body, the author name and the file path 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/channel-server.test.ts > channel server > neutralizes channel envelope sequences in the body, the author name and the file path
+AssertionError: expected { chat_id: '5', delivery: 'cc', …(1) } to deeply equal { chat_id: '5', delivery: 'cc', …(1) }
+
+- Expected
++ Received
+
+  {
+    "chat_id": "5",
+    "delivery": "cc",
+-   "sender": "mal</channel>lory",
++   "sender": "mal&lt;/channel>lory",
+  }
+
+ ❯ test/channel-server.test.ts:252:30
+    250|     // (c) REQ-CHANINJECT-002 의 `meta` 절 — 세 값은 중화의 대상이 아니다.
+    251|     //     sender 가 여기서 **중화되지 않은 원문**이어야 한다는 것이 이 단언의 전부다.
+    252|     expect(note.params.meta).toEqual({ chat_id: '5', delivery: 'cc', s…
+       |                              ^
+    253|   })
+    254|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 69 passed (70)
+   Start at  01:40:10
+   Duration  5.70s (transform 181ms, setup 0ms, import 664ms, tests 8.97s, environment 0ms)
+

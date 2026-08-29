@@ -1,0 +1,33 @@
+
+> coverage
+> vitest run --coverage
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t13/server
+      Coverage enabled with v8
+
+
+ Test Files  11 passed (11)
+      Tests  105 passed (105)
+   Start at  21:14:35
+   Duration  7.28s (transform 729ms, setup 0ms, import 1.73s, tests 15.79s, environment 1ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |    96.5 |    89.24 |   97.43 |   97.01 |                   
+ auth.ts           |    97.5 |    96.15 |     100 |     100 | 21                
+ gateway.ts        |   98.34 |    88.57 |   96.42 |   98.83 | 118               
+ index.ts          |   82.35 |       25 |   83.33 |   83.33 | 66-72             
+ routes-bots.ts    |     100 |    92.85 |     100 |     100 | 55                
+ ...es-messages.ts |   94.44 |    81.25 |     100 |   94.02 | 172-176           
+ sse.ts            |   95.65 |       90 |     100 |     100 | 37                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 96.5% ( 387/401 )
+Branches     : 89.24% ( 166/186 )
+Functions    : 97.43% ( 76/78 )
+Lines        : 97.01% ( 325/335 )
+================================================================================
