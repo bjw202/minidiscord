@@ -1,0 +1,280 @@
+
+> test
+> vitest run --reporter=verbose
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t11/server
+
+ ✓ test/mention.test.ts > parseMentions > parses a single TO 1ms
+ ✓ test/mention.test.ts > parseMentions > parses CC 0ms
+ ✓ test/mention.test.ts > parseMentions > parses multiple mentions in order, duplicates kept 0ms
+ ✓ test/mention.test.ts > parseMentions > ignores plain @name and non-TO/CC keywords while catching a real mention 0ms
+ ✓ test/mention.test.ts > parseMentions > rejects empty and space-containing names while catching a valid one 0ms
+ ✓ test/mention.test.ts > parseMentions > korean bot names work 0ms
+ ✓ test/config.test.ts > config > defaults (no env) 12ms
+ ✓ test/config.test.ts > config > env overrides 0ms
+ ✓ test/db.test.ts > openDb > creates all tables 8ms
+ ✓ test/db.test.ts > openDb > is idempotent (reopen same file) 4ms
+ ✓ test/health.test.ts > health > GET /api/health returns ok 58ms
+ ✓ test/gateway.test.ts > gateway > welcomes each token as its own (room, bot) and only on /bot 65ms
+ ✓ test/gateway.test.ts > gateway > rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames 15ms
+ ✓ test/room-members.test.ts > room membership schema and migration > schema carries room_members with a composite key and rooms.created_by 7ms
+ ✓ test/room-members.test.ts > room membership schema and migration > adds created_by to an already-existing rooms table without losing rows 12ms
+ ✓ test/room-members.test.ts > room membership schema and migration > backfills every room x user exactly once and never resurrects removed rows 7ms
+ ✓ test/auth.test.ts > auth > registers a user 107ms
+ ✓ test/auth.test.ts > auth > rejects duplicate username 50ms
+ ✓ test/auth.test.ts > auth > login sets session cookie and /api/me works 49ms
+ ✓ test/rooms-bots.test.ts > rooms > creates and lists rooms 108ms
+ ✓ test/rooms-bots.test.ts > rooms > archives a room and moves it to archived list 50ms
+ ✓ test/permissions.test.ts > permission relay > gateway request creates a system message in the room 110ms
+ ✓ test/permissions.test.ts > permission relay > system message carries all four parts and both reply forms 50ms
+ ✓ test/messages.test.ts > messages > stores a plain user message with no targets 116ms
+ ✓ test/messages.test.ts > messages > stores targets for mentioned bots 53ms
+ ✓ test/sse.test.ts > sse > delivers a published event to the room subscriber 128ms
+ ✓ test/sse.test.ts > sse > opens the stream with SSE headers and a connected comment 54ms
+ ✓ test/room-members.test.ts > room membership acquisition > records the creator and joins them in the same transaction 153ms
+ ✓ test/auth.test.ts > auth > wrong password returns 401 48ms
+ ✓ test/auth.test.ts > auth > protected route without cookie returns 401 4ms
+ ✓ test/auth.test.ts > auth > rejects invalid registration input 7ms
+ ✓ test/rooms-bots.test.ts > rooms > calls onArchive hook when provided 50ms
+ ✓ test/rooms-bots.test.ts > rooms > requires auth 48ms
+ ✓ test/rooms-bots.test.ts > rooms > rejects a blank room name 49ms
+ ✓ test/messages.test.ts > messages > rejects mention of bot not invited to the room 54ms
+ ✓ test/messages.test.ts > messages > send failures distinguish missing room from archived room 49ms
+ ✓ test/sse.test.ts > sse > never leaks another room event into this room stream 52ms
+ ✓ test/sse.test.ts > sse > frames events exactly as event/data/blank-line 54ms
+ ✓ test/permissions.test.ts > permission relay > publishes the request to the room SSE stream 70ms
+ ✓ test/permissions.test.ts > permission relay > user yes reply sends verdict to the bot and is not stored as user message 55ms
+ ✓ test/room-members.test.ts > room membership acquisition > rolls the room back when the membership insert fails 96ms
+ ✓ test/rooms-bots.test.ts > rooms > archiving moves the room and stamps archived_at 50ms
+ ✓ test/rooms-bots.test.ts > rooms > archiving distinguishes a missing room (404) from an archived one (409) 51ms
+ ✓ test/auth.test.ts > auth > sets an httpOnly lax session cookie 49ms
+ ✓ test/auth.test.ts > auth > stores a salted scrypt hash, never the plaintext 26ms
+ ✓ test/auth.test.ts > auth > logout invalidates the session 49ms
+ ✓ test/auth.test.ts > auth > only the three /api/auth routes are reachable without a session 4ms
+ ✓ test/messages.test.ts > messages > rejects an empty send with neither body nor file 51ms
+ ✓ test/messages.test.ts > messages > saves uploaded file as attachment and serves download 55ms
+ ✓ test/auth.test.ts > auth > buildServer wires cookie, db and auth routes 68ms
+ ✓ test/permissions.test.ts > permission relay > non-matching text is not consumed 51ms
+ ✓ test/permissions.test.ts > permission relay > yes with unknown id is not consumed (falls through as chat) 50ms
+ ✓ test/sse.test.ts > sse > delivers to every subscriber of the room 52ms
+ ✓ test/sse.test.ts > sse > removes the subscriber when the connection closes 62ms
+ × test/room-members.test.ts > room membership acquisition > invites a user, is idempotent on repeat, and rejects an unknown user 102ms
+   → expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+ ✓ test/messages.test.ts > messages > never puts stored_path in the send or list response while keeping the id usable 53ms
+ ✓ test/messages.test.ts > messages > refuses to store an upload outside the uploads directory 49ms
+ ✓ test/rooms-bots.test.ts > rooms > every room and bot route requires a session 49ms
+ ✓ test/rooms-bots.test.ts > bots > registers and lists bots 48ms
+ ✓ test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot 55ms
+ ✓ test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow 51ms
+ ✓ test/sse.test.ts > sse > publishing to a room with no subscribers is a silent no-op 51ms
+ ✓ test/sse.test.ts > sse > rejects an unauthenticated event-stream request 50ms
+ ✓ test/sse.test.ts > sse > wires the hub and the events route into buildServer 65ms
+ ✓ test/gateway.test.ts > gateway > replays only missed messages targeted at that bot and advances the cursor 410ms
+ × test/room-members.test.ts > room membership acquisition > refuses an invitation from a non-member while a member can still invite 138ms
+   → expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+ ✓ test/messages.test.ts > messages > refuses to serve an attachment whose stored path escapes the uploads directory 49ms
+ ✓ test/messages.test.ts > messages > publishes to the sse hub and delivers to the gateway exactly once 48ms
+ ✓ test/messages.test.ts > messages > lists messages after cursor 47ms
+ ✓ test/permissions.test.ts > permission relay > consumes the reply instead of storing it as a user message 50ms
+ ✓ test/rooms-bots.test.ts > bots > rejects duplicate and blank bot names 49ms
+ ✓ test/rooms-bots.test.ts > invites > invites a bot and returns one-time token + command 48ms
+ ✓ test/rooms-bots.test.ts > invites > re-inviting same bot revokes old token and issues new one 45ms
+ ✓ test/room-members.test.ts > room membership acquisition > hides an archived room from a non-member while showing 409 to a member 133ms
+ ✓ test/messages.test.ts > messages > list is scoped to the room and carries author_name 45ms
+ ✓ test/messages.test.ts > messages > all three message routes reject unauthenticated requests 47ms
+ ✓ test/messages.test.ts > messages > buildServer wires the message routes, multipart and uploadsDir 54ms
+ ✓ test/rooms-bots.test.ts > invites > command carries env vars, the dev flag and the configured port 46ms
+ ✓ test/rooms-bots.test.ts > invites > invite failures distinguish missing room, archived room and missing bot 47ms
+ ✓ test/room-members.test.ts > room membership acquisition > offers no self-service join path and leaves no membership behind a refusal 99ms
+ × test/room-members.test.ts > room membership gates > refuses a non-member send with no trace while a member send succeeds 87ms
+   → expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+ ✓ test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token 48ms
+ ✓ test/rooms-bots.test.ts > invites > lists invites without token 45ms
+ ✓ test/rooms-bots.test.ts > invites > never exposes the issued token again 45ms
+ ✓ test/rooms-bots.test.ts > invites > online is a boolean false, not the integer 0 46ms
+ ✓ test/rooms-bots.test.ts > invites > revoking an invite is idempotent 44ms
+ × test/room-members.test.ts > room membership gates > answers a non-member read with 404, not an empty list, while a member reads it 86ms
+   → expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+ ✓ test/rooms-bots.test.ts > invites > archiving a room revokes that room bot tokens (verifies SPEC-ROOM-001 archive contract) 44ms
+ ✓ test/rooms-bots.test.ts > buildServer registers room and bot routes behind requireAuth 59ms
+ × test/room-members.test.ts > room membership gates > refuses a non-member event stream before hijack and opens it for a member 92ms
+   → expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+ ✓ test/room-members.test.ts > room membership gates > refuses a non-member on the buildServer-assembled event route 93ms
+ ✓ test/gateway.test.ts > gateway > never redelivers a message after reconnect 609ms
+ ✓ test/room-members.test.ts > room membership gates > narrows the room listing to the caller rooms and widens it on invitation 85ms
+ ✓ test/gateway.test.ts > gateway > deliver reaches only targeted bots in that room and moves only their cursor 811ms
+ ✓ test/gateway.test.ts > gateway > deliver carries per-bot delivery and the message attachments 10ms
+ ✓ test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat 1552ms
+ ✓ test/gateway.test.ts > gateway > stores bot_message, copies files into uploadsDir and publishes to the hub 309ms
+ ✓ test/gateway.test.ts > gateway > bot_message skips only the missing attachment 307ms
+ ✓ test/room-members.test.ts > room membership gates > never lets a non-member approve, and leaves the request for a member to answer 1589ms
+ ✓ test/room-members.test.ts > room membership gates > the broker itself refuses a non-member verdict, independent of the route gate 96ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a local_path outside botFilesDir while still attaching one inside 308ms
+ ✓ test/room-members.test.ts > room membership gates > gives a non-member byte-identical answers for missing, active and archived rooms 86ms
+ ✓ test/room-members.test.ts > room membership gates > moves every gated route together for one person, before and after the invitation 126ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a symlink inside botFilesDir that points outside it 307ms
+ × test/room-members.test.ts > room membership gates > refuses all three bot-invite routes to a non-member while a member keeps the old behaviour 85ms
+   → expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+ ✓ test/room-members.test.ts > room membership gates > keeps the member-facing invite failure codes intact behind the gate 83ms
+ ✓ test/room-members.test.ts > room membership gates > leaves the bot gateway path untouched by room membership 86ms
+ ✓ test/gateway.test.ts > gateway > never publishes stored_path on the hub frame for a bot attachment 309ms
+ ✓ test/permissions.test.ts > permission relay > never resolves a request from a different room 1550ms
+ ✓ test/gateway.test.ts > gateway > bot_message attaches nothing at all when botFilesDir is unset 307ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a sibling directory whose path merely prefixes botFilesDir 308ms
+ ✓ test/gateway.test.ts > gateway > status publishes bot_status for working and idle only 410ms
+ ✓ test/gateway.test.ts > gateway > isOnline follows the connection, per room and bot 108ms
+ ✓ test/gateway.test.ts > gateway > history_request returns the room messages in id order and echoes rid 7ms
+ ✓ test/gateway.test.ts > gateway > history_request with since_id returns only later messages 8ms
+ ✓ test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until 8ms
+ ✓ test/gateway.test.ts > gateway > history_response carries id, author_name, body and created_at 5ms
+ ✓ test/gateway.test.ts > gateway > history_response goes only to the requesting bot 406ms
+ ✓ test/gateway.test.ts > gateway > closeRoom disconnects only that room 8ms
+ ✓ test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending 1555ms
+ ✓ test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery 808ms
+ ✓ test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag 69ms
+ ✓ test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request 1554ms
+ ✓ test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one 66ms
+ ✓ test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l 51ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/room-members.test.ts > room membership acquisition > invites a user, is idempotent on repeat, and rejects an unknown user
+AssertionError: expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+
+- Expected
++ Received
+
+  {
+-   "error": "방을 찾을 수 없습니다",
++   "error": "접근 권한이 없습니다",
+  }
+
+ ❯ test/room-members.test.ts:328:27
+    326|     const noRoom = await invite(app, alice.cookie, 999999, mallory.id)
+    327|     expect(noRoom.statusCode).toBe(404)
+    328|     expect(noRoom.json()).toEqual({ error: '방을 찾을 수 없습니다' })
+       |                           ^
+    329|   })
+    330|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/room-members.test.ts > room membership acquisition > refuses an invitation from a non-member while a member can still invite
+AssertionError: expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+
+- Expected
++ Received
+
+  {
+-   "error": "방을 찾을 수 없습니다",
++   "error": "접근 권한이 없습니다",
+  }
+
+ ❯ test/room-members.test.ts:340:28
+    338|     const refused = await invite(app, mallory.cookie, roomId, outsider…
+    339|     expect(refused.statusCode).toBe(404)
+    340|     expect(refused.json()).toEqual({ error: '방을 찾을 수 없습니다' })
+       |                            ^
+    341|     expect(memberCount(roomId)).toBe(1)
+    342|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > refuses a non-member send with no trace while a member send succeeds
+AssertionError: expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+
+- Expected
++ Received
+
+  {
+-   "error": "방을 찾을 수 없습니다",
++   "error": "접근 권한이 없습니다",
+  }
+
+ ❯ test/room-members.test.ts:403:28
+    401|       headers: { cookie: mallory.cookie }, payload: sneaky })
+    402|     expect(refused.statusCode).toBe(404)
+    403|     expect(refused.json()).toEqual({ error: '방을 찾을 수 없습니다' })
+       |                            ^
+    404|     // 어느 표에도 흔적이 없다 — 세 표 전부를 본다 (message_targets 가 초판에서 빠져 있었다)
+    405|     expect((db.prepare('SELECT COUNT(*) c FROM messages').get() as { c…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > answers a non-member read with 404, not an empty list, while a member reads it
+AssertionError: expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+
+- Expected
++ Received
+
+  {
+-   "error": "방을 찾을 수 없습니다",
++   "error": "접근 권한이 없습니다",
+  }
+
+ ❯ test/room-members.test.ts:432:28
+    430|     const refused = await listMsg(app, mallory.cookie, roomId)
+    431|     expect(refused.statusCode).toBe(404)
+    432|     expect(refused.json()).toEqual({ error: '방을 찾을 수 없습니다' })
+       |                            ^
+    433|     expect(refused.json().messages).toBeUndefined()      // 빈 배열도 아니다 …
+    434|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > refuses a non-member event stream before hijack and opens it for a member
+AssertionError: expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+
+- Expected
++ Received
+
+  {
+-   "error": "방을 찾을 수 없습니다",
++   "error": "접근 권한이 없습니다",
+  }
+
+ ❯ test/room-members.test.ts:448:34
+    446|     const refused = await openStream(port, mallory.cookie, roomId)
+    447|     expect(refused.status).toBe(404)                        // hijack …
+    448|     expect(await refused.json()).toEqual({ error: '방을 찾을 수 없습니다' })
+       |                                  ^
+    449|
+    450|     // 구독자가 생기지 않았다. 이 단언이 관측이고, 아래 publish 는 그 뒤의 정상 동작 확인일 뿐이다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > refuses all three bot-invite routes to a non-member while a member keeps the old behaviour
+AssertionError: expected { error: '접근 권한이 없습니다' } to deeply equal { error: '방을 찾을 수 없습니다' }
+
+- Expected
++ Received
+
+  {
+-   "error": "방을 찾을 수 없습니다",
++   "error": "접근 권한이 없습니다",
+  }
+
+ ❯ test/room-members.test.ts:632:32
+    630|     const refusedPost = await botInvite(app, mallory.cookie, roomId, b…
+    631|     expect(refusedPost.statusCode).toBe(404)
+    632|     expect(refusedPost.json()).toEqual({ error: '방을 찾을 수 없습니다' })
+       |                                ^
+    633|     expect(activeTokenCount(roomId)).toBe(1)                       // …
+    634|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed | 10 passed (11)
+      Tests  6 failed | 119 passed (125)
+   Start at  16:27:46
+   Duration  7.14s (transform 649ms, setup 0ms, import 1.44s, tests 19.09s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t11/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t11/server
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose

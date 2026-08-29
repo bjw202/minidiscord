@@ -190,7 +190,81 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-29
+sync_commit_sha: pending-backfill-t11-sync   # 커밋은 자기 SHA 를 모른다 — 착지 후 sync 레인이 백필한다
+sync_base_head: c87cbc1                      # 이 sync 편집이 얹힌 HEAD (run-done 커밋)
+frontmatter_status_transitions:
+  spec.md: in-progress -> implemented        # updated 는 이미 2026-08-29 — 변경 없음
+  plan.md: n/a                               # 이 SPEC 의 plan.md 에는 프론트매터가 없다 (파일 첫 줄이 H1)
+  acceptance.md: n/a                         # 같음
+  progress.md: n/a                           # 같음
+  completed_transition: deferred             # 감사 판정 후 리드가 결정한다 — sync 레인이 앞당기지 않는다
+documents_updated:
+  - CHANGELOG.md            # [Unreleased] 안에 «방 멤버십 인가 (카드 t11)» 절 신설 — t10 절 위
+  - README.md               # 머리말 한 줄 · 설정 절 · API 표(구성원 칸 신설) · «방 구성원» 절 신설 · 보안 절(«방 사이의 경계» 신설, F-14 항목 닫힘 표기) · 데이터베이스 절(표 8→10, room_members·schema_migrations·created_by) · 문서 목록
+  - .moai/specs/SPEC-ROOMAUTHZ-001/spec.md   # 프론트매터 status 만
+  - .moai/specs/SPEC-ROOMAUTHZ-001/progress.md  # 이 §E.4 블록만
+  - .moai/state/verify/t4-sync-audit/probe-inject.test.ts -> probe-inject.snippet.ts  # 순수 이름 변경(양쪽 해시 6d3c222c…). 이 sync 가 만든 것이 아니라 세션 시작 전부터 트리에 있던 미신고 델타이며, 감사 F-03 이 지적해 리드 결정으로 이 커밋에 포함·공시한다. 효과: 루트 vitest 수집에서 빠져 로드 오류가 사라진다(감사자 §6.6 이 16파일/195건·로드 오류 0 으로 실행 검증)
+post_audit_amendments:                       # 감사(PASS 84.0) 판정 이후 리드 결정으로 더한 문서 변분 — 코드 무변경이라 재검증 불요
+  - finding: F-02
+    files: [CHANGELOG.md, README.md]
+    change: "보관 라우트 미준수의 크기 정정 — 보관된 방에서는 구성원도 전송·봇 초대가 409 로 막히고 되돌리는 라우트가 API 에 없다는 한 문장 추가. spec.md §9 몫은 후속 카드"
+  - finding: F-05
+    files: [README.md]
+    change: "데이터베이스 표의 messages/message_targets·attachments 두 행 «아직» → «예» (이번 변경 이전부터 거짓이던 칸)"
+  - finding: F-01
+    files: []
+    change: "정정하지 않음 — 후속 카드로 이월(리드 결정, 운영자 승인). 술어 호출부의 참값은 여덟이고 목록은 인라인 SQL 로 같은 조건을 따로 적는다"
+b12_self_test_a_duplicate_grep:
+  command: grep -c 'SPEC-ROOMAUTHZ-001' CHANGELOG.md
+  observed: 0
+  verdict: pass                              # 0 이므로 중복 착지 없음 — 신규 emission 허용
+b12_self_test_b_ac_count:
+  command: grep -oE 'AC-ROOMAUTHZ-[0-9]+' .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md | sort -u | wc -l
+  observed: 18                               # AC-ROOMAUTHZ-001..018 — 0 이 아니므로 유효한 대조
+  changelog_reference: 18                    # acceptance.md 가 SSOT (progress.md 아님)
+  verdict: pass
+b12_self_test_c_path_existence:
+  command: "ls server/src/room-members.ts server/src/routes-events.ts server/src/routes-rooms.ts server/src/routes-messages.ts server/src/routes-bots.ts server/src/permissions.ts server/src/db.ts"
+  observed: 7 paths resolved, exit 0         # CHANGELOG 가 이름으로 부른 소스 전건 실재
+  verdict: pass
+changelog_entry_position: "CHANGELOG.md ## [Unreleased] 첫 절 (카드 t10 절 바로 위)"
+canary_compliance_check: n/a                 # 이 SPEC 은 자기 sync 가 시험할 전향적 정책을 정의하지 않는다
+
+sync_phase_direct_observations:              # sync 레인이 이 트리·이 HEAD 에서 직접 실행
+  - command: npm test -w server
+    observed: "Test Files  11 passed (11) / Tests  125 passed (125)"
+  - command: npm run typecheck -w server
+    observed: "exit 0"                       # 원문 .moai/state/verify/t11-sync/typecheck-server-syncagent.txt
+  - command: git diff --name-only 018e7db4… -- web/ channel/
+    observed: "(빈 출력)"                     # REQ-ROOMAUTHZ-016 경계 — sync 레인 직접 재확인
+  - command: git diff --name-only 018e7db4… -- server/src/
+    observed: "8 files: db·index·permissions·room-members·routes-bots·routes-events·routes-messages·routes-rooms"
+  - artifact: .moai/state/verify/t11-sync/mutation-matrix.md
+    observed: "강제 지점 9/9 개별 검출, 생존 변이 0; 술어 변이 4종 전부 검출; 이중 방어 2건 생존(측정 밖)"
+
+gaps_and_observations:
+  - id: G-T11-01
+    title: "술어를 «부른다»는 문언이 일곱 자리에서 거짓이다 — 동작은 옳고 측정도 된다"
+    scope_correction: "이 항목을 처음 적을 때는 두 자리로 셌으나, 감사(F-01)와 sync 레인 재검증이 일곱 자리로 확정했다: room-members.ts:2·:7, routes-rooms.ts:13·:46, routes-messages.ts:31, plan.md:379, spec.md:277 (+ progress.md:153 은 §E.2 의 역사 기록이라 세지 않고 고치지도 않는다). 술어 호출부의 참값은 여덟이다."
+    what_is_false:
+      - "server/src/room-members.ts:7 @MX:ANCHOR — 게이트 여덟 곳으로 «메시지·스트림·목록·브로커·초대 셋»을 열거하며 그 전부가 이 술어를 «호출한다»고 적는다. 목록(GET /api/rooms)은 isRoomMember 를 부르지 않는다."
+      - "progress.md §E.2 M4 §6 표 양방향 대조 항목 — «아홉 술어 소비부» 목록에 routes-rooms.ts:15-18 을 넣었다. 그 자리는 술어 소비부가 아니다."
+    what_is_nonetheless_true:
+      - "GET /api/rooms 는 인라인 SQL 하위 질의(routes-rooms.ts:17-19, `WHERE id IN (SELECT room_id FROM room_members WHERE user_id = ?)` 는 :18)로 같은 조건을 건다 — REQ-ROOMAUTHZ-011 이 그 SQL 을 문면으로 지정했으므로 구현이 요구사항을 벗어난 것이 아니다."
+      - "AC-ROOMAUTHZ-011 이 그 자리를 실제로 잰다 — sync 레인이 그 SQL 을 `WHERE ? IS NOT NULL` 로 변이시키자 «narrows the room listing to the caller rooms and widens it on invitation» 1건이 실패했다(mutation-matrix.md M9). 측정되지 않는 자리가 아니다."
+      - "REQ-ROOMAUTHZ-007 의 «게이트가 술어 하나를 부른다»가 구속하는 범위는 상태 코드로 방향이 드러나는 게이트 여덟이며, 목록은 spec.md §5.3 이 이미 그 sweep 밖으로 이름 붙여 두었다(AC-ROOMAUTHZ-017 이 아니라 AC-ROOMAUTHZ-011 이 잰다)."
+    handling: "고치지 않았다 — 주석은 소스이고 §E.2 는 run 단계의 역사적 관측 기록이라, 둘 다 sync 단계(manager-docs)의 산출물 소유 밖이다. 감사자와 리드가 보도록 여기에만 기록한다. CHANGELOG 와 README 는 처음부터 이 사실대로 썼다 — «목록만은 술어를 부르지 않고 SQL 로 같은 조건을 건다»."
+    proposed_owner: "결정됨 — 리드가 후속 카드로 이월(운영자 승인, 큐 추가 완료). 이 커밋에서는 손대지 않는다. 정정 시 숫자만이 아니라 spec.md §5.3 의 예외 사유도 함께 고쳐야 한다 — 적힌 사유(«상태 코드로 방향이 안 드러나서»)와 실제 사유(«두 번째 SQL 판정이 따로 존재해서»)가 다르다"
+  - id: G-T11-02
+    title: "sync 레인이 재현하지 않은 것"
+    items:
+      - "run 단계의 RED 원문·34-moment·경계 검사 원문은 구현 에이전트 관측 인용이다(§E.2 가 그렇게 명시한다). sync 레인은 최종 상태(125/125·typecheck 0·web·channel 무변경·server/src 8파일)만 직접 재관측했다."
+      - "REQ-ROOMAUTHZ-003 의 백필 트랜잭션 원자성은 이번에도 재지 않았다 — spec.md §9 가 «미검증»으로 이름 붙인 그대로다. sync 단계가 새로 잰 것이 없다."
+      - "«올려도 아무도 잠겨 나오지 않는다»는 CHANGELOG 의 업그레이드 문장은 db.ts:97-107 판독과 AC-ROOMAUTHZ-003 통과에 근거한다 — 실제 구버전 DB 파일을 상향해 보는 실행은 하지 않았다."
+```
 
 ## §F Phase 4 Mode Selection
 
