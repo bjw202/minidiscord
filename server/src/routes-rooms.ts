@@ -1,6 +1,7 @@
 // 방 생성/목록/보관 API — 모든 쿼리는 req.server.db 단일 연결을 쓴다
 import type { FastifyInstance } from 'fastify'
 import { requireAuth } from './auth.js'
+import { requireRoomMember } from './room-members.js'
 
 // GET /api/rooms 행 모양 — 생성 응답도 목록 응답과 정확히 같은 다섯 키를 쓴다 (REQ-ROOM-003)
 type RoomRow = { id: number; name: string; status: string; created_at: string; archived_at: string | null }
@@ -19,10 +20,41 @@ export function registerRoomRoutes(app: FastifyInstance, opts?: { onArchive?: (r
   app.post('/api/rooms', { preHandler: [requireAuth] }, async (req, reply) => {
     const { name } = req.body as { name?: string }
     if (!name?.trim()) return reply.code(400).send({ error: '방 이름이 필요합니다' })
-    const r = req.server.db.prepare('INSERT INTO rooms (name) VALUES (?)').run(name.trim())
+    const db = req.server.db
+    const creatorId = req.user!.id
+    // @MX:NOTE: [AUTO] 방 행과 생성자 멤버 행은 한 트랜잭션이다 (REQ-ROOMAUTHZ-004). 둘로 갈라지면
+    // 멤버 없는 방이 남고, 그 방은 아무도 들어갈 수 없는 채 목록에 뜬다 — SPEC §5.2 의 가장 비싼 부분 실패
+    const createWithMembership = db.transaction((roomName: string): number => {
+      const r = db.prepare('INSERT INTO rooms (name, created_by) VALUES (?, ?)').run(roomName, creatorId)
+      db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(r.lastInsertRowid, creatorId)
+      return r.lastInsertRowid as number
+    })
+    const roomId = createWithMembership(name.trim())
     // §D 4: 생성 응답의 SELECT 도 archived_at 을 뽑아 다섯 키를 갖춘다 — 활성 방이므로 값은 null
-    const room = req.server.db.prepare('SELECT id, name, status, created_at, archived_at FROM rooms WHERE id = ?').get(r.lastInsertRowid)
+    const room = db.prepare('SELECT id, name, status, created_at, archived_at FROM rooms WHERE id = ?').get(roomId)
     return reply.code(201).send(room)
+  })
+
+  // 초대 — 멤버십 게이트(requireRoomMember)가 방 상태 검사보다 앞선다 (순서 계약, plan.md §B).
+  // 비멤버는 보관 여부를 못 보고 같은 404 로 끝난다. 이 라우트는 술어의 아홉 호출부 중 하나다
+  app.post('/api/rooms/:id/members', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
+    const id = Number((req.params as { id: string }).id)
+    const { user_id } = req.body as { user_id?: number }
+    const db = req.server.db
+    const room = db.prepare('SELECT status FROM rooms WHERE id = ?').get(id) as { status: string } | undefined
+    if (!room) return reply.code(404).send({ error: '방을 찾을 수 없습니다' })
+    // 멤버에게만 보관 상태가 보인다 — 비멤버는 위 게이트에서 이미 같은 404 로 끝났다
+    if (room.status === 'archived') return reply.code(409).send({ error: '보관된 방에는 초대할 수 없습니다' })
+    if (typeof user_id !== 'number' || !Number.isInteger(user_id)) {
+      return reply.code(400).send({ error: '사용자를 찾을 수 없습니다' })
+    }
+    if (!db.prepare('SELECT 1 FROM users WHERE id = ?').get(user_id)) {
+      return reply.code(400).send({ error: '사용자를 찾을 수 없습니다' })
+    }
+    // 조회-후-삽입 대신 표의 복합 PK 로 갈린다 — 동시 초대 둘을 모두 통과시키지 않는다 (plan.md §A)
+    const info = db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id) VALUES (?, ?)').run(id, user_id)
+    if (info.changes === 0) return reply.code(200).send({ ok: true, already: true })
+    return reply.code(201).send({ ok: true })
   })
 
   app.post('/api/rooms/:id/archive', { preHandler: [requireAuth] }, async (req, reply) => {

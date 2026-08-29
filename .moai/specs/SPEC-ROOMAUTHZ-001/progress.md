@@ -79,6 +79,32 @@ SqliteError: no such table: schema_migrations
 - AC-003 의 «부분 실패 시 표식 롤백» 방향은 단일 트랜잭션 구조에서 도출한 것이지 별도 장애 주입 관측이 아니다 — 그 시나리오 부류는 AC-004 트리거 롤백(M2)의 몫이다.
 - acceptance.md 공통 하네스 전체는 `routes-events` 모듈이 M3 에서 생기므로 M1 에 넣으면 import 실패가 난다 — M1 은 세 기준이 쓰는 부분집합만 심었다(구현 에이전트 편차 #1, 리드 보고 포함). 나머지 하네스는 각 AC 의 첫 소비 시점에 단계적으로 심는다(`routes-events` import 는 M3 이후 가능).
 
+### M2 — 술어와 멤버십 획득 (2026-08-29)
+
+기준: HEAD `9b0e619` (M1 착지 후). RED 는 구현 에이전트 관측 원문 인용, GREEN 은 레인 독립 재실행.
+
+**구현 에이전트의 RED 관측 (room-members.ts·routes-rooms.ts 변경 전):** `Tests  6 failed | 107 passed (113)` — 6건 전부 **단언 실패**(bare import failure 0). 주요 양상: `created_by` null(생성자 기록 부재), 트리거 시나리오 `expected 201 not to be 201`(트랜잭션 원자성 부재), `Route POST:/api/rooms/1/members not found`(초대 라우트 부재), `memberCount = 0`(자동 가입 부재).
+
+**레인 독립 재실행 (구현 후 — 직접 관측):**
+
+- `npm test -w server -- --reporter=verbose` → 종료 코드 **0**, `Tests  113 passed (113)` (107 + 신규 6). 신규 6건 이름 단위 `✓` 직접 관측(describe `room membership acquisition` 하위). 원문: `.moai/state/verify/t11-run1/m2-green-verbose.txt`
+- `npm run typecheck -w server` → 종료 코드 **0**. 원문: `.moai/state/verify/t11-run1/m2-typecheck.txt`
+- 변경 범위: `git status --porcelain -- server/` → `M routes-rooms.ts` / `M room-members.test.ts` / `?? room-members.ts` — 정확히 3파일.
+
+**되돌림 시나리오(AC-004 두번째) 프로브 (구현 에이전트 관측, tsx 일회성·실행 후 삭제):** 트리거 강제 실패 시 `statusCode = 500 | rooms count = 0 | body = {"statusCode":500,"code":"SQLITE_CONSTRAINT_TRIGGER",...}` / 정상 경로 `201 | member rows = 1`. 2차 감사 재현치(500+롤백, 방 행 무잔존)와 일치.
+
+**구현 모양 (레인 직독 확인):** `room-members.ts` — `isRoomMember` 은 `room_members` 만 읽는다(created_by 미사용, §A). `requireRoomMember` 는 requireAuth 뒤 preHandler 로 비멤버·없는 방·비정수 id 를 같은 `404`+같은 본문으로 통일(REQ-ROOMAUTHZ-013) — M3 의 여덟 게이트가 재사용하는 형태. `@MX:ANCHOR [AUTO]`+`@MX:REASON`, `@MX:NOTE` 비치.
+
+**수용 기준**: AC-ROOMAUTHZ-004(양 시나리오)·005·006(양 시나리오)·007 PASS.
+
+**미검증 (명시):**
+
+- RED 원문과 롤백 프로브는 구현 에이전트 관측 인용이다 — 레인이 재현하지 않았다(AC-004-2 테스트 자체가 레인 verbose 실행에서 통과 관측됨).
+- 커버리지 수치 미측정(이 마일스톤 지시 항목 아님).
+- 트리거 강제 롤백은 «삽입 실패 시 되돌아감» 한 관점만 잰다 — acceptance.md 가 명시한 관측 한계와 동일.
+
+**하네스 단계적 추가 (카드 (e) 추적용):** M2 에 `build()`에 `registerMessageRoutes`+multipart+`hub`/`gateway` 데코레이트 추가(AC-007 의 postMsg/listMsg 가 메시지 라우트·브로커를 침 — REQ-MSG-015 multipart 선행). `listen`/`port`/`cleanups`·`signUpOn`·봇/SSE 헬퍼는 M3(AC-008..010·017·018 첫 소비) 몫.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
