@@ -1,0 +1,232 @@
+
+> @minidiscord/channel@0.1.0 test
+> vitest run --reporter=verbose
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+
+ ✓ test/gateway-client.test.ts > gateway client > sends hello with the token as the very first frame 9ms
+ ✓ test/gateway-client.test.ts > gateway client > passes the welcome frame through untouched, extra fields included 12ms
+ ✓ test/gateway-client.test.ts > gateway client > passes the message frame through untouched, files and delivery included 11ms
+ ✓ test/gateway-client.test.ts > gateway client > passes a deny verdict through as deny 12ms
+ ✓ test/gateway-client.test.ts > gateway client > routes by type only — an unknown frame reaches no callback 11ms
+ ✓ test/gateway-client.test.ts > gateway client > survives frames whose callback was not provided 11ms
+ ✓ test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one 20ms
+ ✓ test/channel-server.test.ts > channel server > creates a connectable MCP server identified as minidiscord-channel 7ms
+ ✓ test/channel-server.test.ts > channel server > exposes exactly the reply and fetch_history tools 1ms
+ ✓ test/channel-server.test.ts > channel server > declares the reply input schema as text + optional files 1ms
+ ✓ test/channel-server.test.ts > channel server > reply forwards text and files to sendToChat and answers "sent" 1ms
+ ✓ test/channel-server.test.ts > channel server > declares all five optional fetch_history parameters and requires none 1ms
+ ✓ test/channel-server.test.ts > channel server > points the cursor at the JSON field and never at a #번호 in line text 1ms
+ ✓ test/channel-server.test.ts > channel server > passes fetch_history arguments through and returns the dependency string verbatim 1ms
+ ✓ test/channel-server.test.ts > channel server > rejects an unknown tool and touches no dependency 1ms
+ ✓ test/channel-server.test.ts > channel server > pushChatMessage notifies with TO meta and the attachment local path 1ms
+ ✓ test/channel-server.test.ts > channel server > declares both channel experimental capabilities in the initialize response 0ms
+ ✓ test/channel-server.test.ts > channel server > carries the load-bearing instruction literals in the initialize response 0ms
+ ✓ test/channel-server.test.ts > channel server > carries cc as cc and omits the attachment note when there are no files 0ms
+ ✓ test/channel-server.test.ts > channel server > neutralizes channel envelope sequences in the body, the author name and the file path 0ms
+ ✓ test/channel-server.test.ts > channel server > leaves a body without envelope sequences byte-identical, and never touches meta 0ms
+ ✓ test/channel-server.test.ts > channel server > states the trust boundary and keeps every pre-existing instruction fragment 0ms
+ ✓ test/index-wiring.test.ts > channel wiring > gateway message becomes exactly one session notification 32ms
+ ✓ test/gateway-client.test.ts > gateway client > sends only while open, and reports it truthfully 19ms
+ ✓ test/gateway-client.test.ts > gateway client > puts every history parameter on the frame top level, since_id included 12ms
+ ✓ test/gateway-client.test.ts > gateway client > matches responses by rid, not by arrival order 12ms
+ ✓ test/gateway-client.test.ts > gateway client > rejects a history request at 10 seconds, not before 6ms
+ ✓ test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting 7ms
+ ✓ test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again 12ms
+ ✓ test/gateway-client.test.ts > gateway client > doubles the backoff and never exceeds the ceiling 25ms
+ ✓ test/gateway-client.test.ts > gateway client > resets the backoff to 1000 after a successful connection 21ms
+ ✓ test/gateway-client.test.ts > gateway client > never reconnects after stop() — measured against a live control client 15ms
+ ✓ test/permission-relay.test.ts > permission relay > relays a request out and carries the matching verdict back, correlated by the forwarded id 109ms
+ ✓ test/permission-relay.test.ts > permission relay > only the exact permission_request method reaches sendPermissionRequest 155ms
+ ✓ test/index-wiring.test.ts > channel wiring > cc message is delivered but raises no working status 233ms
+ ✓ test/index-wiring.test.ts > channel wiring > a TO message reports working to the gateway 24ms
+ ✓ test/index-wiring.test.ts > channel wiring > reply tool sends a bot_message with mapped file paths 36ms
+ ✓ test/index-wiring.test.ts > channel wiring > idle status follows the bot_message, not precedes it 23ms
+ ✓ test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim 14ms
+ ✓ test/permission-relay.test.ts > permission relay > forwards params verbatim, adding and dropping nothing 53ms
+ ✓ test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document 13ms
+ ✓ test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor 12ms
+ ✓ test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single structured element 14ms
+ ✓ test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty 25ms
+ ✓ test/permission-relay.test.ts > permission relay > survives a wiring without sendPermissionRequest 102ms
+ ✓ test/transport-auth.test.ts > transport auth > an endpoint that never sends welcome cannot inject a verdict or a chat message 422ms
+ ✓ test/permission-relay.test.ts > permission relay > emits exactly one permission notification with exactly two params 103ms
+ ✓ test/index-wiring.test.ts > channel wiring > importing the module opens no connection 89ms
+ ✓ test/index-wiring.test.ts > channel wiring > resolveUrl falls back to the documented default 0ms
+ ✓ test/permission-relay.test.ts > permission relay > delivers deny as deny 102ms
+ ✓ test/permission-relay.test.ts > permission relay > passes request_id through untouched in both directions 102ms
+ ✓ test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection 235ms
+ ✓ test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each 438ms
+ ✓ test/permission-relay.test.ts > permission relay > relays a verdict only for an id it actually emitted, exactly once 359ms
+ ✓ test/index-wiring.test.ts > channel wiring > the built artifact speaks MCP; the token gates only the gateway 486ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict before transport connect throws nothing and leaves no unhandled rejection 155ms
+ ✓ test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code 83ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed 102ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an emitted id is relayed exactly once, verbatim 102ms
+ ✓ test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped 256ms
+ ✓ test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first 209ms
+ × test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves 3431ms
+   → waitFor timeout: 이력 응답 해소
+ ✓ test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect 1420ms
+ ✓ test/transport-auth.test.ts > transport auth > gated frames leave no unhandled rejection and do not stop the client 819ms
+ × test/transport-auth.test.ts > transport auth > a gated frame raises neither an unhandled rejection nor an uncaught exception 873ms
+   → expected [ 'unauthenticated' ] to deeply equal []
+ ✓ test/transport-auth.test.ts > transport auth > imports no filesystem module anywhere under channel/src 1ms
+ ✓ test/transport-auth.test.ts > transport auth > decides transport by scheme and host in every branch, loopback included 0ms
+ ✓ test/transport-auth.test.ts > transport auth > the entry point refuses a plaintext remote and connects otherwise 569ms
+ ✓ test/transport-auth.test.ts > transport auth > keeps bracketed IPv6 loopback working after the unreachable bare ::1 entry is dropped 0ms
+ ✓ test/transport-auth.test.ts > transport auth > refuses an unparseable address, stays alive, says nothing on stdout, and explains truthfully 487ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+Error: waitFor timeout: 이력 응답 해소
+ ❯ waitFor test/transport-auth.test.ts:94:37
+     92|   const t0 = Date.now()
+     93|   while (!pred()) {
+     94|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     95|     await new Promise(r => setTimeout(r, 10))
+     96|   }
+ ❯ test/transport-auth.test.ts:209:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a gated frame raises neither an unhandled rejection nor an uncaught exception
+AssertionError: expected [ 'unauthenticated' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "unauthenticated",
++ ]
+
+ ❯ test/transport-auth.test.ts:270:30
+    268|
+    269|     expect(await unhandled()).toEqual([])
+    270|     expect(await uncaught()).toEqual([])       // ← 오늘 아무도 지켜 주지 않는 조항
+       |                              ^
+    271|     expect(verdicts).toEqual([])
+    272|     expect(notes).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 4 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+Error: unauthenticated
+ ❯ WebSocket.<anonymous> src/gateway-client.ts:72:15
+     70|         opts.onWelcome?.(msg)
+     71|       } else if (!established) {
+     72|         throw new Error('unauthenticated')
+       |               ^
+     73|         // welcome 전에 온 message·verdict·history_response 는 어떤 콜백에도 넘기지…
+     74|         // 예외도 버퍼링도 없다 — 버퍼링하면 확립 전 주입이 확립 후에 되살아나 게이트가 무의미해진다.
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage ../node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage ../node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData ../node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop ../node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write ../node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "test/transport-auth.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "an endpoint that never sends welcome cannot inject a verdict or a chat message". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+Error: unauthenticated
+ ❯ WebSocket.<anonymous> src/gateway-client.ts:72:15
+     70|         opts.onWelcome?.(msg)
+     71|       } else if (!established) {
+     72|         throw new Error('unauthenticated')
+       |               ^
+     73|         // welcome 전에 온 message·verdict·history_response 는 어떤 콜백에도 넘기지…
+     74|         // 예외도 버퍼링도 없다 — 버퍼링하면 확립 전 주입이 확립 후에 되살아나 게이트가 무의미해진다.
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage ../node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage ../node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData ../node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop ../node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write ../node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "test/transport-auth.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "a history_response before welcome resolves nothing; after welcome it resolves". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+Error: unauthenticated
+ ❯ WebSocket.<anonymous> src/gateway-client.ts:72:15
+     70|         opts.onWelcome?.(msg)
+     71|       } else if (!established) {
+     72|         throw new Error('unauthenticated')
+       |               ^
+     73|         // welcome 전에 온 message·verdict·history_response 는 어떤 콜백에도 넘기지…
+     74|         // 예외도 버퍼링도 없다 — 버퍼링하면 확립 전 주입이 확립 후에 되살아나 게이트가 무의미해진다.
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage ../node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage ../node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData ../node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop ../node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write ../node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "test/transport-auth.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "session establishment does not survive a reconnect". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+Error: unauthenticated
+ ❯ WebSocket.<anonymous> src/gateway-client.ts:72:15
+     70|         opts.onWelcome?.(msg)
+     71|       } else if (!established) {
+     72|         throw new Error('unauthenticated')
+       |               ^
+     73|         // welcome 전에 온 message·verdict·history_response 는 어떤 콜백에도 넘기지…
+     74|         // 예외도 버퍼링도 없다 — 버퍼링하면 확립 전 주입이 확립 후에 되살아나 게이트가 무의미해진다.
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage ../node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage ../node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData ../node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop ../node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write ../node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "test/transport-auth.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "gated frames leave no unhandled rejection and do not stop the client". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  2 failed | 68 passed (70)
+     Errors  4 errors
+   Start at  21:40:52
+   Duration  8.71s (transform 215ms, setup 0ms, import 721ms, tests 11.92s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t10/channel
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose

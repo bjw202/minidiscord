@@ -1,0 +1,35 @@
+CASE>>>(i) 해석 불가
+URL>>>not a url
+EXITCODE>>>null
+STDOUT_LEN>>>0
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — not a url (주소를 해석하지 못했다)\n"
+STDERR_LINES>>>1
+---
+CASE>>>(ii) 루프백 + 비 ws 스킴 (http)
+URL>>>http://127.0.0.1:3000/bot
+EXITCODE>>>null
+STDOUT_LEN>>>0
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — http://127.0.0.1:3000/bot (루프백 주소는 ws:// 를 쓴다)\n"
+STDERR_LINES>>>1
+---
+CASE>>>(ii) 루프백 + 비 ws 스킴 (https, localhost)
+URL>>>https://localhost:3000/bot
+EXITCODE>>>null
+STDOUT_LEN>>>0
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — https://localhost:3000/bot (루프백 주소는 ws:// 를 쓴다)\n"
+STDERR_LINES>>>1
+---
+CASE>>>(ii) 루프백 + 비 ws 스킴 (IPv6)
+URL>>>http://[::1]:3000/bot
+EXITCODE>>>null
+STDOUT_LEN>>>0
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — http://[::1]:3000/bot (루프백 주소는 ws:// 를 쓴다)\n"
+STDERR_LINES>>>1
+---
+CASE>>>(iii) 비루프백 평문
+URL>>>ws://example.com:3000/bot
+EXITCODE>>>null
+STDOUT_LEN>>>0
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — ws://example.com:3000/bot (비루프백 호스트에는 wss:// 를 쓴다)\n"
+STDERR_LINES>>>1
+---
