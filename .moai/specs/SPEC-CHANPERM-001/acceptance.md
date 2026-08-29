@@ -6,6 +6,14 @@
 
 **규범 근거는 `plan-v2.md` 와 `spec-v2.md` 뿐이다.** 같은 계획 디렉터리의 다른 문서나 초기 커밋에 담긴 v1 초안은 이 SPEC 의 참조 대상이 아니다.
 
+## 개정 이력
+
+| 버전 | 날짜 | 변경 내용 | 작성자 |
+|------|------|-----------|--------|
+| 0.3.0 | 2026-08-28 | **AC-CHANPERM-008 개정 (카드 `t9` / 감사 F-01).** 이 문서는 v0.2.2 까지 "모르는 `request_id` 의 판정도 그대로 중계한다"를 **정상 동작으로 못 박고** 있었고, 그 자리에 "열려 있는 계약 질문(미해소)" 블록을 달아 두었다. 카드 `t9` 가 그 질문에 **발신 id 를 기억하는 쪽으로 답했으므로**, 질문 블록을 걷어 내고 기준을 뒤집었다 — 이제 이 문서는 **발신하지 않은 id 의 판정이 한 건도 나가지 않는 것**을 잰다. 함께 바뀐 것: 검증 원칙 표의 "불일치 판정" 행, AC 매트릭스의 AC-008 행, 엣지 케이스 표 두 행, Definition of Done 한 줄. `spec.md` REQ-CHANPERM-008 이 같은 패스에서 개정됐고(v0.3.0), 새 요구사항 본체는 `SPEC-CHANAUTH-001` REQ-CHANAUTH-005..009 가 소유한다. **기준 개수는 12개 그대로다.** | manager-spec |
+
+---
+
 ## 이 문서가 지키는 검증 원칙
 
 이 SPEC 의 수용 기준은 **구현 본문이 비어 있어도 통과하는 기준을 하나도 두지 않는다**. 중계기는 특히 그런 기준이 나오기 쉬운 자리라 — "알림이 도착했다", "오류가 안 났다" 같은 단언이 전부 무의미하다 — 위험한 자리마다 어떤 스텁이 그 기준을 뚫는지 적어 두었다.
@@ -16,7 +24,7 @@
 | 두 경로의 상관 | 나가는 쪽과 돌아오는 쪽을 따로 재면, 어느 한쪽에서 `request_id` 를 파생·재작성하는 구현이 양쪽 기준을 각각 통과한다 (둘 다 리터럴 id 를 쓰므로) | 나가는 경로에서 **관측한** id 를 되먹여 돌아온 알림이 원래 값을 싣는가 (AC-CHANPERM-001) |
 | 메서드 이름 | "핸들러가 등록됐다"는 **모든 알림을 다 받는 구현**도 통과시킨다. 그런 구현은 자기가 보낸 판정 알림에도 반응한다 | 이름이 한 단어 다른 알림에서 `sendPermissionRequest` 가 **불리지 않는가** (AC-CHANPERM-002) |
 | 거절 경로 | "판정 알림이 나갔다"는 **항상 `allow` 를 보내는 구현**도 통과시킨다 | Claude Code 쪽이 받은 `params.behavior` 가 정확히 `'deny'` 인가 (AC-CHANPERM-006) |
-| 불일치 판정 | "예외가 안 났다"는 아무것도 재지 않는다 | 그 id 그대로 알림이 한 번 나갔는가, **다른 id 의 알림이 하나도 없는가**, 그 뒤 정상 판정이 여전히 성립하는가 (AC-CHANPERM-008) |
+| 발신하지 않은 판정 | "예외가 안 났다"는 아무것도 재지 않는다. 그리고 "모르는 판정이 안 나갔다"만 재면 **판정 릴레이를 통째로 끊은 구현**이 통과한다 | 발신하지 않은 id 의 알림이 **한 건도 없는가**, 같은 테스트 안에서 발신한 id 의 알림은 정확히 1건 나가는가, 그 뒤 새 발신이 여전히 성립하는가 (AC-CHANPERM-008) |
 | 미연결 전송 | "테스트가 끝까지 돌았다"는 처리되지 않은 거부를 잡지 못한다 — 그 거부는 다음 tick 에 프로세스를 죽인다 | `process.on('unhandledRejection')` 이 수집한 배열이 비어 있는가 (AC-CHANPERM-009) |
 | 배선 | "`wire` 가 오류 없이 반환됐다"는 **아무것도 잇지 않은 구현**도 통과시킨다 | 게이트웨이 스텁이 실제로 `{ type:'permission_request', … }` 프레임을 받았는가, 반대 방향도 도는가 (AC-CHANPERM-010) |
 
@@ -153,7 +161,7 @@ const REQ: Params = { request_id: 'abcde', tool_name: 'Bash', description: 'Run 
 | AC-CHANPERM-005 | REQ-CHANPERM-005 | 아래 본문 | 판정 알림 1건, `method` 가 `'notifications/claude/channel/permission'`, `params` 키가 정확히 `['behavior','request_id']` |
 | AC-CHANPERM-006 | REQ-CHANPERM-006 | 아래 본문 | `deny` 판정에서 받은 `params.behavior` 가 정확히 `'deny'` |
 | AC-CHANPERM-007 | REQ-CHANPERM-007 | 아래 본문 | 대문자·비정형 `request_id` 가 글자 그대로 전달 (양방향) |
-| AC-CHANPERM-008 | REQ-CHANPERM-008 | 아래 본문 | 모르는 id 판정 뒤에도 알림 1건이 그 id 그대로 + 다른 id 알림 0건 + 이후 정상 판정 성립 |
+| AC-CHANPERM-008 | REQ-CHANPERM-008 | 아래 본문 | 발신하지 않은 id 판정에서 알림 0건 + 발신한 id 판정에서 그 id 그대로 정확히 1건 + 같은 id 재판정에서 증가 없음 + 새 발신 뒤 정상 판정 성립 |
 | AC-CHANPERM-009 | REQ-CHANPERM-009 | 아래 본문 | 미연결 상태 호출이 동기 예외 없음 + 수집된 unhandled rejection 0건 + 연결 후 판정 정상 전달 |
 | AC-CHANPERM-010 | REQ-CHANPERM-004 | 아래 본문 | 게이트웨이 스텁이 `{ type:'permission_request', request_id:'abcde', … }` 수신 + 스텁이 민 verdict 가 Claude Code 알림으로 도착 |
 | AC-CHANPERM-011 | REQ-CHANPERM-010 | 아래 본문 | 기준 SHA 확인 종료 코드 `0`, `server` diff 빈 출력, `channel/src` 변경 목록이 정확히 두 줄 |
@@ -271,7 +279,8 @@ it('survives a wiring without sendPermissionRequest', async () => {
 
 ```ts
 it('emits exactly one permission notification with exactly two params', async () => {
-  const { handle, verdicts } = await attach()
+  const { client, handle, verdicts } = await attach()
+  await sendRequest(client, REQ)                       // 먼저 발신한다 (v0.4.0 전제)
   handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })
   await tick()
 
@@ -285,6 +294,8 @@ it('emits exactly one permission notification with exactly two params', async ()
 
 메서드 이름은 하네스의 `PermissionVerdictNotification` 이 `z.literal` 로 고정한다 — 다른 이름으로 보내는 구현에서는 이 핸들러가 아예 불리지 않아 `verdicts.length` 가 `0` 이 된다. 키 집합 단언은 `.passthrough()` 가 있어야만 의미가 있다(문서 앞머리의 두 번째 경위).
 
+> **v0.4.0 개정 (계획 감사 C-02).** 이전 판은 `attach()` 직후 **발신 없이** 판정을 밀어 넣고 알림 1건을 기대했다. 개정된 REQ-CHANPERM-008 아래에서 그 형태는 정상 구현에서 `verdicts.length` 가 `0` 이 되어 거짓 실패한다 — 발신 집합에 없는 id 이기 때문이다. 그래서 **같은 id 를 먼저 발신하는 한 줄을 앞에 넣었다.** 이 기준이 재는 것(정확히 한 건, 정확히 두 필드)은 한 글자도 바뀌지 않았다. `REQ` 의 `request_id` 가 `'abcde'` 이므로 단언의 값도 그대로다.
+
 ### AC-CHANPERM-006 — 거절이 거절로서 도달한다
 
 **Given** 사람이 방에서 `no abcde` 라고 답해 게이트웨이가 `deny` 판정을 보냈다.
@@ -292,7 +303,8 @@ it('emits exactly one permission notification with exactly two params', async ()
 
 ```ts
 it('delivers deny as deny', async () => {
-  const { handle, verdicts } = await attach()
+  const { client, handle, verdicts } = await attach()
+  await sendRequest(client, REQ)                       // 먼저 발신한다 (v0.4.0 전제)
   handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'deny' })
   await tick()
   expect(verdicts[0].params.behavior).toBe('deny')
@@ -301,62 +313,80 @@ it('delivers deny as deny', async () => {
 
 **Then** 테스트가 통과한다.
 
+> **v0.4.0 개정 (계획 감사 C-02).** AC-CHANPERM-005 와 같은 이유로 발신 한 줄이 앞에 붙었다. 개정 전 형태에서는 `verdicts[0]` 이 `undefined` 라 프로퍼티 접근에서 깨진다.
+
 이 기준을 AC-CHANPERM-005 와 **따로 두는 이유**가 있다. `behavior: 'allow'` 를 상수로 박아 넣은 구현은 AC-CHANPERM-005 를 온전히 통과한다. 사람이 거절했는데 세션이 그 도구를 실행하는 경로가 정확히 그 구현이고, 이 한 줄이 그것을 잡는 유일한 자리다.
 
 ### AC-CHANPERM-007 — `request_id` 를 변형하지 않는다 (양방향)
 
-**Given** Claude Code 가 대문자를 포함한 `request_id` 를 만들었다 (`spec.md` §3.1 가정-3 이 깨진 상태).
+**Given** Claude Code 가 대소문자와 하이픈이 섞인 `request_id` 를 만들었다.
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
 
 ```ts
 it('passes request_id through untouched in both directions', async () => {
   const { client, handle, requests, verdicts } = await attach()
-  await sendRequest(client, { ...REQ, request_id: 'AbC12' })
-  expect(requests[0].request_id).toBe('AbC12')         // 나가는 방향
+  const issued = 'Ab-C12'                              // 대소문자·하이픈 혼합
+  await sendRequest(client, { ...REQ, request_id: issued })
+  expect(requests[0].request_id).toBe(issued)          // 나가는 방향
 
-  handle.handlePermissionVerdict({ request_id: 'abc12', behavior: 'allow' })
+  // 돌아오는 방향은 나간 값을 그대로 되먹인다 — 나가는 경로에서 관측한 값을 쓴다
+  handle.handlePermissionVerdict({ request_id: requests[0].request_id, behavior: 'allow' })
   await tick()
-  expect(verdicts[0].params.request_id).toBe('abc12')  // 돌아오는 방향 — 서버가 준 그대로
+  expect(verdicts[0].params.request_id).toBe(issued)   // 글자 그대로
 })
 ```
 
-**Then** 테스트가 통과한다. 두 값이 서로 다른 것은 **의도된 관측**이다 — 서버가 소문자로 정규화해 되돌리는 현재 동작(`spec.md` §3.1 가정-3)에서 채널이 무엇을 하는지 고정한다. 채널은 짝을 맞춰 주려 들지 않고 받은 대로 전달한다. `.toLowerCase()`·`.trim()`·재생성 중 어느 하나라도 넣은 구현은 두 단언 중 하나에서 걸린다.
+**Then** 테스트가 통과한다. 값이 `'Ab-C12'` 인 것이 이 기준의 전부다 — 대문자·소문자·하이픈이 한 값에 섞여 있으므로 `.toLowerCase()`·`.toUpperCase()`·`.trim()`·정규식 재생성 중 어느 하나라도 넣은 구현은 두 단언 중 하나에서 걸린다. **정규화를 발신 기록·조회 중 한쪽에만 넣으면** 발신 집합 조회가 빗나가 `verdicts[0]` 이 `undefined` 가 되고, **알림에 싣는 값을 정규화하면** 마지막 `toBe` 가 `'ab-c12'` 와 어긋난다. 잡지 못하는 갈래도 적어 둔다 — **양쪽 키를 모두 정규화하면서 알림에는 받은 값을 그대로 싣는 구현은 이 기준을 통과한다.** 그 구현은 REQ-CHANPERM-007(무변형 중계)을 어기지 않으므로 통과가 옳다 (`SPEC-CHANAUTH-001` 계획 감사 N-9 — 설명만 정정, 기준 본문·단언은 그대로).
 
-이 기준은 서버 결함(카드 `t7`)이 고쳐져도 그대로 통과한다 — 두 값이 같아지든 달라지든, 채널이 재는 것은 "받은 대로 넘겼는가" 하나이기 때문이다.
+> **v0.4.0 개정 — 문구가 아니라 설계를 바꿨다 (계획 감사 C-02).** 이전 판은 나가는 id `'AbC12'` 와 돌아오는 id `'abc12'` 를 **의도적으로 다르게** 두어, 서버가 소문자로 정규화해 되돌리는 현재 동작(`spec.md` §3.1 가정-3)에서 채널이 짝을 맞춰 주려 들지 않는지를 재려 했다. 개정된 REQ-CHANPERM-008 아래에서 **그 형태는 원리상 성립할 수 없다** — 발신 집합에는 `'AbC12'` 가 들어가는데 조회는 `'abc12'` 로 들어오므로 대조가 반드시 빗나가고, 정상 구현이 알림 0건으로 거짓 실패한다. 두 요구사항이 양립하지 않으므로 관측 형태를 바꿨다: **같은 id 로 양방향을 재고, 무변형은 값 자체의 문자 구성(`'Ab-C12'`)으로 관측한다.**
+>
+> **잃은 관측과 그 소유자.** 이 개정으로 "서버가 대소문자를 바꿔 되돌릴 때 채널이 어떻게 행동하는가"는 더 이상 여기서 관측되지 않는다. 그 상황은 **서버 쪽 결함이며 카드 `t7`(`SPEC-PERM-001`) 소관**이다(`spec.md` §3.1 가정-3: 등록은 원본 키·조회는 소문자 키). `t7` 이 그 결함을 고치면 나가는 id 와 돌아오는 id 는 항상 같아지므로 이 기준이 재는 형태가 곧 실제 형태가 된다. 고치기 전까지는 그 불일치를 **채널이 흡수하지 않는다**는 것이 이 SPEC 의 입장이고(REQ-CHANPERM-007), 그 입장은 개정 뒤에도 그대로다 — 다만 그 입장을 **이 기준이 아니라 `t7` 의 기준이 증명한다.**
 
-### AC-CHANPERM-008 — 모르는 판정이 와도 다른 요청을 건드리지 않는다
+### AC-CHANPERM-008 — 발신하지 않은 판정은 세션에 닿지 않는다
 
-**Given** 채널은 대기 중인 요청을 기억하지 않는다 (무상태).
+**Given** 채널 서버는 자신이 내보낸 `request_id` 의 집합만 기억한다 (REQ-CHANPERM-008, v0.3.0 개정).
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
 
 ```ts
-it('an unknown or already-resolved verdict resolves nothing else and does not crash', async () => {
-  const { client, handle, verdicts } = await attach()
+it('relays a verdict only for an id it actually emitted, exactly once', async () => {
+  const { client, handle, requests, verdicts } = await attach()
   const unhandled = collectUnhandled()
-  await sendRequest(client, REQ)                       // 실제로 대기 중인 것은 'abcde'
+  await sendRequest(client, REQ)                       // 발신한 것은 'abcde' 하나뿐이다
+  expect(requests.map(r => r.request_id)).toEqual(['abcde'])
 
-  handle.handlePermissionVerdict({ request_id: 'zzzzz', behavior: 'allow' })   // 모르는 id
-  handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })
-  handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'deny' })    // 이미 해소된 id
+  handle.handlePermissionVerdict({ request_id: 'zzzzz', behavior: 'allow' })   // 발신한 적 없다
   await tick()
+  expect(verdicts).toEqual([])                         // 한 건도 나가지 않는다
 
-  const ids = verdicts.map(v => v.params.request_id)
-  expect(ids).toEqual(['zzzzz', 'abcde', 'abcde'])     // 받은 id 그대로, 순서 그대로, 셋 다
-  expect(ids).not.toContain('abcde-1')                 // 어떤 id 도 만들어내지 않는다
+  handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })   // 발신한 id
+  await tick()
+  expect(verdicts.map(v => v.params)).toEqual([{ request_id: 'abcde', behavior: 'allow' }])
+
+  handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'deny' })    // 이미 소진된 id
+  await tick()
+  expect(verdicts.length).toBe(1)                      // 두 번째는 나가지 않는다 (재생 차단)
   expect(await unhandled()).toEqual([])
 
-  // 프로세스가 살아 있는가 — 이후 정상 판정이 여전히 성립하는지로 잰다
+  // 프로세스가 여전히 쓸 만한가 — 새로 발신한 id 로 잰다
+  await sendRequest(client, { ...REQ, request_id: 'qqqqq' })
   handle.handlePermissionVerdict({ request_id: 'qqqqq', behavior: 'deny' })
   await tick()
-  expect(verdicts[3].params).toEqual({ request_id: 'qqqqq', behavior: 'deny' })
+  expect(verdicts.map(v => v.params)).toEqual([
+    { request_id: 'abcde', behavior: 'allow' },
+    { request_id: 'qqqqq', behavior: 'deny' },
+  ])
 })
 ```
 
 **Then** 테스트가 통과한다.
 
-> **열려 있는 계약 질문 (감사 F-01, 미해소).** 이 기준은 "모르는 `request_id` 의 판정도 그대로 중계한다" 를 **정상 동작으로 못 박는다**. `.moai/reports/t4/sync-audit.md` 의 F-01(Critical)은 바로 그 성질이 인증되지 않은 상대의 `allow` 판정을 세션으로 흘려보내는 경로라고 지적했다. 감사자가 요구한 수정은 **REQ-CHANPERM-008 과 이 기준의 개정을 전제로 한다** — 코드만 고치면 이 기준이 깨진다. **이 카드는 그 개정을 하지 않았고, 판단도 내리지 않았다**(경위와 선택지는 `spec.md` §4.3 REQ-CHANPERM-008 아래에 기록했다). 그 결정이 나기 전까지 이 기준은 현재 문언대로 유효하며, 통과가 곧 안전을 뜻하지는 않는다.
+**네 관측이 서로를 가린 채 통과할 수 없게 짜여 있다.** 첫 단언(`verdicts` 가 `[]`)만 있으면 **판정 릴레이를 통째로 끊은 구현**이 통과한다 — 그래서 둘째 단언이 같은 테스트 안에서 발신한 id 의 알림 1건을 요구한다. 셋째 단언이 없으면 **집합에서 지우지 않는 구현**이 통과하고, 그 구현에서는 한 번 발신된 id 가 영구 통행권이 되어 `deny` 를 `allow` 로 덮어쓰는 재생이 가능해진다. 마지막 단언 짝은 소진이 릴레이 전체를 막은 것이 아님을 새 발신으로 확인한다.
 
-`ids` 배열을 통째로 단언하는 것이 이 기준의 핵심이다. "모르는 id 를 삼키는" 구현(첫 알림 누락)도, "id 를 자기가 만들어 붙이는" 구현도, "두 번째 판정을 중복으로 걸러내는" 구현도 이 한 줄에서 갈린다. 셋 다 무상태 원칙을 깨는 방향이고, 마지막 단언 짝이 "그래서 프로세스가 여전히 쓸 만한가"를 잰다.
+`verdicts` 를 `map(v => v.params)` 로 **통째로** `toEqual` 하는 형태가 이 기준의 핵심이다. `not.toContain` 은 쓰지 않는다 — 무엇이 없는지가 아니라 **무엇만 있는지**를 재야 "그 밖에는 아무것도 없다"가 성립한다. `request_id` 를 정규화하는 구현(발신 기록·조회 어느 쪽이든)은 조회가 빗나가 알림이 0건이 되거나 값이 어긋나 이 단언에서 걸린다 — REQ-CHANPERM-007 의 무변형 조항이 여기서도 함께 지켜진다.
+
+> **v0.3.0 개정 기록 (감사 F-01).** 이전 판의 이 기준은 `expect(ids).toEqual(['zzzzz', 'abcde', 'abcde'])` 로, **모르는 id 의 판정이 알림으로 나가는 것을 통과 기준으로 못 박았다.** `.moai/reports/t4/sync-audit.md` F-01(Critical)이 바로 그 성질을 인증되지 않은 상대의 `allow` 를 세션으로 흘려보내는 경로로 지목했고, 카드 `t4` 는 판단을 F-01 소유 카드에 넘겼다. 카드 `t9` 가 **발신 id 를 기억하는 쪽으로 답했고**, 그 결과 이 기준은 정반대를 재게 됐다. 개정의 경계(무상태 원칙이 어디까지 좁아지는가)는 `spec.md` §4.3, 근거와 고르지 않은 대안은 `SPEC-CHANAUTH-001` `plan.md` §B 에 있다.
+>
+> **run 단계 주의.** `channel/test/permission-relay.test.ts` 의 해당 `it` 블록은 이전 문언으로 이미 구현돼 있다. `SPEC-CHANAUTH-001` `plan.md` §F M3 단계 1 이 **개정 전 테스트가 실패하는 것을 먼저 관측한 뒤** 이 본문으로 교체하도록 순서를 못 박았다 — 개정본을 먼저 넣으면 계약 충돌이 실재했다는 증거가 남지 않는다.
 
 ### AC-CHANPERM-009 — 연결 전 판정이 프로세스를 죽이지 않는다
 
@@ -382,6 +412,7 @@ it('a verdict before transport connect throws nothing and leaves no unhandled re
   const [c, s] = InMemoryTransport.createLinkedPair()
   await Promise.all([client.connect(c), handle.server.connect(s)])
   cleanups.push(async () => { await client.close() })
+  await sendRequest(client, REQ)                       // 먼저 발신한다 (v0.4.0 전제)
   handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'allow' })
   await tick()
   expect(verdicts.length).toBe(1)
@@ -389,6 +420,10 @@ it('a verdict before transport connect throws nothing and leaves no unhandled re
 ```
 
 **Then** 테스트가 통과한다.
+
+> **v0.4.0 개정 (계획 감사 C-02).** 마지막 양성 짝에 발신 한 줄이 앞에 붙었다. 이전 판은 발신 기록 없이 알림 1건을 기대했으므로 개정된 계약에서 거짓 실패한다.
+>
+> **첫 단언 갈래는 개정하지 않았다.** 연결 전 판정(`expect(() => …).not.toThrow()` + `unhandled()` 가 비어 있음)은 발신 여부와 무관하게 성립한다 — 발신 집합에 없는 id 를 조용히 버리는 것이 개정된 계약의 정상 동작이고, 그때도 예외나 미처리 거부를 남기지 않아야 한다는 요구는 그대로이기 때문이다. 오히려 개정 뒤 이 갈래는 **두 방어를 동시에** 지난다.
 
 `unhandled()` 단언이 이 기준의 이유 전부다. `void mcp.notification(...)` 은 미연결 상태에서 거부된 프로미스를 만들고, Node 는 처리되지 않은 거부에 프로세스를 끝낸다 — 권한 릴레이 하나 때문에 세션의 모든 기능이 함께 죽는다. 그 죽음은 **다음 tick 에** 일어나므로 `not.toThrow()` 만으로는 잡히지 않는다. 두 단언이 함께 있어야 성립한다.
 
@@ -472,8 +507,8 @@ git diff --name-only "$SHA" -- channel/src
 
 | 상황 | 기대 동작 | 덮는 기준 |
 |------|-----------|-----------|
-| 같은 세션이 판정 전에 두 번째 승인 요청을 보낸다 | 두 요청이 각각 독립적으로 게이트웨이로 나간다. 채널은 아무것도 기억하지 않으므로 서로 간섭하지 않는다 | AC-CHANPERM-008 (여러 id 를 섞어 판정) |
-| 같은 `request_id` 로 판정이 두 번 온다 | 알림도 두 번 나간다. 채널은 중복을 걸러내지 않는다(그것이 곧 상태다) | AC-CHANPERM-008 |
+| 같은 세션이 판정 전에 두 번째 승인 요청을 보낸다 | 두 요청이 각각 독립적으로 게이트웨이로 나가고 두 `request_id` 가 모두 발신 집합에 들어간다. 각각의 판정이 서로 간섭 없이 한 번씩 중계된다 | AC-CHANPERM-008 (여러 id 를 섞어 판정) |
+| 같은 `request_id` 로 판정이 두 번 온다 | 첫 번째만 나간다. 중계와 동시에 id 가 발신 집합에서 지워지므로 두 번째는 재생으로 취급돼 버려진다 (v0.3.0 개정) | AC-CHANPERM-008 |
 | 게이트웨이 연결이 끊긴 동안 승인 요청이 도착한다 | `GatewayClient.send` 가 `false` 를 돌려주고 요청은 사라진다. 채널은 버퍼링하지 않는다 | 미검증 — `plan.md` §E 알려진 위험에 기록. 재전송은 `spec.md` §5 범위 밖 |
 | `params` 에 알 수 없는 필드가 섞여 온다 | zod 스키마가 걷어내므로 게이트웨이로는 네 필드만 나간다 | AC-CHANPERM-003 (키 집합 단언) |
 | Claude Code 가 형식을 벗어난 `request_id` 를 만든다 | 채널은 그대로 넘긴다. 방의 안내 문구대로 쳐도 서버가 인식하지 못하는 것은 서버 쪽 결함이다 | AC-CHANPERM-007 + `spec.md` §5 (카드 `t7` 소유) |
@@ -495,3 +530,4 @@ git diff --name-only "$SHA" -- channel/src
 - 요구사항 REQ-CHANPERM-001..010 각각이 최소 하나의 AC 에 매핑돼 있고, 그 매핑이 `progress.md` §E.1 에 표로 남았다.
 - 미검증 항목(엣지 케이스 표의 "미검증" 한 줄 포함)이 §E.2 의 Gaps 절에 명시적으로 기록됐다.
 - `spec.md` §3.1 의 가정-2·가정-3(서버 쪽 `request_id` 결함 두 건)이 여전히 미해결이라는 사실, 그리고 이 SPEC 이 그것을 보상하지 않았다는 사실이 §E.2 에 남았다.
+- **v0.3.0 개정분**: 개정 전 AC-CHANPERM-008 이 실패하는 원문과, 개정본으로 교체한 `channel/test/permission-relay.test.ts` 의 diff 가 `SPEC-CHANAUTH-001` 의 `progress.md` §E.2 에 남았다.
