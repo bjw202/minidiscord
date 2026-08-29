@@ -193,7 +193,7 @@ _<pending run-phase>_
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-29
-sync_commit_sha: pending-backfill-t11-sync   # 커밋은 자기 SHA 를 모른다 — 착지 후 sync 레인이 백필한다
+sync_commit_sha: be5c800                     # 백필값 (be5c80016329aa90d035048dac9ea208761517ba). 커밋은 자기 SHA 를 모르므로 착지 후 sync 레인이 소커밋으로 채운다
 sync_base_head: c87cbc1                      # 이 sync 편집이 얹힌 HEAD (run-done 커밋)
 frontmatter_status_transitions:
   spec.md: in-progress -> implemented        # updated 는 이미 2026-08-29 — 변경 없음
