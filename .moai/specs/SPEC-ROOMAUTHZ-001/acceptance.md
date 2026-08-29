@@ -426,6 +426,7 @@ it('invites a user, is idempotent on repeat, and rejects an unknown user', async
 
   const nobody = await invite(app, alice.cookie, roomId, 9999)
   expect(nobody.statusCode).toBe(400)
+  expect(nobody.json()).toEqual({ error: '사용자를 찾을 수 없습니다' })   // REQ-005 표의 실패 행 본문 (3차 감사 N-09)
   expect(memberCount(roomId)).toBe(2)
 
   // 없는 방 — REQ-005 응답 표의 행 하나 (1차 감사 F-17 이 미측정으로 지적했다).

@@ -347,7 +347,7 @@ D2 v2 로 초대 라우트 셋이 더해져 다섯이 아니라 여덟이다.
 1. `npm test -w server -- --reporter=verbose` 를 돌려 **실패 목록을 실제로 받는다.** §D.4 의 34개와 대조하고, 차이를 `progress.md` §E.2 에 적는다. **차이가 있으면 그것이 놓친 결합이며, 먼저 규명한 뒤 진행한다.**
 2. `messages.test.ts`·`permissions.test.ts` 의 seed 함수가 방을 만든 뒤 그 방의 멤버로 로그인 사용자를 넣도록 고친다. `sse.test.ts` 는 `:30` 의 사본 라우트를 지우고 `registerEventRoute` 를 쓰며(REQ-ROOMAUTHZ-010 이 이름으로 지목한다), `:192` 는 `buildServer` 로 방을 만들어 그 번호로 스트림을 연다. `permissions.test.ts:51` 의 사본도 같이 지운다.
 3. AC-MSG-012·AC-PERM-009 의 대조군은 **의도를 유지한 채** 멤버 사용자를 쓴다. 두 기준의 전제 변경 사실을 각 SPEC 문서에 주석으로 남긴다. **AC-MSG-012 는 여기서 대조군 단언도 좁힌다** — `messages.test.ts:347` 의 `statusCode !== 401` 을 실제 성공 코드 단언으로 바꾼다(§D.3 의 F-13 정정 상자가 근거). 이것은 기준의 의도를 바꾸는 것이 아니라 원래 의도를 실제로 재게 만드는 교정이며, 그 사실도 함께 주석으로 남긴다.
-4. `spec.md` §6 표의 문서 전부에 개정 주석을 단다. 원문은 지우지 않는다. **`progress.md` 두 건은 말미 추가 방식**이다(§E 4번).
+4. `spec.md` §6 표의 문서 전부에 개정 주석을 단다. 원문은 지우지 않는다. **`progress.md` 두 건은 말미 추가 방식**이다(§E 4번). 그리고 **양방향 대조를 실행한다** — 표가 이름을 부른 자리를 열어 주장이 현재 텍스트에 실재하는지 보고(표 → 파일), 반대로 `grep -rn "SPEC-ROOMAUTHZ-001" .moai/specs .moai/plan` 으로 이 SPEC 이 남긴 주석 전건을 뽑아 D2 v2 기준으로 아직 참인지 본다(파일 → 표). 실행한 명령과 판정을 `progress.md` §E.2 에 적는다. 판정 대상은 **주석의 존재가 아니라 참임**이다 — 2차 감사 N-01 이 「주석이 있다」만 보는 완료 조건을 통과한 자리다.
 5. **전체 GREEN 확인**: `npm test -w server` 전건 통과 + typecheck 종료 코드 `0`.
 6. 범위 경계 확인 (AC-ROOMAUTHZ-015): `git rev-parse --verify "$(cat .moai/specs/SPEC-ROOMAUTHZ-001/.spec-base-sha)^{commit}"` 가 종료 코드 `0` 으로 SHA 를 내는지 **먼저** 확인하고, 그 뒤에만 `git diff` 로 넘어간다. 빈 출력 하나만 보고 통과로 적지 않는다.
 7. 커밋: `test: adapt sibling harnesses to room membership and annotate reversed decisions`
@@ -356,7 +356,7 @@ D2 v2 로 초대 라우트 셋이 더해져 다섯이 아니라 여덟이다.
 
 ## §G 자기 검증
 
-구현 완료 판정은 `acceptance.md` 의 AC-ROOMAUTHZ-001..018 전부다. 별도 기준을 만들지 않는다.
+구현 완료 판정은 `acceptance.md` **전부**다 — AC-ROOMAUTHZ-001..018 과 그 문서의 완료 정의 항목을 함께 포함한다. 별도 기준을 만들지 않는다. AC 18건으로만 좁히면 완료 정의에만 적힌 조건(§M4 4번의 양방향 대조 등)이 판정 밖으로 새어 나간다.
 
 실행자는 각 마일스톤 종료 시 다음을 `progress.md` §E.2 에 기록한다.
 
