@@ -105,6 +105,36 @@ SqliteError: no such table: schema_migrations
 
 **하네스 단계적 추가 (카드 (e) 추적용):** M2 에 `build()`에 `registerMessageRoutes`+multipart+`hub`/`gateway` 데코레이트 추가(AC-007 의 postMsg/listMsg 가 메시지 라우트·브로커를 침 — REQ-MSG-015 multipart 선행). `listen`/`port`/`cleanups`·`signUpOn`·봇/SSE 헬퍼는 M3(AC-008..010·017·018 첫 소비) 몫.
 
+### M3 — 게이트 여덟 곳 (2026-08-29) + **M4 단계 1 대조 기록 (AC-ROOMAUTHZ-016 본체)**
+
+기준: HEAD `9ace4c9` (M2 착지 후). 대조 명령: `npm test -w server -- --reporter=verbose` — **M3 직후, 하네스 교정 전** 상태에서 레인이 직접 실행. 원문 전체: `.moai/state/verify/t11-run1/m3-post-gates-verbose.txt`. 실패 26건의 테스트 이름은 그 파일의 `×` 줄과 글자 단위로 일치하는 것을 레인이 대조했다.
+
+**실측 토탈:** `Test Files  3 failed | 8 passed (11)` / `Tests  26 failed | 98 passed (124)` (종료 코드 1 — 예정된 상태). `room-members.test.ts` 20/20 통과, `npm run typecheck -w server` 종료 0, channel 워크스페이스 70/70 무관계 확인.
+
+**AC-016 요구의 셋으로 나눈 대조 결과 (기준선 = plan.md §D.4 합계 칸의 34):**
+
+1. **일치하는 항목 — 26건**, 전부 §D 직접 목록과 이름 단위 일치:
+   - `messages.test.ts` (13): stores a plain user message with no targets / stores targets for mentioned bots / rejects mention of bot not invited to the room / send failures distinguish missing room from archived room / rejects an empty send with neither body nor file / saves uploaded file as attachment and serves download / never puts stored_path in the send or list response while keeping the id usable / refuses to store an upload outside the uploads directory / refuses to serve an attachment whose stored path escapes the uploads directory / publishes to the sse hub and delivers to the gateway exactly once / lists messages after cursor / list is scoped to the room and carries author_name / all three message routes reject unauthenticated requests
+   - `permissions.test.ts` (12): user yes reply sends verdict to the bot and is not stored as user message / non-matching text is not consumed / yes with unknown id is not consumed (falls through as chat) / delivers an allow verdict to the connected bot / delivers a deny verdict as deny, not as allow / consumes the reply instead of storing it as a user message / accepts a verdict once and lets a repeat fall through as chat / never resolves a request from a different room / refuses an unauthenticated verdict and leaves the request pending (= AC-PERM-009) / falls through non-matching text and unknown ids without touching the pending request / marks an undelivered verdict differently from a delivered one / accepts all four verdict words, normalizes case, and rejects ids containing l
+   - `sse.test.ts` (1): wires the hub and the events route into buildServer
+2. **목록에 있는데 (아직) 실패하지 않은 항목 — 8건**, 전부 §D.3.1 «2차 효과» 묶음과 이름 단위 일치: sse 7(delivers a published event to the room subscriber / opens the stream with SSE headers and a connected comment / never leaks another room event into this room stream / frames events exactly as event/data/blank-line / delivers to every subscriber of the room / removes the subscriber when the connection closes / publishing to a room with no subscribers is a silent no-op) + permissions 1(publishes the request to the room SSE stream). **원인 규명 (AC-016 의 «고치기 전 원인»):** 이 8건은 하네스가 자기 파일 안에 직접 등록한 이벤트 라우트 사본(`sse.test.ts:30`·`permissions.test.ts:51`)을 쓰므로, 프로덕션 `index.ts` 의 게이트가 착지했어도 사본에는 게이트가 없어 지금 통과한다. `registerEventRoute` 로 사본을 옮기는 것은 plan §F M4 단계 2 의 행위이며, 옮기는 순간 §D.4 의 34건이 된다(그 순간의 verbose 를 M4 에서 포착해 기록). plan.md 자신이 §D.3.1 범위 한정 상자(F-14)에서 이 26 상태를 «문면대로만 이행한 경우의 실제 실패»로 이름해 둔 상태다.
+3. **목록에 없는데 실패한 항목 — 0건.** (차이 규명 완료 — 진행한다.)
+
+**관측 (기록 의무):**
+
+- **plan §D.4 표 분모 미일치 1건:** 표의 파일별 분모 합계는 102(sse 9+messages 14+permissions 15+rooms-bots 21+gateway 23+그 외 20)인데 실측 분모는 104. «그 외 5개 파일» 행이 실제보다 2개 short. **분자 34 기준선(AC-016 이 고정하는 수)에는 영향 없음** — 기록만 남긴다.
+- 생존 확인: `messages.test.ts:354`, `permissions.test.ts:124·:133·:147`, `sse.test.ts:176` — §D.4 의 생존 목록과 일치.
+- 경계 준수 (레인 grep 직접 관측): `routes-rooms.ts:67` archive 라우트는 `requireAuth` 만 있고 멤버십 게이트 없음(REQ-013 알려진 미준수 — 준수), `server/src` 에 `403` 사용 0건(주석 언급만 존재), 비멤버 빈 배열 응답 없음(AC-009·013 통과로 간접 확인).
+- 브로커 백스톱: `tryHandleUserReply(roomId, userId, text)` 시그니처 + 소비 전 `isRoomMember` 검사(AC-012 두번째 시나리오가 잰다). REQ-PERM-004 문서 개정은 M4 몫.
+- `registerEventRoute(app)` 단일 인자 시그니처 — 위임 지시 `(app, opts)` 대신 기존 등록 함수 형태에 맞춤(인라인 라우트가 opts 미사용, 하네스 호출부 단일 인자 — 구현 에이전트 판단, 레인 수용).
+- 범위 밖 관찰: `.moai/state/verify/t4-sync-audit/probe-inject.test.ts` — t4 감사 탐침 잔재가 루트 vitest 실행 시 17번째 파일로 수집돼 로드 오류를 낸다(워크스페이스 명령에는 안 잡힘). 기존 상태, 이번 변경과 무관 — run-done.md 에 리드 판단 사항으로 보고.
+
+**M3 RED (구현 에이전트 관측 인용):** 11건 전부 단언 실패 — `expected 200 to be 404`(게이트 부재), `expected [2,1] to deeply equal [1]`(목록 미축소), `expected true to be false`(백스톱 부재), AC-017 `expected [200,200,200,404,201,200,200] …`(M2 초대 라우트만 게이트 — 갈라짐 그 자체) 등. bare import failure 0.
+
+**수용 기준**: AC-ROOMAUTHZ-008·009·010(양)·011·012(양)·013·017·018(양) PASS — verbose `✓` 11건 이름 단위(구현 에이전트 verbose 원문 + 레인 전체 재실행에서 room-members 파일 20/20 관측).
+
+**하네스 단계적 추가 (카드 (e) 추적용):** M3 에서 `listen`/`port`/`cleanups`·`signUpOn`·`makeBot`/`botInvite`/`botInviteList`/`botInviteRevoke`/`archiveRoom`/`postMsg`/`listMsg`/`openStream`/`invite` 와 `routes-events` import 가 보태졌다 — 공통 하네스의 나머지 전부. (M1: 스키마 부분집합 → M2: 메시지 라우트+multipart+브로커 데코레이트 → M3: 완성.)
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

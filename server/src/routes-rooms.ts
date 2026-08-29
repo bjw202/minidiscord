@@ -9,8 +9,15 @@ type RoomRow = { id: number; name: string; status: string; created_at: string; a
 // @MX:ANCHOR: [AUTO] 방 라우트 3개의 등록점 — buildServer 와 테스트 build() 가 호출, SPEC-BOT-001 초대 라우트가 이 방들을 소비한다
 // @MX:REASON: opts.onArchive 훅 계약(보관 커밋 직후 방 id 로 1회 호출)은 이후 게이트웨이 카드가 연결 끊기에 쓴다. 시그니처 변경은 소비자 전부를 깨뜨린다
 export function registerRoomRoutes(app: FastifyInstance, opts?: { onArchive?: (roomId: number) => void }): void {
+  // 목록은 호출자가 멤버인 방만 담는다 (REQ-ROOMAUTHZ-011) — 남의 방이 보이면 존재가 샌다.
+  // 봉투 {active, archived} 는 SPEC-ROOM-001 그대로 둔다. 술어의 아홉 호출부 중 목록은 상태 코드로
+  // 방향이 드러나지 않아 AC-ROOMAUTHZ-017 의 sweep 이 아니라 AC-ROOMAUTHZ-011 이 잰다
   app.get('/api/rooms', { preHandler: [requireAuth] }, async req => {
-    const rows = req.server.db.prepare('SELECT id, name, status, created_at, archived_at FROM rooms ORDER BY id DESC').all() as RoomRow[]
+    const rows = req.server.db.prepare(
+      `SELECT id, name, status, created_at, archived_at FROM rooms
+       WHERE id IN (SELECT room_id FROM room_members WHERE user_id = ?)
+       ORDER BY id DESC`,
+    ).all(req.user!.id) as RoomRow[]
     return {
       active: rows.filter(r => r.status === 'active'),
       archived: rows.filter(r => r.status === 'archived'),
