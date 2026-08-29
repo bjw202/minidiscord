@@ -173,7 +173,7 @@ commits:
   - 9b0e619   # M1 room_members table, created_by, one-shot backfill
   - 9ace4c9   # M2 membership predicate, creator auto-join, invitation route
   - 64c56ce   # M3 eight gates (26-failure interim state, gate override documented)
-  - <m4>      # M4 sibling harness repair + AC-014 + two-way doc verification (this commit)
+  - ec2f344   # M4 sibling harness repair + AC-014 + two-way doc verification
 final_suite: 125/125 exit 0 (verbose)   # .moai/state/verify/t11-run1/m4-green-verbose.txt
 typecheck: exit 0
 comparison_record: §E.2 M3 절 — AC-ROOMAUTHZ-016 본체 (26 일치 / 8 원인 규명 / 0 목록 밖; 34-moment 로 예측 실증)
