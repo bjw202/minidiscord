@@ -1,0 +1,5 @@
+URL>>>not a url
+EXITCODE>>>null
+STDOUT_LEN>>>0
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — not a url (주소를 해석하지 못했다)\n"
+STDERR_LINES>>>1

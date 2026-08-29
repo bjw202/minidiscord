@@ -204,7 +204,7 @@ const REQ = { request_id: 'abcde', tool_name: 'Bash', description: 'Run shell co
 | AC-CHANAUTH-007 | REQ-CHANAUTH-005, 007 | 아래 본문 | 발신한 id 의 판정이 정확히 1건, `params` 가 `{ request_id, behavior }` 와 `toEqual` (id 글자 그대로) |
 | AC-CHANAUTH-008 | REQ-CHANAUTH-007 | 아래 본문 | 같은 id 두 번째 판정 뒤에도 `verdicts.length === 1`, 새로 발신한 id 는 성립 |
 | AC-CHANAUTH-009 | REQ-CHANAUTH-008 | 아래 본문 | 129개 발신 뒤 1번째 판정 0건 · 129번째 판정 1건 |
-| AC-CHANAUTH-010 | REQ-CHANAUTH-010, 011 | 아래 본문 | `isTransportAllowed` 의 **9행** 판정표가 전부 일치 (`127.0.0.1.evil.com` 행 포함) |
+| AC-CHANAUTH-010 | REQ-CHANAUTH-010, 011 | 아래 본문 | `isTransportAllowed` 의 **12행** 판정표가 전부 일치 (`127.0.0.1.evil.com` 행 + 루프백 비 ws 스킴 3행 포함) — **v0.4.0 개정, 카드 `t10`** |
 | AC-CHANAUTH-011 | REQ-CHANAUTH-004(stdout), 010, 012 | 아래 본문 | 자식 프로세스 네 갈래: (a) 비루프백 `ws://` 연결 0건 + stderr 한 줄 + **stdout 빈 문자열**, (b) 루프백 연결 1건 + stdout 빈 문자열, (c) `resolveUrl` 비회귀, (d) **거부된 주소의 자식도 stdio `initialize` 에 응답** |
 | AC-CHANAUTH-012 | REQ-CHANAUTH-013 | 아래 본문 | 기준 SHA 확인 종료 코드 `0`, `server` diff 빈 출력, `channel/src` 변경 목록이 정확히 세 줄, `channel/package.json` 무변경 |
 | AC-CHANAUTH-013 | RED→GREEN 전이 | 아래 본문 | 세 마일스톤의 **일곱 전이**(형제 스위트 전이 1b 포함)가 순서대로 관측됨 |
@@ -543,7 +543,7 @@ it('the emitted-id set is capped at 128 and evicts oldest first', async () => {
 **When** 다음을 추가하고 `npm test -w channel` 을 실행한다.
 
 ```ts
-it('isTransportAllowed decides by scheme and host only', () => {
+it('decides transport by scheme and host in every branch, loopback included', () => {
   const table: [string, boolean][] = [
     ['ws://127.0.0.1:3000/bot', true],       // 기본값 — 반드시 허용된다
     ['ws://localhost:3000/bot', true],
@@ -554,12 +554,22 @@ it('isTransportAllowed decides by scheme and host only', () => {
     ['wss://127.0.0.1:3000/bot', true],
     ['ws://127.0.0.1.evil.com/bot', false],  // 접두가 루프백처럼 보이는 원격 — 아래 설명
     ['not a url', false],                    // fail-closed
+    // ↓ v0.4.0 신설 3행 (카드 `t10`, 감사 F-A6) — 루프백 분기도 스킴을 본다
+    ['http://127.0.0.1:3000/bot', false],
+    ['https://127.0.0.1:3000/bot', false],
+    ['file://localhost/bot', false],
   ]
   expect(table.map(([u]) => [u, isTransportAllowed(u)])).toEqual(table)
 })
 ```
 
 **Then** 테스트가 통과한다.
+
+> **v0.4.0 개정 (카드 `t10`, 감사 F-A6 · 계획 감사 F-04) — 이 기준은 «대체» 되고 «실패» 하지 않는다.** v0.3.0 의 이 기준은 `it('isTransportAllowed decides by scheme and host only', …)` 라는 이름과 **9행** 표를 정본으로 적었다. `SPEC-CHANINJECT-001` 의 `AC-CHANINJECT-010` 이 그 자리를 위 **12행** 표와 새 `it()` 이름으로 대체한다 — 그러므로 착지 뒤 스위트에 옛 이름은 **존재하지 않는다.**
+>
+> **이 개정을 v0.4.0 에 포함하는 이유가 중요하다.** 옛 9행은 새 구현 아래에서도 **전부 옳다**(루프백 스킴 검사가 걸리는 `http://127.0.0.1` 행이 9행 표에 없다). 즉 이 기준은 실패하지 않고 **조용히 사라지므로, 스위트를 아무리 돌려도 그 소멸이 실행으로 드러나지 않는다.** 이 문서를 함께 고치지 않으면 `status: completed` 인 SPEC 이 존재하지 않는 `it()` 을 자기 기준의 정본으로 계속 서술하게 된다. 소멸의 관측은 `SPEC-CHANINJECT-001` AC-CHANINJECT-012 의 부분집합·대체 조건이 맡는다.
+>
+> **판정 자체는 하나도 뒤집히지 않았다** — 기존 9행의 기대값은 전부 그대로이고, 3행이 더해졌을 뿐이다. 기준의 **개수**도 그대로다(이 `it()` 하나).
 
 표 전체를 `toEqual` 로 한 번에 단언하는 형태를 쓴다. 행마다 `expect` 를 쓰면 첫 실패에서 멈춰 **나머지 행이 관측되지 않은 채** 실패 하나만 보고된다.
 
@@ -570,7 +580,9 @@ $ node -e "console.log(JSON.stringify(new URL('ws://[::1]:3000/bot').hostname))"
 "[::1]"
 ```
 
-`spec.md` §2 의 루프백 정의가 네 값(`127.0.0.1`·`localhost`·`::1`·`[::1]`)인 것이 이 실측의 귀결이다. 세 값만 비교하는 구현은 이 행에서 `false` 를 내 **정상 의도인데도 실패한다** — v0.1.0 은 처방(§2·`plan.md` §F M2)과 기준이 서로 어긋난 채였다.
+`spec.md` §2 의 루프백 정의에 **`'[::1]'` 대괄호 형태가 반드시 있어야 하는 것**이 이 실측의 귀결이다. 그 형태를 빼고 비교하는 구현은 이 행에서 `false` 를 내 **정상 의도인데도 실패한다** — v0.1.0 은 처방(§2·`plan.md` §F M2)과 기준이 서로 어긋난 채였다.
+
+> **v0.4.0 정정 (카드 `t10`, 감사 F-A7).** 이 문단은 v0.3.0 까지 루프백 정의를 «네 값(`127.0.0.1`·`localhost`·`::1`·`[::1]`)» 으로 적고 «세 값만 비교하는 구현» 을 결함으로 지목했다. **그 서술은 두 가지를 섞었다.** 필요한 것은 «`[::1]` 이 목록에 있는가» 하나이고, 맨 `'::1'` 은 **어떤 입력도 만나지 않는 사문**이다 — `URL.hostname` 이 IPv6 호스트를 항상 대괄호째 돌려주기 때문이며, 위 실측이 그것을 이미 보이고 있다. 그러므로 정정 후의 루프백 정의는 **세 값**(`127.0.0.1`·`localhost`·`[::1]`)이고, 이 행의 판정은 그대로 `true` 다. 사문 제거의 관측은 `SPEC-CHANINJECT-001` AC-CHANINJECT-011 이 맡는다.
 
 **`ws://127.0.0.1.evil.com/bot → false` 행을 지금 넣었다 (계획 감사 M-02).** v0.1.0 은 이 행을 "M2 단계 1 에서 확정한다"로 미뤘고, 그 결과 **문서가 방어한다고 적은 변이를 표가 실제로는 잡지 못했다.** 실측으로 그 호스트를 확인했다:
 
@@ -579,7 +591,7 @@ $ node -e "console.log(new URL('ws://127.0.0.1.evil.com/bot').hostname)"
 127.0.0.1.evil.com
 ```
 
-**이 기준을 무너뜨리는 변이**: 호스트 검사를 문자열 포함(`url.includes('127.0.0.1')`)으로 바꾼다 — 새로 넣은 9번째 행이 `true` 가 되어 실패한다. 행이 없던 v0.1.0 의 8행 표는 그 구현을 전부 통과시켰다.
+**이 기준을 무너뜨리는 변이**: 호스트 검사를 문자열 포함(`url.includes('127.0.0.1')`)으로 바꾼다 — `ws://127.0.0.1.evil.com/bot` 행이 `true` 가 되어 실패한다. 그 행이 없던 v0.1.0 의 8행 표는 그 구현을 전부 통과시켰다. **v0.4.0 이 더한 3행의 짝이 되는 변이**는 루프백 분기의 스킴 검사를 지우는 것이며(`SPEC-CHANINJECT-001` 변이 M-N), 그때 `http://127.0.0.1`·`https://127.0.0.1` 두 행이 어긋난다.
 
 **혼자서는 절반만 잰다.** 진입점이 이 함수를 부르지 않는 구현도 통과한다. 다음 기준이 그 짝이다.
 
@@ -725,7 +737,7 @@ git diff --name-only "$(cat .moai/specs/SPEC-CHANAUTH-001/.spec-base-sha)"..HEAD
 - **`SPEC-CHANCLIENT-001` v0.4.0 의 `autoWelcome` 하네스가 `channel/test/gateway-client.test.ts` 에 반영됐고, AC-CHANCLIENT-001..014(vitest 기준 전건)가 통과했다.** 개정 전 하네스에서 깨지던 일곱 건(`spec.md` §3.2 표)의 실패 원문이 교체 **전에** §E.2 에 남았다 — 충돌이 실재했다는 증거다. `AC-CHANCLIENT-015`·`016` 은 그 SPEC 자신의 경계·전이 기록이므로 이 목록에 없다(위 품질 게이트 설명).
 - AC-CHANAUTH-002 의 왕복 형태와 AC-CHANAUTH-003 의 두 갈래가 **계획 단계에서 확정된 그대로** 실행됐다 (v0.2.0 이후 run 단계가 이 형태를 다시 정하지 않는다).
 - 미검증 항목(엣지 케이스 표의 "미검증" 한 줄 포함)이 §E.2 의 Gaps 절에 명시적으로 기록됐다.
-- 감사 F-02·F-03·F-04·F-14 가 여전히 열려 있다는 사실, 그리고 **F-01 의 절반(사칭 채팅 주입·이력 오염)이 13개 요구사항을 전부 구현한 뒤에도 열려 있으며 카드 `t15` 소유라는 사실**이 §E.2 에 남았다 (`spec.md` §5).
+- 감사 F-02·F-03·F-04·F-14 가 여전히 열려 있다는 사실(**v0.4.0 주 — 카드 `t10`: 소유자가 각각 `SPEC-CHANINJECT-001`·카드 `t11` 로 확정됐다. 이 SPEC 이 닫지 않았다는 사실은 그대로다**), 그리고 **F-01 의 절반(사칭 채팅 주입·이력 오염)이 13개 요구사항을 전부 구현한 뒤에도 열려 있으며 카드 `t15` 소유라는 사실**이 §E.2 에 남았다 (`spec.md` §5).
 
   > **sync 감사 이후의 정정 (`.moai/reports/t9/sync-audit.md` F-A1·F-A2).** 위 줄의 «F-01 의 절반» 열거는 불완전하다 — 감사 프로브 P-A 가 **판정 주입의 잔여 절반**(소켓에서 읽은 진짜 `request_id` 로 위조한 `permission_verdict`, 그리고 먼저 도착한 판정이 이겨 사람의 진짜 판정이 유실되는 성질)도 열린 채 남음을 실행으로 관측했고, 그 잔여 역시 카드 `t15` 소유다. 정정된 경계 진술은 `spec.md` §1·§4.2·§5 와 `progress.md` §E.1 에 있다. **이 줄의 완료 조건 자체는 바꾸지 않는다** — §E.2 는 run 단계 산출물이고 이 주석은 그 뒤에 온 감사 결과를 잇는 기록이다.
 - `CHANGELOG.md:15`·`:41` 의 개정 전 무상태 문언이 **sync 단계 정정 목록**으로 §E.2 에 인계됐다 (`spec.md` §5, 계획 감사 L-01).

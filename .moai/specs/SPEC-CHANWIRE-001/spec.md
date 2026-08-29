@@ -1,10 +1,10 @@
 ---
 id: SPEC-CHANWIRE-001
 title: "minidiscord 채널 배선 — MCP 채널 서버와 게이트웨이 클라이언트를 묶어 실행 가능한 봇 바이너리를 만든다"
-version: "0.3.0"
+version: "0.4.0"
 status: in-progress
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -21,6 +21,7 @@ depends_on: [SPEC-CHANNEL-001, SPEC-CHANCLIENT-001]
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.4.0 | 2026-08-28 | **주입 방어 결합 개정 (카드 `t10`, `SPEC-CHANINJECT-001` v0.1.0 §3.2).** v0.3.0 이 §5 에 «미해소» 로 기록한 **F-03(High, 이력 렌더링 위조와 커서 오염)** 의 소유자가 정해졌고, 그 SPEC 이 요구하는 계약 변경을 여기서 받아 적는다. **REQ-CHANWIRE-012**: 이력 렌더링이 줄 형식 `#<id> [<created_at>] <author_name>: <body>` + 개행 잇기에서 **구조화 JSON `{cursor, messages[]}`** 으로 바뀌었다. 개행 이스케이프는 `JSON.stringify` 의 성질이 되고, 커서는 배열 밖 `cursor` 필드에서만 나온다. **§6 제약과 §5 두 자리**의 옛 형식 리터럴도 함께 정정했다 — 이 프로젝트가 이미 세 번 재현한 «본체를 고치고 참조 자리를 놓친다» 부류를 피하기 위해 형식 리터럴이 적힌 자리를 전건 훑었다. 그 귀결로 형제 회귀 기준 **두 건이 깨진다** — `channel/test/index-wiring.test.ts:207`(AC-CHANWIRE-007)·`:217`(AC-CHANWIRE-008). 둘 다 «수정» 이 아니라 «개정» 이며 개정 전 실패 원문은 `SPEC-CHANINJECT-001` AC-CHANINJECT-014 전이 **2b** 가 실행으로 남긴다. **`'(기록 없음)'` 을 버린 사유**는 결과 타입이 갈리면 커서가 다시 텍스트 추측으로 돌아가기 때문이다(`SPEC-CHANINJECT-001/spec.md` §3.2). **요구사항 14개·수용 기준 15개는 개수 그대로다.** | manager-spec |
 | 0.3.0 | 2026-08-27 | **sync 감사 마감 라운드 (F-06).** `.moai/reports/t4/sync-audit.md` 가 수신 갈래에서 Medium 1건을 실행으로 재현했다 — `gateway-client` 가 `onMessage` 를 await 하지 않으므로 `pushChatMessage` 의 거부를 아무도 받지 않고, MCP 상대가 먼저 끊긴 뒤 채팅 **한 건**이 도착하면 처리되지 않은 거부로 프로세스가 끝난다(`P5_EXIT=1`). Claude Code 세션이 `/clear` 되거나 재시작되는 것은 일상적인 사건이다. 무게가 큰 이유는 **같은 카드 안에서 같은 위험을 한쪽만 막았다**는 점이다 — 판정 갈래는 `.catch(() => {})` 로 막혀 있고 AC-CHANPERM-009 가 그것을 검증까지 하는데, 수신 갈래는 `plan.md` §D 5번이 위험을 인지하고도 방어도 기준도 두지 않았다. 수용된 갭이 아니라 내부 비일관이다. **REQ-CHANWIRE-014 와 AC-CHANWIRE-015 를 신설해 닫았다** — AC-CHANPERM-009 의 수신 경로 짝이며, 관측 도구도 같은 `unhandledRejection` 수집이다(변이 `M-F06 revert rejection swallow` 로 조준 확인, 이 테스트 한 건만 실패). 요구사항 13개 → **14개**, 수용 기준 14개 → **15개**(Tier M 상한 16/16 안). 함께 커버리지 제외 사유 정정(F-10)과 미해소 결함 F-03(이력 렌더링 위조)을 §5 에 기록했다 — **F-03 은 이 카드에서 고치지 않았다.** | manager-spec |
 | 0.2.1 | 2026-08-27 | **2차 감사 마감 라운드 (수용 기준 한정).** 2차 판정은 PASS 였고, 그 위에서 두 줄을 더 닫았다. **n1** — AC-CHANWIRE-010 의 `node --eval` 이 최상위 `await` 를 쓰는데, `--eval` 입력의 모듈 종류 판정이 Node 버전 대역에 따라 달라 **선언한 하한선(Node 20)에서 정상 구현이 거짓 실패**했다. `--input-type=module` 로 확정했다. **잔여 위험(좀비 프로세스)** — AC-CHANWIRE-014 가 프로세스 둘을 살려 둔 채 끝나는데 종료 주체가 없었다. 거두지 못한 프로세스는 스텁 포트로 백오프 재접속을 계속 시도해(상한 30초) 뒤따르는 기준을 오염시킨다. 공통 하네스에 `spawnChild()` 를 더해 **`spawn` 직후** `SIGKILL` 정리를 등록하도록 했고(명령 끝의 `kill` 한 줄은 일찍 끝나는 경로에서 닿지 않으므로 쓰지 않는다), 품질 게이트에 `pgrep` 사후 관측을 더했다. 곁들여 AC-CHANWIRE-011 에서 프로세스를 띄우던 갈래를 걷어 내 AC-014 (a)가 이미 재는 것과의 중복을 없앴다 — 띄우는 프로세스가 하나 줄면 좀비 위험도 하나 준다. **요구사항 13개·수용 기준 14개 모두 그대로**이고, 바뀐 것은 하네스 하나와 기준 셋의 관측 방식이다. n2(`WireOpts.token` 옵셔널화)는 감사자가 권하지 않아 손대지 않았다. | manager-spec |
 | 0.2.0 | 2026-08-27 | **plan-audit 교정 라운드.** `.moai/reports/t4/plan-audit.md` 가 이 SPEC 에서 차단급 1건(B1)과 주요 2건(M1·M6)을 지적했고, 셋 다 옳다고 확인해 닫았다. **B1** — 임포트 부작용 기준이 같은 파일이 이미 임포트한 모듈을 다시 `import()` 해 ES 모듈 캐시만 돌려받고 있었다. 즉 최상단에서 무조건 접속하는 구현도 통과하는, 아무것도 재지 않는 기준이었다. 자식 프로세스 관측으로 바꿨다. **M1** — REQ-CHANWIRE-003 의 토큰 게이트가 형제 SPEC 의 stdio 프로브(`SPEC-CHANNEL-001` AC-002·004·005 는 토큰 없이 `node channel/dist/index.js` 를 띄운다)를 조용히 무력화하고, 배선 이후 빌드 산출물이 MCP 를 말하는지 재는 기준은 네 SPEC 어디에도 없었다. **계약을 바꿔 닫았다 — stdio 연결은 토큰과 무관하게 하고, 토큰은 게이트웨이 접속만 가로막는다**(REQ-003·004 개정). 그리고 빌드 산출물을 직접 재는 AC-CHANWIRE-014 를 더했다. **M6** — 기본 주소 검증이 스텁을 `127.0.0.1:3000`(프로젝트 서버 자신의 기본 포트)에 바인딩해, 서버를 띄워 둔 개발자에게는 정상 구현이 환경 때문에 실패했다. `resolveUrl(env)` 를 내보내 포트와 무관한 관측으로 바꿨다. 요구사항은 13개 그대로이고(REQ-003·004 의 **내용**이 바뀌었다), 수용 기준은 13개 → **14개**가 됐다. 함께 사소 지적 2건도 닫았다(m2 `process.env` 오염 — 자식 프로세스 전환으로 소멸, m4 순서 조항 미관측 — Gaps 로 명시). | manager-spec |
@@ -167,13 +168,15 @@ export function resolveUrl(env: NodeJS.ProcessEnv = process.env): string   // en
 **REQ-CHANWIRE-012** (When — 이력 조회)
 `fetch_history` 도구가 호출되면, 배선은 도구가 받은 파라미터 객체를 **그대로** `gw.requestHistory` 에 넘겨야 한다. `since_id`·`since`·`until`·`speaker`·`limit` 다섯 개 어느 것도 이름이 바뀌거나 떨어져 나가서는 안 된다. 특히 `since_id` 는 봇이 "지난번에 본 다음부터"를 정확히 집는 커서라, 여기서 떨어지면 봇이 매번 같은 대화를 다시 읽는다.
 
-받은 응답의 `messages` 는 다음 형식의 줄로 렌더링되어 도구 결과 텍스트가 되어야 한다.
+받은 응답의 `messages` 는 **구조화 JSON 문자열 하나**로 렌더링되어 도구 결과 텍스트가 되어야 한다. 형식과 커서 규칙의 정본은 `SPEC-CHANINJECT-001` REQ-CHANINJECT-004·005·006 이며, 이 조항은 그것을 받아 적는다.
 
 ```
-#<id> [<created_at>] <author_name>: <body>
+{"cursor": <messages 의 id 최댓값, 비면 null>, "messages": [{"id":…, "at":…, "author":…, "body":…}, …]}
 ```
 
-줄 사이는 개행 하나로 잇고, 메시지가 하나도 없으면 문자열 `'(기록 없음)'` 을 돌려준다. 줄 앞의 `#<번호>` 는 장식이 아니라 계약이다 — 채널 지시문이 봇에게 "각 줄 앞의 `#번호` 를 기억해 두었다가 다음에 `since_id` 로 넘기라"고 시키므로, 번호가 없으면 커서를 만들 수 없다.
+**줄을 잇지 않는다.** 커서는 배열 밖 `cursor` 필드에서만 나오며, 어떤 메시지의 `body` 에서도 파생되지 않는다. 메시지가 하나도 없으면 `{"cursor":null,"messages":[]}` 를 돌려준다.
+
+> **v0.4.0 개정 (카드 `t10`) — 이 조항은 v0.3.0 이 §5 에 «미해소» 로 적은 F-03 을 닫는 자리다.** v0.3.0 은 이 자리에 줄 형식 `#<id> [<created_at>] <author_name>: <body>` 를 못 박고 «줄 앞의 `#<번호>` 는 장식이 아니라 계약이다» 라고 적었다. **그 계약이 결함의 원인이었다.** 본문에 개행이 들어가면 진짜 줄과 가짜 줄을 구분할 수 없고(감사 프로브 P3: 메시지 **1건**이 두 줄이 되었다), 본문에 `#999999` 를 심으면 모델이 그것을 커서로 채택해 진짜 이력이 **오류 없이 조용히** 영구히 걸러진다(`.moai/reports/t4/sync-audit.md` F-03). 구조화 JSON 은 `JSON.stringify` 의 이스케이프로 앞의 결과를, 별도 `cursor` 필드로 뒤의 결과를 닫는다. **왜 «개행만 이스케이프» 를 고르지 않았는지**는 `SPEC-CHANINJECT-001/plan.md` §B 가 적었다 — 그 갈래는 커서 오염을 닫지 못한다. **형제 회귀 기준 둘이 이 개정으로 깨진다**: AC-CHANWIRE-007·008. 두 기준은 아래에서 함께 개정한다.
 
 ### 4.6 범위 경계
 
@@ -212,7 +215,10 @@ export function resolveUrl(env: NodeJS.ProcessEnv = process.env): string   // en
 
 - 봇 토큰 발급, 방 초대, `MINIDISCORD_TOKEN` 에 넣을 값을 사람이 얻는 절차 (서버 SPEC 과 웹 UI 카드가 소유)
 
-### Out of Scope — 이력 렌더링의 신뢰 경계 (감사 F-03, 미해소)
+### Out of Scope — 이력 렌더링의 신뢰 경계 (감사 F-03 — `SPEC-CHANINJECT-001` 이 해소)
+
+> **v0.4.0 정정 (카드 `t10`).** 아래 절은 v0.3.0 이 «미해소·별도 카드» 로 적은 상태를 그대로 보존한다 — 그 시점의 사실이었고 소급 수정은 감사 추적을 훼손한다. **바뀐 것은 둘이다.** ① 소유자가 정해졌다: `SPEC-CHANINJECT-001`(카드 `t10`). ② 그 SPEC 의 요구로 **REQ-CHANWIRE-012 가 v0.4.0 에서 개정됐으므로, 아래 «AC-CHANWIRE-007 이 못 박은 `#1 [2026-08-01] alice: 과거` 형식» 은 더 이상 이 SPEC 의 형식이 아니다.** 아래 «이 카드에서 해소하지 않았다» 의 «이 카드» 는 `t4` 를 가리킨다. F-02·F-04(지시문 쪽)의 소유자도 `SPEC-CHANNEL-001` 이 아니라 `SPEC-CHANINJECT-001` 로 이관됐다 — 셋이 한 부류이기 때문이다(감사 §6 권고 2번).
+
 
 `.moai/reports/t4/sync-audit.md` F-03(High)은 `index.ts` 의 이력 렌더링이 **개행으로 구분된 평문**이라, 한 사람의 본문이 임의 개수의 가짜 `#번호` 이력 줄을 만들어 낼 수 있다는 점을 지적했다(커서 오염 포함). AC-CHANWIRE-007 이 못 박은 `#1 [2026-08-01] alice: 과거` 형식은 **형식의 고정**을 재는 기준이지 **본문의 무해화**를 재는 기준이 아니다 — 본문에 개행과 `#숫자`가 들어 있어도 그 기준은 통과한다.
 
@@ -235,10 +241,10 @@ export function resolveUrl(env: NodeJS.ProcessEnv = process.env): string   // en
 - 의존성은 선행 SPEC 이 설치한 것을 그대로 쓴다: `@modelcontextprotocol/sdk ^1`, `ws ^8`, `zod ^3`, `vitest ^2`. 이 SPEC 은 새 의존성을 추가하지 않는다.
 - 채널 플러그인은 무상태다 — 디스크에 아무 파일도 쓰지 않고, 설정은 `MINIDISCORD_TOKEN`·`MINIDISCORD_SERVER` 두 환경변수로만 받는다.
 - 테스트 프레임워크는 vitest. 실행 명령은 워크스페이스 루트에서 `npm test -w channel`.
-- UI 문구(도구 결과 텍스트의 `'(기록 없음)'` 포함)는 한국어. 코드 주석도 한국어.
+- UI 문구는 한국어, 코드 주석도 한국어. **다만 이력 결과 텍스트는 v0.4.0 부터 UI 문구가 아니라 구조화 JSON 이고, `'(기록 없음)'` 은 `{"cursor":null,"messages":[]}` 로 대체됐다** — 그 문자열을 읽는 것은 사람이 아니라 모델이다 (카드 `t10`, `SPEC-CHANINJECT-001/plan.md` §B).
 - 커밋 메시지는 영어 관례(`feat:`, `test:`).
 - 채널 계약(capabilities·notification 메서드·`reply` 도구·권한 릴레이)은 `spec-v2.md` 4-B 와 공식 channels-reference 를 그대로 따른다. `bot_message`·`status`·`history_request` 의 필드 이름과 `state` 값(`'working'`/`'idle'`)은 이 SPEC 에서 바꾸지 않는다. 변경이 필요해 보이면 중단하고 보고한다.
-- 이력 줄 형식 `#<id> [<created_at>] <author_name>: <body>` 와 빈 결과 문자열 `'(기록 없음)'` 은 완화도 강화도 하지 않는다.
+- 이력 결과 형식은 REQ-CHANWIRE-012(v0.4.0)가 정한 구조화 JSON 이며, 그 정본은 `SPEC-CHANINJECT-001` REQ-CHANINJECT-004·005 다. 이 SPEC 에서 완화도 강화도 하지 않는다. **v0.3.0 까지 이 자리가 고정하던 줄 형식 `#<id> [<created_at>] <author_name>: <body>` 와 `'(기록 없음)'` 은 폐기됐다** (카드 `t10`, 감사 F-03).
 
 ---
 

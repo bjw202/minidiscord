@@ -10,7 +10,9 @@
 | 워크트리 | `.claude/worktrees/t9` (브랜치 `WT-chanperm-gate`) |
 | 선행 SPEC | `SPEC-CHANNEL-001` · `SPEC-CHANCLIENT-001` · `SPEC-CHANWIRE-001` · `SPEC-CHANPERM-001` (전부 카드 `t4` 에서 착지) |
 | 결합 개정 | `SPEC-CHANPERM-001` v0.3.0 (REQ/AC-008) + v0.4.0 (AC-005·006·007·009, **REQ 무변경**) · `SPEC-CHANCLIENT-001` v0.4.0 (REQ-004·005 + 하네스) — 전부 같은 패스에서 완료 |
-| 계획 감사 | 1차 `.moai/reports/t9/plan-audit.md` — FAIL 0.55, 차단 7건 (대장 `plan-done-2.md`). 2차 `.moai/reports/t9/plan-audit-2.md` — FAIL 0.74, 차단 7건 + optional 3건 (대장 `plan-done-3.md`). 3차 판정 예정 `.moai/reports/t9/plan-audit-3.md` — **마지막 라운드** |
+| 계획 감사 | 1차 `.moai/reports/t9/plan-audit.md` — FAIL 0.55, 차단 7건 (대장 `plan-done-2.md`). 2차 `.moai/reports/t9/plan-audit-2.md` — FAIL 0.74, 차단 7건 + optional 3건 (대장 `plan-done-3.md`). 3차 `.moai/reports/t9/plan-audit-3.md` — **마지막 라운드, 마감 완료** (교정 대장 `plan-done-4.md`, 커밋 `7e4834b` «계획 감사 3회차 마감»). 계획 감사는 3회로 종료됐고 이후는 run·sync 단계다 |
+
+> **정정 (카드 `t10`, 감사 F-B3).** 위 «계획 감사» 행은 v0.3.0 시점에 «3차 판정 **예정**» 으로 남아 정체돼 있었다 — 그 파일은 이미 존재했고(`plan-audit-3.md`), 교정 대장(`plan-done-4.md`)과 마감 커밋(`7e4834b`)까지 있었다. **1차 sync 감사 이전부터 있던 선행 결함이며 교정이 만든 것이 아니다**(`.moai/reports/t9/sync-audit-2.md` §7 F-B3). `t10`/`t11` 로 이월됐고 카드 `t10` 이 이행했다.
 | 인계 카드 | `t15` — F-01 잔여: 사칭 채팅 주입 · 이력 오염 · **판정 주입의 잔여 절반**(소켓에서 읽은 진짜 `request_id` 로 위조한 `permission_verdict` + 먼저 도착한 판정이 이기는 성질 — `.moai/reports/t9/sync-audit.md` F-A1·F-A2) |
 | 현재 상태 | **`completed`** v0.3.0 — 13개 요구사항(REQ-CHANAUTH-001..013) 전부 구현·감사 완료. run 마감 `7f83c43`(스위트 61/61 · typecheck 0 · stmts 93.75%), sync 문서 정정 `2c9a484` → `3b7d44a` → 본 패스. sync 감사 최종 **PASS**(가중 조화평균 **87.3** · 차단 0건 · must-pass Functionality 90·Security 85 모두 통과 — `.moai/reports/t9/sync-audit-2.md` §12). 판정 궤적 78 FAIL → 85.9 FAIL → 87.3 PASS. 상태 전이 `in-progress → implemented → completed` 를 단일 sync 커밋에서 적용. **주의: 이 종결은 F-01 의 종결이 아니다** — 진짜 `request_id` 를 읽어 판정을 위조하는 Critical 급 잔여와 사칭 채팅 주입·이력 오염은 그대로 열려 있고 카드 `t15` 소유다 |
 
@@ -59,7 +61,7 @@ handoff:
     evidence: ".moai/reports/t9/sync-audit.md F-A1·F-A2 (프로브 P-A) — 판정 주입 잔여는 sync 감사가 실행으로 재현했다"
 ```
 
-**`open_questions` 를 실제 값으로 다시 셌다 (계획 감사 H-02).** v0.1.0 도 `0` 을 적었으나 그때는 **사실이 아니었다** — AC-002 의 최종 형태, AC-003 의 양성 갈래, AC-010 판정표의 행 추가, AC-CHANPERM-009 처리, 넷이 열려 있었다. v0.2.0 이 그 넷을 **전부 계획 단계에서 확정했으므로** 이제 `0` 이 참이다. 확정 위치: AC-002 왕복 형태(`acceptance.md`), AC-003 (나) 갈래(같은 문서), AC-010 9행 표(같은 문서), AC-CHANPERM-005·006·007·009 개정(`SPEC-CHANPERM-001` v0.4.0).
+**`open_questions` 를 실제 값으로 다시 셌다 (계획 감사 H-02).** v0.1.0 도 `0` 을 적었으나 그때는 **사실이 아니었다** — AC-002 의 최종 형태, AC-003 의 양성 갈래, AC-010 판정표의 행 추가, AC-CHANPERM-009 처리, 넷이 열려 있었다. v0.2.0 이 그 넷을 **전부 계획 단계에서 확정했으므로** 이제 `0` 이 참이다. 확정 위치: AC-002 왕복 형태(`acceptance.md`), AC-003 (나) 갈래(같은 문서), AC-010 9행 표(같은 문서 — 이 표는 v0.4.0 에서 12행으로 대체됐다, 카드 `t10` `AC-CHANINJECT-010`), AC-CHANPERM-005·006·007·009 개정(`SPEC-CHANPERM-001` v0.4.0).
 
 **계약 질문 해소 기록.** 카드 `t4` 가 "무상태를 지킬 것인가, 발신 id 를 기억할 것인가"를 열린 채 넘겼고(`SPEC-CHANPERM-001` v0.2.2 §4.3), 이 카드가 **후자로 답했다**. 근거와 개정 경계는 `plan.md` §B, 상태를 둘 자리의 근거는 §C 에 있다.
 
@@ -84,7 +86,7 @@ handoff:
 | REQ-CHANAUTH-007 (정확히 한 번 + 소진) | AC-CHANAUTH-007 · AC-CHANAUTH-008 | 007 이 «한 번, 무변형», 008 이 «두 번째는 재생되지 않는다»(`deny` → `allow` 순서) |
 | REQ-CHANAUTH-008 (상한 128 · 선입선출 축출 · 디스크 미기록) | **부분** — AC-CHANAUTH-009 (상한·축출) | **«디스크에 기록되어서는 안 된다» 조항에는 AC 가 없다.** `acceptance.md` §품질 게이트 «무상태» 행(`git status --porcelain` 에 `channel/` 아래 새 산출물 없음)만이 이 조항에 닿으며, 그것은 AC 가 아니라 게이트 항목이고 회귀 스위트 안에도 없다 |
 | REQ-CHANAUTH-009 (버려진 판정이 프로세스·예외·거부·오알림을 만들지 않음) | AC-CHANAUTH-006 · 008 · 009 (`unhandled` + 정확 집합 단언) | 006 의 `expect(await unhandled()).toEqual([])` 와 008·009 의 `toEqual` 전량 단언. **주의**: 같은 수집기가 동기 uncaught exception 을 잡지 못한다는 것이 변이 C 실측으로 드러났다(위 REQ-004 행과 같은 한계) |
-| REQ-CHANAUTH-010 (비루프백 평문 거부 + stderr 한 줄) | AC-CHANAUTH-010 · AC-CHANAUTH-011 (a) | 010 이 판정 함수 9행 표를, 011 (a)가 진입점이 그 판정을 실제로 지키는지(연결 0건 + stderr 1줄)를 잰다. 둘이 짝이다 |
+| REQ-CHANAUTH-010 (비루프백 평문 거부 + stderr 한 줄) | AC-CHANAUTH-010 · AC-CHANAUTH-011 (a) | 010 이 판정 함수 표를(v0.3.0 까지 9행, **v0.4.0 부터 12행** — 카드 `t10`), 011 (a)가 진입점이 그 판정을 실제로 지키는지(연결 0건 + stderr 1줄)를 잰다. 둘이 짝이다 |
 | REQ-CHANAUTH-011 (해석 실패 시 미접속 — fail-closed) | **부분** — AC-CHANAUTH-010 (`'not a url'` 행) | 판정 함수 층은 잰다. **진입점 층에는 해석 불가 주소 갈래가 없다** — AC-CHANAUTH-011 의 네 갈래 (a)~(d) 는 모두 해석되는 주소를 쓴다((a)의 `localhost.example.test` 는 해석은 되고 조회만 실패한다). 진입점이 `false` 판정을 지키는 것은 (a)로 관측되므로 공백은 «해석 실패 자체» 한 갈래다 |
 | REQ-CHANAUTH-012 (`resolveUrl` 무변경 · stdio 비차단) | AC-CHANAUTH-011 (c)·(d) | (c)가 `resolveUrl('ws://example/bot')` 반환값을 글자 그대로, (d)가 거부되는 주소로 띄운 자식이 stdio `initialize` 에 답하는지를 잰다 |
 | REQ-CHANAUTH-013 (범위 경계) | AC-CHANAUTH-012 | 네 git 명령 — 기준 SHA 존재, `server/`·`web/` 빈 diff, `channel/src` 정확히 세 파일, `channel/package.json` 빈 diff |
@@ -655,7 +657,7 @@ P6_NOTIFICATIONS=[]
 | M1 단계 0-3 F-01 재현(수정 전) + 같은 프로브 0건(수정 후) 원문 쌍 | PASS — 위 프로브 재실행으로 짝 완성 |
 | M3 단계 1-3 개정 전 CHANPERM 다섯 건 실패 원문 | PASS — §E.2 M3 단계 1.3 |
 | M1 단계 1b 개정 전 형제 일곱 건 실패 원문 + §3.2 목록 일치 | PASS — §E.2 M1 단계 1b |
-| F-01 절반 열림·t15 소유가 §E.2 에 | PASS — §E.2 M1 잔여 위험 + 본 절 프로브 단락 |
+| F-01 잔여 **셋** 열림·t15 소유가 §E.2 에 | PASS — §E.2 M1 잔여 위험 + 본 절 프로브 단락. **라벨 정정 (카드 `t10`, 감사 J2)**: v0.3.0 까지 이 행은 «절반» 이라 적어, 자기 출처인 `plan.md:165`(«잔여 **셋**» 으로 개정됨)를 더 이상 인용하지 못했다. **PASS 판정 자체는 옳고 근거도 더 강해졌으므로 판정은 바꾸지 않는다** — 고친 것은 한 낱말짜리 라벨뿐이다(`.moai/reports/t9/sync-audit-2.md` §6 J2) |
 | `CHANGELOG.md:15`·`:41` sync 인계 | PASS — §E.2 M1 |
 | `channel-server.ts` 무상태 주석 개정 후 문언 | PASS — M3 (52·135·149행) |
 | 변이 8종(A~H) 집합 일치 + 전건 되돌림 | PASS — A·B (M1), F·G·H (M2), D·E (M3) 표 일치·되돌림 확인. **C 행은 §11.2 예외** — 실측 집합 `{003(나)}` 원문 기록, 문서 미수정 |

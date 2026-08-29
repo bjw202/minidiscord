@@ -6,7 +6,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { WebSocketServer, type WebSocket as WS } from 'ws'
 import { spawn } from 'node:child_process'
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 // isTransportAllowed 는 M2 가 새로 내보내는 판정 함수, resolveUrl 은 그 비회귀를 재는 형제 계약이다.
 import { wire, isTransportAllowed, resolveUrl } from '../src/index.js'
 
@@ -113,6 +115,24 @@ function collectUnhandled() {
   process.on('unhandledRejection', on)
   cleanups.push(() => { process.off('unhandledRejection', on) })
   return async () => { await settle(); return seen }
+}
+
+// channel/src 의 모든 .ts 파일 절대 경로. 파일 목록을 하드코딩하지 않는다 —
+// «파일이 정확히 N 개다» 는 시점에 묶여 썩는 기준이고, 새 파일이 생기면 조용히 검사를 벗어난다.
+const SRC_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src')
+const SRC_FILES = readdirSync(SRC_DIR).filter(f => f.endsWith('.ts')).map(f => path.join(SRC_DIR, f))
+
+// 동기 예외 수집기. 기존 collectUnhandled() 는 unhandledRejection 만 모으므로
+// 게이트 안에서 던진 동기 예외를 놓친다 (감사 F-A3, 변이 C 실측).
+function collectUncaught(): () => Promise<string[]> {
+  const seen: string[] = []
+  const onErr = (e: Error) => { seen.push(String(e?.message ?? e)) }
+  process.on('uncaughtException', onErr)
+  return async () => {
+    await new Promise(r => setTimeout(r, 50))
+    process.off('uncaughtException', onErr)
+    return seen
+  }
 }
 
 // 자식 프로세스. spawn 직후 수거를 등록한다 — 명령 끝의 kill 은 일찍 끝나는 경로에 닿지 않는다.
@@ -233,18 +253,55 @@ describe('transport auth', () => {
     expect(stub.connections()).toBe(1)        // 끊기지도, 다시 붙지도 않았다
   })
 
-  // AC-CHANAUTH-010 — 전송 판정표 (9행, 계획 감사 M-01·M-02 확정분 포함)
-  it('isTransportAllowed decides by scheme and host only', () => {
+  // AC-CHANINJECT-007 — 게이트가 삼킨 프레임이 동기 예외로도 새지 않는다 (F-A3, 카드 t10).
+  // 게이트를 throw 로 바꾼 감사 변이 C 에서 AC-CHANAUTH-005 의 네 단언은 하나도 실패하지 않았고
+  // 손상은 런 수준 uncaughtException 4건으로만 나타났다 — 그 자리를 여기가 잡는다.
+  it('a gated frame raises neither an unhandled rejection nor an uncaught exception', async () => {
+    const unhandled = collectUnhandled()
+    const uncaught = collectUncaught()
+    const { stub, verdicts, notes } = await attachWire({ welcome: false })
+
+    stub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+    stub.push({ type: 'message', id: 1, author_name: 'admin', delivery: 'to', body: 'x' })
+    stub.push({ type: 'history_response', rid: 'nope', messages: [] })
+    await settle()
+
+    expect(await unhandled()).toEqual([])
+    expect(await uncaught()).toEqual([])       // ← 오늘 아무도 지켜 주지 않는 조항
+    expect(verdicts).toEqual([])
+    expect(notes).toEqual([])
+    expect(stub.connections()).toBe(1)          // 소켓이 끊기지 않았다
+  })
+
+  // AC-CHANINJECT-008 — channel/src 어디에도 파일 시스템 import 가 없다 (F-A4, 카드 t10).
+  // REQ-CHANAUTH-008 의 «디스크 미기록» 을 회귀 스위트 안으로 옮긴 인프로세스 짝이다.
+  it('imports no filesystem module anywhere under channel/src', async () => {
+    const offenders = SRC_FILES.filter(f => {
+      const s = readFileSync(f, 'utf8')
+      return /from\s+['"](node:)?fs(\/promises)?['"]/.test(s) || /require\(\s*['"](node:)?fs/.test(s)
+    })
+    expect(offenders).toEqual([])
+    expect(SRC_FILES.length).toBeGreaterThan(0)   // 목록이 비면 검사가 공허해진다
+  })
+
+  // AC-CHANINJECT-010 — 전송 판정표 12행 (F-A6, 카드 t10 — 루프백 + 비 ws 스킴 3행 신설).
+  // 기존 AC-CHANAUTH-010 의 9행 표를 «대체» 한다 — 옛 9행은 새 구현 아래에서도 전부 옳아
+  // 실패하지 않고 사라지므로, «통과했는데 사라졌다» 는 사실이 유일한 기록이다 (m3-pre.log).
+  it('decides transport by scheme and host in every branch, loopback included', () => {
     const table: [string, boolean][] = [
-      ['ws://127.0.0.1:3000/bot', true],       // 기본값 — 반드시 허용된다
+      ['ws://127.0.0.1:3000/bot', true],
       ['ws://localhost:3000/bot', true],
       ['ws://[::1]:3000/bot', true],
       ['wss://example.com/bot', true],
-      ['ws://example.com/bot', false],         // 평문 원격 — 감사 F-07
-      ['ws://10.0.0.5:3000/bot', false],
-      ['wss://127.0.0.1:3000/bot', true],
-      ['ws://127.0.0.1.evil.com/bot', false],  // 접두가 루프백처럼 보이는 원격 — 아래 설명
-      ['not a url', false],                    // fail-closed
+      ['ws://example.com/bot', false],
+      ['ws://127.0.0.1.evil.com/bot', false],
+      ['https://example.com/bot', false],
+      ['not a url', false],
+      ['', false],
+      // ↓ 신설 3행 — 루프백 분기도 스킴을 본다 (F-A6)
+      ['http://127.0.0.1:3000/bot', false],
+      ['https://127.0.0.1:3000/bot', false],
+      ['file://localhost/bot', false],
     ]
     expect(table.map(([u]) => [u, isTransportAllowed(u)])).toEqual(table)
   })
@@ -276,5 +333,55 @@ describe('transport auth', () => {
       params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '0' } },
     }) + '\n')
     await waitFor(() => d.stdout().includes('"result"'), 'stdio initialize 응답')
+  })
+
+  // AC-CHANINJECT-011 — 도달 불가한 맨 '::1' 이 사라져도 [::1] 은 여전히 허용된다 (F-A7, 카드 t10).
+  // (a) 행동 보존 + (b) 사문 제거. (b) 가 텍스트 검사라는 사실과 그 한계는 acceptance.md 본문이 적는다.
+  it('keeps bracketed IPv6 loopback working after the unreachable bare ::1 entry is dropped', () => {
+    // (a) 행동 보존 — Node 의 URL 은 IPv6 호스트를 대괄호째 돌려주므로 이 형태가 실제 입력이다
+    expect(isTransportAllowed('ws://[::1]:3000/bot')).toBe(true)
+    expect(new URL('ws://[::1]:3000/bot').hostname).toBe('[::1]')
+
+    // (b) 사문 제거 — 소스에 맨 '::1' 리터럴이 남지 않았다
+    const src = readFileSync(path.join(SRC_DIR, 'index.ts'), 'utf8')
+    expect(/['"]::1['"]/.test(src)).toBe(false)
+    expect(/['"]\[::1\]['"]/.test(src)).toBe(true)     // 양성 짝 — 목록을 통째로 지운 구현을 막는다
+  })
+
+  // AC-CHANINJECT-009 — 해석 불가 주소의 거부 사유가 사실과 맞다 (F-A5·F-A10, 카드 t10).
+  // F-02 정정을 반영한 최종 형태 — 실제 하네스(rogueGateway·spawnChild 접근자)와 대조 갈래를 쓴다.
+  it('refuses an unparseable address, stays alive, says nothing on stdout, and explains truthfully', async () => {
+    // 대조 갈래를 함께 띄운다 — 스텁이 살아 있고 접속 가능한 상태임을 같은 실행 안에서 보인다.
+    // 스텁이 없으면 «접속 0건» 은 방어가 없어도 참인 공허한 단언이 된다.
+    const stub = rogueGateway({ welcome: true })
+
+    // (가) 해석 불가 주소 — 이 기준의 대상
+    const bad = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: 'not a url' })
+    // (나) 같은 스텁을 겨냥한 정상 주소 — 스텁이 실제로 접속을 받는다는 대조
+    const good = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: `ws://127.0.0.1:${stub.port()}/bot` })
+    // (다) 루프백인데 스킴이 http: — 해석에는 성공하므로 (가)의 갈래로 떨어지지 않는다 (v0.3.0 신설)
+    const wrongScheme = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD_SERVER: `http://127.0.0.1:${stub.port()}/bot` })
+    await waitFor(() => stub.connections() === 1, '대조 갈래의 루프백 접속')
+    await settle()
+
+    const err = bad.stderr()
+    expect(stub.connections()).toBe(1)            // (나) 하나뿐이다 — (가)·(다)는 아무것도 열지 않았다
+    expect(bad.proc.exitCode).toBeNull()          // 살아 있다 (반환 객체가 아니라 proc 에 있다)
+    expect(bad.stdout()).toBe('')                 // stdout 은 MCP 통로다 — 한 글자도 안 된다
+    expect(err.split('\n').filter(Boolean).length).toBe(1)   // stderr 는 정확히 한 줄
+    expect(err).toContain('not a url')            // 거부한 값을 알려준다
+    expect(err).toContain('해석')                  // 사유가 «해석 실패» 다
+    expect(err).not.toContain('wss://')           // 존재하지 않는 호스트를 근거로 안내하지 않는다
+    expect(err).not.toContain('루프백')
+
+    // (다) 갈래의 단언 — 사유는 «루프백 + 잘못된 스킴» 이라는 사실과 그 조치를 말해야 한다.
+    const werr = wrongScheme.stderr()
+    expect(wrongScheme.proc.exitCode).toBeNull()  // 이 갈래도 프로세스는 산다
+    expect(wrongScheme.stdout()).toBe('')
+    expect(werr.split('\n').filter(Boolean).length).toBe(1)
+    expect(werr).toContain(`http://127.0.0.1:${stub.port()}/bot`)   // 거부한 값을 알려준다
+    expect(werr).toContain('ws://')               // 운영자가 취할 조치를 정확히 지목한다
+    expect(werr).not.toContain('wss://')          // 조치를 반대로 안내하지 않는다 (sync 감사 F-02)
+    expect(werr).not.toContain('비루프백')          // 127.0.0.1 은 루프백이다 — 사실과 다른 서술 금지
   })
 })
