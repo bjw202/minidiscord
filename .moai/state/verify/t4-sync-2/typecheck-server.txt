@@ -1,0 +1,5 @@
+
+> typecheck
+> tsc --noEmit
+
+TS_SERVER_EXIT=0

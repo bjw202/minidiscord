@@ -1,0 +1,16 @@
+=== D1. HTTP 경로 릴레이 교란 (정식 multipart) ===
+  비멤버 carol : 404 {"error":"방을 찾을 수 없습니다"}
+  멤버 alice   : 200 {"ok":true,"consumed_by":"permission"}
+  방 메시지    : [{"id":1,"author_type":"system","b":"🔒 봇이 도구 사용 승인을 요청합니다: Bash\nd\np\n승인하려면 \"ye"},{"id":2,"author_type":"system","b":"⚠️ 봇이 접속해 있지 않아 판정을 전달하지 못했습니다 (fghij)"}]
+
+=== D2. SSE — 비멤버 요청이 구독을 남기는가 ===
+  구독 전 subscriberCount=0
+  비멤버 SSE: 404 {"error":"방을 찾을 수 없습니다"}
+  요청 후 subscriberCount=0
+
+=== D3. 보관의 파급 — 비멤버가 남의 방을 얼려 버릴 수 있는가 ===
+  보관 전 활성 봇 토큰: 0 → 초대 후 1
+  비멤버 carol 보관 : 200 {"ok":true}
+  보관 후 활성 토큰 : 0
+  멤버 alice 이후 전송: 409 {"error":"보관된 방에는 메시지를 보낼 수 없습니다"}
+  멤버 alice 이후 초대: 409 {"error":"보관된 방에는 초대할 수 없습니다"}

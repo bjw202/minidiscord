@@ -1,0 +1,39 @@
+MUTATION MU-12 - F-14 room membership on message POST
+file: server/src/routes-messages.ts
+old: "app.post('/api/rooms/:id/messages', { preHandler: [requireAuth, requireRoomMember] }"
+new: "app.post('/api/rooms/:id/messages', { preHandler: [requireAuth] }"
+build_exit=0 test_exit=1
+FAILING TESTS (4):
+  x test/room-members.test.ts > room membership gates > refuses a non-member send with no trace while a member send succeeds
+  x test/room-members.test.ts > room membership gates > never lets a non-member approve, and leaves the request for a member to answer
+  x test/room-members.test.ts > room membership gates > gives a non-member byte-identical answers for missing, active and archived rooms
+  x test/room-members.test.ts > room membership gates > moves every gated route together for one person, before and after the invitation
+
+--- tail ---
+-   404,
++   200,
+    404,
+    404,
+    404,
+    404,
+    404,
+
+ ❯ test/room-members.test.ts:607:35
+    605|     // 부정 사례 — 비멤버에게는 전부 404 다. 하나라도 다르면 그 라우트의 술어가 갈라진 것이다
+    606|     const before = await sweep(mallory.cookie)
+    607|     expect(Object.values(before)).toEqual([404, 404, 404, 404, 404, 40…
+       |                                   ^
+    608|
+    609|     // 대조군 — 초대 한 번으로 전부 방향이 바뀐다. 하나라도 404 로 남으면 그 라우트만 다른 판정을 쓴다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/server
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose
+
+RESTORE: sha_match=True git_diff_clean=True rebuild_exit=0

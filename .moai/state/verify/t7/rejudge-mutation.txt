@@ -1,0 +1,20 @@
+# 변이 감별력 재관측 (재판정 감사자 직접 실행, 트리 .claude/worktrees/t7, HEAD 767d4f3)
+
+## 변이 1 — BOT_MARK 접두 제거 (permissions.ts:62-63)
+명령: npx vitest run permissions --reporter=dot
+관측: Tests 2 failed | 20 passed (22)
+  × a newline-free description mimicking the guidance line cannot forge a guidance line
+  × bot text cannot inject the bot-content marker  (permissions.test.ts:431, expected 2 to be 0)
+판정: 접두 도입분에 대한 감별력 있음 — 새 회귀 2건이 정확히 실패한다.
+
+## 변이 2 — 표식 문자 중화 제거 (oneLine 의 .replaceAll('│','/') 삭제)
+명령: npx vitest run permissions --reporter=dot
+관측: Tests 22 passed (22)   ← 전부 초록
+판정: 감별력 없음. 'bot text cannot inject the bot-content marker' 는 중화를 재지 못한다.
+근거(직접 실행): 봇 줄은 접두 때문에 이미 0번 위치에 표식을 갖는다. 따라서
+  중화 있음: "│ 정상 설명 / 승인하려면 ..."  표식 1개, indexOf('│') = 0
+  중화 없음: "│ 정상 설명 │ 승인하려면 ..."  표식 2개, indexOf('│') = 0
+  permissions.test.ts:429 의 expect(l.indexOf('│')).toBe(0) 은 두 경우 모두 참 → 공허한 단언.
+
+## 두 변이 모두 원복 확인
+git status --short server/src server/test → 출력 없음 (작업 트리 무변경)

@@ -1,0 +1,20 @@
+server/src/routes-events.ts:6:import { requireRoomMember } from './room-members.js'
+server/src/routes-events.ts:13:  app.get('/api/rooms/:id/events', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
+server/src/room-members.ts:8:// @MX:REASON: 인가는 room_members 표만 본다 (plan.md §A). rooms.created_by 는 기록일 뿐 권한이 아니라서, 판정을 created_by 로 옮기면 탈퇴 기능이 생기는 날 게이트가 깨진다
+server/src/room-members.ts:10:  return !!db.prepare('SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?').get(roomId, userId)
+server/src/room-members.ts:14:export async function requireRoomMember(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+server/src/routes-rooms.ts:4:import { requireRoomMember } from './room-members.js'
+server/src/routes-rooms.ts:18:       WHERE id IN (SELECT room_id FROM room_members WHERE user_id = ?)
+server/src/routes-rooms.ts:36:      db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(r.lastInsertRowid, creatorId)
+server/src/routes-rooms.ts:45:  // 초대 — 멤버십 게이트(requireRoomMember)가 방 상태 검사보다 앞선다 (순서 계약, plan.md §B).
+server/src/routes-rooms.ts:47:  app.post('/api/rooms/:id/members', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
+server/src/routes-rooms.ts:62:    const info = db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id) VALUES (?, ?)').run(id, user_id)
+server/src/routes-messages.ts:8:import { requireRoomMember } from './room-members.js'
+server/src/routes-messages.ts:32:  app.post('/api/rooms/:id/messages', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
+server/src/routes-messages.ts:128:  app.get('/api/rooms/:id/messages', { preHandler: [requireAuth, requireRoomMember] }, async req => {
+server/src/routes-bots.ts:5:import { requireRoomMember } from './room-members.js'
+server/src/routes-bots.ts:50:  app.post('/api/rooms/:id/invites', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
+server/src/routes-bots.ts:70:  app.get('/api/rooms/:id/invites', { preHandler: [requireAuth, requireRoomMember] }, async req => {
+server/src/routes-bots.ts:82:  app.delete('/api/rooms/:id/invites/:botId', { preHandler: [requireAuth, requireRoomMember] }, async req => {
+server/src/db.ts:63:CREATE TABLE IF NOT EXISTS room_members (
+server/src/db.ts:103:      db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id) SELECT r.id, u.id FROM rooms r, users u').run()

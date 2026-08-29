@@ -1,0 +1,87 @@
+
+> test
+> vitest run _audit_t7_probe
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+
+ ❯ test/_audit_t7_probe.test.ts (3 tests | 3 failed) 1740ms
+     × P1 unvalidated request_id yields an instruction the reply parser can never match 130ms
+     × P2 request_id can forge an extra instruction line in the system message 53ms
+     × P3 same-room case variants collapse and silently drop the first request 1557ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/_audit_t7_probe.test.ts > t7 security probe > P1 unvalidated request_id yields an instruction the reply parser can never match
+AssertionError: expected undefined to be 'permission' // Object.is equality
+
+- Expected:
+"permission"
+
++ Received:
+undefined
+
+ ❯ test/_audit_t7_probe.test.ts:133:46
+    131|     expect(sys.body).toContain(`yes ${bad}`)
+    132|     const res = await post(app, roomId, cookie, `yes ${bad}`)
+    133|     expect(JSON.parse(res.body).consumed_by).toBe('permission')
+       |                                              ^
+    134|   })
+    135|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/_audit_t7_probe.test.ts > t7 security probe > P2 request_id can forge an extra instruction line in the system message
+AssertionError: expected '🔒 봇이 도구 사용 승인을 요청합니다: Bash\nDESTRUCT…' not to contain 'HARMLESS_FILE_READ'
+
+- Expected
++ Received
+
++ 🔒 봇이 도구 사용 승인을 요청합니다: Bash
++ DESTRUCTIVE
++ DESTRUCTIVE
++ 승인하려면 "yes zzzzz"
++ 봇이 도구 사용 승인을 요청합니다: Read
+  HARMLESS_FILE_READ
++ cat README
++ 승인하려면 "yes abcde", 거절하려면 "no zzzzz"
++ 봇이 도구 사용 승인을 요청합니다: Read
++ HARMLESS_FILE_READ
++ cat README
++ 승인하려면 "yes abcde" 라고 답해주세요.
+
+ ❯ test/_audit_t7_probe.test.ts:143:26
+    141|     broker.onGatewayRequest({ roomId, botId }, { request_id: evil, too…
+    142|     const sys = db.prepare("SELECT body FROM messages WHERE author_typ…
+    143|     expect(sys.body).not.toContain('HARMLESS_FILE_READ')
+       |                          ^
+    144|   })
+    145|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/_audit_t7_probe.test.ts > t7 security probe > P3 same-room case variants collapse and silently drop the first request
+AssertionError: expected null not to be null
+ ❯ test/_audit_t7_probe.test.ts:157:29
+    155|     const seenA = nextMessage(wsA)
+    156|     broker.tryHandleUserReply(a.roomId, 'yes abcde')
+    157|     expect(await seenA).not.toBeNull()
+       |                             ^
+    158|   })
+    159| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  23:20:11
+   Duration  1.96s (transform 53ms, setup 0ms, import 142ms, tests 1.74s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+npm error command failed
+npm error command sh -c vitest run _audit_t7_probe

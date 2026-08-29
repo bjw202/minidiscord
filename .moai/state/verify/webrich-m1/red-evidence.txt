@@ -1,0 +1,60 @@
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-002 delivers a deny verdict
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:191:3
+    189|   })
+    190|
+    191|   it('AC-002 delivers a deny verdict', async () => {
+       |   ^
+    192|     const c = await build()
+    193|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-003 extracts the real request_id even when the preview contains lookalike runs
+AssertionError: expected null to be 'nmjkh' // Object.is equality
+
+- Expected:
+"nmjkh"
+
++ Received:
+null
+
+ ❯ test/web-permission-contract.test.ts:214:39
+    212|       input_preview: 'git commit --amend --no-edit',
+    213|     })
+    214|     expect(permissionRequestId(body)).toBe('nmjkh')
+       |                                       ^
+    215|
+    216|     // 그리고 그 ID 로 보낸 판정이 실제로 닿는다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-004 shows an invite command whose token actually authenticates
+AssertionError: expected 404 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 404
+
+ ❯ test/web-permission-contract.test.ts:228:24
+    226|     const { roomId, botId } = seedRoomAndBot()
+    227|     const res = await postJson(c.port, c.cookie, `/api/rooms/${roomId}…
+    228|     expect(res.status).toBe(201)
+       |                        ^
+    229|     const invite = await res.json() as { command: string }
+    230|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  22:47:12
+   Duration  5.56s (transform 63ms, setup 0ms, import 146ms, tests 5.34s, environment 0ms)
+
