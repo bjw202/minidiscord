@@ -314,7 +314,7 @@ git status --porcelain
 | `index.ts` 진입점 블록이 계속 미커버다 | 전역 임계는 유지된다. 제외하지 않는다 | AC-COVERAGE-002 (`HAS_INDEX=true`) |
 | 누군가 임계를 `perFile` 로 바꾼다 | 정상 트리에서 게이트가 깨진다(`index.ts` 83.33%) | AC-COVERAGE-004 단언 5 (`thresholds.perFile` 값 검사) |
 | `npm test -w server` 만 돌린다 | 커버리지가 꺼져 있어 임계를 강제하지 않는다 (설계대로) | 미검증 — `spec.md` §4.2 가 계약으로 밝혔다 |
-| CI 가 이 명령을 부른다 | 기존 배선(`.github/workflows/label-sync.yml`·`.git_hooks/pre-commit`)이 커버리지 명령을 부르지 않는다 | 범위 밖 (`spec.md` §5) |
+| CI 에 이 명령을 태우려 한다 | 기존 배선 어디에도 커버리지 호출이 없으므로 새 잡·새 훅 단계를 더해야 한다 (이 카드 범위 밖) | 범위 밖 (`spec.md` §5) |
 
 ## 품질 게이트
 
