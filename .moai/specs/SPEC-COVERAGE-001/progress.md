@@ -360,13 +360,13 @@ $ git status --porcelain
 
 | 항목 | 값 |
 |------|-----|
-| run_status | audit-ready |
+| 상태 | run_status: audit-ready |
 | 마일스톤 | M1 완료 — 커버리지 도구 도입 |
 | AC 판정 | AC-COVERAGE-001..006 전부 PASS (원문 §E.2) |
 | 코드 산출물 | 4 파일 — `server/package.json` · `server/vitest.config.ts`(신규) · `server/test/coverage-contract.test.ts`(신규) · `package-lock.json` |
 | 품질 게이트 | typecheck 종료 0 · server 11 파일/105 테스트 · channel 종료 0 · `npm run coverage -w server` 종료 0, Lines 97.01% ≥ 85 |
 | 임계 프로브 | 프로브 A' 종료 1 + `does not meet global threshold (98%)` · 프로브 B' 종료 0 · 재프로브(계약 테스트 존재) 종료 1 + 실패 테스트 0 + `Lines :` 기준선 동일 · 되돌림 해시 대조 전부 일치 |
-| run_commit_sha | pending-backfill-run |
+| run_commit_sha | 9b86dd8963669d51cb563c1c11c46fff10b2ffda |
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

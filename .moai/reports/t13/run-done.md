@@ -6,7 +6,7 @@
 | SPEC | **SPEC-COVERAGE-001** (version 0.1.2, status **draft → in-progress** 전이) |
 | 워크트리 | `.claude/worktrees/t13`, 브랜치 `WT-coverage-tool` |
 | 기준 SHA | `362d17d0d346b3631fa4c5e6868ec55e907d2939` (`.spec-base-sha` 기록) |
-| 커밋 SHA | `pending-backfill-run` (단일 커밋이 자기 SHA 를 알 수 없는 물리적 한계 — D3 자리표시자 관례. 실제 값은 커밋 직후 이 문서 위 표를 갱신하거나 `git log -1` 로 판독) |
+| 커밋 SHA | `9b86dd8963669d51cb563c1c11c46fff10b2ffda` (구현 단일 커밋. 이 표의 실제 SHA 기입은 커밋이 자기 SHA 를 모르는 물리적 한계 때문에 D3 관례대로 후속 백필 커밋에서 이뤘다) |
 | 증거 원문 | `.moai/specs/SPEC-COVERAGE-001/progress.md` §E.2 (단계 0..8 전체) |
 
 ## 1. 쉬운 말 요약
