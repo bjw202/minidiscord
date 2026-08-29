@@ -1,0 +1,68 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/server
+
+
+ Test Files  15 passed (15)
+      Tests  183 passed (183)
+   Start at  22:58:09
+   Duration  7.72s (transform 879ms, setup 0ms, import 1.77s, tests 21.99s, environment 1.70s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+
+ ❯ test/gateway-client.test.ts (17 tests | 1 failed) 227ms
+     × waits then reconnects to the replaced opts.url and says hello again 14ms
+ ❯ test/transport-auth.test.ts (20 tests | 1 failed) 12346ms
+     × the nonce is regenerated per socket and a replayed proof is refused 1032ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again
+AssertionError: expected '0791c0a2764e2d8e8fc52754d15347964bbcd…' not to be '0791c0a2764e2d8e8fc52754d15347964bbcd…' // Object.is equality
+ ❯ test/gateway-client.test.ts:320:40
+    318|     expect(Object.keys(srv2.messages[0]).sort()).toEqual(['nonce', 'to…
+    319|     expect(srv2.messages[0].token).toBe('tok123')
+    320|     expect(srv2.messages[0].nonce).not.toBe(nonce1)     // 소켓이 바뀌면 논스도…
+       |                                        ^
+    321|   })
+    322|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the nonce is regenerated per socket and a replayed proof is refused
+AssertionError: expected '06f55863825354a40c4368c47e3f30ca94051…' not to be '06f55863825354a40c4368c47e3f30ca94051…' // Object.is equality
+ ❯ test/transport-auth.test.ts:489:24
+    487|     await waitFor(() => stub.connections() === 2, '재접속', 4500)
+    488|     const nonce2 = stub.nonceSeen()
+    489|     expect(nonce2).not.toBe(nonce1)        // 논스는 소켓마다 새로 만들어졌다
+       |                        ^
+    490|     stub.push({ type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm'…
+    491|     stub.push({ type: 'message', id: 2, author_name: 'alice', delivery…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 4 passed (6)
+      Tests  2 failed | 79 passed (81)
+   Start at  22:58:17
+   Duration  12.55s (transform 247ms, setup 0ms, import 765ms, tests 15.90s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+npm error command failed
+npm error command sh -c vitest run

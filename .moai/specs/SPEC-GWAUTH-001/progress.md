@@ -113,8 +113,10 @@ base(server 180 + channel 70 = 250) 대비 **server +3(AC-001~003) · channel +1
 실행자: 변이 전용 관측 레인(기준선 `82a1fea` 초록을 직접 재확인한 뒤 15개를 직렬 실행, 매번 되돌리고 `git status`·HEAD 복원을 검증). 증거: `mutation-A.txt` ~ `mutation-O.txt` + `mutation-baseline.txt`.
 
 - **완전 일치 6행**: A(001·013) · B(001·013) · D(002) · E(003) · K(012) · L(010).
-- **결합 차이 7행 — 방어 구멍은 없다.** 각 변이가 무너뜨린 기준이 표보다 **많거나**(coupling 미문서화: H+{005·010} · I+{005·012} · J+{005·015} · M+{012} · G+{AC-CHANCLIENT-011}), 표가 예측한 기준이 **생존**했다(C-009 — 양쪽을 함께 바꾸면 009 가 «전체 규칙 불일치» 라는 잘못된 이유로 통과; I-011 — 011 의 위조 welcome 은 proof 가 아예 없어 존재 검사에도 거절됨). **어느 변이도 자기 표 행의 기준을 전부 지키지 못한 경우는 C·I 두 행**이며, 둘 다 다른 기준이 그 변이를 잡는다(C → 001·013, I → 008·009·012). 즉 **15개 변이 전부 스위트 어느 기준에는 걸린다** — 표의 «무엇이 무엇을 잡는가» 귀속 지도가 부분적으로 틀렸을 뿐이다. 표 행은 plan-done §5 가 인정한 대로 **연역**이었고, 이 실측이 그 연역의 오차를 처음 재었다. **표 자체의 교정은 acceptance.md 본문 소유(manager-spec)이므로 run 이 고치지 않고 sync 인계로 넘긴다.**
+- **결합 차이 7행 — 방어 구멍은 없다.** 각 변이가 무너뜨린 기준이 표보다 **많거나**(coupling 미문서화: H+{005·010} · I+{005·012} · J+{005·015} · M+{012} · G+{AC-CHANCLIENT-011}), 표가 예측한 기준이 **생존**했다(C-009 — 양쪽을 함께 바꾸면 009 가 «전체 규칙 불일치» 라는 잘못된 이유로 통과; I-011 — 011 의 위조 welcome 은 proof 가 아예 없어 존재 검사에도 거절됨). **어느 변이도 자기 표 행의 기준을 전부 지키지 못한 경우는 C·I 두 행**이며, 둘 다 다른 기준이 그 변이를 잡는다(C → ~~001·013~~ **001** — 아래 정정, I → 008·009·012). 즉 **15개 변이 전부 스위트 어느 기준에는 걸린다** — 표의 «무엇이 무엇을 잡는가» 귀속 지도가 부분적으로 틀렸을 뿐이다. 표 행은 plan-done §5 가 인정한 대로 **연역**이었고, 이 실측이 그 연역의 오차를 처음 재었다. **표 자체의 교정은 acceptance.md 본문 소유(manager-spec)이므로 run 이 고치지 않고 sync 인계로 넘긴다.**
 - F 의 «광범위» 주석은 실측보다 넓게 적혀 있었다 — 006·008·009·010·012 는 확립이 아니라 **거절**을 재므로 논스 부재에도 생존한다.
+
+> **정정 — 변이 C 를 잡는 기준에 `AC-GWAUTH-013` 은 들어가지 않는다 (sync 단계, 증거 재판독).** 위 «C → 001·013» 은 거짓이다. 증거 원문 `.moai/state/verify/t15-run/mutation-C.txt` 를 다시 읽으면, 변이 C 에서 붉어진 채널 테스트 파일은 **permission-relay · index-wiring · transport-auth · gateway-client 넷뿐**이고 `AC-GWAUTH-013` 이 사는 `channel/test/gateway-mutual-auth.test.ts` 는 그 목록에 **없다**(같은 파일에서 문자열 `gateway-mutual-auth` 의 출현 0회). 즉 **013 은 변이 C 에서 생존했다.** C 를 실제로 잡은 것은 **서버 쪽 `AC-GWAUTH-001` 하나**다 — 같은 원문의 서버 스위트가 `Tests 1 failed | 182 passed`, 그 한 건이 `test/gateway.test.ts > … welcome carries a proof bound to the nonce, room and bot, keyed on the stored token hash` 다. 원래 주장을 지우지 않고 위 줄에 취소선으로 남긴다. `acceptance.md` 변이표 v0.5.0 의 C 행이 이 실측을 반영해 `001 · 005 · 007 · 011 · 015` (009·013 생존)로 개정됐다(커밋 `26b2f71`, 감사 F-03).
 
 ### 5. 변이 N·O 짝 관측 — **성립 (이 카드의 굵은-변이 방어)**
 
@@ -129,9 +131,13 @@ base(server 180 + channel 70 = 250) 대비 **server +3(AC-001~003) · channel +1
 
 `git diff --name-only <spec_base_sha=b11bdc5>..HEAD`(문서 커밋 포함 최종 측정, `ac014-boundary.txt` 원문): **집합 안의 14파일뿐** — `server/src/gateway.ts` · `channel/src/gateway-client.ts` · `server/test/gateway.test.ts` · `channel/test/transport-auth.test.ts` · `channel/test/gateway-mutual-auth.test.ts`(신설) · `channel/test/gateway-client.test.ts` · `channel/test/permission-relay.test.ts` · `channel/test/index-wiring.test.ts` · `.moai/specs/**` 6파일. ① `server/package.json`·`channel/package.json` diff **빈 문자열**(의존성 무변경) ② `channel/src` 의 `node:fs` import **0건** ③ 게이트웨이 메시지 **타입 집합 불변**(hello·welcome 에 필드 둘만 추가).
 
-### 8. 경계 진술 (spec.md §5 그대로)
+### 8. 경계 진술 (spec.md §5 그대로 — **v0.5.0 개정본**)
 
-**«토큰 또는 그 저장 해시를 모르는 상대를 배제했다. `bot_tokens.token_hash` 가 읽기 전용으로 유출된 배치는 닫지 않는다.»** — «토큰을 모르는 상대» 로 줄이지 않았다(1회차 감사 C-03 의 지적 형태를 그대로 피했다). 증명 열쇠는 저장 해시이므로 해시 보유자는 토큰을 모르면서 증명을 위조한다 — 그 배치는 §5 의 네 행 표대로 배제되지 않으며, 이 SPEC 은 그것을 닫지 않았다고 정확히 적는다.
+**«그 소켓의 `hello` 를 읽을 수 없고 토큰도 그 저장 해시도 모르는 상대를 배제했다. `hello` 를 받는 자리에 있는 상대는 닫지 못하며(후속 카드 `t22`), `bot_tokens.token_hash` 가 읽기 전용으로 유출된 배치도 닫지 않는다.»**
+
+줄여 적으면 완료가 아니다(`acceptance.md` Definition of Done, v0.5.0). 증명 열쇠는 평문 토큰이 아니라 저장 해시이므로 해시 보유자는 토큰을 모르면서 증명을 위조하고, `hello` 를 받는 자리는 그 프레임에 실려 온 평문 토큰에서 열쇠를 그 자리에서 만든다 — 둘 다 `spec.md` §5 의 표대로 배제되지 않는다.
+
+> **정정 기록 — 이 자리에 있던 문장은 거짓이었다.** run 단계가 여기에 적은 것은 **«토큰 또는 그 저장 해시를 모르는 상대를 배제했다. `bot_tokens.token_hash` 가 읽기 전용으로 유출된 배치는 닫지 않는다.»** 였다. sync 단계 독립 감사의 **F-01(Critical)** 이 그 문장을 반증했다 — 채널이 `hello` 에 평문 토큰을 함께 싣고(`channel/src/gateway-client.ts:82`) 증명 열쇠가 그 토큰의 해시이므로(`:45`), 토큰을 **미리 모르는** 위조 게이트웨이도 그 프레임을 받는 즉시 유효한 증명을 만든다. 실행으로 확인했다(`.moai/state/verify/t15-sync/probe-token-echo.mts` → `PROBE_TOKEN_SEEN_BY_ROGUE` · `PROBE_SESSION_ESTABLISHED>>>true`). `spec.md` §5 개정(커밋 `26b2f71`)이 배제표 1행을 둘로 갈랐고, 위 개정본이 그 결과다. 옛 문장은 지우지 않고 이 인용 안에 남긴다 — 무엇이 언제 왜 거짓이 됐는지가 정정 자체보다 오래 쓰인다.
 
 ### 9. 블로커 보고
 
@@ -152,7 +158,8 @@ mutation_table: "A~O 15개 직렬 실행·되돌림 완료. 완전 일치 6행(A
 thick_mutation_defense: "N: AC-GWAUTH-* 붕괴 0 (형제 AC-CHANAUTH-001·003·004·005 + AC-CHANINJECT-007 만) / O+N: AC-GWAUTH-005·006·008·009·011·012 붕괴 — 표가 요구한 뒤집힘 정확히 성립, mutation-N.txt·mutation-O.txt"
 b3_collapse_measured: "29 (상한 55 이내) — b3-collapse-count.txt"
 boundary_check: "AC-GWAUTH-014 PASS — diff 가 집합 내 14파일, 의존성 diff 빈 값, channel/src node:fs 0건, 메시지 타입 집합 불변 — ac014-boundary.txt"
-boundary_statement: "«토큰 또는 그 저장 해시를 모르는 상대를 배제했다. bot_tokens.token_hash 가 읽기 전용으로 유출된 배치는 닫지 않는다.» — §E.2.8 에 그대로 기록"
+boundary_statement: "«그 소켓의 hello 를 읽을 수 없고 토큰도 그 저장 해시도 모르는 상대를 배제했다. hello 를 받는 자리에 있는 상대는 닫지 못하며(후속 카드 t22), bot_tokens.token_hash 가 읽기 전용으로 유출된 배치도 닫지 않는다.» — §E.2.8 에 그대로 기록"
+boundary_statement_superseded: "run 이 적었던 «토큰 또는 그 저장 해시를 모르는 상대를 배제했다…» 는 거짓이며 sync 감사 F-01(Critical)이 실행으로 반증했다. spec.md §5 개정 커밋 26b2f71 이 배제표 1행을 갈랐고 위 문장이 그 결과다 — 옛 문장은 §E.2.8 의 정정 기록에 남겨 둔다"
 sibling_contracts_landed:
   - "SPEC-CHANPERM-001 v0.7.0 — M4 명세 짝 (하네스 코드 착지에 맞춘 현재형 개정 + HISTORY)"
   - "SPEC-CHANWIRE-001 v0.6.0 — M4 명세 짝 (동일 treatment)"
@@ -170,4 +177,67 @@ blockers: 0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-failed        # 그대로 둔다 — 재감사가 아직 돌지 않았다. 처분을 이행했다고 통과로 바꾸지 않는다
+sync_attempted_at: 2026-08-30
+sync_commit: none                # sync_commit_sha 필드는 일부러 적지 않는다 — 재감사 전이므로
+                                 # 그 이름을 쓰면 종료된 카드로 오독된다
+operator_disposition:
+  chosen: "(b) 정직 정정 + 후속 카드 t22"
+  decided_at: 2026-08-30
+  meaning: "코드는 되돌리지 않는다. 거짓이던 방어 주장을 실측에 맞춰 좁혀 적고, 실질 종결(평문 토큰 제거 + 검증자 저장 + 확립 후 프레임 인증)은 후속 카드 t22 가 가져간다"
+plan_lane_amendment:
+  commit: 26b2f71
+  closed: "F-01(Critical) · F-03(High) · S-01(High) · F-07(Low) — spec.md §1.2·§1.3·§5 배제표 개정, acceptance.md 변이표 13행 실측 재도출, AC-GWAUTH-003 제목 정정, 낡은 줄 인용 갱신"
+  ac_014_amended: "측정 끝점을 움직이는 HEAD 에서 구현 HEAD 2d7c1ef 에 고정. 허용 집합에 .moai/reports/** 와 .moai/state/verify/** 추가 — 증거·보고서 커밋이 통과 중인 기준을 붉히던 충돌(open_conflict)이 이로써 해소됐다"
+sync_lane_corrections:            # 이 커밋에서 sync 레인이 한 일
+  - "§E.2.8 경계 진술 — 거짓 문장을 v0.5.0 개정본으로 교체하고 옛 문장을 정정 기록에 보존 (F-01)"
+  - "§E.3 boundary_statement — 같은 교체 + boundary_statement_superseded 로 사유 기록"
+  - "§E.2.4 변이 C — «C → 001·013» 정정. mutation-C.txt 재판독으로 013 생존 확인, 잡는 기준은 서버 쪽 001 하나"
+  - "CHANGELOG.md [Unreleased] 항목 신설 · README.md 네 자리(현재 상태·게이트웨이 프로토콜·F-01·F-07) 갱신 — 잔여 범위를 그대로 옮겼다"
+audit:
+  report: ".moai/reports/t15/sync-audit.md"
+  verdict: "FAIL 0.70 (Tier M 임계 0.80)"
+  dimensions: "Functionality 0.76 · Security 0.55(must-pass, 독립 미달) · Craft 0.85 · Consistency 0.70"
+  lens: "--security --deep"
+blocking_findings:
+  - "F-01 [Critical] spec.md §5 배제표 1행이 거짓 — hello 를 받는 자리가 방금 건네받은 평문 토큰에서 증명 열쇠를 만든다. 처방은 문서 정정뿐이며 코드 변경을 요구하지 않는다"
+  - "F-02 [High] 부정 기준 다섯(AC-GWAUTH-006·008·009·011·012)이 §1.1 이 지목한 상대보다 엄격히 약한 상대를 잰다"
+  - "F-03 [High] Definition of Done «변이표와 정확히 일치» 미충족 — 13행 중 7행이 어긋났다"
+  - "F-04 [Medium] 이 §E.4 의 공백 자체 — 비어 있으면 F-A8 포인터가 카드와 함께 조용히 사라진다"
+sync_lane_finding:
+  - "S-01 [High] AC-GWAUTH-003 의 제목은 «어떤 프레임도» 라 적지만 본문은 그 접속이 받은 프레임만 잰다. 내보내는 hello 는 평문 토큰을 싣는다. 소유 manager-spec, plan 이월"
+suite: "server 183/183 + channel 81/81 = 264 초록 — npm test exit 0, sync 레인이 이 HEAD 에서 직접 실행 (.moai/state/verify/t15-sync-npm-test.txt)"
+suite_final: "server 183/183 + channel 81/81 = 264 초록, exit 0 — 감사용 토큰 되받기 프로브를 스위트 밖으로 옮긴 뒤 재측정 (.moai/state/verify/t15-sync/npm-test-final.txt). 프로브는 .moai/state/verify/t15-sync/probe-token-echo.mts 로 남아 증거로만 쓰인다"
+typecheck: "npm run typecheck --workspaces exit 0 — 양쪽 오류 0 (.moai/state/verify/t15-sync-typecheck.txt)"
+code_state: "무변경. 착지한 구현은 옳고 되돌릴 이유가 없다 — 이 판정은 코드가 아니라 코드가 무엇을 했는지에 대한 서술을 겨눈다"
+probe_evidence:
+  file: ".moai/state/verify/t15-sync-probe-token-echo.txt"
+  output: "PROBE_TOKEN_SEEN_BY_ROGUE>>>secret-token-the-rogue-never-knew / PROBE_SESSION_ESTABLISHED>>>true"
+f_a8_reachability:
+  status: "미실측 — 리드 수행 대기"
+  meaning: "발신 집합 128 축출의 도달성을 아직 아무도 재지 않았다. 이 줄이 F-04 의 실질이다"
+  owner: "칸반 리드 — done 판정 전에 직접 수행한다"
+  if_skipped: "실측 없이 카드를 닫으면 이 항목은 소유 카드와 함께 사라진다. 재개하려면 도달성을 먼저 실측할 것"
+carried_to_plan:                 # 전부 manager-spec 소유 본문. sync 는 한 자도 고치지 않았다
+  - "acceptance.md 변이표 7행 실측 교정 — 원본은 §E.2.4 의 행별 실측"
+  - "spec.md 자기 문서의 낡은 줄 인용 — 목록은 §E.2.9 ③"
+  - "S-01 — AC-GWAUTH-003 제목이 본문보다 넓다"
+  - "AC-GWAUTH-014 허용 집합 개정 요청 — .moai/reports/** 와 .moai/state/verify/** 를 더할 것"
+open_conflict:
+  item: "증거 파일 커밋과 AC-GWAUTH-014 의 충돌 — **해소됨** (커밋 26b2f71 의 AC-014 개정)"
+  detail: "끝점이 구현 HEAD 2d7c1ef 에 고정되고 허용 집합이 .moai/reports/** · .moai/state/verify/** 를 포함하므로, sync 단계 증거·보고서 커밋은 이 기준의 측정 밖이다"
+re_audit_owed:
+  scope: "F-01~F-04 델타 + 회귀 3건 (감사 §8)"
+  state: "미실시 — 이 커밋 시점에 재감사는 돌지 않았다. 그래서 sync_status 가 audit-failed 로 남는다"
+blockers: 4                       # 처분은 이행했으나 재감사 전이므로 숫자를 내리지 않는다
+disposition:
+  card: "닫지 않았다"
+  operator_choice: "(b) 문서를 정직하게 정정하고 후속 카드 t22 를 연다 — 2026-08-30 결정"
+```
+
+**§E.4 를 남기는 이유.** 이 절이 비어 있는 것 자체가 감사의 차단 결함 F-04 였다. 위 `f_a8_reachability` 블록이 그 처방이다 — F-A8 도달성은 아직 실측되지 않았고, 그 실측은 칸반 리드가 done 판정 전에 수행한다. 기록이 없으면 이 항목은 카드가 닫히는 순간 소유자 없이 사라진다.
+
+**문서 동기화를 미뤘던 이유와, 지금 쓴 이유.** 이 SPEC 의 중심 방어 주장이 실행으로 반증됐으므로(F-01), 처분이 서기 전에는 CHANGELOG·README 를 쓰지 않았다 — 「게이트웨이 상호 인증 추가」로만 적히는 순간 독자는 서지 않은 방어가 섰다고 읽기 때문이다. 운영자가 (b)를 골랐고 `spec.md` §5 가 개정됐으므로, 이제 그 절의 잔여 범위를 **그대로 옮긴** 문안으로 두 문서를 썼다. 두 문서 어디에도 F-01 이 닫혔다고 적지 않았고, README 의 채널 플러그인 판정은 **FAIL 그대로**다.
+
+**아직 남은 것 둘.** ① `f_a8_reachability` — 발신 집합 128 축출의 도달성은 여전히 **미실측이며 칸반 리드 수행 대기**다. 실측 없이 카드를 닫으면 이 항목은 소유 카드와 함께 사라진다. ② **재감사 미실시** — F-01~F-04 델타 + 회귀 3건이 아직 재측정되지 않았으므로 `sync_status` 는 `audit-failed` 로 남고, 네 SPEC 산출물의 `status:` 는 `in-progress` 에서 움직이지 않았다.

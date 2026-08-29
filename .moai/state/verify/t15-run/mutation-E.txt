@@ -1,0 +1,62 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/server
+
+ ❯ test/gateway.test.ts (26 tests | 1 failed) 6292ms
+     × no frame ever carries the plaintext token or its stored hash 309ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > no frame ever carries the plaintext token or its stored hash
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/gateway.test.ts:918:41
+    916|     const wire = frames.map(f => JSON.stringify(f)).join('')
+    917|     expect(wire.includes(token)).toBe(false)
+    918|     expect(wire.includes(keyOf(token))).toBe(false)
+       |                                         ^
+    919|
+    920|     ws.close()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 14 passed (15)
+      Tests  1 failed | 182 passed (183)
+   Start at  22:56:06
+   Duration  7.69s (transform 926ms, setup 0ms, import 1.76s, tests 21.71s, environment 1.38s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/server
+npm error command failed
+npm error command sh -c vitest run
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+
+
+ Test Files  6 passed (6)
+      Tests  81 passed (81)
+   Start at  22:56:14
+   Duration  12.93s (transform 268ms, setup 0ms, import 804ms, tests 16.26s, environment 0ms)
+
