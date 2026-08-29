@@ -196,11 +196,14 @@ sync_complete_at: 2026-08-29
 sync_commit_sha: be5c800                     # 백필값 (be5c80016329aa90d035048dac9ea208761517ba). 커밋은 자기 SHA 를 모르므로 착지 후 sync 레인이 소커밋으로 채운다
 sync_base_head: c87cbc1                      # 이 sync 편집이 얹힌 HEAD (run-done 커밋)
 frontmatter_status_transitions:
-  spec.md: in-progress -> implemented        # updated 는 이미 2026-08-29 — 변경 없음
+  spec.md: in-progress -> implemented -> completed   # implemented 는 sync 커밋 be5c800, completed 는 리드 지시로 뒤이은 소커밋. updated 는 이미 2026-08-29 — 변경 없음
   plan.md: n/a                               # 이 SPEC 의 plan.md 에는 프론트매터가 없다 (파일 첫 줄이 H1)
   acceptance.md: n/a                         # 같음
   progress.md: n/a                           # 같음
-  completed_transition: deferred             # 감사 판정 후 리드가 결정한다 — sync 레인이 앞당기지 않는다
+  completed_transition: done                 # implemented -> completed. 리드가 be5c800·a59a828 재판독 후 지시(2026-08-29). sync 레인이 앞당기지 않았다 — 감사 PASS 84.0 판정과 두 커밋 착지 확인이 선행했다
+  followup_cards:                            # 이 카드가 닫지 않고 이름으로 넘긴 것 (리드 배정)
+    t17: "첨부(GET /api/attachments/:id)·보관(POST /api/rooms/:id/archive) 게이트 — REQ-ROOMAUTHZ-013 의 알려진 미준수. 우선순위 근거는 sync-audit.md §3.7: 보관은 되돌릴 라우트가 없는 파괴적 쓰기라 첨부와 나란히 둔다"
+    t19: "F-01 술어 호출부 문언 정정(일곱 자리, 참값 여덟) · F-04 plan §D.4 분모 102→104 · F-02 의 spec.md §9 몫 · F-06 초대 400/201 의 사용자 존재 오라클 미공시"
 documents_updated:
   - CHANGELOG.md            # [Unreleased] 안에 «방 멤버십 인가 (카드 t11)» 절 신설 — t10 절 위
   - README.md               # 머리말 한 줄 · 설정 절 · API 표(구성원 칸 신설) · «방 구성원» 절 신설 · 보안 절(«방 사이의 경계» 신설, F-14 항목 닫힘 표기) · 데이터베이스 절(표 8→10, room_members·schema_migrations·created_by) · 문서 목록
