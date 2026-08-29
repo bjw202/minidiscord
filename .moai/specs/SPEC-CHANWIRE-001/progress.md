@@ -202,6 +202,29 @@ $ git status --porcelain
 6. **AC-009 변이 A의 표 불일치** — 위 변이 검증 절에 원문·판정 기록. 표의 A행이 AC-003 을 계상하지 않은 것(과소계상)이며 구현 결함 아님.
 7. **AC-011 테스트의 동적 import 조정** — 정적 최상위 import 로는 M2 RED 가 파일 로드 실패(수출 부재)가 되어 AC-013 전이 3("사유가 단언 실패")를 위반하므로, 테스트 내 `await import()` 로 `undefined` 단언 실패를 내도록 조정. 단언 내용·값은 acceptance 본문 그대로.
 
+### 재판정 (2026-08-29, 병합 트리 HEAD `0a75327`)
+
+> 카드 `t4` 재판정 — 이 카드의 run+sync 가 FAIL 62.1 로 끝난 뒤, 후행 카드 다섯 개(`t5` 웹 UI · `t7` 권한 request_id · `t9` 채널 승인 게이트 · `t10` 주입 경화 · `t11` 방 멤버십)의 브랜치를 병합한 트리에서 본 SPEC 의 수용 기준을 다시 잰다. 이 절의 모든 출력은 병합 후 이 트리·이 HEAD 에서 이번 실행으로 관측한 원문이며, 증거는 `.moai/state/verify/t4-retrial-run/` 에 있다. 병합 적응 2건(dist 재빌드, `server/test/web-permission-contract.test.ts` 의 `room_members` 시드 한 줄)은 본 SPEC 소스가 아니라 오케스트레이터 병합 작업이며 `0a75327` 에 포함돼 있다.
+
+**전제와 전체 스위트.** `npm run build -w channel` → 종료 `0` (stale dist 거짓 실패 예방, 병합 전략 사전 조치) → `npm test -w channel -- --reporter=verbose` → **5 파일 70/70 통과**. 본 SPEC 의 `index-wiring.test.ts` 기준 전건(`✓`) 관측: AC-001(`gateway message becomes exactly one session notification`)·002(`cc message is delivered but raises no working status`)·003(`a TO message reports working to the gateway`)·004(`reply tool sends a bot_message with mapped file paths`)·005(`idle status follows the bot_message, not precedes it`)·006(`fetch_history forwards since_id and limit verbatim`)·007 v0.4.0 개정본(`history renders as one structured JSON document`)·008 v0.4.0 개정본(`empty history renders the same JSON shape with a null cursor`)·010(`importing the module opens no connection`)·011(`resolveUrl falls back to the documented default`)·014(`the built artifact speaks MCP; the token gates only the gateway`)·015(`a chat message with no MCP peer raises no unhandled rejection`). 루트 `npm test` → server 15 파일 **180/180** + channel 5 파일 **70/70**, `npm run typecheck -w server`·`-w channel` 모두 종료 `0`.
+
+**AC-CHANWIRE-009 (갈래 독립성) 재검증 — 네 변이를 병합 트리에서 재실행.** `t10` 이 `index.ts` 를 크게 고쳐 변이 지점 자리가 바뀌었으므로, 원래 run 의 변이 기록만으로는 부족하다. 각 변이 적용 → `npm test -w channel -- --reporter=verbose` → 해시 대조 복원(`shasum -a 256` = `16c32f9e…ee2624` 변이 전후 일치, `git diff -- channel/src/index.ts` 빈 출력), 마지막 실행 70/70.
+
+| 변이 | 실패 관측 (verbose `×`) | 표 예측과의 대조 |
+|------|------------------------|------------------|
+| A (`pushChatMessage` 한 줄 제거) | AC-001·002 — 그리고 AC-003 도 함께(원래 run 에서 문서화한 테스트 본문 유발 그대로: AC-003 본문이 working 프레임 관측 뒤 알림 도착을 기다린다). 신규 관측: `t9` 의 `transport-auth` 테스트 1건(`after welcome, the same two frames reach the session exactly once each`)도 실패 — 같은 수신 갈래를 재는 형제 기준이라 합리적 실패다 | 표 A행(AC-001·002) + 기록된 +AC-003 + 형제 1건 |
+| B (`bot_message` 전송 한 줄 제거) | AC-004·005 만 | **일치** |
+| C (`requestHistory({})` 파라미터 버림) | AC-006 만 | **일치** |
+| D (`status working` 한 줄 제거) | AC-003 — 그리고 AC-015 도 함께. AC-015 본문이 `working` 프레임을 대기 신호(`waitFor … 'working 프레임'`)로 쓰므로 상태 갈래를 끊으면 그 전제가 무너진다. **거부 삼킴(`.catch`) 자체는 살아 있다** — AC-015 의 본 관측(unhandled rejection 0건)은 전제 대기가 깨져 실패했을 뿐이다 | 표 D행(AC-003) + 표에 없는 AC-015 흐름 의존 1건 |
+
+갈래 독립성의 본질 — «끊긴 갈래의 기준은 반드시 무너지고, 무관한 갈래의 기준은 근거 없이 무너지지 않는다» — 는 네 변이 모두에서 성립한다. 이탈한 세 건(AC-003·015·CHANAUTH 1건)은 전부 테스트 본문이 다른 갈래의 사건을 전제로 둔 데서 오는 것으로, 구현 결함이 아니다.
+
+**AC-CHANWIRE-012 (범위 경계·무상태) — 문자 그대로는 어긋남 (판정 유보).** 관측 1(기준 SHA `9376264…` rev-parse 종료 `0`)·관측 4(porcelain 에 테스트 제작 파일 없음 — 무상태 유지)는 통과. 관측 2는 **빈 출력이 아니다** — 병합으로 `channel/src/channel-server.ts`·`gateway-client.ts`(t9·t10 소유)와 `server/` 전반(t7·t11 소유)의 diff 가 존재한다. 관측 3은 **정확히 두 줄이 아니다** — 9줄이다(본 SPEC 소유 2 + 형제 소유 7). 이 기준은 `spec_base_sha` 와의 diff 로 «이 SPEC 이 남의 파일을 고치지 않았다»를 재는데, 재판정 트리는 다른 카드의 착지를 **의도적으로 흡수한** 트리라 그 측정이 성립하지 않는다. 본 SPEC 구현이 소유 파일 밖을 손댔다는 뜻이 아니며, 기준 문언이 병합 트리에서 더 이상 측정하지 못하는 **측정 유효성 문제**다 — 본문 개정은 이 카드 권한 밖이므로 sync/re-trial 판단 대상으로 기록만 남긴다.
+
+**AC-CHANWIRE-013 (RED→GREEN 전이) — 재판정에서 재관측 불가.** 네 전이는 구현 부재 시점의 원문이어야 성립하는데 병합 트리에는 구현이 이미 있다. 원래 run 의 §E.2 원문(위)이 그 증거로 남고, 재판정은 전이를 재요구하지 않는다 (Gaps).
+
+**이 판정이 닫지 않는 것.** 감사 F-01 의 나머지 절반 — `welcome` 위조 불가능화·소켓에서 읽은 진짜 `request_id` 로 위조한 판정의 선착 승리 — 는 닫히지 않았고 카드 `t15` 소유다(`SPEC-CHANCLIENT-001` v0.5.0 §5 이 소유 분해를 적었다). 이 재판정의 판정 대상은 병합 트리에서의 본 SPEC 수용 기준이지 F-01 종결이 아니다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 | 항목 | 값 |

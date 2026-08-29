@@ -339,6 +339,18 @@ gateway-client.ts 미커버 지점 2개(41·67행)는 `sleep` 기본 구현(`opt
 
 ---
 
+### 재판정 (2026-08-29, 병합 트리 HEAD `0a75327`)
+
+> 카드 `t4` 재판정 — 후행 카드 다섯 개(`t5`·`t7`·`t9`·`t10`·`t11`)의 브랜치를 병합한 트리에서 본 SPEC 의 수용 기준을 다시 잰다. 이 절은 §E.2 (run-phase evidence) 의 연장으로 둔다. 이 절의 출력은 전부 병합 후 이 트리·이 HEAD 에서 이번 실행으로 관측했고, 증거는 `.moai/state/verify/t4-retrial-run/` 에 있다.
+
+**전제와 전체 스위트.** `npm run build -w channel` → 종료 `0` → `npm test -w channel -- --reporter=verbose` → **5 파일 70/70 통과**. 본 SPEC 의 `gateway-client.test.ts` 15건 전부 `✓`: AC-CHANCLIENT-001(`sends hello with the token as the very first frame`)·002(`passes the welcome frame through untouched, extra fields included`)·003(`passes the message frame through untouched, files and delivery included`)·004(`passes a deny verdict through as deny`)·005(셋 셋 — `routes by type only…`·`survives frames whose callback was not provided`·v0.3.0 추가 `drops a malformed frame and keeps processing the next valid one`)·006(`sends only while open, and reports it truthfully`)·007(`puts every history parameter on the frame top level, since_id included`)·008(`matches responses by rid, not by arrival order`)·009(`rejects a history request at 10 seconds, not before`)·010(`fails a history request immediately when not connected, and recovers after connecting`)·011(`waits then reconnects to the replaced opts.url and says hello again`)·012(`doubles the backoff and never exceeds the ceiling`)·013(`resets the backoff to 1000 after a successful connection`)·014(`never reconnects after stop() — measured against a live control client`). 루트 `npm test` → server **180/180** + channel **70/70**, typecheck 둘 다 종료 `0`. **AC-CHANCLIENT-016 은 재판정에서 재관측 불가** — 네 전이는 구현 부재 시점의 원문이어야 성립한다 (Gaps).
+
+**v0.4.0 개정 계약(세션 확립 전제)이 병합 트리에서 성립한다.** `t9` 이 REQ-CHANCLIENT-004·005 에 붙인 `welcome` 전제 아래에서 위 15건이 통과했다 — 특히 002의 `autoWelcome: false` 형태와 005의 `seen` 기대값(`['welcome','message']`)이 개정 본문 그대로 재현됐다. `t10` 이 고친 참조 두 줄(v0.5.0)도 병합 트리의 실제 렌더링(`index.ts` 의 구조화 JSON)과 어긋나지 않는다.
+
+**AC-CHANCLIENT-015 (범위 경계·무상태) — 다섯 관측 중 셋 통과, 둘은 문자 그대로 어긋남 (판정 유보).** 관측 1(기준 SHA `7b28692…` rev-parse 종료 `0`)·관측 2(diff 목록에 `channel/src/gateway-client.ts`·`channel/test/gateway-client.test.ts` 둘 다 존재)·관측 5(`fs`/`process.env` grep 종료 `1` — 무상태 유지)는 통과. 관측 3(server/ 줄 없음)은 **병합으로 어긋난다** — t7·t11 이 `server/` 를 고쳤다. 관측 4(`index.ts`·`channel-server.ts` 없음)도 마찬가지 — 형제 SPEC 들이 소유 파일을 정상적으로 착지시켰다. 이 기준도 `spec_base_sha` diff 로 «이 SPEC 의 순수 변경»을 재는 형태라, 병합 트리에서는 본 SPEC 의 침범 여부를 분리해 볼 수 없게 됐다 — **측정 유효성 문제**이지 침범 사실이 아니다. 본문 개정 권한 밖이므로 기록만 남긴다.
+
+**이 판정이 닫지 않는 것 (중요).** 본 SPEC §5 v0.5.0 이 분해해 둔 F-01 잔여 두 층 가운데 **상대 신원 층은 닫히지 않았다** — `welcome` 은 토큰 지식의 증거가 없어(`SPEC-CHANAUTH-001` §2.1) 게이트를 연 상대는 사칭 `message`·`history_response`·선착 판정을 여전히 밀어 넣을 수 있고, 그 몫은 카드 `t15` 다. 이 재판정은 병합 트리에서의 본 SPEC 수용 기준 판정이지 F-01 종결이 아니다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

@@ -195,6 +195,28 @@ verbose 확인 명령의 출력 근거: `grep -c "✓ test/permission-relay"` �
 - **서버 쪽 `request_id` 결함 2건(가정-2 전역 키 충돌·가정-3 등록/조회 대소문자 불일치)** — 이 SPEC 에서 고치지도 보상하지도 않았다. `SPEC-PERM-001`/카드 `t7` 소유. 채널은 받은 문자열을 양방향 그대로 전달한다(AC-CHANPERM-007).
 - **무상태 게이트** — 테스트 실행 중 채널이 만든 새 파일은 없다. 다만 커버리지 측정의 `channel/coverage/`(v8 생성 산출물, untracked)는 커밋하지 않았다(오케스트레이터가 이후 gitignore 예정).
 
+### 재판정 (2026-08-29, 병합 트리 HEAD `0a75327`)
+
+> 카드 `t4` 재판정 — 후행 카드 다섯 개(`t5`·`t7`·`t9`·`t10`·`t11`)의 브랜치를 병합한 트리에서 본 SPEC 의 수용 기준을 다시 잰다. 이 절은 §E.2 (run-phase evidence) 의 연장으로 둔다. 이 절의 출력은 전부 병합 후 이 트리·이 HEAD 에서 이번 실행으로 관측했고, 증거는 `.moai/state/verify/t4-retrial-run/` 에 있다.
+
+**전제와 전체 스위트.** `npm run build -w channel` → 종료 `0` → `npm test -w channel -- --reporter=verbose` → **5 파일 70/70 통과**. 본 SPEC 의 `permission-relay.test.ts` 14건 전부 `✓` — AC-CHANPERM-001(`relays a request out and carries the matching verdict back, correlated by the forwarded id`)·002(`only the exact permission_request method reaches sendPermissionRequest`)·003(`forwards params verbatim, adding and dropping nothing`)·004(`survives a wiring without sendPermissionRequest`)·005 v0.4.0 형태(`emits exactly one permission notification with exactly two params` — 발신 한 줄 전제 포함)·006(`delivers deny as deny`)·007(`passes request_id through untouched in both directions`)·008 v0.3.0 개정본(`relays a verdict only for an id it actually emitted, exactly once`)·009(`a verdict before transport connect throws nothing and leaves no unhandled rejection`)·010(`wire relays a request out to the gateway and a verdict back to Claude Code`) — 에 더해 `t9` 의 발신 집합 보강 테스트 네 건(`a verdict for an id the channel never emitted is not relayed` 등)도 통과. 루트 `npm test` → server **180/180** + channel **70/70**, typecheck 둘 다 종료 `0`. **AC-CHANPERM-012 는 재판정에서 재관측 불가** (Gaps).
+
+**종단간 프로브 — 릴레이 한 바퀴가 병합 트리에서 실제로 돈다 (임시 테스트, 실행 후 삭제).** 실제 서버(Fastify + 실제 게이트웨이 + 실제 브로커)를 띄우고 실제 채널 `dist/index.js` 바이너리를 stdio MCP 상대로 spawn 해 다음을 관측했다 (`e2e-probe.txt`, 프로브 파일은 증거 캡처 뒤 삭제 — `git status` 잔재 없음 확인):
+
+1. 채널의 `permission_request`(id `abcde`) → 게이트웨이 → 브로커 system 메시지 등록 — 방에 `yes abcde` 안내 줄이 떴다.
+2. **비멤버(bob)의 `no abcde`** → HTTP **404**(`requireRoomMember` 게이트, `routes-messages.ts:32`), 판정 알림 0건, 대기 항목 생존 — **t11 이 판정 수용 경로에 걸어 넣은 멤버십 게이트가 채널 릴레이 끝에서도 유효**하다.
+3. **멤버(alice)의 `yes abcde`** → 판정 프레임 → 채널 → 세션 알림 `notifications/claude/channel/permission` `params = { request_id: 'abcde', behavior: 'allow' }` 도착 + `✅ 승인 전송됨` 안내 줄. **본 SPEC 의 표장문 («사람이 친 yes 한 줄이 멈춰 있던 세션의 도구 호출을 재개시킨다»)의 전송 계통은 병합 트리에서 살아 있다.**
+4. **t7 문자셋 게이트** — 채널이 중계한 형식 밖 id(`Zz9!x`)는 등록이 거부되고(`permissions.ts:14,62`의 `PERMISSION_REQUEST_ID_RE`) `⚠️ …형식에 맞지 않아 등록하지 않았습니다` 줄이 떴다. 같은 id 의 `yes` 답변은 소비되지 않고 평범한 대화로 저장됐으며 판정 알림 0건.
+
+**표류 문언 발견 2건 (본문 개정 권한 밖 — sync/re-trial 판단 대상).**
+
+- **§3.1 가정-2·가정-3 의 «미해결. 카드 `t7` 소유»는 병합 후 거짓이다** (`spec.md:115-116`): 병합된 `permissions.ts:49` 의 합성키 `keyOf(roomId, requestId)` 가 등록·조회 양쪽에서 같은 소문자화 키를 써 전역 키 충돌(가정-2)과 등록 원본/조회 소문자 불일치(가정-3)를 **둘 다 수정**했다. `:118`·`:201-202` 의 결함 기술과 `permissions.ts:21,33,46-47` 줄 번호도 함께 낡았다. 같은 파일의 F-14 절에는 `t11` 개정 블록이 있지만 가정-2·3 에는 그에 상응하는 정정이 없다.
+- **§3.1 가정-1 의 «깨지면» 열이 t7 의 등록 게이트 경로를 기술하지 못한다** (`spec.md:114`): «형식은 채널의 관심사가 아니다»는 절은 유효하고 채널도 검증하지 않지만(REQ-CHANPERM-002·007 준수), 병합된 서버는 이제 등록 단계에서 `[a-km-z]{5}` 를 강제한다. 프로브 4번이 보여 주듯 Claude Code 의 `request_id` 가 그 문자셋을 벗어나면 릴레이는 서버에서 끊기고 세션의 도구 호출은 방의 ⚠️ 줄만 남은 채 멈춘다 — 릴레이 종단간 주장에는 이 사전 조건이 하나 더 붙었다.
+
+**AC-CHANPERM-011 (범위 경계) — 문자 그대로는 어긋남 (판정 유보).** 관측 1(기준 SHA `323df7f…` 종료 `0`)은 통과. 관측 2(`server` diff 빈 출력)는 병합으로 어긋나고(t7·t11), 관측 3(`channel/src` 정확히 두 줄)도 세 줄이다 — `gateway-client.ts` 는 t9 이, `channel-server.ts`·`index.ts` 는 t9·t10 이 소유 착지한 파일이다. 같은 측정 유효성 문제로, 기록만 남긴다.
+
+**이 판정이 닫지 않는 것.** F-01 의 나머지 절반 — 위조 `welcome` 뒤 소켓에서 읽은 진짜 `request_id` 로 위조한 판정의 선착 승리 — 는 카드 `t15` 소유로 열려 있다. 발신 집합 대조는 «채널이 내보낸 id 인가»만 보고 «그 id 를 방의 누가 눌렀는가»는 서버의 멤버십 게이트(t11)가 맡는다 — 두 겹이 맞물려야 재개가 일어나며, 이 재판정은 그 두 겹의 결합이 병합 트리에서 동작함을 관측했을 뿐 F-01 을 종결하지 않는다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

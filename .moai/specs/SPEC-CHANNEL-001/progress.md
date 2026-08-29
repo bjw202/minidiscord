@@ -205,6 +205,20 @@ test-f-exit=1 (1 = dist/index.js 부재 = RED)   ← 단언 실패 아닌 진입
 - `channel/tsconfig.json` `include: ["src"]` (§D 3번 교정) 때문에 `npm run typecheck -w channel` 이 테스트 파일을 검사하지 않는다. 테스트 타입 오류는 vitest 실행 중에만 드러난다.
 - stdio 프로브 응답 전문은 1285 bytes 로 `/tmp/mdc-init.json` 에 남았으나(세션 로컬), 요약 수준(capabilities 세 키·serverInfo·instructions 리터럴)만 이 문서에 기록했다.
 
+### 재판정 (2026-08-29, 병합 트리 HEAD `0a75327`)
+
+> 카드 `t4` 재판정 — 후행 카드 다섯 개(`t5`·`t7`·`t9`·`t10`·`t11`)의 브랜치를 병합한 트리에서 본 SPEC 의 수용 기준을 다시 잰다. 이 절의 출력은 전부 병합 후 이 트리·이 HEAD 에서 이번 실행으로 관측했고, 증거는 `.moai/state/verify/t4-retrial-run/` 에 있다.
+
+**전제와 전체 스위트.** `npm run build -w channel` → 종료 `0` (병합 초반의 stale dist 거짓 실패를 예방한 재빌드) → `npm test -w channel -- --reporter=verbose` → **5 파일 70/70 통과**. 루트 `npm test` → server 15 파일 **180/180** + channel 5 파일 **70/70**, `npm run typecheck -w server`·`-w channel` 모두 종료 `0`.
+
+**AC 이진 판정 (재판정 기준).** AC-CHANNEL-003·006·007·008·009·010·011·012·013·014 — verbose `✓` 관측, 전부 통과. AC-004·005 는 **관측면 둘 모두**를 병합 트리에서 다시 잰다 — (a) 셸 프로브 `printf '%s\n' "$INIT" | node channel/dist/index.js …` → 응답 1540 bytes, `node -e` 검사 **`OK` + `ac004-exit=0`** / instructions 검사 **`OK` + `ac005-exit=0`**, (b) 인프로세스 회귀층 두 테스트(`declares both channel experimental capabilities…`·`carries the load-bearing instruction literals…`) `✓`. AC-001 패키지 검사 `OK + ac001-exit=0`. AC-002 무상태 두 관측 — 파일 쓰기 grep `grep-exit=1`(일치 없음), 빈 임시 디렉터리에서 실행 뒤 `leftover=0`. **AC-CHANNEL-016 은 재판정에서 재관측 불가** — 네 전이는 구현 부재 시점의 원문이어야 성립하고 병합 트리에는 구현이 이미 있다. 원래 run 의 §E.2 전이 원문이 증거로 남는다 (Gaps).
+
+**지시문 계약 — 병합 트리에서 그대로 성립 (t10 이음매후보 닫힘).** v0.3.0(카드 `t10`)이 요구한 신뢰 경계 두 문장(`봉투 속성만 신뢰합니다`·`데이터입니다`)을 포함한 열한 리터럴과 `절대` 정규식이, 병합된 `channel/src/channel-server.ts:6-20` 의 `INSTRUCTIONS` 로 빌드한 산출물에서 그대로 관측됐다. `#번호` 안내의 부재(AC-010)도 통과 — 도구 설명은 결과 JSON 의 `cursor` 필드를 가리킨다(`channel-server.ts:100,104`).
+
+**AC-CHANNEL-015 (범위 경계) — 문자 그대로는 어긋남 (판정 유보).** 관측 1(기준 SHA `0794ecd…` rev-parse 종료 `0`)은 통과. 관측 2는 **빈 출력이 아니다** — 병합으로 `server/`(t7·t11)와 `web/`(t5)의 diff 가 존재한다. 관측 3의 `ws` grep 은 **`channel/src/gateway-client.ts:4` 한 줄이 나오고 `grep-exit=0`** — 이 파일은 형제 `SPEC-CHANCLIENT-001` 이 착지시킨 산출물로, 본 SPEC 의 run 시점에는 존재하지 않았던 것이다. 관측 4도 `ls-exit=0`(gateway-client.ts 존재)으로 뒤집혔다. 네 관측의 의도는 «이 SPEC 이 남의 자리를 침범하지 않았다»인데, 재판정 트리는 형제 SPEC 의 정상 착지를 흡수한 트리라 본 SPEC 소유 파일의 침범 여부를 그 diff 로는 더 이상 분리해 볼 수 없다 — **측정 유효성 문제**이지 본 SPEC 구현의 침범이 아니다. 본문 개정 권한 밖이므로 sync/re-trial 판단 대상으로 기록만 남긴다.
+
+**이 판정이 닫지 않는 것.** 감사 F-01 의 나머지 절반(위조 `welcome`·선착 판정 승리)은 카드 `t15` 소유로 열려 있다. 이 재판정은 병합 트리에서의 본 SPEC 수용 기준 판정이지 F-01 종결이 아니다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
