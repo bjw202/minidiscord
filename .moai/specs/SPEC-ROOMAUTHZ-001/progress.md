@@ -41,9 +41,43 @@ open_questions: 0        # 설계 결정 3건은 운영자가 확정 (spec.md §
 - 새로 쓴 수용 기준(AC-004 트랜잭션 트리거, AC-008 업로드 디렉터리, AC-010 `buildServer` 판, AC-017 게이트 훑기, AC-018 초대 라우트)의 **코드가 실제로 컴파일·실행되는지 확인하지 않았다.** 구현 대상이 아직 없으므로 M1~M3 의 RED 단계가 첫 확인이다.
 - REQ-ROOMAUTHZ-003 의 백필 트랜잭션은 어느 기준도 재지 않는다 — `spec.md` §9 에 미검증으로 적었다.
 
+**run 단계 기록 — spec_base_sha** (plan.md §F M1-0): `018e7db41697cfa9062f3512df4ff8a10820028a` — `.moai/specs/SPEC-ROOMAUTHZ-001/.spec-base-sha` 파일과 같은 값. `git rev-parse HEAD | tee .moai/specs/SPEC-ROOMAUTHZ-001/.spec-base-sha` 로 기록(종료 코드 0 직접 관측).
+
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 스키마와 이행 (2026-08-29)
+
+기준: HEAD `018e7db41697cfa9062f3512df4ff8a10820028a` (브랜치 `WT-room-authz`) — `.spec-base-sha` 와 같은 값.
+
+**구현 에이전트의 RED 관측 (db.ts 변경 전, 에이전트가 실행해 원문 인용 — 레인 재현 아님):**
+
+```
+ FAIL  test/room-members.test.ts > ... > schema carries room_members with a composite key and rooms.created_by
+AssertionError: expected [ 'id', 'name', 'status', …(2) ] to include 'created_by'
+ FAIL  test/room-members.test.ts > ... > adds created_by to an already-existing rooms table without losing rows
+AssertionError: expected [ 'id', 'name', 'status', …(2) ] to include 'created_by'
+ FAIL  test/room-members.test.ts > ... > backfills every room x user exactly once and never resurrects removed rows
+SqliteError: no such table: schema_migrations
+ Test Files  1 failed | 10 passed (11)
+      Tests  3 failed | 104 passed (107)
+```
+
+실패 양상 분류(에이전트 보고 인용): 단언 실패 2건 + SQL 오류 1건(`no such table: schema_migrations` — 표의 존재 자체가 피검 대상이므로 유효한 RED). 모듈 부재·import 실패 없음, 기존 104건은 RED 동안에도 전부 초록.
+
+**레인 독립 재실행 (구현 후 — 아래 전부 이 세션이 직접 관측):**
+
+- `npm test -w server -- --reporter=verbose` → 종료 코드 **0**, `Tests  107 passed (107)` (기존 104 + 신규 3). 신규 3건 이름 단위 `✓` 직접 관측: `schema carries room_members…` / `adds created_by to an already-existing rooms table…` / `backfills every room x user exactly once…`. 원문: `.moai/state/verify/t11-run1/m1-green-verbose.txt`
+- `npm run typecheck -w server` → 종료 코드 **0**. 원문: `.moai/state/verify/t11-run1/m1-typecheck.txt`
+- 변경 범위: `git status --porcelain -- server/` → ` M server/src/db.ts` / `?? server/test/room-members.test.ts` — 정확히 2파일 (+38줄).
+
+**수용 기준**: AC-ROOMAUTHZ-001·002·003 PASS (verbose 이름 단위 3건). db.ts diff 를 레인이 직독해 §A 구속 결정 준수 확인 — 복합 PK 표·PRAGMA 가드 ALTER(NULL 허용)·표식 선행 검사+단일 트랜잭션 백필·D3 범위(rooms×users).
+
+**미검증 (명시):**
+
+- RED 원문은 구현 에이전트의 관측 인용이다 — 레인이 독립 재현하지 않았다(구현 전 상태가 이미 지나감).
+- 기존 104건은 개별 이름 판정이 아니라 총계(107/107, 0 실패)로 판정했다.
+- AC-003 의 «부분 실패 시 표식 롤백» 방향은 단일 트랜잭션 구조에서 도출한 것이지 별도 장애 주입 관측이 아니다 — 그 시나리오 부류는 AC-004 트리거 롤백(M2)의 몫이다.
+- acceptance.md 공통 하네스 전체는 `routes-events` 모듈이 M3 에서 생기므로 M1 에 넣으면 import 실패가 난다 — M1 은 세 기준이 쓰는 부분집합만 심었다(구현 에이전트 편차 #1, 리드 보고 포함). 나머지 하네스는 각 AC 의 첫 소비 시점에 단계적으로 심는다(`routes-events` import 는 M3 이후 가능).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -52,3 +86,11 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- 입력: tier M / 구현 파일 ~6-8개(server 한 패키지) / 도메인 1개(server 인가) / 코딩 중심 / 동시성 이점 낮음
+- 평가: direct 미해당(다단계 구현) · fanout 미해당(코딩 중심, Anthropic 코딩 병렬화 경고) · sweep 미해당(기계적 대량 변형 아님) · agent-team 미요청
+- **Decision: serial** — 마일스톤당 구현 서브에이전트 1개 순차 위임(M1→M2→M3→M4 엄격 의존: 게이트 테스트가 스키마를 쓰고 하네스 교정이 게이트를 씀, plan.md §F)
+- 근거: 코딩 중심 작업의 병렬화 경고 + 마일스톤 간 하드 의존으로 병렬 이득 없음. 카드 워크트리 안이므로 manager-develop 대신 general-purpose+역할 프롬프트로 위임(카드 워크트리 위임 관행 — isolation:worktree 는 원격 기본 브랜치에서 새 나무를 만듦)
+- 구현 위임은 카드 워크트리 안에서 수행(별도 isolation 없음). Kickoff 승인은 운영자가 완료(2026-08-29, 리드 전달). Phase 1 감사 게이트 skip 요건 3건 충족: 판정 PASS 0.89 ≥ 티어 M 기준선 0.80 + 최종 판정 이후 plan 산출물 무변경(HEAD 018e7db = 감사 통과 커밋)

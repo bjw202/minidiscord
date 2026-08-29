@@ -2,7 +2,7 @@
 id: SPEC-ROOMAUTHZ-001
 title: "minidiscord 방 멤버십 인가 — 방에 속하지 않은 계정이 그 방을 읽지도 쓰지도 승인하지도 못하게 한다"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-08-29
 updated: 2026-08-29
 author: manager-spec
