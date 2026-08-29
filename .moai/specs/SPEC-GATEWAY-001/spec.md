@@ -1,10 +1,10 @@
 ---
 id: SPEC-GATEWAY-001
 title: "minidiscord 봇 게이트웨이 — WebSocket 접속·재접속 복구·이력 조회"
-version: "0.3.0"
+version: "0.4.0"
 status: completed
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-29
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -23,6 +23,7 @@ depends_on: [SPEC-CORE-001, SPEC-BOT-001, SPEC-MENTION-001, SPEC-SSE-001]
 |------|------|-----------|--------|
 | 0.1.0 | 2026-08-27 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 8 과 `spec-v2.md` 6장에서 도출 (칸반 카드 `t3`, 마일스톤 M3). 2026-08-26 에 추가된 `since_id` 커서 개정(`plan-v2.md` 계획 자기 검토 결과 항목)을 일급 요구사항 REQ-GW-015 로 반영했다. 요구사항 23개·수용 기준 20개 — Tier L 상한 25/25 안이다. | manager-spec |
 | 0.2.0 | 2026-08-27 | **plan-audit 교정 라운드.** `.moai/reports/t3-plan-audit-a.md` 가 이 SPEC 을 CONDITIONAL PASS 로 판정하고 차단 3건(M5·M6·M7)을 지적했다. 전부 반영했다. **M5** — 공통 하네스의 `wsConnect` 가 `welcome` 직후 도착하는 프레임을 흘려 AC-GW-003 이 **구현이 옳아도** 간헐 실패할 수 있었다(두 프레임이 한 TCP 세그먼트로 합쳐지는 경우). 접속 시점부터 프레임을 큐에 쌓는 구조로 바꿨다. **M6** — REQ-GW-001 이 요구하는 `last_seen_at` 갱신을 관측하는 기준이 하나도 없어, 그 갱신을 통째로 생략한 구현이 스무 기준을 전부 통과했다. AC-GW-001 에 접속 전 `null` → 접속 후 채워짐 분별을 더했다. **M7** — 엣지 케이스 표가 인용한 코드(`JSON.parse` 를 인자 위치에서 호출)로는 표가 주장하는 동작이 나오지 않았고 관측하는 기준도 없었다. 구현 지시를 `try/catch` 로 고치고(`plan.md` §D 8번, REQ-GW-004 에 명문화) AC-GW-002 에 다섯 번째 거절 경로로 관측을 추가했다. 감사 §3-1(형제 SPEC 실행 순서에 따라 AC-GW-019 의 고정 파일 목록이 통제 밖 이유로 실패)도 함께 반영했다. 요구사항 23개·수용 기준 20개로 개수는 그대로다. | manager-spec |
+| 0.4.0 | 2026-08-29 | **계약 개정 — `welcome` 프레임에 조건부 증명 필드 (카드 `t15`, `SPEC-GWAUTH-001` v0.2.0 · 운영자 결정 D3=(a)).** `status: completed` 는 유지한다 — 이 개정은 **거짓이 될 열거를 미리 사실과 맞추는 계약 갱신**이고, 구현은 그 SPEC 의 run 단계가 한다. 고친 것은 **REQ-GW-001 한 자리**다: `welcome { room_id, bot_id, bot_name, missed_after_id }` 열거가 그 SPEC 착지 후 불완전해지므로, `hello` 에 `nonce` 가 실렸을 때만 붙는 **조건부 `proof` 필드**를 열쇠·메시지와 함께 적었다. **논스 없는 `hello` 는 증명 없는 `welcome` 을 받고 접속도 닫히지 않는다** — `server/test/` 의 네 파일(`gateway`·`permissions`·`room-members`·`web-permission-contract`)이 논스 없이 `hello` 를 보내며, 그 기준들이 방어와 무관하게 붉어지지 않도록 그 SPEC 이 서버를 관대하게 두었다(REQ-GWAUTH-004). **조회·등록·`welcome`·재전송 순서와 REQ-GW-002 의 세 거절 갈래는 한 글자도 바뀌지 않았고, 요구사항 23개·수용 기준 20개도 개수 그대로다.** 이 개정으로 깨지는 형제 수용 기준은 없다 — `server/test/gateway.test.ts` 의 `wsConnect` 는 `msg.type === 'welcome'` 으로만 분기하고(`:82`) 프레임 전체를 `toEqual` 로 단언하는 자리가 없으며(`:143-145` 는 세 필드를 배열로 뽑는다), `web-permission-contract.test.ts:261` 은 `toMatchObject` 다. | manager-spec |
 | 0.3.0 | 2026-08-27 | **재감사 후 잔여 결함 1건 반영 (감사 §3-2).** 세 차단(M5·M6·M7)은 재감사에서 RESOLVED 로 확인됐고, v0.2.0 에서 판단 요청으로 남겨 뒀던 항목 하나를 닫는다. REQ-GW-010 이 `attachments.size`·`mime` 의 출처를 말하지 않았는데 두 컬럼 모두 스키마에서 `NOT NULL` 이라(`server/src/db.ts:60-61`), 요건대로만 구현하면 INSERT 가 제약 위반으로 던지고 그 예외를 REQ-GW-011 의 건너뛰기 `catch` 가 삼켜 **파일이 멀쩡한데도 첨부가 조용히 사라진다.** 설계 판단이 필요한 자리가 아니어서 원본이 이미 정한 값을 명문화했다 — `size` 는 복사 시점에 읽은 원본의 바이트 크기(`plan-v2.md:1534`), `mime` 은 상수 `'application/octet-stream'`(`plan-v2.md:1537-1538`). REQ-GW-010 에 다섯 컬럼 출처 표를 넣고, 게이트웨이의 상수 `mime` 이 `SPEC-MSG-001` 의 확장자 판정과 **의도적으로 다르다**는 것을 함께 적었다. AC-GW-007 이 첨부 행 존재 + `size` 가 원본 바이트 길이(상수·`0`·문자 길이 모두 배제) + `mime` 상수를 관측한다. 요구사항 23개·수용 기준 20개로 개수는 그대로다. | manager-spec |
 
 ---
@@ -78,7 +79,9 @@ SPEC-AUTH-001 → SPEC-ROOM-001 → SPEC-BOT-001  →  SPEC-MENTION-001
 ### 4.1 접속과 인증
 
 **REQ-GW-001** (When — 이벤트 구동)
-`/bot` 접속이 `hello { token }` 을 보내면, 서버는 `sha256Hex(token)` 으로 `bot_tokens` 를 조회해 `revoked_at IS NULL` 이고 방이 `status='active'` 인 행을 찾은 경우에만, 그 접속을 접속 목록에 `{ roomId, botId, tokenRowId }` 로 등록하고 `bot_tokens.last_seen_at` 을 갱신한 뒤 `welcome { room_id, bot_id, bot_name, missed_after_id }` 를 보내야 한다. `missed_after_id` 는 그 행의 `last_delivered_id` 다. 방과 봇은 요청에 실린 값이 아니라 **토큰이 결정한다** (`spec-v2.md` 9장 — "방 ID 가 아니라 토큰으로 식별한다").
+`/bot` 접속이 `hello { token }` 을 보내면, 서버는 `sha256Hex(token)` 으로 `bot_tokens` 를 조회해 `revoked_at IS NULL` 이고 방이 `status='active'` 인 행을 찾은 경우에만, 그 접속을 접속 목록에 `{ roomId, botId, tokenRowId }` 로 등록하고 `bot_tokens.last_seen_at` 을 갱신한 뒤 `welcome { room_id, bot_id, bot_name, missed_after_id }` 를 보내야 한다. `missed_after_id` 는 그 행의 `last_delivered_id` 다.
+
+**v0.4.0 — 증명 필드가 조건부로 하나 더 붙는다 (카드 `t15`, `SPEC-GWAUTH-001` REQ-GWAUTH-003·004).** 위 열거는 그 SPEC 착지 후 불완전해진다. `hello` 가 문자열 `nonce` 를 함께 실었으면 `welcome` 은 **`proof`** 를 더 싣는다 — 열쇠를 조회에 쓴 `sha256Hex(token)`(= 그 행의 `token_hash`) 으로 하고 메시지를 `` `${nonce}|${room_id}|${bot_id}` `` 로 한 HMAC-SHA256 의 소문자 hex 다. **`hello` 에 논스가 없으면 `proof` 를 싣지 않고, 그 이유로 접속을 닫지도 않는다** — 위 조회·등록·`welcome`·재전송 순서와 이 조항의 나머지 판정(REQ-GW-002 의 세 거절 갈래 포함)은 **한 글자도 바뀌지 않는다.** `nonce`·`proof` 의 형식·수명·대조 규칙은 전부 `SPEC-GWAUTH-001` 이 소유하며, 이 SPEC 은 «서버가 무엇을 보내는가» 만 받아 적는다. 방과 봇은 요청에 실린 값이 아니라 **토큰이 결정한다** (`spec-v2.md` 9장 — "방 ID 가 아니라 토큰으로 식별한다").
 
 **REQ-GW-002** (Unwanted — shall not)
 다음 세 경우의 `hello` 는 `welcome` 을 받아서는 안 되며 접속이 닫혀야 한다. 어느 경우에도 접속 목록에 항목이 생겨서는 안 된다.

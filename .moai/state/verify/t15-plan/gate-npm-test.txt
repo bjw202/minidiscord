@@ -1,0 +1,30 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/server
+
+
+ Test Files  15 passed (15)
+      Tests  180 passed (180)
+   Start at  21:10:51
+   Duration  7.77s (transform 1.03s, setup 0ms, import 2.29s, tests 21.28s, environment 1.82s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+
+
+ Test Files  5 passed (5)
+      Tests  70 passed (70)
+   Start at  21:10:59
+   Duration  5.72s (transform 176ms, setup 0ms, import 540ms, tests 9.12s, environment 0ms)
+
