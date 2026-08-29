@@ -1,0 +1,612 @@
+
+> test
+> vitest run --reporter=verbose
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t11/server
+
+ ✓ test/config.test.ts > config > defaults (no env) 12ms
+ ✓ test/config.test.ts > config > env overrides 1ms
+ ✓ test/mention.test.ts > parseMentions > parses a single TO 1ms
+ ✓ test/mention.test.ts > parseMentions > parses CC 0ms
+ ✓ test/mention.test.ts > parseMentions > parses multiple mentions in order, duplicates kept 0ms
+ ✓ test/mention.test.ts > parseMentions > ignores plain @name and non-TO/CC keywords while catching a real mention 0ms
+ ✓ test/mention.test.ts > parseMentions > rejects empty and space-containing names while catching a valid one 0ms
+ ✓ test/mention.test.ts > parseMentions > korean bot names work 0ms
+ ✓ test/db.test.ts > openDb > creates all tables 8ms
+ ✓ test/db.test.ts > openDb > is idempotent (reopen same file) 4ms
+ ✓ test/health.test.ts > health > GET /api/health returns ok 62ms
+ ✓ test/gateway.test.ts > gateway > welcomes each token as its own (room, bot) and only on /bot 74ms
+ ✓ test/gateway.test.ts > gateway > rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames 15ms
+ ✓ test/room-members.test.ts > room membership schema and migration > schema carries room_members with a composite key and rooms.created_by 8ms
+ ✓ test/room-members.test.ts > room membership schema and migration > adds created_by to an already-existing rooms table without losing rows 8ms
+ ✓ test/room-members.test.ts > room membership schema and migration > backfills every room x user exactly once and never resurrects removed rows 9ms
+ ✓ test/auth.test.ts > auth > registers a user 104ms
+ ✓ test/auth.test.ts > auth > rejects duplicate username 52ms
+ ✓ test/rooms-bots.test.ts > rooms > creates and lists rooms 113ms
+ ✓ test/rooms-bots.test.ts > rooms > archives a room and moves it to archived list 49ms
+ ✓ test/sse.test.ts > sse > delivers a published event to the room subscriber 137ms
+ ✓ test/sse.test.ts > sse > opens the stream with SSE headers and a connected comment 51ms
+ ✓ test/permissions.test.ts > permission relay > gateway request creates a system message in the room 114ms
+ ✓ test/permissions.test.ts > permission relay > system message carries all four parts and both reply forms 49ms
+ × test/messages.test.ts > messages > stores a plain user message with no targets 117ms
+   → expected 404 to be 200 // Object.is equality
+ × test/messages.test.ts > messages > stores targets for mentioned bots 49ms
+   → expected 404 to be 200 // Object.is equality
+ ✓ test/auth.test.ts > auth > login sets session cookie and /api/me works 48ms
+ ✓ test/auth.test.ts > auth > wrong password returns 401 48ms
+ ✓ test/auth.test.ts > auth > protected route without cookie returns 401 5ms
+ ✓ test/auth.test.ts > auth > rejects invalid registration input 5ms
+ ✓ test/room-members.test.ts > room membership acquisition > records the creator and joins them in the same transaction 159ms
+ ✓ test/rooms-bots.test.ts > rooms > calls onArchive hook when provided 48ms
+ ✓ test/rooms-bots.test.ts > rooms > requires auth 49ms
+ ✓ test/rooms-bots.test.ts > rooms > rejects a blank room name 49ms
+ ✓ test/sse.test.ts > sse > never leaks another room event into this room stream 51ms
+ ✓ test/sse.test.ts > sse > frames events exactly as event/data/blank-line 52ms
+ × test/messages.test.ts > messages > rejects mention of bot not invited to the room 53ms
+   → expected 404 to be 400 // Object.is equality
+ × test/messages.test.ts > messages > send failures distinguish missing room from archived room 48ms
+   → expected 404 to be 409 // Object.is equality
+ × test/messages.test.ts > messages > rejects an empty send with neither body nor file 51ms
+   → expected 404 to be 400 // Object.is equality
+ ✓ test/permissions.test.ts > permission relay > publishes the request to the room SSE stream 68ms
+ × test/permissions.test.ts > permission relay > user yes reply sends verdict to the bot and is not stored as user message 51ms
+   → expected undefined to be 'permission' // Object.is equality
+ ✓ test/auth.test.ts > auth > sets an httpOnly lax session cookie 48ms
+ ✓ test/auth.test.ts > auth > stores a salted scrypt hash, never the plaintext 26ms
+ ✓ test/auth.test.ts > auth > logout invalidates the session 48ms
+ ✓ test/auth.test.ts > auth > only the three /api/auth routes are reachable without a session 5ms
+ ✓ test/room-members.test.ts > room membership acquisition > rolls the room back when the membership insert fails 93ms
+ ✓ test/room-members.test.ts > room membership acquisition > invites a user, is idempotent on repeat, and rejects an unknown user 96ms
+ ✓ test/auth.test.ts > auth > buildServer wires cookie, db and auth routes 66ms
+ ✓ test/sse.test.ts > sse > delivers to every subscriber of the room 51ms
+ ✓ test/sse.test.ts > sse > removes the subscriber when the connection closes 62ms
+ × test/permissions.test.ts > permission relay > non-matching text is not consumed 49ms
+   → expected undefined to be true // Object.is equality
+ × test/permissions.test.ts > permission relay > yes with unknown id is not consumed (falls through as chat) 51ms
+   → expected undefined to be true // Object.is equality
+ ✓ test/rooms-bots.test.ts > rooms > archiving moves the room and stamps archived_at 49ms
+ ✓ test/rooms-bots.test.ts > rooms > archiving distinguishes a missing room (404) from an archived one (409) 49ms
+ × test/messages.test.ts > messages > saves uploaded file as attachment and serves download 50ms
+   → expected 404 to be 200 // Object.is equality
+ × test/messages.test.ts > messages > never puts stored_path in the send or list response while keeping the id usable 48ms
+   → expected 404 to be 200 // Object.is equality
+ ✓ test/sse.test.ts > sse > publishing to a room with no subscribers is a silent no-op 51ms
+ ✓ test/sse.test.ts > sse > rejects an unauthenticated event-stream request 47ms
+ × test/sse.test.ts > sse > wires the hub and the events route into buildServer 60ms
+   → 스트림이 프레임 없이 닫혔다
+ ✓ test/rooms-bots.test.ts > rooms > every room and bot route requires a session 47ms
+ ✓ test/rooms-bots.test.ts > bots > registers and lists bots 46ms
+ ✓ test/rooms-bots.test.ts > bots > rejects duplicate and blank bot names 46ms
+ × test/messages.test.ts > messages > refuses to store an upload outside the uploads directory 47ms
+   → expected 404 to be 200 // Object.is equality
+ × test/messages.test.ts > messages > refuses to serve an attachment whose stored path escapes the uploads directory 46ms
+   → Cannot read properties of undefined (reading 'id')
+ × test/messages.test.ts > messages > publishes to the sse hub and delivers to the gateway exactly once 44ms
+   → expected 404 to be 200 // Object.is equality
+ ✓ test/gateway.test.ts > gateway > replays only missed messages targeted at that bot and advances the cursor 407ms
+ ✓ test/room-members.test.ts > room membership acquisition > refuses an invitation from a non-member while a member can still invite 133ms
+ ✓ test/rooms-bots.test.ts > invites > invites a bot and returns one-time token + command 45ms
+ ✓ test/rooms-bots.test.ts > invites > re-inviting same bot revokes old token and issues new one 43ms
+ × test/messages.test.ts > messages > lists messages after cursor 45ms
+   → actual value must be number or bigint, received "undefined"
+ × test/messages.test.ts > messages > list is scoped to the room and carries author_name 43ms
+   → Cannot read properties of undefined (reading 'map')
+ ✓ test/room-members.test.ts > room membership acquisition > hides an archived room from a non-member while showing 409 to a member 128ms
+ × test/messages.test.ts > messages > all three message routes reject unauthenticated requests 45ms
+   → Cannot read properties of undefined (reading 'id')
+ ✓ test/messages.test.ts > messages > buildServer wires the message routes, multipart and uploadsDir 51ms
+ ✓ test/rooms-bots.test.ts > invites > command carries env vars, the dev flag and the configured port 44ms
+ ✓ test/rooms-bots.test.ts > invites > invite failures distinguish missing room, archived room and missing bot 45ms
+ ✓ test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token 45ms
+ ✓ test/room-members.test.ts > room membership acquisition > offers no self-service join path and leaves no membership behind a refusal 92ms
+ ✓ test/room-members.test.ts > room membership gates > refuses a non-member send with no trace while a member send succeeds 91ms
+ ✓ test/rooms-bots.test.ts > invites > lists invites without token 44ms
+ ✓ test/rooms-bots.test.ts > invites > never exposes the issued token again 43ms
+ ✓ test/room-members.test.ts > room membership gates > answers a non-member read with 404, not an empty list, while a member reads it 83ms
+ ✓ test/rooms-bots.test.ts > invites > online is a boolean false, not the integer 0 44ms
+ ✓ test/rooms-bots.test.ts > invites > revoking an invite is idempotent 44ms
+ ✓ test/rooms-bots.test.ts > invites > archiving a room revokes that room bot tokens (verifies SPEC-ROOM-001 archive contract) 43ms
+ ✓ test/rooms-bots.test.ts > buildServer registers room and bot routes behind requireAuth 58ms
+ ✓ test/room-members.test.ts > room membership gates > refuses a non-member event stream before hijack and opens it for a member 96ms
+ ✓ test/room-members.test.ts > room membership gates > refuses a non-member on the buildServer-assembled event route 89ms
+ ✓ test/gateway.test.ts > gateway > never redelivers a message after reconnect 608ms
+ ✓ test/room-members.test.ts > room membership gates > narrows the room listing to the caller rooms and widens it on invitation 87ms
+ ✓ test/gateway.test.ts > gateway > deliver reaches only targeted bots in that room and moves only their cursor 811ms
+ ✓ test/gateway.test.ts > gateway > deliver carries per-bot delivery and the message attachments 9ms
+ × test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot 1555ms
+   → expected null to deeply equal { type: 'permission_verdict', …(2) }
+ ✓ test/gateway.test.ts > gateway > stores bot_message, copies files into uploadsDir and publishes to the hub 308ms
+ ✓ test/gateway.test.ts > gateway > bot_message skips only the missing attachment 309ms
+ ✓ test/room-members.test.ts > room membership gates > never lets a non-member approve, and leaves the request for a member to answer 1591ms
+ ✓ test/room-members.test.ts > room membership gates > the broker itself refuses a non-member verdict, independent of the route gate 98ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a local_path outside botFilesDir while still attaching one inside 310ms
+ ✓ test/room-members.test.ts > room membership gates > gives a non-member byte-identical answers for missing, active and archived rooms 83ms
+ ✓ test/room-members.test.ts > room membership gates > moves every gated route together for one person, before and after the invitation 124ms
+ ✓ test/room-members.test.ts > room membership gates > refuses all three bot-invite routes to a non-member while a member keeps the old behaviour 87ms
+ ✓ test/room-members.test.ts > room membership gates > keeps the member-facing invite failure codes intact behind the gate 85ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a symlink inside botFilesDir that points outside it 307ms
+ ✓ test/gateway.test.ts > gateway > never publishes stored_path on the hub frame for a bot attachment 308ms
+ × test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow 1556ms
+   → expected null not to be null
+ × test/permissions.test.ts > permission relay > consumes the reply instead of storing it as a user message 49ms
+   → expected undefined to be 'permission' // Object.is equality
+ ✓ test/gateway.test.ts > gateway > bot_message attaches nothing at all when botFilesDir is unset 308ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a sibling directory whose path merely prefixes botFilesDir 309ms
+ ✓ test/gateway.test.ts > gateway > status publishes bot_status for working and idle only 407ms
+ ✓ test/gateway.test.ts > gateway > isOnline follows the connection, per room and bot 105ms
+ ✓ test/gateway.test.ts > gateway > history_request returns the room messages in id order and echoes rid 7ms
+ ✓ test/gateway.test.ts > gateway > history_request with since_id returns only later messages 6ms
+ ✓ test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until 6ms
+ ✓ test/gateway.test.ts > gateway > history_response carries id, author_name, body and created_at 5ms
+ ✓ test/gateway.test.ts > gateway > history_response goes only to the requesting bot 408ms
+ ✓ test/gateway.test.ts > gateway > closeRoom disconnects only that room 7ms
+ × test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat 1545ms
+   → Cannot read properties of null (reading 'behavior')
+ ✓ test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery 808ms
+ ✓ test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag 76ms
+ × test/permissions.test.ts > permission relay > never resolves a request from a different room 3056ms
+   → Cannot read properties of null (reading 'behavior')
+ × test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending 3057ms
+   → Cannot read properties of null (reading 'behavior')
+ × test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request 1555ms
+   → expected +0 to be 2 // Object.is equality
+ × test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one 60ms
+   → expected '🔒 봇이 도구 사용 승인을 요청합니다: Bash\nd\np\n승인…' to contain '전달하지 못했습니다'
+ × test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l 47ms
+   → expected undefined to be 'permission' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 26 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/messages.test.ts > messages > stores a plain user message with no targets
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/messages.test.ts:72:28
+     70|     const { roomId } = seed()
+     71|     const res = await postMessage(app, cookie, roomId, '그냥 기록용 메모')
+     72|     expect(res.statusCode).toBe(200)
+       |                            ^
+     73|
+     74|     const rows = db.prepare('SELECT * FROM messages').all() as any[]
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/26]⎯
+
+ FAIL  test/messages.test.ts > messages > stores targets for mentioned bots
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/messages.test.ts:93:28
+     91|     const { roomId, botId } = seed()
+     92|     const res = await postMessage(app, cookie, roomId, '@TO(pm) 일정 정리해…
+     93|     expect(res.statusCode).toBe(200)
+       |                            ^
+     94|
+     95|     const messageId = (db.prepare('SELECT id FROM messages').get() as …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/26]⎯
+
+ FAIL  test/messages.test.ts > messages > rejects mention of bot not invited to the room
+AssertionError: expected 404 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 404
+
+ ❯ test/messages.test.ts:108:28
+    106|
+    107|     const bad = await postMessage(app, cookie, roomId, '@TO(모르는봇) 안녕')
+    108|     expect(bad.statusCode).toBe(400)
+       |                            ^
+    109|     expect(bad.json().error).toContain('모르는봇')
+    110|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/26]⎯
+
+ FAIL  test/messages.test.ts > messages > send failures distinguish missing room from archived room
+AssertionError: expected 404 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 404
+
+ ❯ test/messages.test.ts:130:33
+    128|     db.prepare("UPDATE rooms SET status='archived' WHERE id=?").run(ro…
+    129|     const archived = await postMessage(app, cookie, roomId, '늦은 메시지')
+    130|     expect(archived.statusCode).toBe(409)
+       |                                 ^
+    131|
+    132|     // 두 실패의 문구가 서로 다르다 — 같은 코드를 두 주어에 쓰지 않는다는 증거
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/26]⎯
+
+ FAIL  test/messages.test.ts > messages > rejects an empty send with neither body nor file
+AssertionError: expected 404 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 404
+
+ ❯ test/messages.test.ts:143:30
+    141|
+    142|     const empty = await postMessage(app, cookie, roomId, '   ')
+    143|     expect(empty.statusCode).toBe(400)
+       |                              ^
+    144|     expect((db.prepare('SELECT COUNT(*) c FROM messages').get() as { c…
+    145|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/26]⎯
+
+ FAIL  test/messages.test.ts > messages > saves uploaded file as attachment and serves download
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/messages.test.ts:159:28
+    157|
+    158|     const res = await postMessage(app, cookie, roomId, '파일 올림 @TO(pm)'…
+    159|     expect(res.statusCode).toBe(200)
+       |                            ^
+    160|
+    161|     const att = db.prepare('SELECT * FROM attachments').get() as any
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/26]⎯
+
+ FAIL  test/messages.test.ts > messages > never puts stored_path in the send or list response while keeping the id usable
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/messages.test.ts:184:28
+    182|
+    183|     const res = await postMessage(app, cookie, roomId, '파일 올림', src)
+    184|     expect(res.statusCode).toBe(200)
+       |                            ^
+    185|     const sent = JSON.parse(res.body).message
+    186|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/26]⎯
+
+ FAIL  test/messages.test.ts > messages > refuses to store an upload outside the uploads directory
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/messages.test.ts:218:28
+    216|
+    217|     const res = await postMessage(app, cookie, roomId, '경로 이탈', src, '…
+    218|     expect(res.statusCode).toBe(200)
+       |                            ^
+    219|
+    220|     const att = db.prepare('SELECT * FROM attachments').get() as { fil…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/26]⎯
+
+ FAIL  test/messages.test.ts > messages > refuses to serve an attachment whose stored path escapes the uploads directory
+TypeError: Cannot read properties of undefined (reading 'id')
+ ❯ test/messages.test.ts:241:67
+    239|
+    240|     await postMessage(app, cookie, roomId, '첨부 행을 붙일 메시지')
+    241|     const messageId = (db.prepare('SELECT id FROM messages').get() as …
+       |                                                                   ^
+    242|     const bad = db.prepare('INSERT INTO attachments (message_id, filen…
+    243|       .run(messageId, 'secret.txt', outside, 5, 'text/plain').lastInse…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/26]⎯
+
+ FAIL  test/messages.test.ts > messages > publishes to the sse hub and delivers to the gateway exactly once
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/messages.test.ts:264:28
+    262|
+    263|     const res = await postMessage(app, cookie, roomId, '@TO(pm) 확인해줘')
+    264|     expect(res.statusCode).toBe(200)
+       |                            ^
+    265|
+    266|     const messageId = (db.prepare('SELECT id FROM messages').get() as …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/26]⎯
+
+ FAIL  test/messages.test.ts > messages > lists messages after cursor
+TypeError: actual value must be number or bigint, received "undefined"
+ ❯ test/messages.test.ts:291:20
+    289|
+    290|     const ids = (db.prepare('SELECT id FROM messages ORDER BY id').all…
+    291|     expect(ids[1]).toBeGreaterThan(ids[0])   // 커서가 방 안에서 단조 증가한다
+       |                    ^
+    292|
+    293|     const list = await app.inject({ method: 'GET', url: `/api/rooms/${…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/26]⎯
+
+ FAIL  test/messages.test.ts > messages > list is scoped to the room and carries author_name
+TypeError: Cannot read properties of undefined (reading 'map')
+ ❯ test/messages.test.ts:313:14
+    311|
+    312|     const a = (await app.inject({ method: 'GET', url: `/api/rooms/${ro…
+    313|     expect(a.map((m: any) => m.body)).toEqual(['A 방 메시지'])
+       |              ^
+    314|     expect(a[0].author_name).toBe('alice')
+    315|     expect(Array.isArray(a[0].attachments)).toBe(true)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/26]⎯
+
+ FAIL  test/messages.test.ts > messages > all three message routes reject unauthenticated requests
+TypeError: Cannot read properties of undefined (reading 'id')
+ ❯ test/messages.test.ts:329:66
+    327|     writeFileSync(src, 'x')
+    328|     await postMessage(app, cookie, roomId, '준비', src)
+    329|     const attId = (db.prepare('SELECT id FROM attachments').get() as {…
+       |                                                                  ^
+    330|
+    331|     const form = new FormData()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > user yes reply sends verdict to the bot and is not stored as user message
+AssertionError: expected undefined to be 'permission' // Object.is equality
+
+- Expected:
+"permission"
+
++ Received:
+undefined
+
+ ❯ test/permissions.test.ts:165:36
+    163|     // sendToBot가 실제로 가는지는 게이트웨이 연결이 없으므로 false(전송 실패)지만 메시지 소비 자체를 검증
+    164|     const res = await post(app, roomId, cookie, 'yes abcde')
+    165|     expect(res.json().consumed_by).toBe('permission')
+       |                                    ^
+    166|     const userMsgs = db.prepare("SELECT COUNT(*) c FROM messages WHERE…
+    167|     expect(userMsgs.c).toBe(0)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > non-matching text is not consumed
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ test/permissions.test.ts:174:27
+    172|     const { roomId } = seedRoomAndBot()
+    173|     const res = await post(app, roomId, cookie, '그냥 대화')
+    174|     expect(res.json().ok).toBe(true)
+       |                           ^
+    175|   })
+    176|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > yes with unknown id is not consumed (falls through as chat)
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ test/permissions.test.ts:181:27
+    179|     const { roomId } = seedRoomAndBot()
+    180|     const res = await post(app, roomId, cookie, 'yes xxxxx')
+    181|     expect(res.json().ok).toBe(true) // 일반 메시지로 저장됨
+       |                           ^
+    182|   })
+    183|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot
+AssertionError: expected null to deeply equal { type: 'permission_verdict', …(2) }
+
+- Expected:
+{
+  "behavior": "allow",
+  "request_id": "abcde",
+  "type": "permission_verdict",
+}
+
++ Received:
+null
+
+ ❯ test/permissions.test.ts:191:24
+    189|     const seen = nextMessage(ws)
+    190|     await post(app, roomId, cookie, 'yes abcde')
+    191|     expect(await seen).toEqual({ type: 'permission_verdict', request_i…
+       |                        ^
+    192|   })
+    193|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow
+AssertionError: expected null not to be null
+ ❯ test/permissions.test.ts:202:19
+    200|     await post(app, roomId, cookie, 'no abcde')
+    201|     const v = await seen
+    202|     expect(v).not.toBeNull()
+       |                   ^
+    203|     expect(v.behavior).toBe('deny')          // 항상 allow 를 보내는 구현은 여기서…
+    204|     expect(v.request_id).toBe('abcde')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > consumes the reply instead of storing it as a user message
+AssertionError: expected undefined to be 'permission' // Object.is equality
+
+- Expected:
+"permission"
+
++ Received:
+undefined
+
+ ❯ test/permissions.test.ts:212:36
+    210|     broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', …
+    211|     const res = await post(app, roomId, cookie, 'yes abcde')
+    212|     expect(res.json().consumed_by).toBe('permission')
+       |                                    ^
+    213|     const c = db.prepare("SELECT COUNT(*) c FROM messages WHERE author…
+    214|     expect(c.c).toBe(0)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat
+TypeError: Cannot read properties of null (reading 'behavior')
+ ❯ test/permissions.test.ts:224:26
+    222|     const first = nextMessage(ws)
+    223|     await post(app, roomId, cookie, 'yes abcde')
+    224|     expect((await first).behavior).toBe('allow')
+       |                          ^
+    225|
+    226|     const second = nextMessage(ws)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > never resolves a request from a different room
+TypeError: Cannot read properties of null (reading 'behavior')
+ ❯ test/permissions.test.ts:248:27
+    246|     const proper = nextMessage(ws)
+    247|     await post(app, a.roomId, cookie, 'yes abcde')                  //…
+    248|     expect((await proper).behavior).toBe('allow')
+       |                           ^
+    249|   })
+    250|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending
+TypeError: Cannot read properties of null (reading 'behavior')
+ ❯ test/permissions.test.ts:265:27
+    263|     const proper = nextMessage(ws)
+    264|     await post(app, roomId, cookie, 'yes abcde')          // 대기 항목은 손상…
+    265|     expect((await proper).behavior).toBe('allow')
+       |                           ^
+    266|   })
+    267|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request
+AssertionError: expected +0 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 0
+
+ ❯ test/permissions.test.ts:282:17
+    280|
+    281|     const c = db.prepare("SELECT COUNT(*) c FROM messages WHERE author…
+    282|     expect(c.c).toBe(2)                                               …
+       |                 ^
+    283|
+    284|     const seen = nextMessage(ws)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one
+AssertionError: expected '🔒 봇이 도구 사용 승인을 요청합니다: Bash\nd\np\n승인…' to contain '전달하지 못했습니다'
+
+- Expected
++ Received
+
+- 전달하지 못했습니다
++ 🔒 봇이 도구 사용 승인을 요청합니다: Bash
++ d
++ p
++ 승인하려면 "yes fghij", 거절하려면 "no fghij" 라고 답해주세요.
+
+ ❯ test/permissions.test.ts:306:26
+    304|     expect(dropped.body).toContain('fghij')
+    305|     expect(dropped.body).not.toBe(delivered.body.replace('abcde', 'fgh…
+    306|     expect(dropped.body).toContain('전달하지 못했습니다')                      …
+       |                          ^
+    307|
+    308|     const retry = await post(app, off.roomId, cookie, 'yes fghij')    …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/26]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l
+AssertionError: expected undefined to be 'permission' // Object.is equality
+
+- Expected:
+"permission"
+
++ Received:
+undefined
+
+ ❯ test/permissions.test.ts:324:34
+    322|     const allow = nextMessage(ws)
+    323|     const y = await post(app, roomId, cookie, '  Y ABCDE  ')        //…
+    324|     expect(y.json().consumed_by).toBe('permission')
+       |                                  ^
+    325|     expect(await allow).toEqual({ type: 'permission_verdict', request_…
+    326|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/26]⎯
+
+ FAIL  test/sse.test.ts > sse > wires the hub and the events route into buildServer
+Error: 스트림이 프레임 없이 닫혔다
+ ❯ readFrame test/sse.test.ts:59:21
+     57|   for (;;) {
+     58|     const { value, done } = await reader.read()
+     59|     if (done) throw new Error('스트림이 프레임 없이 닫혔다')
+       |                     ^
+     60|     buf += Buffer.from(value).toString()
+     61|     if (buf.endsWith('\n\n')) return buf
+ ❯ test/sse.test.ts:215:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/26]⎯
+
+
+ Test Files  3 failed | 8 passed (11)
+      Tests  26 failed | 98 passed (124)
+   Start at  15:52:15
+   Duration  13.22s (transform 760ms, setup 0ms, import 1.64s, tests 24.91s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t11/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t11/server
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose

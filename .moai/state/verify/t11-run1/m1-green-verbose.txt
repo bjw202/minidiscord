@@ -1,0 +1,120 @@
+
+> test
+> vitest run --reporter=verbose
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t11/server
+
+ ✓ test/config.test.ts > config > defaults (no env) 27ms
+ ✓ test/config.test.ts > config > env overrides 0ms
+ ✓ test/mention.test.ts > parseMentions > parses a single TO 1ms
+ ✓ test/mention.test.ts > parseMentions > parses CC 0ms
+ ✓ test/mention.test.ts > parseMentions > parses multiple mentions in order, duplicates kept 0ms
+ ✓ test/mention.test.ts > parseMentions > ignores plain @name and non-TO/CC keywords while catching a real mention 0ms
+ ✓ test/mention.test.ts > parseMentions > rejects empty and space-containing names while catching a valid one 0ms
+ ✓ test/mention.test.ts > parseMentions > korean bot names work 0ms
+ ✓ test/db.test.ts > openDb > creates all tables 8ms
+ ✓ test/db.test.ts > openDb > is idempotent (reopen same file) 9ms
+ ✓ test/room-members.test.ts > room membership schema and migration > schema carries room_members with a composite key and rooms.created_by 10ms
+ ✓ test/room-members.test.ts > room membership schema and migration > adds created_by to an already-existing rooms table without losing rows 11ms
+ ✓ test/room-members.test.ts > room membership schema and migration > backfills every room x user exactly once and never resurrects removed rows 8ms
+ ✓ test/health.test.ts > health > GET /api/health returns ok 44ms
+ ✓ test/auth.test.ts > auth > registers a user 98ms
+ ✓ test/gateway.test.ts > gateway > welcomes each token as its own (room, bot) and only on /bot 65ms
+ ✓ test/gateway.test.ts > gateway > rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames 12ms
+ ✓ test/rooms-bots.test.ts > rooms > creates and lists rooms 107ms
+ ✓ test/rooms-bots.test.ts > rooms > archives a room and moves it to archived list 49ms
+ ✓ test/messages.test.ts > messages > stores a plain user message with no targets 106ms
+ ✓ test/messages.test.ts > messages > stores targets for mentioned bots 48ms
+ ✓ test/permissions.test.ts > permission relay > gateway request creates a system message in the room 103ms
+ ✓ test/permissions.test.ts > permission relay > system message carries all four parts and both reply forms 49ms
+ ✓ test/sse.test.ts > sse > delivers a published event to the room subscriber 137ms
+ ✓ test/sse.test.ts > sse > opens the stream with SSE headers and a connected comment 50ms
+ ✓ test/auth.test.ts > auth > rejects duplicate username 47ms
+ ✓ test/auth.test.ts > auth > login sets session cookie and /api/me works 47ms
+ ✓ test/messages.test.ts > messages > rejects mention of bot not invited to the room 52ms
+ ✓ test/messages.test.ts > messages > send failures distinguish missing room from archived room 49ms
+ ✓ test/messages.test.ts > messages > rejects an empty send with neither body nor file 49ms
+ ✓ test/sse.test.ts > sse > never leaks another room event into this room stream 53ms
+ ✓ test/sse.test.ts > sse > frames events exactly as event/data/blank-line 49ms
+ ✓ test/rooms-bots.test.ts > rooms > calls onArchive hook when provided 51ms
+ ✓ test/rooms-bots.test.ts > rooms > requires auth 48ms
+ ✓ test/rooms-bots.test.ts > rooms > rejects a blank room name 48ms
+ ✓ test/permissions.test.ts > permission relay > publishes the request to the room SSE stream 66ms
+ ✓ test/permissions.test.ts > permission relay > user yes reply sends verdict to the bot and is not stored as user message 53ms
+ ✓ test/auth.test.ts > auth > wrong password returns 401 50ms
+ ✓ test/auth.test.ts > auth > protected route without cookie returns 401 4ms
+ ✓ test/auth.test.ts > auth > rejects invalid registration input 4ms
+ ✓ test/auth.test.ts > auth > sets an httpOnly lax session cookie 48ms
+ ✓ test/auth.test.ts > auth > stores a salted scrypt hash, never the plaintext 25ms
+ ✓ test/messages.test.ts > messages > saves uploaded file as attachment and serves download 53ms
+ ✓ test/auth.test.ts > auth > logout invalidates the session 46ms
+ ✓ test/auth.test.ts > auth > only the three /api/auth routes are reachable without a session 4ms
+ ✓ test/auth.test.ts > auth > buildServer wires cookie, db and auth routes 68ms
+ ✓ test/sse.test.ts > sse > delivers to every subscriber of the room 49ms
+ ✓ test/sse.test.ts > sse > removes the subscriber when the connection closes 60ms
+ ✓ test/permissions.test.ts > permission relay > non-matching text is not consumed 48ms
+ ✓ test/permissions.test.ts > permission relay > yes with unknown id is not consumed (falls through as chat) 48ms
+ ✓ test/rooms-bots.test.ts > rooms > archiving moves the room and stamps archived_at 48ms
+ ✓ test/rooms-bots.test.ts > rooms > archiving distinguishes a missing room (404) from an archived one (409) 49ms
+ ✓ test/sse.test.ts > sse > publishing to a room with no subscribers is a silent no-op 47ms
+ ✓ test/sse.test.ts > sse > rejects an unauthenticated event-stream request 48ms
+ ✓ test/messages.test.ts > messages > never puts stored_path in the send or list response while keeping the id usable 53ms
+ ✓ test/messages.test.ts > messages > refuses to store an upload outside the uploads directory 47ms
+ ✓ test/messages.test.ts > messages > refuses to serve an attachment whose stored path escapes the uploads directory 48ms
+ ✓ test/sse.test.ts > sse > wires the hub and the events route into buildServer 63ms
+ ✓ test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot 53ms
+ ✓ test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow 47ms
+ ✓ test/permissions.test.ts > permission relay > consumes the reply instead of storing it as a user message 49ms
+ ✓ test/rooms-bots.test.ts > rooms > every room and bot route requires a session 46ms
+ ✓ test/rooms-bots.test.ts > bots > registers and lists bots 46ms
+ ✓ test/rooms-bots.test.ts > bots > rejects duplicate and blank bot names 49ms
+ ✓ test/gateway.test.ts > gateway > replays only missed messages targeted at that bot and advances the cursor 409ms
+ ✓ test/messages.test.ts > messages > publishes to the sse hub and delivers to the gateway exactly once 48ms
+ ✓ test/messages.test.ts > messages > lists messages after cursor 45ms
+ ✓ test/rooms-bots.test.ts > invites > invites a bot and returns one-time token + command 47ms
+ ✓ test/rooms-bots.test.ts > invites > re-inviting same bot revokes old token and issues new one 45ms
+ ✓ test/messages.test.ts > messages > list is scoped to the room and carries author_name 44ms
+ ✓ test/messages.test.ts > messages > all three message routes reject unauthenticated requests 46ms
+ ✓ test/messages.test.ts > messages > buildServer wires the message routes, multipart and uploadsDir 49ms
+ ✓ test/rooms-bots.test.ts > invites > command carries env vars, the dev flag and the configured port 45ms
+ ✓ test/rooms-bots.test.ts > invites > invite failures distinguish missing room, archived room and missing bot 44ms
+ ✓ test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token 43ms
+ ✓ test/rooms-bots.test.ts > invites > lists invites without token 41ms
+ ✓ test/rooms-bots.test.ts > invites > never exposes the issued token again 42ms
+ ✓ test/rooms-bots.test.ts > invites > online is a boolean false, not the integer 0 42ms
+ ✓ test/rooms-bots.test.ts > invites > revoking an invite is idempotent 45ms
+ ✓ test/rooms-bots.test.ts > invites > archiving a room revokes that room bot tokens (verifies SPEC-ROOM-001 archive contract) 41ms
+ ✓ test/rooms-bots.test.ts > buildServer registers room and bot routes behind requireAuth 55ms
+ ✓ test/gateway.test.ts > gateway > never redelivers a message after reconnect 610ms
+ ✓ test/gateway.test.ts > gateway > deliver reaches only targeted bots in that room and moves only their cursor 814ms
+ ✓ test/gateway.test.ts > gateway > deliver carries per-bot delivery and the message attachments 9ms
+ ✓ test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat 1552ms
+ ✓ test/gateway.test.ts > gateway > stores bot_message, copies files into uploadsDir and publishes to the hub 310ms
+ ✓ test/gateway.test.ts > gateway > bot_message skips only the missing attachment 309ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a local_path outside botFilesDir while still attaching one inside 310ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a symlink inside botFilesDir that points outside it 308ms
+ ✓ test/gateway.test.ts > gateway > never publishes stored_path on the hub frame for a bot attachment 310ms
+ ✓ test/permissions.test.ts > permission relay > never resolves a request from a different room 1563ms
+ ✓ test/gateway.test.ts > gateway > bot_message attaches nothing at all when botFilesDir is unset 310ms
+ ✓ test/gateway.test.ts > gateway > bot_message refuses a sibling directory whose path merely prefixes botFilesDir 309ms
+ ✓ test/gateway.test.ts > gateway > status publishes bot_status for working and idle only 412ms
+ ✓ test/gateway.test.ts > gateway > isOnline follows the connection, per room and bot 108ms
+ ✓ test/gateway.test.ts > gateway > history_request returns the room messages in id order and echoes rid 7ms
+ ✓ test/gateway.test.ts > gateway > history_request with since_id returns only later messages 7ms
+ ✓ test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until 5ms
+ ✓ test/gateway.test.ts > gateway > history_response carries id, author_name, body and created_at 5ms
+ ✓ test/gateway.test.ts > gateway > history_response goes only to the requesting bot 409ms
+ ✓ test/gateway.test.ts > gateway > closeRoom disconnects only that room 8ms
+ ✓ test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending 1559ms
+ ✓ test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery 813ms
+ ✓ test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag 62ms
+ ✓ test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request 1564ms
+ ✓ test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one 62ms
+ ✓ test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l 48ms
+
+ Test Files  11 passed (11)
+      Tests  107 passed (107)
+   Start at  14:43:45
+   Duration  7.15s (transform 617ms, setup 0ms, import 1.31s, tests 15.68s, environment 0ms)
+
