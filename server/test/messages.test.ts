@@ -50,6 +50,10 @@ async function build() {
 
 function seed(): { roomId: number; botId: number } {
   const roomId = db.prepare("INSERT INTO rooms (name) VALUES ('A')").run().lastInsertRowid as number
+  // M4 (SPEC-ROOMAUTHZ-001): 메시지 게이트가 멤버만 지나게 되었다 — 직접 INSERT 한 방이므로
+  // 생성자 auto-join 에 해당하는 멤버 행 하나가 유일한 빠진 조각이다 (plan.md §F M4 2번)
+  const alice = db.prepare("SELECT id FROM users WHERE username = 'alice'").get() as { id: number }
+  db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES ('pm', '')").run().lastInsertRowid as number
   db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)')
     .run(roomId, botId, sha256Hex(randomBytes(32).toString('hex')))
@@ -305,6 +309,9 @@ describe('messages', () => {
     const { app, cookie } = await build()
     const { roomId } = seed()
     const otherRoom = db.prepare("INSERT INTO rooms (name) VALUES ('B')").run().lastInsertRowid as number
+    // M4 (SPEC-ROOMAUTHZ-001): 이 방도 직접 INSERT 였으므로 alice 의 멤버 행이 필요하다 — 테스트가 B 방도 읽기를 기대한다
+    const aliceId = (db.prepare("SELECT id FROM users WHERE username = 'alice'").get() as { id: number }).id
+    db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(otherRoom, aliceId)
 
     await postMessage(app, cookie, roomId, 'A 방 메시지')
     await postMessage(app, cookie, otherRoom, 'B 방 메시지')
@@ -339,13 +346,15 @@ describe('messages', () => {
     ]
     expect(noAuth.map(r => r.statusCode)).toEqual([401, 401, 401])
 
-    // 대조군 — 같은 세 요청이 쿠키가 있으면 401 이 아니다
+    // 대조군 — 같은 세 요청이 쿠키가 있으면 성공한다. 1차 감사 F-13: `!== 401` 은 404 도
+    // 통과시켜 인증 경계를 느슨하게 잴 뿐 아니라 게이트가 걸려도 통과하는 단언이었다.
+    // 실제 성공 코드(200)로 좁혀 기준의 원래 의도(인증된 요청은 성공한다)를 실제로 재게 한다.
     const withAuth = [
       await postMessage(app, cookie, roomId, '정상 전송'),
       await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/messages`, headers: { cookie } }),
       await app.inject({ method: 'GET', url: `/api/attachments/${attId}`, headers: { cookie } }),
     ]
-    expect(withAuth.every(r => r.statusCode !== 401)).toBe(true)
+    expect(withAuth.every(r => r.statusCode === 200)).toBe(true)
 
     // 거부된 전송은 저장되지 않았다
     expect((db.prepare("SELECT COUNT(*) c FROM messages WHERE body='몰래 보내기'").get() as { c: number }).c).toBe(0)

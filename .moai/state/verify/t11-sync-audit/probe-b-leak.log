@@ -1,0 +1,51 @@
+=== B1. 비멤버(mallory) vs 없는 방 — 바이트 대조 ===
+SAME   GET /api/rooms/{}/messages
+   nonmember: 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+   ghost    : 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+SAME   POST /api/rooms/{}/messages
+   nonmember: 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+   ghost    : 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+SAME   GET /api/rooms/{}/events
+   nonmember: 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+   ghost    : 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+SAME   POST /api/rooms/{}/members
+   nonmember: 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+   ghost    : 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+SAME   POST /api/rooms/{}/invites
+   nonmember: 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+   ghost    : 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+SAME   GET /api/rooms/{}/invites
+   nonmember: 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+   ghost    : 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+SAME   DELETE /api/rooms/{}/invites/1
+   nonmember: 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+   ghost    : 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+DIFF!! POST /api/rooms/{}/archive
+   nonmember: 200 "{\"ok\":true}"
+   ghost    : 404 "{\"error\":\"방을 찾을 수 없습니다\"}"
+   NM_HEADERS: {"content-type":"application/json; charset=utf-8","content-length":"11","date":"Sat, 29 Aug 2026 07:46:48 GMT","connection":"keep-alive"}
+   GH_HEADERS: {"content-type":"application/json; charset=utf-8","content-length":"42","date":"Sat, 29 Aug 2026 07:46:48 GMT","connection":"keep-alive"}
+SAME   HEAD /api/rooms/{}/messages
+   nonmember: 404 ""
+   ghost    : 404 ""
+SAME   HEAD /api/rooms/{}/invites
+   nonmember: 404 ""
+   ghost    : 404 ""
+
+=== B2. archive 실재 오라클 (같은 mallory 로 세 갈래) ===
+archive 있는-활성 방 : 200 {"ok":true}
+archive 이미-보관 방 : 409 {"error":"이미 보관된 방입니다"}
+archive 없는 방      : 404 {"error":"방을 찾을 수 없습니다"}
+파괴적 효과 확인      : rooms.status = archived (비멤버가 남의 방을 보관했다)
+
+=== B3. 정수 아닌 room id — 게이트 응답 ===
+id='abc' 비멤버=404 {"error":"방을 찾을 수 없습니다"} | 멤버=404
+id='1abc' 비멤버=404 {"error":"방을 찾을 수 없습니다"} | 멤버=404
+id='1.5' 비멤버=404 {"error":"방을 찾을 수 없습니다"} | 멤버=404
+id='' 비멤버=404 {"error":"방을 찾을 수 없습니다"} | 멤버=404
+id='%20' 비멤버=404 {"error":"방을 찾을 수 없습니다"} | 멤버=404
+id='0x1' 비멤버=404 {"error":"방을 찾을 수 없습니다"} | 멤버=200
+
+=== B4. isRoomMember 에 NaN 을 직접 넘기면? (P5 생존 변이의 관측 가능성) ===
+isRoomMember(db, NaN, alice) => false (예외 없음)
+isRoomMember(db, 1.5, alice) => false

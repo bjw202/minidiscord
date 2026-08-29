@@ -172,6 +172,8 @@ multipart 요청에 파일 파트가 있으면, 서버는 각 파일을 **업로
 
 **방별 접근 권한은 이 시스템에 존재하지 않는다.** `rooms` 에 소유자 컬럼이 없고 구성원 테이블도 없으며(`SPEC-CORE-001` 의 `SCHEMA`), `req.user` 는 `{ id, username }` 두 필드로 고정돼 있다. 방별 권한은 `spec-v2.md` 12장이 YAGNI 로 배제했고 선행 세 SPEC 이 모두 같은 판단을 이어받았다. 따라서 이 SPEC 이 강제할 수 있는 것은 **로그인 여부**뿐이며, 로그인한 사람은 어느 방에든 보내고 어느 방이든 읽고 어느 첨부든 내려받을 수 있다. 이 경계는 `plan.md` §D 2번에 기록돼 있고 §E 의 잔여 위험 표에도 올라 있다.
 
+> **개정 (2026-08-29, `SPEC-ROOMAUTHZ-001`).** 위 문단은 더 이상 참이 아니다. `SPEC-ROOMAUTHZ-001` 이 `room_members` 표와 `rooms.created_by` 를 만들었으므로 **로그인한 사람이 어느 방에든 보내고 어느 방이든 읽을 수 있다는 서술은 뒤집혔다** — 이제 자기가 멤버인 방만이다. `POST`/`GET /api/rooms/:id/messages` 두 라우트에 멤버십 게이트가 걸리고, 비멤버에게는 없는 방과 구별되지 않는 `404` 가 나간다. 다만 `GET /api/attachments/:id` 는 그 SPEC 의 범위 밖이라 **여전히 열려 있다**(첨부 번호를 아는 비멤버는 내려받을 수 있다) — 그쪽 `spec.md` §7·§9 에 잔여 위험으로 기록돼 있다. 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
+
 **REQ-MSG-014** (Unwanted — shall not)
 이 SPEC 의 구현은 `server/src/db.ts` 의 `SCHEMA` 상수를 변경해서는 안 되고, `server/src/permissions.ts` 를 만들어서도 안 되며, 권한 릴레이 라우트를 등록해서도 안 된다. 이 SPEC 이 새로 만드는 소스 파일은 `server/src/routes-messages.ts` 하나이고, 수정하는 기존 소스 파일은 `server/src/index.ts` 하나다.
 

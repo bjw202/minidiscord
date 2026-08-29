@@ -69,6 +69,9 @@ async function build() {
 
 function seedRoomAndBot(roomName = 'A', botName = 'pm') {
   const roomId = db.prepare('INSERT INTO rooms (name) VALUES (?)').run(roomName).lastInsertRowid as number
+  // t11 이 메시지·초대 경로에 방 구성원 검사를 걸었다 — 배치가 심는 방에 alice 을 구성원으로 넣는다.
+  const alice = db.prepare('SELECT id FROM users WHERE username = ?').get('alice') as { id: number }
+  db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES (?, '')").run(botName).lastInsertRowid as number
   const token = randomBytes(32).toString('hex')
   db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))

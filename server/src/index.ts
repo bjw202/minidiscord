@@ -5,10 +5,11 @@ import fastifyStatic from '@fastify/static'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { openDb, type Db } from './db.js'
-import { registerAuthRoutes, requireAuth } from './auth.js'
+import { registerAuthRoutes } from './auth.js'
 import { registerRoomRoutes } from './routes-rooms.js'
 import { registerBotRoutes } from './routes-bots.js'
 import { registerMessageRoutes } from './routes-messages.js'
+import { registerEventRoute } from './routes-events.js'
 import { createSseHub } from './sse.js'
 import { createGateway, type Gateway } from './gateway.js'
 import { createPermissionBroker, type PermissionBroker } from './permissions.js'
@@ -55,11 +56,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   const broker = createPermissionBroker(app)
   app.decorate('permissions', broker)
   gateway.setPermissionHandler((info, params) => broker.onGatewayRequest(info, params))
-  // 방별 이벤트 스트림. hijack 을 먼저 호출해 소켓 소유권을 넘긴다 — 허브가 reply.raw 에 직접 쓴다
-  app.get('/api/rooms/:id/events', { preHandler: [requireAuth] }, async (req, reply) => {
-    reply.hijack()
-    app.hub.subscribe(Number((req.params as { id: string }).id), reply.raw)
-  })
+  // 방별 이벤트 스트림 — 등록은 registerEventRoute 하나로 한다. 인라인 사본을 남기면 Fastify 는
+  // 조용히 둘 다 등록하지 않는 채 프로덕션만 게이트 없는 상태로 남는다 (REQ-ROOMAUTHZ-010)
+  registerEventRoute(app)
   app.addHook('onClose', async () => app.db.close())
   // 정적 서빙 — 모든 API 라우트가 등록된 뒤에 맨 끝에 붙인다 (REQ-WEBSHELL-001, plan.md §D 7).
   // prefix '/' 가 와일드카드 GET 을 만드므로, API 보다 앞서 등록되면 API 가 정적 응답으로 가려진다.

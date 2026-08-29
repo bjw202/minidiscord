@@ -5,8 +5,9 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createSseHub } from '../src/sse.js'
-import { registerAuthRoutes, requireAuth } from '../src/auth.js'
-import { openDb } from '../src/db.js'
+import { registerAuthRoutes } from '../src/auth.js'
+import { registerEventRoute } from '../src/routes-events.js'
+import { openDb, type Db } from '../src/db.js'
 
 const cleanups: (() => Promise<void> | void)[] = []
 afterEach(async () => { for (const c of cleanups.splice(0)) await c() })
@@ -27,10 +28,9 @@ async function startServer() {
   await app.register(cookie)
   registerAuthRoutes(app, app.db)
   const hub = createSseHub()
-  app.get('/api/rooms/:id/events', { preHandler: [requireAuth] }, async (req, reply) => {
-    reply.hijack()   // Fastify 가 자기 응답을 보내지 않게 소켓 소유권을 넘긴다
-    hub.subscribe(Number((req.params as { id: string }).id), reply.raw)
-  })
+  app.decorate('hub', hub)
+  // M4 (SPEC-ROOMAUTHZ-001): 이벤트 라우트 사본을 지우고 프로덕션과 같은 등록 함수 하나를 쓴다 (REQ-ROOMAUTHZ-010)
+  registerEventRoute(app)
   await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'u', password: 'pw123456' } })
   const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'u', password: 'pw123456' } })
   const ck = setCookieOf(login).split(';')[0]
@@ -38,6 +38,15 @@ async function startServer() {
   const port = (app.server.address() as { port: number }).port
   cleanups.push(async () => { await app.close(); rmSync(dir, { recursive: true, force: true }) })
   return { app, hub, cookie: ck, port }
+}
+
+// M4 (SPEC-ROOMAUTHZ-001): 스트림 게이트는 실재하는 방과 멤버를 요구한다 — 임의의 1 대신
+// 방을 만들고 로그인 사용자를 그 멤버로 넣은 뒤 그 번호로 스트림을 연다 (plan.md §D.3.1)
+function memberRoom(app: { db: Db }, username = 'u', name = 'A'): number {
+  const roomId = app.db.prepare('INSERT INTO rooms (name) VALUES (?)').run(name).lastInsertRowid as number
+  const u = app.db.prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number }
+  app.db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, u.id)
+  return roomId
 }
 
 // 이벤트 스트림을 연다. abort() 로 클라이언트 쪽 연결을 끊을 수 있다.
@@ -75,11 +84,12 @@ async function waitFor(fn: () => boolean, ms = 2000): Promise<boolean> {
 describe('sse', () => {
   // AC-SSE-001 — 발행한 이벤트가 그 방 구독자에게 실제로 도달한다
   it('delivers a published event to the room subscriber', async () => {
-    const { hub, cookie: ck, port } = await startServer()
-    const { reader } = await openStream(port, ck, 1)
+    const { app, hub, cookie: ck, port } = await startServer()
+    const roomId = memberRoom(app)
+    const { reader } = await openStream(port, ck, roomId)
     expect(await readFrame(reader)).toContain('connected')
 
-    hub.publish(1, 'message', { id: 7 })
+    hub.publish(roomId, 'message', { id: 7 })
     const frame = await readFrame(reader)
     expect(frame).toContain('event: message')
     expect(frame).toContain('"id":7')
@@ -87,8 +97,9 @@ describe('sse', () => {
 
   // AC-SSE-002 — 구독 응답 헤더와 연결 확인 주석
   it('opens the stream with SSE headers and a connected comment', async () => {
-    const { cookie: ck, port } = await startServer()
-    const { res, reader } = await openStream(port, ck, 1)
+    const { app, cookie: ck, port } = await startServer()
+    const roomId = memberRoom(app)
+    const { res, reader } = await openStream(port, ck, roomId)
 
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('text/event-stream')
@@ -99,12 +110,13 @@ describe('sse', () => {
 
   // AC-SSE-003 — 방 격리를 도착 순서로 관측한다
   it('never leaks another room event into this room stream', async () => {
-    const { hub, cookie: ck, port } = await startServer()
-    const { reader } = await openStream(port, ck, 1)
+    const { app, hub, cookie: ck, port } = await startServer()
+    const roomId = memberRoom(app)
+    const { reader } = await openStream(port, ck, roomId)
     expect(await readFrame(reader)).toContain('connected')
 
     hub.publish(2, 'message', { room: 2 })   // 이 방 구독자에게 오면 안 된다
-    hub.publish(1, 'message', { room: 1 })   // 이것이 와야 한다
+    hub.publish(roomId, 'message', { room: 1 })   // 이것이 와야 한다
 
     const frame = await readFrame(reader)
     expect(frame).toBe('event: message\ndata: {"room":1}\n\n')
@@ -112,62 +124,66 @@ describe('sse', () => {
 
   // AC-SSE-004 — 프레임 형식이 정확히 일치한다
   it('frames events exactly as event/data/blank-line', async () => {
-    const { hub, cookie: ck, port } = await startServer()
-    const { reader } = await openStream(port, ck, 1)
+    const { app, hub, cookie: ck, port } = await startServer()
+    const roomId = memberRoom(app)
+    const { reader } = await openStream(port, ck, roomId)
     await readFrame(reader)
 
-    hub.publish(1, 'message', { id: 7 })
+    hub.publish(roomId, 'message', { id: 7 })
     expect(await readFrame(reader)).toBe('event: message\ndata: {"id":7}\n\n')
 
-    hub.publish(1, 'bot_status', { bot_id: 3, state: 'working' })
+    hub.publish(roomId, 'bot_status', { bot_id: 3, state: 'working' })
     expect(await readFrame(reader)).toBe('event: bot_status\ndata: {"bot_id":3,"state":"working"}\n\n')
   })
 
   // AC-SSE-005 — 한 방의 구독자 여럿이 모두 받는다
   it('delivers to every subscriber of the room', async () => {
-    const { hub, cookie: ck, port } = await startServer()
-    const a = await openStream(port, ck, 1)
-    const b = await openStream(port, ck, 1)
+    const { app, hub, cookie: ck, port } = await startServer()
+    const roomId = memberRoom(app)
+    const a = await openStream(port, ck, roomId)
+    const b = await openStream(port, ck, roomId)
     await readFrame(a.reader)
     await readFrame(b.reader)
 
-    expect(await waitFor(() => hub.subscriberCount(1) === 2)).toBe(true)
+    expect(await waitFor(() => hub.subscriberCount(roomId) === 2)).toBe(true)
 
-    hub.publish(1, 'message', { id: 7 })
+    hub.publish(roomId, 'message', { id: 7 })
     expect(await readFrame(a.reader)).toBe('event: message\ndata: {"id":7}\n\n')
     expect(await readFrame(b.reader)).toBe('event: message\ndata: {"id":7}\n\n')
   })
 
   // AC-SSE-006 — 연결이 끊기면 구독자가 실제로 사라진다
   it('removes the subscriber when the connection closes', async () => {
-    const { hub, cookie: ck, port } = await startServer()
-    const s = await openStream(port, ck, 1)
+    const { app, hub, cookie: ck, port } = await startServer()
+    const roomId = memberRoom(app)
+    const s = await openStream(port, ck, roomId)
     await readFrame(s.reader)
 
     // 구독 직후: 반드시 1 이어야 한다
-    expect(await waitFor(() => hub.subscriberCount(1) === 1)).toBe(true)
-    expect(hub.subscriberCount(1)).toBe(1)
+    expect(await waitFor(() => hub.subscriberCount(roomId) === 1)).toBe(true)
+    expect(hub.subscriberCount(roomId)).toBe(1)
 
     s.abort()   // 클라이언트가 연결을 끊는다
 
     // 끊긴 뒤: 반드시 0 이어야 한다
-    expect(await waitFor(() => hub.subscriberCount(1) === 0)).toBe(true)
-    expect(hub.subscriberCount(1)).toBe(0)
+    expect(await waitFor(() => hub.subscriberCount(roomId) === 0)).toBe(true)
+    expect(hub.subscriberCount(roomId)).toBe(0)
   })
 
   // AC-SSE-007 — 구독자 없는 방으로 발행해도 아무 일도 없다
   it('publishing to a room with no subscribers is a silent no-op', async () => {
-    const { hub, cookie: ck, port } = await startServer()
+    const { app, hub, cookie: ck, port } = await startServer()
+    const roomId = memberRoom(app)
 
     // 구독자가 하나도 없는 상태에서 발행 — 던지지 않아야 한다
     expect(() => hub.publish(99, 'message', { id: 1 })).not.toThrow()
     expect(hub.subscriberCount(99)).toBe(0)
 
     // 같은 테스트 안에서 실제 전달까지 확인한다 — 빈 구현이 이 테스트를 통과하지 못하게 하는 장치다
-    const { reader } = await openStream(port, ck, 1)
+    const { reader } = await openStream(port, ck, roomId)
     await readFrame(reader)
     hub.publish(99, 'message', { id: 2 })   // 여전히 구독자 없음
-    hub.publish(1, 'message', { id: 3 })
+    hub.publish(roomId, 'message', { id: 3 })
     expect(await readFrame(reader)).toBe('event: message\ndata: {"id":3}\n\n')
     expect(hub.subscriberCount(99)).toBe(0)
   })
@@ -209,12 +225,16 @@ describe('sse', () => {
     const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'w', password: 'pw123456' } })
     const ck = setCookieOf(login).split(';')[0]
 
+    // M4 (SPEC-ROOMAUTHZ-001): 게이트가 실재하는 방과 멤버를 요구한다 — 실서버의 방 생성 라우트로
+    // 만들면 생성자가 곧 멤버다. 임의의 1 을 쓰지 않는다 (plan.md §D.3.1)
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie: ck }, payload: { name: 'A' } })).json() as { id: number }
+
     await app.listen({ port: 0 })
     const port = (app.server.address() as { port: number }).port
-    const { reader } = await openStream(port, ck, 1)
+    const { reader } = await openStream(port, ck, room.id)
     expect(await readFrame(reader)).toContain('connected')
 
-    app.hub.publish(1, 'message', { id: 42 })
+    app.hub.publish(room.id, 'message', { id: 42 })
     expect(await readFrame(reader)).toBe('event: message\ndata: {"id":42}\n\n')
   })
 })

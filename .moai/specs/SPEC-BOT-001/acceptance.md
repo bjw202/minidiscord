@@ -129,6 +129,8 @@ it('invite failures distinguish missing room, archived room and missing bot', as
 
 > **원본으로부터의 의도적 이탈.** 원본 `plan-v2.md:886` 은 `if (!room) return reply.code(403).send({ error: '활성 방이 아닙니다' })` 로 없는 방과 보관된 방을 `403` 하나로 합쳤다. 그 형태로는 두 경우를 구분할 수 없고, `403`(인증됐으나 권한 없음)이 가리킬 권한 차원이 이 시스템에는 없다 — 방별 접근 권한은 세 SPEC 이 모두 YAGNI 로 배제했다. 원본 테스트 이름 `invite to archived room returns 403` 도 새 계약에 맞춰 바뀐다. `SPEC-ROOM-001` 의 보관 실패와 **같은 편집에서 함께** 고쳤고, 경위는 양쪽 `plan.md` (여기 §D 5번, `SPEC-ROOM-001` §D 7번)에 기록했다.
 
+> **개정 (2026-08-29, `SPEC-ROOMAUTHZ-001`).** 위 주석의 "`403` 이 가리킬 권한 차원이 이 시스템에는 없다"는 근거는 사라졌다 — `SPEC-ROOMAUTHZ-001` 이 권한 차원을 만들었다. 그 SPEC 도 비멤버에게 `403` 대신 `404` 를 쓰므로(REQ-ROOMAUTHZ-013) 이 기준의 404/409 구분 계약은 그대로 유효하다. 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
+
 ### AC-BOT-006 — 초대 목록의 `online` 은 불리언
 
 **Given** 방에 초대가 하나 있다.

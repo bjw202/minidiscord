@@ -13,8 +13,9 @@ import { openDb, type Db } from '../src/db.js'
 import { createSseHub } from '../src/sse.js'
 import { createGateway } from '../src/gateway.js'
 import { createPermissionBroker } from '../src/permissions.js'
-import { registerAuthRoutes, requireAuth } from '../src/auth.js'
+import { registerAuthRoutes } from '../src/auth.js'
 import { registerMessageRoutes } from '../src/routes-messages.js'
+import { registerEventRoute } from '../src/routes-events.js'
 import { sha256Hex } from '../src/routes-bots.js'
 
 let dir: string
@@ -48,10 +49,8 @@ async function build() {
   const gateway = createGateway(app, { uploadsDir: join(dir, 'up') })
   app.decorate('gateway', gateway)
   registerAuthRoutes(app, db)
-  app.get('/api/rooms/:id/events', { preHandler: [requireAuth] }, async (req, reply) => {
-    reply.hijack()                                                   // SPEC-SSE-001 REQ-SSE-003 — subscribe 앞에 온다
-    hub.subscribe(Number((req.params as { id: string }).id), reply.raw)
-  })
+  // M4 (SPEC-ROOMAUTHZ-001): 이벤트 라우트 사본을 지우고 프로덕션과 같은 등록 함수 하나를 쓴다 (REQ-ROOMAUTHZ-010)
+  registerEventRoute(app)
   registerMessageRoutes(app)
   const broker = createPermissionBroker(app)
   app.decorate('permissions', broker)                                  // 원본 누락분 (plan.md §D 1번)
@@ -67,6 +66,10 @@ async function build() {
 // (방, 봇, 게이트웨이 토큰) 한 벌을 만든다. 여러 방을 만들려면 name 을 바꿔 부른다.
 function seedRoomAndBot(roomName = 'A', botName = 'pm') {
   const roomId = db.prepare('INSERT INTO rooms (name) VALUES (?)').run(roomName).lastInsertRowid as number
+  // M4 (SPEC-ROOMAUTHZ-001): 메시지·스트림 게이트가 멤버만 지나게 되었다 — 직접 INSERT 한 방이므로
+  // 로그인 사용자(alice)의 멤버 행 하나가 유일한 빠진 조각이다 (plan.md §F M4 2번)
+  const alice = db.prepare("SELECT id FROM users WHERE username = 'alice'").get() as { id: number }
+  db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES (?, '')").run(botName).lastInsertRowid as number
   const token = randomBytes(32).toString('hex')
   db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
