@@ -1,6 +1,6 @@
 // 게이트웨이 클라이언트: 봇 게이트웨이(ws://…/bot)에 붙어 있게 하는 WebSocket 배관.
 // 프레임의 해석자가 아니라 전달자다 — type 값으로만 갈라 콜백에 넘기고 나머지 필드는 건드리지 않는다.
-import { randomUUID } from 'node:crypto'
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { WebSocket } from 'ws'
 
 export type UrlRef = string | (() => string)
@@ -33,6 +33,22 @@ interface Pending {
   timer: ReturnType<typeof setTimeout>
 }
 
+// welcome 의 증명 대조. 순서가 계약이다 — 존재 확인 → 길이 확인 → 상수 시간 대조.
+// timingSafeEqual 은 길이가 다르면 예외를 던지므로 길이 확인이 반드시 먼저다 — 짧은 proof
+// 한 프레임이 예외로 프로세스를 끝내지 않게 한다 (REQ-GWAUTH-009·010, plan.md §D-7).
+// 대조는 timingSafeEqual 로만 한다 — === 는 plan.md §G 가 금지한다 (기준이 잡지 못하는 자리다).
+function verifyProof(msg: any, nonce: string, token: string): boolean {
+  if (typeof msg.proof !== 'string') return false
+  if (!/^[0-9a-f]{64}$/.test(msg.proof)) return false
+  // @MX:ANCHOR: [AUTO] 해시·HMAC 규칙의 채널 사본 — 워크스페이스가 분리되어 server/ 의 심볼을 import 할 수 없어 사본이 불가피하다 (SPEC-GWAUTH-001 §3.5)
+  // @MX:REASON: 규칙의 정본은 server/src/routes-bots.ts:11 (sha256Hex), 서버 사용 지점은 server/src/gateway.ts handleHello 다. 이 사본이 정본과 갈라지면 왕복 기준(AC-GWAUTH-013)만 붉어진다 — 단위 기준은 각자의 규칙 안에서 초록으로 남는다
+  const key = createHash('sha256').update(token).digest('hex')
+  // room_id·bot_id 는 프레임이 주장하는 값을 그대로 쓴다 — 증명이 묶인 방과 프레임이 말하는
+  // 방이 다르면 대조가 어긋나야 하기 때문이다 (REQ-GWAUTH-007, AC-GWAUTH-009).
+  const expected = createHmac('sha256', key).update(`${nonce}|${msg.room_id}|${msg.bot_id}`).digest('hex')
+  return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(msg.proof, 'hex'))
+}
+
 export function createGatewayClient(input: GatewayClientOpts): GatewayClient {
   const opts = input
   let socket: WebSocket | null = null
@@ -56,16 +72,32 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient {
     // 세션 확립 상태는 소켓 하나에 붙는다 (REQ-CHANAUTH-003). connect() 호출마다 새로 만들어지므로
     // 재접속하면 미확립으로 되돌아간다 — 상태를 클로저로 올리면 한 번 확립된 뒤 게이트가 영구히 열린다 (plan.md §H).
     let established = false
+    // 거절 상태도 소켓 지역이다 — established 와 별개 플래그다. 클로저로 올리면 한 번 거절당한
+    // 뒤 재접속이 영원히 막힌다 (plan.md §F M3-3).
+    let proofRejected = false
+    // 논스는 connect() 마다 새로 만든다 — 소켓 하나에 붙는다. 클로저로 올리면 한 소켓에서 관측된
+    // (nonce, proof) 쌍이 다음 소켓에서 그대로 통하므로 재생이 열린다 (REQ-GWAUTH-002, plan.md §D-4).
+    const nonce = randomBytes(32).toString('hex')
     ws.on('open', () => {
       backoff = 1000   // 짧게 끊겼다 붙기를 반복해도 대기가 자라지 않게 한다
-      ws.send(JSON.stringify({ type: 'hello', token: opts.token }))   // 첫 프레임은 곧 인증이다
+      ws.send(JSON.stringify({ type: 'hello', token: opts.token, nonce }))   // 첫 프레임은 곧 인증이다
     })
     ws.on('message', d => {
       // JSON 아닌 프레임 하나로 프로세스가 끝나지 않게 한다 — 리스너 안의 throw 는
       // uncaughtException 으로 올라가 재접속조차 없이 봇이 사라진다. 아래 error 핸들러와 같은 방향의 방어다.
       let msg: any
       try { msg = JSON.parse(String(d)) } catch { return }
+      // 이 SPEC 의 강제 지점 — t9 의 !established 게이트보다 앞이며 그 게이트와 독립이다 (REQ-GWAUTH-011·012).
+      // 거절 뒤에 버퍼에 이미 들어와 있던 프레임도 여기서 버려진다 — close() 가 디스패치를 앞지르지 못하기 때문이다.
+      if (proofRejected) return
       if (msg.type === 'welcome') {
+        if (!verifyProof(msg, nonce, opts.token)) {
+          // 플래그를 먼저 세우고, stderr 한 줄(stdout 은 MCP 전송 통로라 금지)을 내고, 그 다음에 닫는다 (REQ-GWAUTH-008).
+          proofRejected = true
+          console.error('minidiscord-channel: welcome 증명 대조 실패 — 세션을 확립하지 않고 소켓을 닫는다')
+          ws.close()
+          return
+        }
         established = true   // 세션이 섰다 — 이 프레임 자체는 종전대로 콜백에 넘긴다 (REQ-CHANAUTH-002)
         opts.onWelcome?.(msg)
       } else if (!established) {

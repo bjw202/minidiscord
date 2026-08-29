@@ -2,7 +2,14 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { WebSocketServer, WebSocket } from 'ws'
 import type { AddressInfo } from 'node:net'
+import { createHash, createHmac } from 'node:crypto'
 import { createGatewayClient, type GatewayClientOpts } from '../src/gateway-client.js'
+
+// 증명 계산 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
+// 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 이 하네스의 토큰 상수는 'tok123' 이다.
+const keyOf = (token: string) => createHash('sha256').update(token).digest('hex')
+const proofOf = (token: string, nonce: string, roomId: number, botId: number) =>
+  createHmac('sha256', keyOf(token)).update(`${nonce}|${roomId}|${botId}`).digest('hex')
 
 // 열어 둔 자원(서버·클라이언트)의 일괄 정리 목록. 등록 역순으로 닫는다.
 const cleanups: (() => void | Promise<void>)[] = []
@@ -38,7 +45,11 @@ function startServer(opts: { autoWelcome?: boolean } = {}): FakeServer {
       const m = JSON.parse(String(d))
       messages.push(m)
       if (autoWelcome && m.type === 'hello') {
-        ws.send(JSON.stringify({ type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 0 }))
+        // SPEC-GWAUTH-001: hello 에 논스가 실려 오면 그 논스로 증명을 계산해 welcome 에 싣는다 —
+        // 증명 없는 welcome 은 채널이 거절하므로(REQ-GWAUTH-006) 스텁 서버도 같은 규칙을 따라야 한다.
+        const welcome: Record<string, unknown> = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 0 }
+        if (typeof m.nonce === 'string') welcome.proof = proofOf(m.token, m.nonce, 1, 2)
+        ws.send(JSON.stringify(welcome))
       }
       for (const h of handlers) h(ws, m)
     })
@@ -99,18 +110,25 @@ async function connected(srv: FakeServer, over: Partial<GatewayClientOpts> = {})
 
 describe('gateway client', () => {
   // AC-CHANCLIENT-001 — 소켓이 열리면 hello 가 첫 프레임으로 나간다
+  // (v0.6.0 계약 개정, SPEC-GWAUTH-001 — hello 는 token 에 논스를 더한 정확히 세 필드다)
   it('sends hello with the token as the very first frame', async () => {
     const srv = startServer()
     await connected(srv)
-    expect(srv.messages[0]).toEqual({ type: 'hello', token: 'tok123' })
+    expect(Object.keys(srv.messages[0]).sort()).toEqual(['nonce', 'token', 'type'])
+    expect(srv.messages[0].token).toBe('tok123')
+    expect(srv.messages[0].nonce).toMatch(/^[0-9a-f]{64}$/)   // 값은 고정하지 않는다 — 무작위성은 011 이 소켓 간 대조로 잰다
   })
 
   // AC-CHANCLIENT-002 — welcome 을 손대지 않고 그대로 넘긴다
+  // (v0.6.0 계약 개정, SPEC-GWAUTH-001 — 증명 없는 welcome 은 거절되므로 통과 충실성을 재려면
+  //  이 하네스가 관측한 논스로 계산한 유효한 증명을 실어 보내야 한다. REQ-CHANCLIENT-003 은
+  //  증명 필드가 늘어난 뒤에도 유지된다)
   it('passes the welcome frame through untouched, extra fields included', async () => {
     const srv = startServer({ autoWelcome: false })   // 이 기준만 자기 welcome 하나를 직접 보낸다
     const got: any[] = []
     await connected(srv, { onWelcome: w => got.push(w) })
-    const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 42 }
+    const helloNonce = srv.messages.find(m => m.type === 'hello').nonce
+    const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 42, proof: proofOf('tok123', helloNonce, 1, 2) }
     srv.sockets[0].send(JSON.stringify(frame))
     await waitFor(() => got.length === 1)
     expect(got[0]).toEqual(frame)
@@ -284,9 +302,12 @@ describe('gateway client', () => {
   })
 
   // AC-CHANCLIENT-011 — 끊기면 대기 후 새 주소로 다시 붙는다
+  // (v0.6.0 계약 개정, SPEC-GWAUTH-001 — 재접속 hello 도 같은 세 필드다. 새 서버의 새 논스가
+  //  첫 소켓의 것과 다름이 곧 논스 재생성의 관측이다)
   it('waits then reconnects to the replaced opts.url and says hello again', async () => {
     const srv1 = startServer()
     const { client, sleeps } = await connected(srv1)
+    const nonce1 = srv1.messages.find(m => m.type === 'hello').nonce
 
     const srv2 = startServer()                          // 새 포트에 두 번째 서버
     client.opts.url = srv2.url()                        // 문자열 형태로 교체 (원본 계약의 노출 경로)
@@ -294,7 +315,9 @@ describe('gateway client', () => {
 
     await waitFor(() => srv2.messages.some(m => m.type === 'hello'))
     expect(sleeps[0]).toBe(1000)                        // 즉시 재시도가 아니라 1초를 기다렸다
-    expect(srv2.messages[0]).toEqual({ type: 'hello', token: 'tok123' })
+    expect(Object.keys(srv2.messages[0]).sort()).toEqual(['nonce', 'token', 'type'])
+    expect(srv2.messages[0].token).toBe('tok123')
+    expect(srv2.messages[0].nonce).not.toBe(nonce1)     // 소켓이 바뀌면 논스도 새로 만들어진다
   })
 
   // AC-CHANCLIENT-012 — 백오프가 두 배씩 늘고 상한에서 멈춘다
@@ -360,5 +383,20 @@ describe('gateway client', () => {
     await waitFor(() => control.sleeps.length >= 1)      // 대조군이 재접속 대기에 들어간 시점이 기준선
     expect(stopped.sleeps).toEqual([])                   // 멈춘 쪽은 대기조차 하지 않았다
     expect(stopped.client.send({ type: 'anything' })).toBe(false)
+  })
+
+  // AC-GWAUTH-015 — 증명을 실은 welcome 도 손대지 않고 그대로 넘긴다 (SPEC-GWAUTH-001).
+  // wire() 는 onWelcome 을 배선하지 않으므로 이 관측은 createGatewayClient 를 직접 쓰는
+  // 이 하네스에서만 성립한다 — AC-CHANCLIENT-002 와 별개로 이 SPEC 이 들이는 필드의 관측이다.
+  it('passes a proof-bearing welcome through untouched, proof field included', async () => {
+    const srv = startServer({ autoWelcome: false })
+    const got: any[] = []
+    await connected(srv, { onWelcome: w => got.push(w) })
+    // 이 하네스는 rogueGateway 가 아니므로 논스를 srv.messages 에서 읽는다 (nonceSeen 접근자 없음)
+    const helloNonce = srv.messages.find(m => m.type === 'hello').nonce
+    const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 42, proof: proofOf('tok123', helloNonce, 1, 2) }
+    srv.sockets[0].send(JSON.stringify(frame))
+    await waitFor(() => got.length === 1)
+    expect(got[0]).toEqual(frame)                        // proof 필드를 포함해 프레임 객체가 통째로 그대로
   })
 })

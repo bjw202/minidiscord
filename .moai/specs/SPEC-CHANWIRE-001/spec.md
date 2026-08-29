@@ -1,7 +1,7 @@
 ---
 id: SPEC-CHANWIRE-001
 title: "minidiscord 채널 배선 — MCP 채널 서버와 게이트웨이 클라이언트를 묶어 실행 가능한 봇 바이너리를 만든다"
-version: "0.5.0"
+version: "0.6.0"
 status: completed
 created: 2026-08-27
 updated: 2026-08-29
@@ -22,6 +22,7 @@ followup_cards: [t15, t16, t20]
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.6.0 | 2026-08-29 | **하네스 코드 착지에 맞춘 명세 갱신 (카드 `t15`, `SPEC-GWAUTH-001` M4 짝).** v0.5.0 이 예고한 하네스 코드가 착지했다 — `acceptance.md` 공통 하네스의 스텁(`gatewayStub`)이 이제 `hello` 의 `nonce` 를 읽어 `HMAC-SHA256(key = sha256Hex(token), msg = `${nonce}\|${room_id}\|${bot_id}`)` 를 `proof` 로 계산해 `welcome` 에 싣는다. 증명 계산 헬퍼(`keyOf`·`proofOf`)는 테스트 파일이 자체 정의하고 `src` 를 부르지 않는다(SPEC-GWAUTH-001 §3.5). **요구사항 14개·수용 기준 15개는 개수도 본문도 그대로다** — 바뀐 것은 하네스가 스텁 서버를 흉내 내는 방식뿐이며, `acceptance.md` 의 v0.5.0 블록 주석이 현재형으로 개정됐다. | manager-spec |
 | 0.5.0 | 2026-08-29 | **하네스 명세 주석 + 기준 본문 주 두 자리 (카드 `t15`, `SPEC-GWAUTH-001` 3회차 계획 감사 R-06).** ① `acceptance.md` 공통 하네스의 스텁이 **증명 없는 `welcome`** 을 보낸다 — `SPEC-GWAUTH-001` 착지 후 채널이 거절하므로 이 하네스를 쓰는 기준이 전부 확립에 실패한다. **이 블록은 `channel/test/index-wiring.test.ts:47` 의 명세 원본**이며, 고칠 형태와 시점(그 SPEC 의 M4)을 주석으로 명시했다. ② AC-CHANWIRE-014 의 Then 2번이 `{ type: 'hello', token: 'tok' }` 를 리터럴로 적는다 — 착지 후 `nonce` 가 붙어 **세 필드**가 되므로 그 사실을 주로 달았다. **단언 형태는 바뀌지 않는다** — 그 기준이 재는 것은 «스텁이 hello 를 받았는가» 이지 필드 집합이 아니다. **요구사항·수용 기준은 개수도 본문도 그대로다.** | manager-spec |
 | 0.4.0 | 2026-08-28 | **주입 방어 결합 개정 (카드 `t10`, `SPEC-CHANINJECT-001` v0.1.0 §3.2).** v0.3.0 이 §5 에 «미해소» 로 기록한 **F-03(High, 이력 렌더링 위조와 커서 오염)** 의 소유자가 정해졌고, 그 SPEC 이 요구하는 계약 변경을 여기서 받아 적는다. **REQ-CHANWIRE-012**: 이력 렌더링이 줄 형식 `#<id> [<created_at>] <author_name>: <body>` + 개행 잇기에서 **구조화 JSON `{cursor, messages[]}`** 으로 바뀌었다. 개행 이스케이프는 `JSON.stringify` 의 성질이 되고, 커서는 배열 밖 `cursor` 필드에서만 나온다. **§6 제약과 §5 두 자리**의 옛 형식 리터럴도 함께 정정했다 — 이 프로젝트가 이미 세 번 재현한 «본체를 고치고 참조 자리를 놓친다» 부류를 피하기 위해 형식 리터럴이 적힌 자리를 전건 훑었다. 그 귀결로 형제 회귀 기준 **두 건이 깨진다** — `channel/test/index-wiring.test.ts:207`(AC-CHANWIRE-007)·`:217`(AC-CHANWIRE-008). 둘 다 «수정» 이 아니라 «개정» 이며 개정 전 실패 원문은 `SPEC-CHANINJECT-001` AC-CHANINJECT-014 전이 **2b** 가 실행으로 남긴다. **`'(기록 없음)'` 을 버린 사유**는 결과 타입이 갈리면 커서가 다시 텍스트 추측으로 돌아가기 때문이다(`SPEC-CHANINJECT-001/spec.md` §3.2). **요구사항 14개·수용 기준 15개는 개수 그대로다.** | manager-spec |
 | 0.3.0 | 2026-08-27 | **sync 감사 마감 라운드 (F-06).** `.moai/reports/t4/sync-audit.md` 가 수신 갈래에서 Medium 1건을 실행으로 재현했다 — `gateway-client` 가 `onMessage` 를 await 하지 않으므로 `pushChatMessage` 의 거부를 아무도 받지 않고, MCP 상대가 먼저 끊긴 뒤 채팅 **한 건**이 도착하면 처리되지 않은 거부로 프로세스가 끝난다(`P5_EXIT=1`). Claude Code 세션이 `/clear` 되거나 재시작되는 것은 일상적인 사건이다. 무게가 큰 이유는 **같은 카드 안에서 같은 위험을 한쪽만 막았다**는 점이다 — 판정 갈래는 `.catch(() => {})` 로 막혀 있고 AC-CHANPERM-009 가 그것을 검증까지 하는데, 수신 갈래는 `plan.md` §D 5번이 위험을 인지하고도 방어도 기준도 두지 않았다. 수용된 갭이 아니라 내부 비일관이다. **REQ-CHANWIRE-014 와 AC-CHANWIRE-015 를 신설해 닫았다** — AC-CHANPERM-009 의 수신 경로 짝이며, 관측 도구도 같은 `unhandledRejection` 수집이다(변이 `M-F06 revert rejection swallow` 로 조준 확인, 이 테스트 한 건만 실패). 요구사항 13개 → **14개**, 수용 기준 14개 → **15개**(Tier M 상한 16/16 안). 함께 커버리지 제외 사유 정정(F-10)과 미해소 결함 F-03(이력 렌더링 위조)을 §5 에 기록했다 — **F-03 은 이 카드에서 고치지 않았다.** | manager-spec |

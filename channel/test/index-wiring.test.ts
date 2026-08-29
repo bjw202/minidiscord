@@ -2,12 +2,19 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { WebSocketServer, WebSocket } from 'ws'
 import { spawn } from 'node:child_process'
+import { createHash, createHmac } from 'node:crypto'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { AddressInfo } from 'node:net'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { wire } from '../src/index.js'
+
+// 증명 계산 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
+// 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 스텁의 토큰 상수는 'tok' 다.
+const keyOf = (token: string) => createHash('sha256').update(token).digest('hex')
+const proofOf = (token: string, nonce: string, roomId: number, botId: number) =>
+  createHmac('sha256', keyOf(token)).update(`${nonce}|${roomId}|${botId}`).digest('hex')
 
 // 열어 둔 자원(WS 서버·게이트웨이 클라이언트·MCP 관찰자)의 일괄 정리 목록. 등록 역순으로 닫는다.
 const cleanups: (() => Promise<void> | void)[] = []
@@ -44,7 +51,13 @@ function gatewayStub() {
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       sent.push(m)
-      if (m.type === 'hello') ws.send(JSON.stringify({ type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' }))
+      if (m.type === 'hello') {
+        // SPEC-GWAUTH-001: hello 의 논스로 증명을 계산해 싣는다 — 증명 없는 welcome 은 거절되므로
+        // 이 하네스를 쓰는 기준들은 스텁 서버가 같은 규칙을 따라야 세션을 확립한다.
+        const welcome: Record<string, unknown> = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' }
+        if (typeof m.nonce === 'string') welcome.proof = proofOf(m.token, m.nonce, 1, 2)
+        ws.send(JSON.stringify(welcome))
+      }
       for (const h of hooks) h(ws, m)
     })
   })

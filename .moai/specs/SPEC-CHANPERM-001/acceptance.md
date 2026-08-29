@@ -146,7 +146,7 @@ function gatewayStub() {
 const REQ: Params = { request_id: 'abcde', tool_name: 'Bash', description: 'Run shell command', input_preview: 'ls -la' }
 ```
 
-> **v0.6.0 — 이 하네스는 `SPEC-GWAUTH-001` 착지 시 증명을 계산해야 한다 (카드 `t15`).** 위 스텁이 보내는 `welcome` 에는 증명(`proof`)이 없고, 그 SPEC 이 착지하면 채널이 **증명 없는 `welcome` 을 거절**하므로(REQ-GWAUTH-006·008) 이 하네스를 쓰는 기준이 전부 세션 확립에 실패한다. **이 블록은 그 코드의 명세 원본이다** — 실제 코드(`channel/test/permission-relay.test.ts:86`)는 `SPEC-GWAUTH-001` `plan.md` §F M4 가 고치며, **이 문서도 그때 함께 고쳐야 한다.** 고칠 형태: `hello` 의 `nonce` 를 읽어 `HMAC-SHA256(key = sha256Hex(token), msg = `${nonce}|${room_id}|${bot_id}`)` 를 `proof` 로 실어 보낸다. 이 SPEC 의 요구사항·수용 기준은 **하나도 바뀌지 않는다** — 바뀌는 것은 하네스가 스텁 서버를 흉내 내는 방식뿐이다.
+> **v0.7.0 — 이 하네스는 이제 증명을 계산해 싣는다 (`SPEC-GWAUTH-001` M4 짝, 카드 `t15`).** 채널은 **증명 없는 `welcome` 을 거절**하므로(REQ-GWAUTH-006·008), 위 스텁은 `hello` 의 `nonce` 를 읽어 `HMAC-SHA256(key = sha256Hex(token), msg = `${nonce}|${room_id}|${bot_id}`)` 를 `proof` 로 계산해 `welcome` 에 실어 보낸다. 증명 계산 헬퍼(`keyOf`·`proofOf`)는 이 테스트 파일이 자체 정의하고 `src` 의 구현을 부르지 않는다 — 사본이 함께 틀려도 기준이 그것을 알아채지 못하게 하려는 의도다(SPEC-GWAUTH-001 §3.5). **이 블록은 그 코드의 명세 원본이다** — 실제 코드(`channel/test/permission-relay.test.ts:93`)가 이 설명과 함께 착지했다. 이 SPEC 의 요구사항·수용 기준은 **하나도 바뀌지 않았다** — 바뀐 것은 하네스가 스텁 서버를 흉내 내는 방식뿐이다.
 
 `requests` 배열과 `verdicts` 배열이 이 문서의 두 관측창이다. **부정 관측**(무언가 일어나지 **않았음**)은 전부 이 두 배열의 길이로 잰다 — `tick()` 으로 전달 시간을 준 뒤에도 배열이 그대로면 그 경로를 타지 않은 것이다.
 

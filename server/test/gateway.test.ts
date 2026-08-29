@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { randomBytes } from 'node:crypto'
+import { createHash, createHmac, randomBytes } from 'node:crypto'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import WebSocket from 'ws'
@@ -71,12 +71,12 @@ function cursorOf(roomId: number, botId: number): number {
 type Inbox = { queue: any[]; waiters: { resolve: (m: any) => void; timer: NodeJS.Timeout }[] }
 const inboxes = new WeakMap<WebSocket, Inbox>()
 
-function wsConnect(port: number, token: string): Promise<{ ws: WebSocket; welcome: any }> {
+function wsConnect(port: number, token: string, extra: object = {}): Promise<{ ws: WebSocket; welcome: any }> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
     const inbox: Inbox = { queue: [], waiters: [] }
     inboxes.set(ws, inbox)
-    ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', token })))
+    ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', token, ...extra })))
     ws.on('message', data => {
       const msg = JSON.parse(String(data))
       if (msg.type === 'welcome') { resolve({ ws, welcome: msg }); return }
@@ -124,6 +124,13 @@ function expectNoMessage(ws: WebSocket, ms = 400): Promise<void> {
 function closedPromise(ws: WebSocket): Promise<void> {
   return new Promise(r => ws.on('close', () => r()))
 }
+
+// SPEC-GWAUTH-001 기준의 독립 증명 계산. 구현이 쓰는 코드(sha256Hex)를 부르지 않고
+// node:crypto 로 스스로 계산한다 — 공유하면 규칙이 함께 틀려도 기준이 알아채지 못한다
+// (acceptance.md §공통 테스트 하네스, spec.md §3.5 — 사본은 의도된 것이다).
+const keyOf = (token: string): string => createHash('sha256').update(token).digest('hex')
+const proofOf = (token: string, nonce: string, roomId: number, botId: number): string =>
+  createHmac('sha256', keyOf(token)).update(`${nonce}|${roomId}|${botId}`).digest('hex')
 
 describe('gateway', () => {
   // AC-GW-001 — 토큰이 방과 봇을 결정하고, 경로는 /bot 뿐이다
@@ -836,5 +843,81 @@ describe('gateway', () => {
 
     await app.close()
     delete process.env.MINIDISCORD_DATA_DIR
+  })
+
+  // AC-GWAUTH-001 — 증명은 논스·방·봇에 묶이고 저장된 해시를 열쇠로 한다
+  it('welcome carries a proof bound to the nonce, room and bot, keyed on the stored token hash', async () => {
+    const { app, port } = await build()
+    const roomA = seedRoom('A'), roomB = seedRoom('B')
+    const pm = seedBot('pm'), qa = seedBot('qa')
+    // invite() 는 평문 토큰을 돌려주고 해시만 저장한다 — 증명 열쇠 후보는 이 해시뿐이다.
+    const tokenA = invite(roomA, pm)
+    const tokenB = invite(roomB, qa)
+
+    const n1 = randomBytes(32).toString('hex')
+    const n2 = randomBytes(32).toString('hex')
+    const a = await wsConnect(port, tokenA, { nonce: n1 })
+    const b = await wsConnect(port, tokenB, { nonce: n2 })
+    // 각 증명은 테스트가 독립 계산한 값과 정확히 같다. 열쇠가 저장 해시가 아니면(평문 토큰,
+    // room_id 문자열 등) 여기서 깨진다 — 상수 증명도 두 토큰 대조에서 깨진다.
+    expect(a.welcome.proof).toBe(proofOf(tokenA, n1, roomA, pm))
+    expect(b.welcome.proof).toBe(proofOf(tokenB, n2, roomB, qa))
+    expect(a.welcome.proof).not.toBe(b.welcome.proof)
+
+    // 같은 토큰·방·봇이라도 논스가 바뀌면 증명이 달라진다 — 논스 의존의 실측.
+    const n3 = randomBytes(32).toString('hex')
+    const again = await wsConnect(port, tokenA, { nonce: n3 })
+    expect(again.welcome.proof).toBe(proofOf(tokenA, n3, roomA, pm))
+    expect(again.welcome.proof).not.toBe(a.welcome.proof)
+
+    a.ws.close(); b.ws.close(); again.ws.close()
+    await app.close()
+  })
+
+  // AC-GWAUTH-002 — 논스 없는 hello 도 환영받고, 그 환영에는 증명이 없다
+  it('a hello without a nonce is still welcomed, and that welcome carries no proof', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const token = invite(room, pm)
+
+    // nonce 없이 — wsConnect 의 기존 hello 프레임 그대로다.
+    const { ws, welcome } = await wsConnect(port, token)
+    // 접속이 닫히지 않았다 — welcome 뒤 왕복 하나가 실제로 성립하는 것으로 잰다 (REQ-GWAUTH-004).
+    ws.send(JSON.stringify({ type: 'history_request', rid: 'alive', limit: 1 }))
+    const res = await nextMessage(ws)
+    expect(res.rid).toBe('alive')
+    // 증명 키의 부재 — undefined 만이 아니라 키 집합에서 아예 없어야 한다. 키 집합 전체를
+    // toEqual 로 재면 다른 이름의 필드가 조용히 늘어도 잡힌다.
+    expect(Object.keys(welcome).sort()).toEqual(['bot_id', 'bot_name', 'missed_after_id', 'room_id', 'type'])
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-GWAUTH-003 — 어떤 프레임도 평문 토큰이나 저장 해시를 싣지 않는다
+  it('no frame ever carries the plaintext token or its stored hash', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), pm = seedBot('pm')
+    const token = invite(room, pm)
+    // 재전송 프레임을 하나 심는다 — welcome 만 받으면 «어떤 프레임도» 을 재지 못한다.
+    const msgId = db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', '재전송 대상')").run(room).lastInsertRowid as number
+    db.prepare('INSERT INTO message_targets (message_id, bot_id, delivery) VALUES (?, ?, ?)').run(msgId, pm, 'to')
+
+    const nonce = randomBytes(32).toString('hex')
+    const { ws, welcome } = await wsConnect(port, token, { nonce })
+    // welcome 과 재전송 프레임을 전부 모은다 — 더 오지 않을 때까지 기다린다.
+    const frames: any[] = [welcome]
+    try { for (;;) frames.push(await nextMessage(ws, 300)) } catch { /* 타임아웃 — 프레임이 끝났다 */ }
+    // 대조군: 관측 집합이 실재한다 — welcome 과 재전송 message 가 실제로 도착했다.
+    expect(frames[0].type).toBe('welcome')
+    expect(frames.some(f => f.type === 'message')).toBe(true)
+    // 부재 측정에는 포함 검사가 정확하다 — 이 테스트만 .includes 를 쓴다 (acceptance.md).
+    // 두 값 모두 64자 hex 라 우연 일치는 실질적으로 없다.
+    const wire = frames.map(f => JSON.stringify(f)).join('')
+    expect(wire.includes(token)).toBe(false)
+    expect(wire.includes(keyOf(token))).toBe(false)
+
+    ws.close()
+    await app.close()
   })
 })

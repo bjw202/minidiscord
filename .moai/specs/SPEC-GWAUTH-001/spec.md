@@ -2,7 +2,7 @@
 id: SPEC-GWAUTH-001
 title: "게이트웨이 상호 인증 — 논스·HMAC 증명으로 welcome 위조를 닫는다"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-08-29
 updated: 2026-08-29
 author: manager-spec

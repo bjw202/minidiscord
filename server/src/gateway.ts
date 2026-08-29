@@ -1,6 +1,6 @@
 // 봇 게이트웨이: 채널 플러그인의 WebSocket 접속 창구 (spec 6장)
 import { WebSocketServer, WebSocket } from 'ws'
-import { randomUUID } from 'node:crypto'
+import { createHmac, randomUUID } from 'node:crypto'
 import { copyFileSync, statSync, realpathSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import type { FastifyInstance } from 'fastify'
@@ -61,7 +61,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
   }
 
   async function handleWsMessage(ws: WebSocket, msg: any): Promise<void> {
-    if (msg?.type === 'hello') return handleHello(ws, msg.token)
+    if (msg?.type === 'hello') return handleHello(ws, msg.token, msg.nonce)
     const info = conns.get(ws)
     // hello 로 인증되지 않은 접속의 어떤 메시지도 처리하지 않는다 — 닫는 것으로 끝낸다 (REQ-GW-003)
     if (!info) throw new Error('not authenticated')
@@ -85,19 +85,28 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
 
   // 토큰 조회 → 등록 → last_seen_at 갱신 → welcome → 커서 이후 재전송 → 커서 갱신 (REQ-GW-001·005)
   // 방과 봇은 요청이 아니라 토큰이 결정한다 — 해시로 bot_tokens 를 조회해 역방향으로 얻는다 (spec 9장)
-  function handleHello(ws: WebSocket, token: unknown): void {
+  function handleHello(ws: WebSocket, token: unknown, nonce: unknown): void {
+    // 조회에 쓴 해시를 뽑아 둔다 — 증명의 열쇠는 평문 토큰이 아니라 이 저장 해시다 (SPEC-GWAUTH-001 §2.2).
+    // 서버는 평문을 저장하지 않으므로 평문을 열쇠로 한 HMAC 은 이 자리에서 계산할 수 없다.
+    const keyHex = sha256Hex(String(token ?? ''))
     const row = db.prepare(
       `SELECT t.id AS token_row_id, t.room_id, t.bot_id, t.last_delivered_id, b.name AS bot_name
        FROM bot_tokens t JOIN rooms r ON r.id = t.room_id JOIN bots b ON b.id = t.bot_id
        WHERE t.token_hash = ? AND t.revoked_at IS NULL AND r.status = 'active'`,
-    ).get(sha256Hex(String(token ?? ''))) as
+    ).get(keyHex) as
       | { token_row_id: number; room_id: number; bot_id: number; last_delivered_id: number; bot_name: string }
       | undefined
     // 없는 해시·철회된 토큰·보관된 방은 전부 이 한 곳에서 걸러진다 (REQ-GW-002)
     if (!row) { dropConn(ws); return }
     conns.set(ws, { roomId: row.room_id, botId: row.bot_id, tokenRowId: row.token_row_id })
     db.prepare("UPDATE bot_tokens SET last_seen_at=datetime('now') WHERE id=?").run(row.token_row_id)
-    send(ws, { type: 'welcome', room_id: row.room_id, bot_id: row.bot_id, bot_name: row.bot_name, missed_after_id: row.last_delivered_id })
+    // 논스가 실린 hello 에만 증명을 싣는다 (REQ-GWAUTH-003). 없으면 종전 welcome 그대로 —
+    // 그 이유로 접속을 끊지 않는다(REQ-GWAUTH-004). 방·봇은 요청이 아니라 토큰이 결정한 DB 값이다.
+    const welcome: Record<string, unknown> = { type: 'welcome', room_id: row.room_id, bot_id: row.bot_id, bot_name: row.bot_name, missed_after_id: row.last_delivered_id }
+    if (typeof nonce === 'string') {
+      welcome.proof = createHmac('sha256', keyHex).update(`${nonce}|${row.room_id}|${row.bot_id}`).digest('hex')
+    }
+    send(ws, welcome)
     // 놓친 메시지 재전송: 그 봇이 타깃인 메시지 중 같은 방의 커서 이후 것을 번호 오름차순으로
     const missed = db.prepare(
       `SELECT m.*, t.delivery FROM message_targets t JOIN messages m ON m.id = t.message_id
