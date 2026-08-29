@@ -380,7 +380,7 @@ $ git status --porcelain
 | 귀속 기준선 | HEAD `4222a5520e229e621ecd882f166b37ea5b58975b`(짧게 `4222a55`), 워크트리 `.claude/worktrees/t13`, 브랜치 `WT-coverage-tool`. 측정 전후로 HEAD 불변, 소스 세 파일 해시 불변 |
 | sync 감사 판정 | `sync-auditor --deep` → **PASS 85.2** (Functionality 92 / Security 88 / Craft 80 / Consistency 82, 가중 조화평균) · **차단 0건** · 보고서 `.moai/reports/t13/sync-audit.md` |
 | 감사 지적 반영 | 비차단 3건(F-03·F-04·F-05)을 이 트리에서 정정했다 — ① `CHANGELOG.md` 의 «CI 배선이 없다» 를 «커버리지를 부르는 CI 가 없다» 로 좁혔다(`.github/workflows/label-sync.yml` 과 `.git_hooks/pre-commit` 이 실재한다는 감사 실측을 이 단계가 `ls`·`head` 로 재확인) ② 계약 단언 개수를 «일곱» → «여덟» 로 고치고 열거 순서를 계약 테스트의 주석 번호(`1·2·3·3b·4·5·6·7`)와 같은 묶음으로 재정렬했다 ③ 아래 Residual-risk 의 `AC-001` 등장 횟수를 «한 번» → «두 번(`:222`·`:299`)» 으로 고쳤다(`grep -n` 으로 직접 재확인). **차단 아님이었으나 운영자가 이 카드에서 닫기로 확정한 F-01 은 코드 강화로 종결했다** — 아래 «이 카드에서 닫은 것» 절 |
-| sync_commit_sha | pending-backfill-sync |
+| sync_commit_sha | 1cd94ad1809618b2563ba06392a54ad4524c177c |
 
 ### 재실행 검증 — 명령과 관측 원문
 
