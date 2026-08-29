@@ -2,9 +2,9 @@
 id: SPEC-CHANWIRE-001
 title: "minidiscord 채널 배선 — MCP 채널 서버와 게이트웨이 클라이언트를 묶어 실행 가능한 봇 바이너리를 만든다"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-08-27
-updated: 2026-08-28
+updated: 2026-08-29
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "channel-wiring, mcp-bridge, gateway-client, reply-tool, fetch-history, status-report, stateless-binary"
 tier: M
 depends_on: [SPEC-CHANNEL-001, SPEC-CHANCLIENT-001]
+followup_cards: [t15, t16, t20]
 ---
 
 # SPEC-CHANWIRE-001 — 채널 배선 (`channel/src/index.ts`)

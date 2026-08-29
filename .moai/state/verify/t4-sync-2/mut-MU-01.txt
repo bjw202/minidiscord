@@ -1,0 +1,40 @@
+MUTATION MU-01 - F-01a welcome gate
+file: channel/src/gateway-client.ts
+old: '} else if (!established) {'
+new: '} else if (false) {'
+build_exit=0 test_exit=1
+FAILING TESTS (5):
+  x test/transport-auth.test.ts > transport auth > an endpoint that never sends welcome cannot inject a verdict or a chat message
+  x test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+  x test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect
+  x test/transport-auth.test.ts > transport auth > gated frames leave no unhandled rejection and do not stop the client
+  x test/transport-auth.test.ts > transport auth > a gated frame raises neither an unhandled rejection nor an uncaught exception
+
+--- tail ---
++         "chat_id": "1",
++         "delivery": "to",
++         "sender": "admin",
++       },
++     },
++   },
++ ]
+
+ ❯ test/transport-auth.test.ts:272:19
+    270|     expect(await uncaught()).toEqual([])       // ← 오늘 아무도 지켜 주지 않는 조항
+    271|     expect(verdicts).toEqual([])
+    272|     expect(notes).toEqual([])
+       |                   ^
+    273|     expect(stub.connections()).toBe(1)          // 소켓이 끊기지 않았다
+    274|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose
+
+RESTORE: sha_match=True git_diff_clean=True rebuild_exit=0

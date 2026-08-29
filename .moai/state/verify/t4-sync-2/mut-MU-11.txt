@@ -1,0 +1,36 @@
+MUTATION MU-11 - M4-successor claude/channel capability
+file: channel/src/channel-server.ts
+old: "          'claude/channel': {},              "
+new: '          '
+build_exit=0 test_exit=1
+FAILING TESTS (1):
+  x test/channel-server.test.ts > channel server > declares both channel experimental capabilities in the initialize response
+
+--- tail ---
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/channel-server.test.ts:190:46
+    188|     const experimental = (caps as any).experimental
+    189|     expect(experimental).toBeDefined()
+    190|     expect('claude/channel' in experimental).toBe(true)
+       |                                              ^
+    191|     expect('claude/channel/permission' in experimental).toBe(true)
+    192|     expect(caps!.tools).toBeDefined()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose
+
+RESTORE: sha_match=True git_diff_clean=True rebuild_exit=0

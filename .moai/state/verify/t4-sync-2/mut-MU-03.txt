@@ -1,0 +1,37 @@
+MUTATION MU-03 - F-01a/F-07 non-loopback wss enforcement
+file: channel/src/index.ts
+old: "  return u.protocol === 'wss:'"
+new: '  return true'
+build_exit=0 test_exit=1
+FAILING TESTS (2):
+  x test/transport-auth.test.ts > transport auth > decides transport by scheme and host in every branch, loopback included
+  x test/transport-auth.test.ts > transport auth > the entry point refuses a plaintext remote and connects otherwise
+
+--- tail ---
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/transport-auth.test.ts:317:59
+    315|     await settle()
+    316|     expect(stubA.connections()).toBe(0)
+    317|     expect(a.stderr().split('\n').filter(Boolean).length).toBe(1)
+       |                                                           ^
+    318|     expect(a.stdout()).toBe('')                 // REQ-CHANAUTH-004 — …
+    319|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose
+
+RESTORE: sha_match=True git_diff_clean=True rebuild_exit=0

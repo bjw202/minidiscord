@@ -1,0 +1,36 @@
+MU-01 | F-01a welcome gate | exit=1 fails=5 restore_ok=True diff_clean=True
+      x test/transport-auth.test.ts > transport auth > an endpoint that never sends welcome cannot inject a verdict or a chat message
+      x test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+      x test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect
+      x test/transport-auth.test.ts > transport auth > gated frames leave no unhandled rejection and do not stop the client
+      x test/transport-auth.test.ts > transport auth > a gated frame raises neither an unhandled rejection nor an uncaught exception
+MU-02 | F-01a emitted-set verdict gate | exit=1 fails=4 restore_ok=True diff_clean=True
+      x test/permission-relay.test.ts > permission relay > relays a verdict only for an id it actually emitted, exactly once
+      x test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed
+      x test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped
+      x test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first
+MU-03 | F-01a/F-07 non-loopback wss enforcement | exit=1 fails=2 restore_ok=True diff_clean=True
+      x test/transport-auth.test.ts > transport auth > decides transport by scheme and host in every branch, loopback included
+      x test/transport-auth.test.ts > transport auth > the entry point refuses a plaintext remote and connects otherwise
+MU-04 | F-02 envelope neutralization | exit=1 fails=2 restore_ok=True diff_clean=True
+      x test/channel-server.test.ts > channel server > neutralizes channel envelope sequences in the body, the author name and the file path
+      x test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+MU-05 | F-03 history body neutralization | exit=1 fails=1 restore_ok=True diff_clean=True
+      x test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+MU-06 | F-03 cursor from id max (not body text) | exit=1 fails=2 restore_ok=True diff_clean=True
+      x test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+      x test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+MU-07 | F-04 trust-boundary instruction sentences | exit=1 fails=1 restore_ok=True diff_clean=True
+      x test/channel-server.test.ts > channel server > states the trust boundary and keeps every pre-existing instruction fragment
+MU-08 | F-05 JSON.parse try/catch | exit=1 fails=1 restore_ok=True diff_clean=True
+      x test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one
+MU-09 | F-06 pushChatMessage rejection swallow | exit=1 fails=1 restore_ok=True diff_clean=True
+      x test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection
+MU-10 | F-11 inner stopped guard in retry() | exit=0 fails=0 restore_ok=True diff_clean=True
+MU-11 | M4-successor claude/channel capability | exit=1 fails=1 restore_ok=True diff_clean=True
+      x test/channel-server.test.ts > channel server > declares both channel experimental capabilities in the initialize response
+MU-12 | F-14 room membership on message POST | exit=1 fails=4 restore_ok=True diff_clean=True
+      x test/room-members.test.ts > room membership gates > refuses a non-member send with no trace while a member send succeeds
+      x test/room-members.test.ts > room membership gates > never lets a non-member approve, and leaves the request for a member to answer
+      x test/room-members.test.ts > room membership gates > gives a non-member byte-identical answers for missing, active and archived rooms
+      x test/room-members.test.ts > room membership gates > moves every gated route together for one person, before and after the invitation

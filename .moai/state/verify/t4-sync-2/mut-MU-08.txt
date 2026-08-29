@@ -1,0 +1,36 @@
+MUTATION MU-08 - F-05 JSON.parse try/catch
+file: channel/src/gateway-client.ts
+old: '      try { msg = JSON.parse(String(d)) } catch { return }'
+new: '      msg = JSON.parse(String(d))'
+build_exit=0 test_exit=1
+FAILING TESTS (1):
+  x test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one
+
+--- tail ---
+       |                  ^
+     68|       if (msg.type === 'welcome') {
+     69|         established = true   // 세션이 섰다 — 이 프레임 자체는 종전대로 콜백에 넘긴다 (REQ-C…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage ../node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage ../node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData ../node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop ../node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write ../node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+
+This error originated in "test/gateway-client.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "drops a malformed frame and keeps processing the next valid one". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose
+
+RESTORE: sha_match=True git_diff_clean=True rebuild_exit=0

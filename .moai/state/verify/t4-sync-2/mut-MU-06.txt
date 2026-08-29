@@ -1,0 +1,37 @@
+MUTATION MU-06 - F-03 cursor from id max (not body text)
+file: channel/src/index.ts
+old: '      const cursor = messages.length > 0 ? Math.max(...messages.map(m => m.id)) : null'
+new: '      const cursor = null'
+build_exit=0 test_exit=1
+FAILING TESTS (2):
+  x test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+  x test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+
+--- tail ---
+AssertionError: expected null to be 42 // Object.is equality
+
+- Expected:
+42
+
++ Received:
+null
+
+ ❯ test/index-wiring.test.ts:294:22
+    292|     })
+    293|     const h = parsedHistory(await obs.callTool({ name: 'fetch_history'…
+    294|     expect(h.cursor).toBe(42)            // id 최댓값이지 본문의 999999 가 아니다
+       |                      ^
+    295|     expect(Object.keys(h).sort()).toEqual(['cursor', 'messages'])   //…
+    296|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose
+
+RESTORE: sha_match=True git_diff_clean=True rebuild_exit=0

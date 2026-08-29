@@ -2,9 +2,9 @@
 id: SPEC-CHANCLIENT-001
 title: "minidiscord 게이트웨이 클라이언트 — 채널 플러그인이 봇 게이트웨이에 붙어 있게 하는 WebSocket 배관"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-08-27
-updated: 2026-08-28
+updated: 2026-08-29
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -14,6 +14,7 @@ tags: "websocket-client, gateway-handshake, reconnect-backoff, rid-matching, his
 tier: M
 depends_on: [SPEC-CHANNEL-001]
 related_specs: [SPEC-GATEWAY-001, SPEC-CHANWIRE-001, SPEC-CHANPERM-001]
+followup_cards: [t15, t16, t20]
 ---
 
 # SPEC-CHANCLIENT-001 — 게이트웨이 클라이언트 (채널 쪽)

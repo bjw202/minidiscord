@@ -1,0 +1,7 @@
+      if (msg.type === 'welcome') {
+        established = true   // 세션이 섰다 — 이 프레임 자체는 종전대로 콜백에 넘긴다 (REQ-CHANAUTH-002)
+        opts.onWelcome?.(msg)
+      } else if (!established) {
+        // welcome 전에 온 message·verdict·history_response 는 어떤 콜백에도 넘기지 않고 버린다 (REQ-CHANAUTH-001).
+        // 예외도 버퍼링도 없다 — 버퍼링하면 확립 전 주입이 확립 후에 되살아나 게이트가 무의미해진다.
+      } else if (msg.type === 'message') opts.onMessage?.(msg)

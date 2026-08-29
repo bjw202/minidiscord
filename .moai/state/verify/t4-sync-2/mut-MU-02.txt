@@ -1,0 +1,39 @@
+MUTATION MU-02 - F-01a emitted-set verdict gate
+file: channel/src/channel-server.ts
+old: 'if (!emitted.has(v.request_id)) return'
+new: 'if (false) return'
+build_exit=0 test_exit=1
+FAILING TESTS (4):
+  x test/permission-relay.test.ts > permission relay > relays a verdict only for an id it actually emitted, exactly once
+  x test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed
+  x test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped
+  x test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first
+
+--- tail ---
++     "method": "notifications/claude/channel/permission",
++     "params": {
++       "behavior": "allow",
++       "request_id": "req-0000",
++     },
++   },
++ ]
+
+ ❯ test/permission-relay.test.ts:349:22
+    347|     handle.handlePermissionVerdict({ request_id: id(0), behavior: 'all…
+    348|     await tick()
+    349|     expect(verdicts).toEqual([])
+       |                      ^
+    350|
+    351|     handle.handlePermissionVerdict({ request_id: id(128), behavior: 'a…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t4/channel
+npm error command failed
+npm error command sh -c vitest run --reporter=verbose
+
+RESTORE: sha_match=True git_diff_clean=True rebuild_exit=0
