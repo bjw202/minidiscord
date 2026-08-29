@@ -1,0 +1,13 @@
+
+> test
+> vitest run web-shell.test.ts
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t5/server
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  17:50:38
+   Duration  704ms (transform 58ms, setup 0ms, import 26ms, tests 219ms, environment 392ms)
+

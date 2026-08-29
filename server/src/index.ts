@@ -1,7 +1,9 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import cookie from '@fastify/cookie'
 import multipart from '@fastify/multipart'
+import fastifyStatic from '@fastify/static'
 import { mkdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { openDb, type Db } from './db.js'
 import { registerAuthRoutes, requireAuth } from './auth.js'
 import { registerRoomRoutes } from './routes-rooms.js'
@@ -59,6 +61,12 @@ export async function buildServer(): Promise<FastifyInstance> {
     app.hub.subscribe(Number((req.params as { id: string }).id), reply.raw)
   })
   app.addHook('onClose', async () => app.db.close())
+  // 정적 서빙 — 모든 API 라우트가 등록된 뒤에 맨 끝에 붙인다 (REQ-WEBSHELL-001, plan.md §D 7).
+  // prefix '/' 가 와일드카드 GET 을 만드므로, API 보다 앞서 등록되면 API 가 정적 응답으로 가려진다.
+  await app.register(fastifyStatic, {
+    root: process.env.MINIDISCORD_WEB_DIR ?? fileURLToPath(new URL('../../web', import.meta.url)),
+    prefix: '/',
+  })
   return app
 }
 
