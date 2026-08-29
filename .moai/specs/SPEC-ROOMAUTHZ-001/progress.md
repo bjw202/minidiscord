@@ -133,9 +133,58 @@ SqliteError: no such table: schema_migrations
 
 **수용 기준**: AC-ROOMAUTHZ-008·009·010(양)·011·012(양)·013·017·018(양) PASS — verbose `✓` 11건 이름 단위(구현 에이전트 verbose 원문 + 레인 전체 재실행에서 room-members 파일 20/20 관측).
 
+**커밋 게이트 우회 1건 (기록 의무):** M3 커밋 시 pre-commit `moai gate` 가 `npm test` 전체 초록을 요구해 첫 시도가 막혔다. M3 종료 시점의 형제 26건 실패는 plan §F M3 4번이 못 박은 예정 상태(«전체 초록»은 M4 의 조건)이므로, 훅 자체가 안내하는 `SKIP_MOAI_PRECOMMIT=1` 로 우회해 커밋했다. 테스트를 고치거나 지워 초록을 만든 것이 아니며, 전체 초록 회복은 M4 단계 5 가 증명한다.
+
 **하네스 단계적 추가 (카드 (e) 추적용):** M3 에서 `listen`/`port`/`cleanups`·`signUpOn`·`makeBot`/`botInvite`/`botInviteList`/`botInviteRevoke`/`archiveRoom`/`postMsg`/`listMsg`/`openStream`/`invite` 와 `routes-events` import 가 보태졌다 — 공통 하네스의 나머지 전부. (M1: 스키마 부분집합 → M2: 메시지 라우트+multipart+브로커 데코레이트 → M3: 완성.)
 
+### M4 — 형제 하네스 교정과 문서 개정 (2026-08-29)
+
+기준: HEAD `64c56ce`. 하네스 수리·34-moment·양방향 대조는 구현 에이전트 관측(원문 인용), 최종 GREEN·타입·범위는 레인 독립 재실행.
+
+**34-moment (구현 에이전트 관측, 사본 교체 직후·수리 전):** `npm test -w server -- --reporter=verbose` → `Tests  34 failed | 90 passed (124)` — **§D.4 기준선 34와 정확히 일치, 목록 밖 실패 0건.** 원문: `.moai/state/verify/t11-run1/m4-transition-34-verbose.txt`. §D.3.1 의 8건이 사본 교체 순간 합류해 26→34 로 전이함이 실측됐다 — M3 대조 기록의 «원인 규명»이 예측대로 검증됨.
+
+**하네스 수리 (구현 에이전트 수행, 레인이 verbose 통과로 확인):** `messages.test.ts` seed() 에 alice 멤버 행 삽입+둘째 방에도 멤버 행, AC-MSG-012 대조군 단언 `!== 401` → `=== 200` 으로 축소(F-13 근거 주석, 소스에서 세 라우트 성공 코드 200 확인 후). `permissions.test.ts` seedRoomAndBot() 멤버 행+사본 라우트 → `registerEventRoute`. `sse.test.ts` 사본 라우트 → `registerEventRoute`, 신규 `memberRoom(app)` 헬퍼로 실제 방+멤버로 스트림 오픈(임의 `1` 제거), `:192` buildServer 판은 실제 `POST /api/rooms` 로 방 생성. 테스트 삭제 0, 단언 추가·재배열 0(축소 1건 제외).
+
+**AC-ROOMAUTHZ-014 보강 (레인 지시로 동일 에이전트가 추가):** 테스트가 어디에도 없었던 것을 레인이 발견 — acceptance.md 본문 그대로 `room-members.test.ts` 에 이식. 보존 판정(봇 경로 무변경)이라 M3 이전엔 잴 것이 없어 born-green 이 정상 — 근거 주석을 테스트 위에 둠. 레인 독립 관측: `✓ test/room-members.test.ts > room membership gates > leaves the bot gateway path untouched by room membership`.
+
+**§6 표 양방향 대조 (구현 에이전트 실행·판정, 레인이 명령과 결론 대조 확인):**
+
+- 파일→표: `grep -rn "SPEC-ROOMAUTHZ-001" .moai/specs/ .moai/plan/` (자기 디렉터리 제외) → **35 히트, 전부 §6 표 행에 사상 — 고아 주석 0, 표 완결.** 25행 전부 주석이 디스크에 존재(3차 계획 개정이 착지시킨 것) + progress.md 두 건 말미 추가.
+- 표→파일: 전 행 **참 판정.** 근거(이번 실행 실측): 아홉 술어 소비부 존재(`routes-messages.ts:32·:128`, `routes-events.ts:13`, `routes-rooms.ts:15-18`, `permissions.ts:53`, `routes-bots.ts:50·70·82`, `routes-rooms.ts:47`); D2 v2 문장이 SPEC-BOT-001 :49·:178 에 읽힘(1차 주석의 뒤집힌 문장은 그 뒤에 2차 반전 주석이 붙어 교정 이력 상태); REQ-PERM-004 시그니처가 `permissions.ts:16` 과 일치; «첨부 라우트는 여전히 열려 있다»가 실제로 참(`routes-messages.ts:147`·`routes-rooms.ts:67` requireAuth 만). 판정 대상은 존재가 아니라 참임 — N-01 교훈 이행.
+
+**경계 검사 (AC-ROOMAUTHZ-015, 구현 에이전트 실행):** `git rev-parse --verify "$(cat .spec-base-sha)^{commit}"` → `018e7db4…` 종료 0(빈 출력 아님 확인) → `git diff --name-only <base> -- web/ channel/` 빈 출력, `-- server/` 12파일 전부 이 SPEC 소속. (워크트리 가드가 `$(cat …)` 복합형을 거부해 SHA 리터럴로 동일 검사 — 동치.)
+
+**레인 독립 최종 GREEN (직접 관측):** `npm test -w server -- --reporter=verbose` → 종료 코드 **0**, `Tests  125 passed (125)`. 원문: `.moai/state/verify/t11-run1/m4-green-verbose.txt`. `npm run typecheck -w server` → 종료 **0**. 변경 범위: 테스트 4파일 + progress.md.
+
+**완료 정의(§G) 대응:** AC-ROOMAUTHZ-001..018 전부 통과(125/125 안에 이름 단위 관측) · typecheck 0 · §6 표 전부 개정 주석+원문 보존(양방향 참) · AC-MSG-012·AC-PERM-009 전제 변경 주석 · **잔여 위험(첨부 `GET /api/attachments/:id`, 보관 `POST /api/rooms/:id/archive`)은 run-done.md 로 리드에 후속 카드 요청과 함께 보고** · 보관 라우트 알려진 미준수는 spec.md §7·§9 에 이름으로 존재(어느 AC 도 통과로 판정하지 않음).
+
+**미검증 (명시):** 34-moment·양방향 대조·경계 검사의 원문은 구현 에이전트 관측 인용이다 — 레인은 최종 GREEN(125/125)·타입·범위·AC-014 라인을 직접 재관측했고, 대조 결론은 명령·숫자·파일 경로를 대조해 확인했다. SSE 수리 테스트의 프레임 단언은 본문 불변(페이로드 동일)을 에이전트가 보고했다 — 레인이 줄 단위로 재대조하진 않았다.
+
+**하네스 단계적 추가 (카드 (e) 추적용) — 최종:** M1 스키마 부분집합 → M2 메시지 라우트+multipart+브로커 데코레이트 → M3 공통 하네스 완성(`listen`/`port`/`cleanups`·`signUpOn`·봇/SSE 헬퍼·`routes-events` import) → M4 형제 하네스 수리+`memberRoom` 신설. 공통 하네스는 이 SPEC 안에서 4단계에 걸쳐 완성됐다.
+
 ## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-29
+requirements_implemented: 17        # REQ-ROOMAUTHZ-001..017
+acceptance_criteria_pass: 18        # AC-ROOMAUTHZ-001..018 — 125/125 스위트 안에서 이름 단위 관측
+commits:
+  - 9b0e619   # M1 room_members table, created_by, one-shot backfill
+  - 9ace4c9   # M2 membership predicate, creator auto-join, invitation route
+  - 64c56ce   # M3 eight gates (26-failure interim state, gate override documented)
+  - <m4>      # M4 sibling harness repair + AC-014 + two-way doc verification (this commit)
+final_suite: 125/125 exit 0 (verbose)   # .moai/state/verify/t11-run1/m4-green-verbose.txt
+typecheck: exit 0
+comparison_record: §E.2 M3 절 — AC-ROOMAUTHZ-016 본체 (26 일치 / 8 원인 규명 / 0 목록 밖; 34-moment 로 예측 실증)
+followup_card_request: GET /api/attachments/:id + POST /api/rooms/:id/archive 게이트 (spec.md §9 잔여 위험 — run-done.md 로 리드 보고)
+known_deviations:
+  - M3 커밋 시 SKIP_MOAI_PRECOMMIT=1 우회(예정된 26건 실패 상태 — §E.2 M3 절 기록)
+  - plan §D.4 표 분모 합계 102 vs 실측 104(분자 34 기준선 무영향 — §E.2 M3 절 기록)
+  - registerEventRoute 단일 인자 시그니처(구현 판단, AC-010 buildServer 판이 통과로 검증)
+open_observations:
+  - .moai/state/verify/t4-sync-audit/probe-inject.test.ts 잔재(루트 vitest 실행 시 로드 오류) — 리드 판단 사항, run-done.md 보고
+```
 
 _<pending run-phase>_
 

@@ -688,4 +688,20 @@ describe('room membership gates', () => {
     expect(`${archivedForOutsider.statusCode}|${archivedForOutsider.body}`)
       .toBe(`${missingForOutsider.statusCode}|${missingForOutsider.body}`)
   })
+
+  // AC-ROOMAUTHZ-014 — 봇의 길은 바뀌지 않았다 (plan.md §F M4 수용 기준). 보존 감시다 —
+  // 봇 경로의 인가가 M1~M3 의 멤버십 작업으로 변하지 않았음을 재는 것이므로 착지 즉시 초록이 맞다
+  // (RED 불요). M3 이전에 쓰면 게이트도 없어 아무것도 재지 못했으므로, M4 의 형제 하네스 교정과
+  // 함께 심는다. 본문은 acceptance.md 의 시나리오 코드를 그대로 옮겼다
+  it('leaves the bot gateway path untouched by room membership', async () => {
+    const { app, gateway, port, alice } = await build()
+    const roomId = await createRoom(app, alice.cookie)
+    const { botId, token } = seedBot(roomId)
+    const ws = await wsConnect(port, token)                      // 토큰만으로 접속된다
+
+    // 봇은 사람이 아니므로 멤버 표에 들어가지 않는다 — 그래도 전달은 된다
+    expect(memberCount(roomId)).toBe(1)                          // alice 하나뿐
+    expect(gateway.sendToBot(roomId, botId, { type: 'ping' })).toBe(true)
+    expect(await nextMessage(ws)).toEqual({ type: 'ping' })
+  })
 })
