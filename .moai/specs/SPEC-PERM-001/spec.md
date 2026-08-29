@@ -182,6 +182,8 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker
 - **방 멤버십 검사**. 이 시스템에는 멤버십 모델 자체가 없다 — 스키마에 소유자·멤버 컬럼이 없고, `spec-v2.md` 2장이 방별 접근 권한을 YAGNI 로 배제했다. 이 SPEC 이 거는 경계는 REQ-PERM-012 의 로그인 검사와 REQ-PERM-011 의 방 대조 두 가지다.
 
   > **개정 (2026-08-29, `SPEC-ROOMAUTHZ-001`).** 위 항목은 **더 이상 범위 밖이 아니다.** "검사할 대상이 없다"는 근거가 사라졌다 — `SPEC-ROOMAUTHZ-001` 이 스키마에 멤버 표를 만들고 메시지 POST·GET, SSE 구독, 판정 수용 네 곳에 게이트를 걸었다. 발단은 `.moai/reports/t4/sync-audit.md` §F-14 이며, 리드 판정은 그 카드(`t11`)에서 났다. 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
+
+  > **2차 개정 (2026-08-29, `SPEC-ROOMAUTHZ-001` / 카드 `t11` — D2 v2).** 위 1차 주석의 열거 «네 곳»이 더 이상 완전하지 않다. 운영자가 D2 를 확대해 봇 초대 라우트 셋이 더해졌고, 게이트는 **여덟 곳**이다 — 메시지 `POST`·`GET /api/rooms/:id/messages`, SSE 구독(`GET /api/rooms/:id/events`), 방 목록(`GET /api/rooms`), 판정 수용, 그리고 `POST`·`GET /api/rooms/:id/invites` 와 `DELETE /api/rooms/:id/invites/:botId`(REQ-ROOMAUTHZ-017). 1차 주석은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
 - **미응답 타임아웃**. 원본에는 타이머가 없다. 아무도 답하지 않으면 대기 항목은 서버가 재시작할 때까지 남고, 세션 쪽 대화상자도 그대로 열려 있어 터미널에서 직접 승인할 수 있다. 타임아웃을 넣으려면 "만료된 요청에 어떤 `behavior` 를 보낼 것인가"를 채널 계약 차원에서 정해야 하는데, 그것은 Global Constraints 가 금지한 계약 변경이다.
 - **봇 연결 해제 시 대기 항목 정리**. 원본 게이트웨이의 `ws.on('close')` 는 연결 목록에서만 지우고 대기 레지스트리는 건드리지 않는다. 이 SPEC 은 그 상태에서 **관측 가능한 결과**만 확정한다 — 판정 전송이 실패하고, 그 사실이 system 메시지에 드러난다(REQ-PERM-009). 봇이 재접속했을 때 놓친 승인 요청을 재전송하는 복구 흐름은 만들지 않는다.
 

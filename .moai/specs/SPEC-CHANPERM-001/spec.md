@@ -208,6 +208,13 @@ Claude Code 에서 `notifications/claude/channel/permission_request` 알림이 �
 
 ### Out of Scope — 서버 쪽 방 인가 (감사 F-14, 미해소)
 
+> **개정 (2026-08-29, `SPEC-ROOMAUTHZ-001` / 카드 `t11`).** 이 절의 제목과 본문 두 곳이 뒤집힌다.
+>
+> 1. **제목의 「미해소」가 더 이상 참이 아니다.** F-14 는 `SPEC-ROOMAUTHZ-001` 이 소유하며 카드 `t11` 에서 닫힌다 — 방 구성원 표(`room_members`), 생성자 컬럼(`rooms.created_by`), 멤버십 술어(`requireRoomMember`), 그리고 메시지 POST·GET·이벤트 스트림·방 목록·판정 수용·봇 초대 라우트 셋에 걸리는 게이트가 그 SPEC 의 산출물이다.
+> 2. **본문이 인용한 grep 이 결과를 낸다.** `grep -rn 'room_members\|membership\|requireMember' server/src` → 결과 없음 은 그 SPEC 이전의 관측이며, 착지 이후에는 여러 줄이 나온다.
+>
+> 아래 두 항목(`routes-messages.ts` 의 멤버십 검사, `permissions.ts` 의 판정 수락 조건 좁히기)은 각각 REQ-ROOMAUTHZ-008·REQ-ROOMAUTHZ-012 로 이행된다. **이 SPEC 의 범위가 아니라는 결론은 그대로 유효하다** — 서버 쪽 인가 모델이고, 채널이 다룰 층이 아니다. 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
+
 `.moai/reports/t4/sync-audit.md` 의 F-14(High)는 **승인 권한이 방 참가와 무관하다**는 점을 지적했다 — 방 멤버십 개념이 코드베이스에 존재하지 않고(`grep -rn 'room_members\|membership\|requireMember' server/src` → 결과 없음), `request_id` 는 서버 스스로 방의 system 메시지로 공개하므로, **서버에 계정이 있는 누구나** 아무 방이나 열어 대기 중인 `request_id` 를 읽고 대신 승인해 줄 수 있다.
 
 - `server/src/routes-messages.ts` 의 메시지 POST 에 방 멤버십 검사를 더하는 일
