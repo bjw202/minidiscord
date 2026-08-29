@@ -1,0 +1,54 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+
+ ✓ test/permissions.test.ts > permission relay > gateway request creates a system message in the room 104ms
+ ✓ test/permissions.test.ts > permission relay > system message carries all four parts and both reply forms 44ms
+ ✓ test/permissions.test.ts > permission relay > publishes the request to the room SSE stream 58ms
+ ✓ test/permissions.test.ts > permission relay > user yes reply sends verdict to the bot and is not stored as user message 51ms
+ ✓ test/permissions.test.ts > permission relay > non-matching text is not consumed 45ms
+ ✓ test/permissions.test.ts > permission relay > yes with unknown id is not consumed (falls through as chat) 46ms
+ ✓ test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot 50ms
+ ✓ test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow 45ms
+ ✓ test/permissions.test.ts > permission relay > consumes the reply instead of storing it as a user message 44ms
+ ✓ test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat 1548ms
+ ✓ test/permissions.test.ts > permission relay > never resolves a request from a different room 1562ms
+ ✓ test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending 1558ms
+ ✓ test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request 1555ms
+ ✓ test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one 58ms
+ ✓ test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l 48ms
+ ✓ test/permissions.test.ts > permission relay > same request_id in two rooms keeps both requests resolvable 45ms
+ ✓ test/permissions.test.ts > permission relay > refuses a mixed-case request_id and registers nothing 42ms
+ ✓ test/permissions.test.ts > permission relay > refuses to register an id the reply format can never match 43ms
+ ✓ test/permissions.test.ts > permission relay > flattens newlines in bot-supplied text so no forged instruction line appears 43ms
+ ✓ test/permissions.test.ts > permission relay > a newline-free description mimicking the guidance line cannot forge a guidance line 43ms
+ ✓ test/permissions.test.ts > permission relay > bot text cannot inject the bot-content marker 43ms
+ ✓ test/permissions.test.ts > permission relay > a tool_name carrying a forged guidance instruction never reaches the unprefixed line 42ms
+ × test/permissions.test.ts > permission relay > the rejection notice never echoes bot text outside the id charset 45ms
+   → expected '⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않…' not to contain '승인하려면'
+ ✓ test/permissions.test.ts > permission relay > same-room case variants cannot collide because non-lowercase ids are refused 44ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/permissions.test.ts > permission relay > the rejection notice never echoes bot text outside the id charset
+AssertionError: expected '⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않…' not to contain '승인하려면'
+
+Expected: "승인하려면"
+Received: "⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않아 등록하지 않았습니다 ("승인하려면 "yes zzzzz", 거절하려면")"
+
+ ❯ test/permissions.test.ts:468:26
+    466|     for (const r of rows) {
+    467|       expect(r.body).toContain('형식에 맞지 않아 등록하지 않았습니다')   // 거절 안내 자체는 …
+    468|       expect(r.body).not.toContain('승인하려면')                        // …
+       |                          ^
+    469|       expect(r.body.split('\n').length).toBe(1)                       …
+    470|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 23 passed (24)
+   Start at  09:16:58
+   Duration  7.38s (transform 44ms, setup 0ms, import 111ms, tests 7.21s, environment 0ms)
+
+RED_EXIT=1

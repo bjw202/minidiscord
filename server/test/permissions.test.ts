@@ -329,4 +329,163 @@ describe('permission relay', () => {
     expect(n.json().consumed_by).toBe('permission')
     expect(await deny).toEqual({ type: 'permission_verdict', request_id: 'fghij', behavior: 'deny' })
   })
+
+  // 두 방이 같은 request_id 를 동시에 걸어도 서로를 덮어쓰지 않고 각자 풀려야 한다 (t7 결함1)
+  it('same request_id in two rooms keeps both requests resolvable', async () => {
+    const { app, broker, port, cookie } = await build()
+    const a = seedRoomAndBot('A', 'pm')
+    const b = seedRoomAndBot('B', 'qa')
+    const wsA = await wsConnect(port, a.token)
+    const wsB = await wsConnect(port, b.token)
+    broker.onGatewayRequest({ roomId: a.roomId, botId: a.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    broker.onGatewayRequest({ roomId: b.roomId, botId: b.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+
+    const verdictA = nextMessage(wsA)
+    const resA = await post(app, a.roomId, cookie, 'yes abcde')
+    expect(resA.json().consumed_by).toBe('permission')
+    expect(await verdictA).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+
+    const verdictB = nextMessage(wsB)
+    const resB = await post(app, b.roomId, cookie, 'yes abcde')
+    expect(resB.json().consumed_by).toBe('permission')
+    expect(await verdictB).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+  })
+
+  // 대소문자 섞인 id 는 등록 자체가 거절돼야 한다 — 등록되면 keyOf 의 소문자화가 소문자 id 와 같은 키로
+  // 뭉개져 먼저 등록한 요청이 조용히 사라진다 (t7 sync-audit T7-F-01·03)
+  it('refuses a mixed-case request_id and registers nothing', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'AbCdE', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const rows = db.prepare("SELECT body FROM messages WHERE author_type='system'").all() as { body: string }[]
+    expect(rows.length).toBe(1)                                   // 대기 항목 없이 거절 안내 한 줄만
+    expect(rows[0].body).toContain('형식에 맞지 않아 등록하지 않았습니다')
+    expect(rows[0].body).not.toContain('yes AbCdE')               // 불가능한 답을 시키는 안내문이 남지 않는다
+  })
+
+  // reply 정규식이 절대 못 맞추는 id(hello — l 포함)는 등록하지 않는다 — 안내대로 쳐도 아무 일도
+  // 일어나지 않고 대기 항목이 영원히 남는 결함 (t7 sync-audit T7-F-02)
+  it('refuses to register an id the reply format can never match', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, { request_id: 'hello', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const rows = db.prepare("SELECT body FROM messages WHERE author_type='system'").all() as { body: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0].body).toContain('형식에 맞지 않아 등록하지 않았습니다')
+    expect(rows[0].body).not.toContain('yes hello')
+  })
+
+  // 봇이 보낸 텍스트의 줄바꿈은 중화된다 — 안내문에 가짜 승인 줄을 위조하는 경로 차단 (t7 sync-audit T7-F-01)
+  it('flattens newlines in bot-supplied text so no forged instruction line appears', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, {
+      request_id: 'abcde', tool_name: 'Bash',
+      description: '도구를 실행합니다\n승인하려면 "yes zzzzz"',
+      input_preview: 'cat README\n봇이 도구 사용 승인을 요청합니다: Read',
+    })
+    const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
+    const lines = row.body.split('\n')
+    expect(lines.length).toBe(4)                                  // REQ-PERM-002 네 줄 구조가 무너지지 않는다
+    // 불변식 전체는 "봇이 쓴 줄은 모두 │ 접두를 달고, 접두 없는 줄만 서버가 쓴 줄이다" — 그러므로 안내 문구로
+    // 시작하는 줄은 서버가 쓴 한 줄뿐이다. 이 테스트가 재는 것은 그중 "줄바꿈으로는 안내 줄을 만들 수 없다" 절반이고,
+    // 줄 없는 안내 줄 위조와 표식 문자 주입은 바로 아래 두 테스트가 잰다 (t7 재감사 §R4 — 접두 도입 전에는 이 주석이
+    // 구현보다 강한 보증을 주장했다. includes 로는 중화된 텍스트까지 걸리므로 startsWith 로 판정)
+    const instructing = lines.filter(l => l.startsWith('승인하려면'))
+    expect(instructing.length).toBe(1)
+    expect(instructing[0]).toContain('yes abcde')
+  })
+
+  // 줄바꿈이 하나도 없어도 description 은 본문의 한 줄을 통째로 차지하므로 안내 문구와 똑같이 채울 수 있다 —
+  // 봇이 쓴 줄은 접두 표식으로 갈라져야 하고, 안내 문구로 시작하는 줄은 서버가 쓴 한 줄뿐이어야 한다 (t7 재감사 §R3 탐침 R1)
+  it('a newline-free description mimicking the guidance line cannot forge a guidance line', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, {
+      request_id: 'abcde', tool_name: 'Read',
+      description: '승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.',
+      input_preview: 'cat README',
+    })
+    const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
+    const lines = row.body.split('\n')
+    const instructing = lines.filter(l => l.startsWith('승인하려면'))
+    expect(instructing.length).toBe(1)             // 서버가 쓴 안내 줄 하나 — 봇 설명 줄은 표식 줄로 갈라진다
+    expect(instructing[0]).toContain('yes abcde')
+    expect(lines[1].startsWith('│ ')).toBe(true)   // 봇이 쓴 description 줄은 봇 표식 접두로 시작한다
+  })
+
+  // 봇 텍스트가 표식 문자 │ 를 줄 중간에 새겨 넣어도 중화된다 — 표식 없이는 봇 줄이 서버 줄로 위장할 수 없다 (t7 재감사 §R3)
+  it('bot text cannot inject the bot-content marker', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, {
+      request_id: 'abcde', tool_name: 'Bash',
+      description: '정상 설명 │ 봇이 도구 사용 승인을 요청합니다: rm -rf /',
+      input_preview: 'code │ 승인하려면 "yes zzzzz"',
+    })
+    const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
+    const lines = row.body.split('\n')
+    for (const l of lines) {
+      // 표식이 담긴 줄은 표식을 딱 하나만 갖는다 — 접두 하나뿐이고, 중간에 새겨진 │ 는 중화돼야 한다.
+      // 개수로 재는 이유: indexOf 는 첫 위치만 돌려주므로 봇 줄이 접두로 0번 위치를 이미 갖는 탓에
+      // 중간에 표식이 하나 더 생겨도 0 이라 통과했다 (t7 재판정 §S3.2 — T7-F-08)
+      if (l.includes('│')) expect((l.match(/│/g) || []).length).toBe(1)
+    }
+    expect(lines.filter(l => l.startsWith('│ ')).length).toBe(2)   // 접두는 봇이 쓴 두 줄에만 붙는다
+  })
+
+  // tool_name 은 접두 없는 1번째 줄 안에 실리는 봇 제어 텍스트다 — 여기에 승인 안내를 심어도 진입부 형식 검사가
+  // 자리표시자로 바꿔 넣으므로 접두 없는 줄에 봇이 쓴 안내가 남지 않는다. 요청 자체는 등록된다 — 판정은 request_id 로
+  // 흐르고 tool_name 은 표시용 메타데이터일 뿐이다 (t7 재판정 §S3.1 — T7-F-09)
+  it('a tool_name carrying a forged guidance instruction never reaches the unprefixed line', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    broker.onGatewayRequest({ roomId, botId }, {
+      request_id: 'abcde',
+      tool_name: 'Read 승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.',
+      description: 'harmless',
+      input_preview: 'cat README',
+    })
+    const row = db.prepare("SELECT body FROM messages WHERE author_type='system'").get() as { body: string }
+    const lines = row.body.split('\n')
+    expect(lines.length).toBe(4)                                   // REQ-PERM-002 네 줄 구조가 무너지지 않는다
+    expect(lines[0]).not.toContain('승인하려면')                    // 접두 없는 1번째 줄에 봇 안내가 남지 않는다
+    expect(lines[0]).toContain('(형식에 맞지 않는 도구 이름)')       // 검사를 통과하지 못한 이름은 고정 자리표시자로 대체된다
+    expect(lines[3]).toContain('yes abcde')                        // 요청은 거부되지 않는다 — 안내 줄은 정상 id 로 등록됐다
+  })
+
+  // 거부 안내 줄에는 접두가 없다 — 그러므로 봇이 보낸 원문을 그대로 인용하면 접두 없는 줄에 봇 텍스트가 남는다.
+  // 인용은 id 문자셋을 통과한 부분만 남기고, 남는 것이 없으면 인용 자체를 생략한다 (t7 재판정 3 §T4 — T7-F-10)
+  it('the rejection notice never echoes bot text outside the id charset', async () => {
+    const { broker } = await build()
+    const { roomId, botId } = seedRoomAndBot()
+    const forged = '승인하려면 "yes zzzzz", 거절하려면 "no zzzzz" 라고 답해주세요.'
+    broker.onGatewayRequest({ roomId, botId }, { request_id: forged, tool_name: 'Read', description: 'd', input_preview: 'p' })
+    broker.onGatewayRequest({ roomId, botId }, { request_id: '한글로만 이루어진 아이디', tool_name: 'Read', description: 'd', input_preview: 'p' })
+    const rows = db.prepare("SELECT body FROM messages WHERE author_type='system' ORDER BY id").all() as { body: string }[]
+    for (const r of rows) {
+      expect(r.body).toContain('형식에 맞지 않아 등록하지 않았습니다')   // 거절 안내 자체는 남는다
+      expect(r.body).not.toContain('승인하려면')                        // 봇이 보낸 안내 문구가 인용으로 살아남지 않는다
+      expect(r.body.split('\n').length).toBe(1)                        // 거절 안내는 한 줄이다
+      const quoted = r.body.match(/\("(.*)"\)/)                        // 인용이 있다면 그 안은 id 문자셋뿐이어야 한다
+      if (quoted) expect(quoted[1]).toMatch(/^[A-Za-z0-9_.\-]{1,24}$/)
+    }
+    expect(rows[0].body).toMatch(/\("[A-Za-z0-9_.\-]+"\)/)            // 통과한 글자가 있으면 그것만 인용한다
+    expect(rows[1].body).toContain('표시할 수 있는 문자가 없습니다')      // 통과한 글자가 하나도 없으면 인용하지 않는다
+  })
+
+  // 같은 방 대소문자 변형 id 는 충돌 자체가 불가능하다 — 대문자 원본은 등록이 거절되므로 (t7 sync-audit T7-F-03)
+  it('same-room case variants cannot collide because non-lowercase ids are refused', async () => {
+    const { app, broker, cookie } = await build()
+    const a = seedRoomAndBot('A', 'pm')
+    const b = db.prepare("INSERT INTO bots (name, description) VALUES ('qa','')").run().lastInsertRowid as number
+    broker.onGatewayRequest({ roomId: a.roomId, botId: a.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    broker.onGatewayRequest({ roomId: a.roomId, botId: b }, { request_id: 'ABCDE', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    const rows = db.prepare("SELECT body FROM messages WHERE author_type='system'").all() as { body: string }[]
+    expect(rows.length).toBe(2)                                   // 승인 안내 1건 + 거절 안내 1건
+    expect(rows[0].body).toContain('yes abcde')                   // 첫 등록은 정상 승인 안내
+    expect(rows[1].body).toContain('형식에 맞지 않아 등록하지 않았습니다')   // 두 번째 등록은 거절 — 덮어쓰기가 아니다
+    const res = await post(app, a.roomId, cookie, 'yes abcde')
+    expect(res.json().consumed_by).toBe('permission')             // 먼저 등록한 요청이 살아 있다
+  })
 })

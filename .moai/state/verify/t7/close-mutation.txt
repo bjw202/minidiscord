@@ -1,0 +1,10 @@
+# 카드 마감 — T7-F-10 수정의 변이 감별 (sync 레인 직접 실행, 나무 단독 사용)
+
+## 변이 D — 문자셋 필터를 옛 oneLine 인용으로 되돌림
+```
+ × test/permissions.test.ts > permission relay > the rejection notice never echoes bot text outside the id charset 45ms
+   → expected '⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않…' not to contain '승인하려면'
+      Tests  1 failed | 23 passed (24)
+```
+복원 후 재실행:
+      Tests  24 passed (24)
