@@ -182,6 +182,7 @@ claude --dangerously-load-development-channels server:minidiscord-channel
 |---|---|
 | `npm run dev -w server` | 서버 실행 |
 | `npm test -w server` | 서버 테스트 실행 |
+| `npm run coverage -w server` | 서버 커버리지 측정 (라인 85% 미만이면 실패) |
 | `npm test` | 전체 워크스페이스 테스트 실행 |
 | `npm run typecheck -w server` | 타입 검사 (코드 실행 없이 타입만 확인) |
 | `npm run build -w channel` | 채널 플러그인 빌드 — `channel/dist/index.js`가 생깁니다 |

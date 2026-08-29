@@ -370,7 +370,74 @@ $ git status --porcelain
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+| 항목 | 값 |
+|------|-----|
+| 상태 | sync_status: audit-ready |
+| 산출물 | 문서 3 파일 — `CHANGELOG.md`(`[Unreleased]` 아래 «추가됨 — server 커버리지 도구 (카드 `t13`)» 절 신설, 기존 `t10` 절 **위**) · `README.md`(명령어 표에 `npm run coverage -w server` 한 행 추가) · `.moai/specs/SPEC-COVERAGE-001/progress.md`(이 §E.4). **더해서 코드 1 파일** — `server/test/coverage-contract.test.ts` (sync 감사 F-01 을 닫으며 단언 2 를 강화). **코드 산출물 «집합» 은 여전히 4 파일이며 늘지 않았다** — 그 파일은 이미 run 단계의 네 산출물 중 하나이므로, 변경 파일 목록을 다시 세도 네 줄 그대로다(이 단계가 AC-COVERAGE-005 관측 3 을 재실행해 확인: `package-lock.json` · `server/package.json` · `server/test/coverage-contract.test.ts` · `server/vitest.config.ts`). 달라진 것은 «집합의 크기» 가 아니라 «누가 손댔는가» 다 — 그래서 **「sync 단계는 문서만 건드렸다」는 서술은 이제 거짓**이고, 아래에서 그 취지의 문장을 전부 고쳤다 |
+| 상태 전이 | `spec.md` frontmatter `status: in-progress → completed`, `updated: 2026-08-29`, `version: 0.1.2 → 0.2.0` + HISTORY 한 행. `plan.md`·`acceptance.md`·`progress.md` 에는 frontmatter 블록 자체가 없어 전이할 필드가 없다(없는 필드를 새로 만들지 않았다) |
+| 검증 재실행 | run 단계의 숫자를 옮겨 적지 않고 이 트리에서 **다시 실행해** 같은 값이 나오는 것을 관측했다. 명령과 원문은 아래 표 |
+| 증거 디렉터리 | `.moai/state/verify/t13-sync/` (`typecheck.log` · `coverage.log` · `channel-test.log` · `hash-before.txt` · `hash-after.txt`) |
+| 귀속 기준선 | HEAD `4222a5520e229e621ecd882f166b37ea5b58975b`(짧게 `4222a55`), 워크트리 `.claude/worktrees/t13`, 브랜치 `WT-coverage-tool`. 측정 전후로 HEAD 불변, 소스 세 파일 해시 불변 |
+| sync 감사 판정 | `sync-auditor --deep` → **PASS 85.2** (Functionality 92 / Security 88 / Craft 80 / Consistency 82, 가중 조화평균) · **차단 0건** · 보고서 `.moai/reports/t13/sync-audit.md` |
+| 감사 지적 반영 | 비차단 3건(F-03·F-04·F-05)을 이 트리에서 정정했다 — ① `CHANGELOG.md` 의 «CI 배선이 없다» 를 «커버리지를 부르는 CI 가 없다» 로 좁혔다(`.github/workflows/label-sync.yml` 과 `.git_hooks/pre-commit` 이 실재한다는 감사 실측을 이 단계가 `ls`·`head` 로 재확인) ② 계약 단언 개수를 «일곱» → «여덟» 로 고치고 열거 순서를 계약 테스트의 주석 번호(`1·2·3·3b·4·5·6·7`)와 같은 묶음으로 재정렬했다 ③ 아래 Residual-risk 의 `AC-001` 등장 횟수를 «한 번» → «두 번(`:222`·`:299`)» 으로 고쳤다(`grep -n` 으로 직접 재확인). **차단 아님이었으나 운영자가 이 카드에서 닫기로 확정한 F-01 은 코드 강화로 종결했다** — 아래 «이 카드에서 닫은 것» 절 |
+| sync_commit_sha | pending-backfill-sync |
+
+### 재실행 검증 — 명령과 관측 원문
+
+| 명령 | 관측 |
+|------|------|
+| `npm run typecheck -w server` | 종료 `0` (`> tsc --noEmit`, 출력 없음) |
+| `npm run coverage -w server` | 종료 `0` · `Test Files  11 passed (11)` · `Tests  105 passed (105)` · `All files` 행 `% Stmts 96.5 \| % Branch 89.24 \| % Funcs 97.43 \| % Lines 97.01` · 커버리지 요약 `Statements : 96.5% ( 387/401 )` `Branches : 89.24% ( 166/186 )` `Functions : 97.43% ( 76/78 )` `Lines : 97.01% ( 325/335 )` · 파일별 `index.ts` 행 `82.35 \| 25 \| 83.33 \| 83.33 \| 66-72` |
+| `npm test -w channel` | 종료 `0` · `Test Files  5 passed (5)` · `Tests  70 passed (70)` — 형제 워크스페이스 무회귀 |
+| `npm ls @vitest/coverage-v8 -w server --depth=0` | 종료 `0` · `└─┬ @minidiscord/server@ -> ./server` / `  └── @vitest/coverage-v8@4.1.11` — 끌어올려진 사본이 아니라 **직접 자식**으로 나타난다 |
+| `shasum -a 256 server/vitest.config.ts server/package.json server/test/coverage-contract.test.ts` (측정 전후 2회) | 두 회 동일 — `8e1d6367…7dd7ea` · `93d66587…3431c` · `a70dec5f…ee866`. 측정이 트리를 오염시키지 않았다 |
+
+이 표의 `Lines 97.01% (325/335)` 는 §E.2 단계 3·5 와 `spec.md` §3 의 기준선과 같은 값이다 — run 단계의 관측이 이 트리에서 재현된다.
+
+### Gaps — 이 sync 단계가 관측하지 않은 것
+
+- **AC 여섯 건을 다시 판정하지 않았다.** AC-COVERAGE-001..006 의 PASS 근거는 §E.2 의 run 단계 원문이고, 이 단계가 재실행한 것은 품질 게이트 + 의존성 선언 + 오염 대조 + AC-COVERAGE-005 관측 3(변경 파일 목록)이다. **§E.2 의 임계 프로브(설정 `lines` 85→98 변이)와 회귀 짝 변이 셋(단언 1·6·3b 조준)은 재현하지 않았다** — 그 넷은 여전히 run 단계의 관측이다. 다만 **이 단계도 변이 프로브를 돌렸다**(F-01 우회 프로브 2종, 위 «이 카드에서 닫은 것»). 즉 「문서 동기화 단계는 트리를 변이시키지 않는다」는 처음의 판단은 F-01 을 이 카드에서 닫기로 하면서 **뒤집혔고**, 그 사실을 여기 남긴다.
+- **«라인 85 미만이면 커버리지 명령이 실패한다» 를 이 단계에서 관측하지 않았다.** 그 근거는 여전히 §E.2 단계 6 의 프로브 A' 와 단계 7 재프로브이며 이 단계의 관측이 아니다. 이 단계가 빨간불을 본 것은 **계약 테스트의 실패**(F-01 우회 프로브 2종, `npm test -w server` 종료 1)이지 **커버리지 임계 게이트의 실패**가 아니다 — 서로 다른 두 게이트이며 한쪽의 실증이 다른 쪽을 덮지 않는다.
+- **CI 배선의 «존재» 는 확인했으나 «동작» 은 관측하지 않았다.** 감사 지적(F-03)을 정정하며 `ls .github/workflows/` 와 `head .github/workflows/label-sync.yml` 로 워크플로 파일이 실재하고 `workflow_dispatch` + `push: main` 트리거를 가진 것까지는 확인했다. 그러나 **그 워크플로를 실제로 돌려 보지 않았고**, `.git_hooks/pre-commit` 이 `moai gate` 를 부르는 것도 감사 실측을 인용한 것이지 이 단계가 훅을 발화시켜 본 것은 아니다. 「커버리지 명령을 부르지 않는다」는 서술의 근거는 파일 내용이지 실행이 아니다.
+- **`CHANGELOG.md`·`README.md` 의 문장이 사실인지는 이 단계가 실행한 명령이 덮는 범위까지만 검증됐다.** 두 문서에 적힌 숫자는 전부 위 표에서 왔으나, 서술문(끌어올리기 메커니즘 설명, F-10 선례 인용, 회귀 짝이 무엇을 잠그는지)은 `spec.md`·`acceptance.md`·`server/vitest.config.ts` 를 읽어 옮긴 것이지 실행으로 잰 것이 아니다.
+- **`sync_commit_sha` 는 자리표시자다.** 커밋이 자기 SHA 를 모르는 물리적 한계이며, D3 관례대로 후속 백필 커밋이 채운다.
+
+### 이 카드에서 닫은 것 — sync 감사 F-01 (계약 테스트 우회 경로)
+
+**결정 근거.** F-01 은 감사 판정상 **비차단**이었고 이 단계는 처음에 후속 카드로 넘겼으나, **운영자가 2026-08-29 (리드 전달) 로 «이 카드에서 닫기» 를 확정**했다. 사유는 이 결함이 이 SPEC 이 §4.4 에서 스스로 막겠다고 선언한 부류(제외로 헤드라인을 예쁘게 만드는 일)의 **다른 입구**라는 것 — 카드를 넘기면 «막았다» 는 문서와 실제가 갈린 채로 닫힌다.
+
+**결함.** 단언 2 가 `expect(pkg.scripts.coverage).toMatch(/--coverage|coverage\.enabled/)` 라는 **포함 검사**여서, `coverage` 스크립트 뒤에 인자를 덧붙여도 정규식이 여전히 맞았다. 감사 실측: `--coverage.exclude=src/index.ts` 를 붙이면 스위트가 완전히 초록인 채 헤드라인이 `97.01% → 98.36%`, `FILE_COUNT=10`, `HAS_INDEX=false` 가 된다. `--coverage.thresholds.lines=0` 이면 임계 자체가 무력해진다. 설정 파일이 아니라 **스크립트 인자**를 통한 경로이므로 단언 4·5(임계값·제외 부재)는 이것을 잡지 못한다.
+
+**조치.** 단언 2 를 **완전 일치**로 좁혔다 — `expect(pkg.scripts.coverage).toBe('vitest run --coverage')`. 사유 주석 4줄을 단언 위에 붙였다. 항목을 더한 것이 아니라 기존 한 항목의 **형태**를 좁힌 것이므로 계약 항목 수는 여덟 그대로다.
+
+**실효 증거 (변이 프로브 2종).** 통과 관측만으로는 «단언이 살아 있다» 를 얻을 수 없으므로 우회를 실제로 시도했다.
+
+| 상태 | 명령 | 관측 |
+|------|------|------|
+| 강화 후 정상 | `npm test -w server` | 종료 `0` · `Test Files  11 passed (11)` · `Tests  105 passed (105)` |
+| 우회 프로브 1 — `coverage` 를 `"vitest run --coverage --coverage.exclude=src/index.ts"` 로 변이 | `npm test -w server` | 종료 **`1`** · `Test Files  1 failed \| 10 passed (11)` · `Tests  1 failed \| 104 passed (105)` · `AssertionError: expected 'vitest run --coverage --coverage.excl…' to be 'vitest run --coverage'` |
+| 우회 프로브 2 — `"vitest run --coverage --coverage.thresholds.lines=0"` 로 변이 | `npm test -w server` | 종료 **`1`** · `1 failed \| 104 passed` · `Received: "vitest run --coverage --coverage.thresholds.lines=0"` |
+| 되돌림 증명 | `shasum -a 256 server/package.json` · `git diff server/package.json` | 변이 전후 `93d66587…3431c` 일치, diff 빈 출력 |
+
+**두 프로브 모두 실패한 테스트는 계약 테스트 하나뿐**(`1 failed | 104 passed`)이다 — 나머지 104 개가 통과한 채이므로 비정상 종료를 이 단언 하나에 귀속할 수 있다. 로그: `.moai/state/verify/t13-sync/f01-green.log` · `f01-probe.log` · `f01-probe2.log`.
+
+**강화 후 최종 게이트.** `npm run typecheck -w server` 종료 `0` · `npm run coverage -w server` 종료 `0` (11 파일 / 105 테스트, `Lines : 97.01% ( 325/335 )`, All files Stmts 96.5 / Branch 89.24 / Funcs 97.43) · `npm test -w channel` 종료 `0` (5 파일 / 70 테스트, 형제 무회귀). 로그: `typecheck-final.log` · `coverage-final.log` · `channel-final.log`. **커버리지 수치는 강화 전후로 같다** — 단언을 좁힌 것이 측정 대상을 바꾸지 않았다는 뜻이다.
+
+### 후속 카드로 넘어가는 비차단 발견 (sync 감사)
+
+- **F-02 — `FILE_COUNT=11` 은 `server/src/` 의 파일 수와 정의상 같은 값이다.** 다음 카드가 소스 파일을 하나 더하면 AC-COVERAGE-002 가 거짓 실패하고, 그 실패는 «환경 탓» 으로 읽히기 쉽다. 갱신 의무는 파일을 더하는 카드에 있다(§E.2 Gaps 4 와 같은 항목이며, 감사가 «정의상 동치» 라는 성격을 명시했다).
+
+### Residual-risk
+
+- **문서가 게이트를 대신하지 않는다.** `README.md` 에 명령을 적는 것은 사람이 그것을 부르게 만들 확률을 높일 뿐이고, 부르지 않으면 임계는 여전히 조용하다. 커버리지를 부르는 CI 가 설 때까지 이 위험은 그대로다 — 워크플로 배선 자체(`.github/workflows/label-sync.yml`)와 pre-commit 훅(`moai gate`)은 이미 있으므로, 후속 카드가 할 일은 새 디렉터리가 아니라 기존 배선에 명령을 얹는 것이다.
+- **`acceptance.md` 안에 `AC-001` 이라는 축약 표기가 두 번 등장한다** — `acceptance.md:222` 와 `acceptance.md:299`(둘 다 REQ↔AC 대응 서술의 줄임말이며, `grep -n 'AC-001'` 로 두 자리를 직접 확인했다). 정식 식별자는 `AC-COVERAGE-001..006` 여섯 건이며, 기계적으로 AC 식별자를 세면 축약형까지 잡혀 7 로 읽힌다. 이 sync 단계는 축약형을 정정하지 않았다 — 본문 수정은 manager-docs 의 권한 밖이다. **정정하는 사람은 두 자리를 함께 고쳐야 한다**; 한 자리만 고치고 «정정했다» 고 적으면 그 기록이 다시 거짓이 되는 부류다.
+
+### 감사가 반증한 것 — 위험이 아니라 확인된 정상
+
+이 두 항목은 sync 단계가 처음에 소프트 스팟으로 적었으나, 감사가 실측으로 반증했다. 다음에 이 문서를 읽는 사람이 같은 의심을 반복하지 않도록 결론을 남긴다.
+
+- **`spec.md` §4.4 의 미커버 구간 표기 `66-68·71-72` 는 틀린 것이 아니라 리포터보다 정확하다.** `coverage-final.json` 원문이 미커버 구문의 시작줄을 `55,66,67,68,71,72` 로 내고, 69·70 행은 주석이라 애초에 계측 대상이 아니다. 텍스트 리포터가 출력하는 `66-72` 쪽이 **연속 범위로 접은 표시**다. 두 표기는 모순이 아니며 SPEC 본문을 고칠 이유가 없다.
+- **`plan.md`·`acceptance.md`·`progress.md` 에 frontmatter 가 없는 것은 반쪽 전이가 아니라 이 저장소의 관례다.** 감사가 `SPEC-AUTH-001`·`SPEC-CORE-001`·`SPEC-GATEWAY-001`·`SPEC-CHANINJECT-001` 을 확인한 결과 네 SPEC 모두 세 문서에 frontmatter 를 두지 않는다. `spec.md` 하나만 상태를 들고 있는 것이 정상 형태이며, 없는 필드를 새로 만들지 않은 이 단계의 처리가 관례에 맞다.
 
 ## §F Phase 4 Mode Selection
 
