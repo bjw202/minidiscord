@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
@@ -19,6 +20,7 @@
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.3.0",
     "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"

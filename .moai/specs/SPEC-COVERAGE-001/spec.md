@@ -2,7 +2,7 @@
 id: SPEC-COVERAGE-001
 title: "minidiscord server 커버리지 도구 — 측정 도구를 server 가 직접 선언하고, 85% 임계를 기계가 강제한다"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-08-29
 updated: 2026-08-29
 author: manager-spec
