@@ -123,7 +123,11 @@ EXIT=1
 
    F-01 이 지적한 처방과 **같은 문장**이며 현재형 Residual-risk 다. `progress.md` 는 manager-spec 소유가 아니고(§E.3/§E.4 는 manager-develop·manager-docs 소유) 이번 디스패치 범위에도 없어 손대지 않았다. **sync 가 `CHANGELOG.md:56`·`run-done.md:65` 를 맞출 때 함께 봐야 한다.**
 
+   > **각주 (sync 후속, 2026-08-29)**: 넘겨받은 이 항목은 **닫혔다.** sync 가 `progress.md:432`(§E.4 Residual-risk — manager-docs 소유 확인) 를 `spec.md` §5 `0.2.2` 와 같은 사실로 정정했다. 위 「이번에 고치지 않았다」는 이 라운드 시점의 서술이므로 본문은 그대로 둔다. 근거: `.moai/reports/t21/sync-done.md` §4.
+
 2. **`progress.md:401`** 도 트리거를 「`workflow_dispatch` + `push: main`」으로만 적어 경로 필터가 빠져 있다. 다만 그 문장은 「그때 확인한 범위」를 밝히는 Gaps 기록이라 동결 기록으로 볼 여지가 있다 — 판단을 sync 로 넘긴다.
+
+   > **각주 (sync 후속, 2026-08-29)**: sync 는 **동결 기록으로 판단했다** — Gaps 는 그 단계가 무엇을 관측했는지 적는 자리이므로 본문을 고치면 그때의 관측 범위를 위조하게 된다. 대신 같은 행에 각주 한 절(경로 필터·`pre-push` 누락, 정정본은 `spec.md` §5 `0.2.2`)을 덧붙여 오독만 막았다. 근거: `.moai/reports/t21/sync-done.md` §4.
 
 3. **워크플로를 실제로 돌려 보지 않았다.** 「경로 필터 때문에 `server/` 변경으로 발화하지 않는다」의 근거는 YAML 내용이지 실행이 아니다. GitHub Actions 의 `paths:` 의미론을 문서 지식으로 해석한 것이다.
 
