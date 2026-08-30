@@ -1,0 +1,58 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+
+ Test Files  15 passed (15)
+      Tests  188 passed (188)
+   Start at  23:59:44
+   Duration  8.04s (transform 1.27s, setup 0ms, import 2.46s, tests 24.07s, environment 2.07s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed) 67268ms
+     × both nonces are regenerated per socket and a replayed challenge is refused 3029ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+Error: waitFor timeout: 첫 소켓 기준선
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:716:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 94 passed (95)
+   Start at  23:59:52
+   Duration  67.52s (transform 308ms, setup 0ms, import 992ms, tests 72.56s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error command failed
+npm error command sh -c vitest run

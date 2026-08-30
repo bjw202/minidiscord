@@ -12,7 +12,7 @@ export interface GatewayClientOpts {
   token: string
   onMessage?: (m: { type: 'message'; id: number; body: string; author_name: string; delivery: 'to' | 'cc'; files?: { name: string; local_path: string }[] }) => void
   onVerdict?: (v: { type: 'permission_verdict'; request_id: string; behavior: 'allow' | 'deny' }) => void
-  onWelcome?: (w: { room_id: number; bot_id: number; bot_name: string }) => void
+  onWelcome?: (w: { type: 'welcome'; room_id: number; bot_id: number; bot_name: string; missed_after_id?: number }) => void
   sleep?: (ms: number) => Promise<void>   // 테스트 주입용
   maxBackoffMs?: number                    // 기본 30000
 }

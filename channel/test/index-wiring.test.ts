@@ -97,6 +97,9 @@ function gatewayStub(token = 'tok') {
     },
     onFrame: (h: (ws: WebSocket, m: any) => void) => hooks.push(h),
     countOf: (pred: (m: any) => boolean) => sent.filter(pred).length,
+    // 세션이 선 소켓의 수. push 는 확립되지 않은 소켓을 조용히 건너뛰므로(위 continue),
+    // 확립 전에 밀면 아무것도 도착하지 않고 기준은 대기 타임아웃으로 죽는다.
+    establishedCount: () => sessions.size,
   }
 }
 
@@ -155,7 +158,9 @@ async function connected() {
   const { channel, gw } = wire({ url: `ws://127.0.0.1:${stub.port()}/bot`, token: 'tok' })
   gw.start()
   cleanups.push(() => gw.stop())
-  await waitFor(() => stub.sent.some(m => m.type === 'hello'), 'hello 도착')
+  // v2 (SPEC-GWAUTH-002) — 악수가 넷으로 늘어 「hello 도착 = 확립」이 더는 참이 아니다.
+  // push 가 확립된 소켓만 상대하므로 확립까지 기다린다.
+  await waitFor(() => stub.establishedCount() >= 1, '세션 확립')
 
   const obs = new Client({ name: 'obs', version: '0' })
   const [c, s] = InMemoryTransport.createLinkedPair()

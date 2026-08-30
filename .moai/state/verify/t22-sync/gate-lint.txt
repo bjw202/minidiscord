@@ -1,0 +1,21 @@
+npm error Lifecycle script `lint` failed with error:
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error Missing script: "lint"
+npm error
+npm error Did you mean this?
+npm error   npm link # Symlink a package folder
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run --workspace=@minidiscord/server
+
+npm error Lifecycle script `lint` failed with error:
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error Missing script: "lint"
+npm error
+npm error Did you mean this?
+npm error   npm link # Symlink a package folder
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run --workspace=@minidiscord/channel@0.1.0

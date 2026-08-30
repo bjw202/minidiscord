@@ -429,3 +429,107 @@ M4 의 gateway.ts 손대(onConnection 1줄)로 §E.2.11 이 기록한 gateway.ts
 - **변이표**: 전건 실측 채움(acceptance.md 표 + 본 절) · 근거 원문 `mutation-*.txt` 32건.
 - **상위 회부 항목(리드·sync)**: (1) AC-021 허용 집합에 `server/test/gateway-v2.ts` 편입 여부 — 몰래 넓히지 않았다. (2) «관측 불가 넷»(013·015의 수용 관측, 004의 hello 관측, 022의 dist 자식, 009의 시도 세트) — 기준 집합이 자기 문서의 요소를 재는 면을 좁히는 구조적 사실로, 기준 신설은 본 카드 범위 밖(디스패치 경계 5). (3) 억제 미탐지 공백 — 운영자 미등록 결정 유지(`m5-suppression-disclosure.md`).
 - **증거 원문**: `.moai/state/verify/t22-run/m6-*` · `mutation-*` · 기존 `m1~m5-*` 전체.
+
+---
+
+## §F.3 Sync-phase
+
+> 작성자: manager-docs (카드 `t22` sync). 이 절의 모든 출력은 이 나무(`.claude/worktrees/t22`, 브랜치 `WT-gateway-mutual-auth`, HEAD `bc265a4`)에서 이 실행이 직접 관측한 것이다. 증거 원문은 `.moai/state/verify/t22-sync/` 아래에 있다. **이 단계는 커밋하지 않는다** — 커밋은 리드 게이트의 몫이다.
+
+### 1. 주장 (Claim)
+
+1. **`CHANGELOG.md` `[Unreleased]` 최상단에 카드 `t22` 항목이 들어갔다.** 프로토콜 파괴(‘token_hash’ 제거 → `verifier_pub`+`server_confirm_key`, 하위 호환 없음, 기존 토큰 전부 무효·재초대 필요, v1 모양 DB 거절), 네 프레임 악수, 확립 후 봉투 인증(MAC·순번·채널 바인딩), **닫히지 않는 것 넷**(채널→서버 방향 프레임 무결성 · 선택적 억제 미탐지 · 타이밍 비상수성 · 모든 현행 배치에서 `cb`=`unbound`), 그리고 배포 경고 「`t23`(서버 TLS 종단)이 닫히기 전까지 생산 배치 불가」를 모두 담았다. 경계 진술(§E 8)은 **줄이지 않고 블록 인용으로 그대로** 옮겼다.
+2. **`README.md` 의 낡은 현재 상태 서술 여섯 자리를 고쳤다.** 디스패치가 지목한 셋(상태 문단 · F-01 Critical 항목 · F-07 항목)과, 그 수정이 낡게 만든 셋(봇 게이트웨이 프로토콜 절 1~3번 · 봇 초대 토큰 절의 «sha256 해시만 저장» · 데이터 표의 `bot_tokens` 행)이다. **과장하지 않았다** — F-01 의 위조 종단 갈래는 닫혔다고 적고, **중계형 중간자 갈래는 어떤 현행 배치에서도 배제되지 않는다**고 적었으며 그 근거로 AC-GWAUTH2-024 가 매 실행 기록한다는 사실을 함께 적었다.
+3. **`t15` CHANGELOG 항목이 같은 미출시 묶음 안에서 v2 에 교체됐음을 그 항목 머리에 명시했다** — 본문은 고치지 않았다(그때의 결정 기록이므로 남긴다).
+4. **`spec.md` frontmatter 를 `in-progress` → `implemented` 로 전이하고 `updated` 를 갱신했다.** `completed` 로 가지 않았다 — 구속력 있는 sync 감사 판정이 아직 없다. **[후속 2026-08-31]** 그 뒤 3회차 감사 PASS 와 리드 승인으로 `completed` 까지 전이했다 — §F.4 가 그 궤적을 진다. 이 항목은 §F.3 시점의 기록으로 남긴다.
+5. **스위트가 sync 편집 이후에도 초록이다** — `npm test` 283/0, `npm run typecheck --workspaces` exit 0.
+
+### 2. 증거 (Evidence)
+
+```
+$ npm test                                  → EXIT=0
+   Test Files  15 passed (15)     Tests  188 passed (188)     ← server
+   Test Files   6 passed (6)      Tests   95 passed (95)      ← channel
+   (188 + 95 = 283)
+   원문: .moai/state/verify/t22-sync/sync-test.txt
+
+$ npm run typecheck --workspaces            → EXIT=0
+   원문: .moai/state/verify/t22-sync/sync-typecheck.txt
+
+$ git rev-parse HEAD                        → bc265a4021f9cbf7fde721f78aff23a807f3e6e3
+$ git status --short                        → M CHANGELOG.md · M README.md
+                                              M .moai/specs/SPEC-GWAUTH-002/spec.md
+                                              M .moai/specs/SPEC-CHANCLIENT-001/{spec,acceptance}.md (선행 sync 작업, 미접촉)
+```
+
+문서 편집 후 낡은 주장이 남지 않았음을 grep 으로 확인했다(원문 `.moai/state/verify/t22-sync/doc-sweep.txt`).
+
+- `grep -n '후속 카드 \`t22\`\|토큰 해시\|sha256 해시만 저장\|하위 호환은 유지\|예전 그대로 환영' README.md` → **EXIT=1, 출력 0줄**(다섯 부류 전건 소거).
+- `grep -n 't23' README.md` → **3줄**(:5 상태 문단 · :225 F-01 중계 갈래 · :236 배포 경계 블록 인용). `grep -n 't23' CHANGELOG.md` → **1줄**(:57 «배포 경계» 절).
+- `grep -n '하위 호환은 유지\|token_hash' CHANGELOG.md` → **4줄**. 그중 :15 는 v2 항목이 «없앴다» 를 적는 자리, :70 은 이 sync 가 `t15` 항목 머리에 붙인 교체 공시, **:85·:87 두 줄만이 `t15` 항목 본문의 v1 기록**이며 그 항목은 :70 의 공시를 이고 있다.
+
+### 3. Baseline-attribution (baseline 귀속)
+
+- 위 283/0 과 exit 0 은 **sync 편집을 마친 뒤** 이 나무·이 HEAD 에서 이 실행이 직접 낸 값이다. run M6 의 283(`m6-final-test.txt`)과 같은 값이며, sync 의 편집이 문서 넷(`README.md`·`CHANGELOG.md`·`spec.md` frontmatter·이 파일)에만 닿아 코드 경로를 건드리지 않았음과 일관된다.
+- **[HARD] 감사 점수 귀속을 다시 적는다.** plan 감사 `PASS 0.86` 은 4회차 판정이며 **사전 정리 수정 이전 트리(v0.4.0)에서 측정된 값**이다(`plan-done` §0, run-done §3). 최종 트리의 재채점은 없다 — 이 값을 최종 트리의 점수로 읽으면 안 된다.
+- 이 절이 인용한 SPEC 문언은 전부 이 나무의 파일에서 직접 읽었다: `spec.md` §1.4·§2.8.4·§5, `acceptance.md` §0(3·4·6·7)·AC-GWAUTH2-021·022·024·Definition of Done, `progress.md` §E.2.19 §E 8·§E 9.
+
+### 4. Gaps (미검증)
+
+- **[해소 2026-08-31 — §F.4]** 이 자리는 §F.3 을 쓰던 시점의 공백이었다. 구속력 있는 sync 감사 판정이 3회차에 났고(`sync-audit-3.md` PASS 0.854), 리드 판독 승인으로 `status` 는 `completed` 로 전이했다. 「`implemented` 에서 멈췄다」는 그때의 서술이며 지금은 참이 아니다.
+- **frontmatter 전이는 `spec.md` 한 파일에만 적용됐다** — 이 SPEC 의 `plan.md`·`acceptance.md`·`progress.md` 는 YAML frontmatter 를 갖고 있지 않다(형제 `SPEC-GWAUTH-001` 과 같은 관행이며, 이 sync 가 새 frontmatter 를 지어 넣지 않았다). 네 산출물 전건 전이를 요구하는 판정이 있다면 이 자리가 그 차이다.
+- **문서 문안의 «정확성» 은 SPEC 본문 대조로만 확인했고 실행으로 재확인하지 않았다.** README 가 적은 프레임 모양·전사 구성·순번 규칙은 `spec.md` §2.5·§4 와 `progress.md` §E.2.11·§E.2.13 을 근거로 옮긴 것이지, 이 sync 가 게이트웨이를 다시 띄워 프레임을 눈으로 본 것이 아니다. 그 관측은 run M2 프로브(15/15)와 스위트가 진다.
+- **`ROADMAP.md` 는 이 패스가 열지 않았다** — README 가 그것을 가리키므로 낡았을 수 있으나, 디스패치 범위 밖이라 손대지 않고 여기 적는다.
+- **AC-GWAUTH2-021 의 경계 확인은 `impl_head` 고정 끝점 기준이며, 이 sync 의 문서 편집은 그 끝점 뒤에 있다** — 설계상 그렇게 되어 있다(AC-021 [HARD] 절). 이 sync 가 021 을 다시 재지 않았다.
+
+### 5. Residual-risk (잔여 위험)
+
+- **문서가 정확해져도 배치 위험은 그대로다.** 「`t23` 이 닫히기 전까지 생산 배치 불가」는 이 sync 가 문서에 옮긴 사실이지 이 sync 가 줄인 위험이 아니다. 채널 바인딩은 여전히 모든 배치에서 `unbound` 이고 AC-GWAUTH2-024 가 매 실행 그것을 기록한다.
+- **`server_confirm_key` 를 쥔 상대(게이트웨이 사칭)와 선택적 억제**가 v2 의 가장 큰 잔여이며 이 sync 가 줄이지 않았다 — `acceptance.md` 잔여 위험 절이 정본이다.
+- **README 는 여러 카드의 서술이 겹쳐 있는 문서다.** 이 패스는 `t22` 가 낡게 만든 자리를 훑었으나, `t10`·`t11`·`t16` 소유의 문장은 그 카드들의 소유로 두었다 — 그중 하나가 이미 낡아 있었다면 이 패스는 그것을 잡지 못한다.
+- **이 나무는 미푸시 유일 사본이다.** sync 편집도 커밋되지 않은 상태로 리드 게이트에 넘어간다.
+
+---
+
+## §F.4 Sync-phase 감사 라운드와 수정 (1~3회차)
+
+### 1. 주장 (Claim)
+
+sync 감사는 세 라운드를 돌았고 마지막에 통과했다 — **1회차 FAIL 0.836 → 2회차 FAIL 0.8216 → 3회차 PASS 0.854**. 통과선은 Tier L 의 0.85 이며 세 감사관이 각각 `.claude/rules/moai/workflow/spec-workflow.md:142` 에서 직접 읽었다(디스패치가 준 값이 아니다 — 이 프로젝트는 전달된 통과선이 틀렸던 이력이 있다).
+
+### 2. 증거 (Evidence)
+
+| 라운드 | 판정 | 차단 발견 | 보고서 |
+|---|---|---|---|
+| 1회차 | FAIL 0.836 | F1 `CHANGELOG` 저장 형태 서술 · F3 `onWelcome` 선언 협소 | `.moai/reports/t22/sync-audit.md` |
+| 2회차 | FAIL 0.8216 | R1 하네스 확립 술어 · R2 교체 공시 비대칭 | `.moai/reports/t22/sync-audit-2.md` |
+| 3회차 | **PASS 0.854** | 0건 | `.moai/reports/t22/sync-audit-3.md` |
+
+라운드별 수정:
+
+- **F3** — `channel/src/gateway-client.ts:15` 의 `onWelcome` 선언을 `{ type, room_id, bot_id, bot_name, missed_after_id? }` 로 넓혀 `SPEC-CHANCLIENT-001/spec.md:96` 및 `:194` 가 실제로 넘기는 값과 일치시켰다.
+- **F1** — 감사관 처방(문장 수정)과 **다른 처분**을 택했다. 반증된 문장이 과거 릴리스 절 안에 있어 「본문은 지금 참, HISTORY 는 그때 참」 원칙에 따라 기록을 보존하고 절 머리에 교체 공시를 붙였다. **2회차 감사관이 이 처분을 명시적으로 받아들였다**(sync-audit-2.md, F1 판정 ①②).
+- **R1** — `connected()` 의 대기 술어가 `hello` 도착을 확립의 대용으로 쓰고 있었다(v1 에서는 `hello` 가 마지막 악수 프레임이라 참이던 등식이 v2 의 4프레임 악수에서 깨졌다). `FakeServer` 에 `establishedCount()` 를 노출하고 술어를 **증가폭** 판정으로 교체했다 — `sendInner` 가 요구하는 `sessions` 항목과 **같은 사실**을 읽으므로 통과 후에는 경주할 창이 없다. 같은 부류를 네 파일 다섯 자리에서 처리했다(`gateway-client.test.ts:135`·`:330`, `transport-auth.test.ts:257` 조건부, `index-wiring.test.ts:158`, `permission-relay.test.ts:298`).
+- **R2** — 교체 공시를 여섯 자리로 넓혔다(`CHANGELOG.md:70 :209 :225 :238 :317 :371`). 뿌리는 어간 집합이 **저장 형태만 겨누고 프레임 형태를 겨누지 않은** 것이었고, v2 델타에서 집합을 다시 도출해 재훑기했다.
+- **F-11 (3회차 비차단, 판정 후 처리)** — `CHANGELOG.md` 카드 `t11` 절의 「게이트웨이 토큰 인증 … 전부 그대로입니다」가 현재형으로 반증돼 있었다. 같은 형태의 공시를 붙였다.
+
+### 3. Baseline-attribution (baseline 귀속)
+
+- 세 라운드의 점수는 모두 이 나무(`.claude/worktrees/t22`)·브랜치 `WT-gateway-mutual-auth`·HEAD `bc265a4` + 각 라운드 시점의 미커밋 트리에서 그 감사관이 직접 측정한 값이다.
+- **[HARD] `PASS 0.854` 는 F-11 공시와 이 §F.4 절을 쓰기 이전 트리에서 측정된 값이며, 그 두 편집 이후의 재채점은 없다.** 이 값을 최종 트리 점수로 읽으면 안 된다 — plan 단계의 `PASS 0.86` 이 같은 성질을 가진 것과 동일한 귀속이다(run-done.md §3). 두 편집은 모두 문서이고 코드에 닿지 않았으며, 편집 후 `npm test` 를 다시 돌려 283 초록을 관측했다.
+- 통과는 **얇다**: 3회차 감사관 자신이 「셋 중 하나만 달리 봤어도 FAIL」이라고 공시했다(Craft 0.80 이었다면 0.848, Consistency 0.82 였다면 0.846, F-11 을 차단으로 세웠다면 즉시 FAIL). F-11 을 위에서 닫은 것은 그 셋째 갈래를 없애기 위함이다.
+
+### 4. Gaps (미검증)
+
+- **재채점 없음** — 위 §3 의 귀속이 그것이다.
+- **생존 비차단**: F2(`sha256Hex` 사체) · F4(`SPEC-CHANCLIENT-001/plan.md` v1 프레임 계약표 3자리) · F5(하네스 사본의 기계적 대조 장치 부재) · F6(`pretest` 부재 — 깨끗한 체크아웃의 첫 실행은 여전히 `dist` 부재로 흔들린다) · F8 · F-10 · F-12 · F-13 · F-14(`transport-auth.test.ts:450` 기본 3000ms 잔존) · F-15. 하나도 닫지 않았고 하나도 지우지 않았다.
+- **린터 부재** — `npm run lint` 는 두 워크스페이스 모두 `Missing script` 다. 잴 도구가 없어 공백이다.
+- **게이트웨이 실기동 없음** — 문서 문안의 프레임 모양은 SPEC 본문·소스 대조로만 확인했다.
+- **`web/` 는 어간 훑기 범위 밖이었다.**
+
+### 5. Residual-risk (잔여 위험)
+
+- **배포 경계는 변하지 않았다** — 「`t23`(서버 TLS 종단)이 닫히기 전까지 생산 배치 불가」. 이 PASS 는 그 조건을 조금도 완화하지 않는다.
+- **하네스 사본은 손뜬 사본이다** — 기계적 동기화 장치가 없어(F5) 시험 파일이 다시 바뀌면 `acceptance.md` 절이 다시 낡는다.
+- **여섯 번째 확립-대용 술어가 없다고 단언하지 않는다** — 훑기는 「대기 술어가 `hello` 를 본다」는 어간으로 걸었다. 연결 수로 확립을 대용하는 술어는 그 어간에 걸리지 않는다.
+- **이 나무는 미푸시 유일 사본이다.**

@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+      Coverage enabled with v8
+
+
+ Test Files  6 passed (6)
+      Tests  95 passed (95)
+   Start at  01:30:32
+   Duration  65.40s (transform 345ms, setup 0ms, import 1.11s, tests 70.43s, environment 0ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   88.62 |    80.17 |   97.77 |      90 |                   
+ channel-server.ts |     100 |    92.85 |      90 |     100 | 160               
+ gateway-client.ts |   93.93 |    88.73 |     100 |   95.53 | 74-78,215         
+ index.ts          |   63.63 |    54.83 |     100 |   64.86 | 98-123            
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 88.62% ( 187/211 )
+Branches     : 80.17% ( 93/116 )
+Functions    : 97.77% ( 44/45 )
+Lines        : 90% ( 162/180 )
+================================================================================

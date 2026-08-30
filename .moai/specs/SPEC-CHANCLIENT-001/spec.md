@@ -1,10 +1,10 @@
 ---
 id: SPEC-CHANCLIENT-001
 title: "minidiscord 게이트웨이 클라이언트 — 채널 플러그인이 봇 게이트웨이에 붙어 있게 하는 WebSocket 배관"
-version: "0.6.1"
+version: "0.7.0"
 status: completed
 created: 2026-08-27
-updated: 2026-08-29
+updated: 2026-08-31
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -14,7 +14,7 @@ tags: "websocket-client, gateway-handshake, reconnect-backoff, rid-matching, his
 tier: M
 depends_on: [SPEC-CHANNEL-001]
 related_specs: [SPEC-GATEWAY-001, SPEC-CHANWIRE-001, SPEC-CHANPERM-001]
-followup_cards: [t15, t16, t20]
+followup_cards: [t15, t16, t20, t23]
 ---
 
 # SPEC-CHANCLIENT-001 — 게이트웨이 클라이언트 (채널 쪽)
@@ -23,6 +23,7 @@ followup_cards: [t15, t16, t20]
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.7.0 | 2026-08-31 | **계약 개정 — 상호 인증 v2 전제 (카드 `t22`, `SPEC-GWAUTH-002` · sync 단계).** v0.6.0 이 `SPEC-GWAUTH-001` 의 논스·HMAC 핸드셰이크를 받아 적었듯, 이번에는 **`SPEC-GWAUTH-002` 의 v2 핸드셰이크**(서버 선행 논스 · Ed25519 검증자 저장 · 확립 후 프레임 MAC)를 받아 적는다. 그 SPEC 이 v1 프레임 형식을 세 군데에서 바꾸고 **하위 호환을 남기지 않으므로**(REQ-GWAUTH2-017), v0.6.x 까지 개정돼 있던 이 SPEC 의 계약 문장들이 **다시 거짓이 됐다.** **고친 자리**: ① **§1 흐름도** ①행 — `hello{token,nonce}`→`welcome{proof}` 두 프레임에서 `hello{pub,client_nonce}`→`challenge`→`auth`→봉투 `welcome` 네 프레임으로 · ② **용어표 `handshake`** 행 동일 · ③ **`GatewayClientOpts.onWelcome` 타입 선언**에서 `proof?: string` 제거 — v2 의 `welcome` 은 그 필드를 싣지 않는다(증명은 `challenge` 가, 진정성은 봉투 `mac` 이 진다) · ④ **REQ-CHANCLIENT-001** — 첫 프레임을 `{ type, pub, client_nonce }` 셋으로, **평문 토큰 부재**를 조항 안에 명시. 함께 «토큰을 실은 첫 프레임이 곧 인증이다» 를 **왕복 인증** 서술로 교체했다 · ⑤ **REQ-CHANCLIENT-003** — `welcome` 은 **대조를 통과한 봉투 안에서** 도착하고, 호출 조건이 «`proof` 대조 통과» 에서 «서버 증명을 대조한 소켓 + 봉투 통과» 로 바뀐다. **통과 충실성은 그대로다** · ⑥ **§5 게이트웨이 범위 밖** 항목의 «`hello` 토큰 검증» → `pub` 조회·`challenge` 발행·`auth` 검증·봉투 `welcome` · ⑦ **§4.2 머리 주석**과 **§5 상대 인증 절**에는 v0.6.0 기록을 **고치지 않고 v0.7.0 정정 블록을 덧붙였다** — 그 두 자리는 날짜가 박힌 정정 기록이므로 그때의 진실을 보존하고, 지금 참인 것(증명의 자리·열쇠 교체, 분배 전제 **세 겹**, `token_hash` 컬럼 소멸, 그리고 **TLS 미종단으로 채널 바인딩이 `unbound` 라 중계형 중간자가 배제되지 않는다**는 잔여)을 새 블록이 진다. **요구사항 14개·수용 기준 16개는 개수 그대로다.** `acceptance.md` 의 공통 테스트 하네스와 시나리오 본문은 같은 패스에서 v2 실제 하네스(`channel/test/gateway-client.test.ts`)를 원문으로 삼아 갱신했다. | manager-spec |
 | 0.6.1 | 2026-08-29 | **v0.6.0 의 타입 선언 보완 (카드 `t15`, `SPEC-GWAUTH-001` 3회차 계획 감사 R-07).** v0.6.0 은 `GatewayClientOpts.onWelcome` 선언에 `proof?` 만 더하고 `type`·`missed_after_id` 를 빠뜨렸다 — REQ-CHANCLIENT-003 이 «프레임 객체 그대로» 를 명령하므로 선언이 실제 프레임보다 좁으면 그 자체가 계약과 어긋난다. 둘을 더했다. 함께 `proof?` 를 옵셔널로 둔 **근거를 고쳤다**: v0.6.0 은 «논스 없는 `hello` 갈래» 를 들었으나 그 상태는 **이 콜백 경로에서 발생하지 않는다**(채널은 항상 논스를 보내고, 증명 없는 `welcome` 에는 `onWelcome` 이 불리지 않는다). 정확한 근거는 «**서버 계약에 그 갈래가 실재하므로 프레임 타입이 그 형태까지 덮어야 한다**» 이며, 하향 협상은 열려 있지 않다. **요구사항·수용 기준은 개수도 본문도 그대로다.** | manager-spec |
 | 0.6.0 | 2026-08-29 | **계약 개정 — 상호 인증 전제 (카드 `t15`, `SPEC-GWAUTH-001` v0.2.0 · 운영자 결정 D3=(a)).** v0.4.0 이 `SPEC-CHANAUTH-001` 의 세션 확립 게이트를 받아 적었듯, 이번에는 **`SPEC-GWAUTH-001` 의 논스·HMAC 상호 핸드셰이크**를 받아 적는다. 그 SPEC 이 `hello` 에 `nonce` 를, `welcome` 에 `proof` 를 더하고 채널이 증명을 대조한 뒤에만 세션을 확립하게 하므로, **이 SPEC 의 계약 문장 여덟 자리가 그대로 두면 거짓이 된다.** run 단계로 미루지 않고 지금 고치는 이유는 카드 `t9` 의 교훈이다 — 계약을 거짓인 채 run 에 넘기면 형제 하네스가 무더기로 무너지고 sync 감사에서 «개정되지 않은 SPEC 과 실제 동작의 괴리» 로 되돌아온다. **고친 여덟 자리**: ① **REQ-CHANCLIENT-001**(`:117`) «필드는 이 둘뿐이며» → **셋**(`nonce` 추가, 소유는 `SPEC-GWAUTH-001` REQ-GWAUTH-001·002) · ② **REQ-CHANCLIENT-003**(`:127`) 무조건 `onWelcome` 호출 → **증명 대조를 통과한 `welcome`** 에 한정. **통과 충실성(프레임 객체 그대로)은 한 글자도 바뀌지 않는다 — 바뀐 것은 «언제 부르는가» 뿐이다** · ③ 같은 조항의 `welcome` 필드 열거(`:129`)에 `proof` 추가 · ④ **`GatewayClientOpts.onWelcome` 타입 선언**(`:92`)에 `proof?: string` 추가 — **산문이 아니라 API 표면의 타입 계약**이고, 이 조항이 «프레임 객체 그대로» 를 명령하므로 시그니처가 실제 인자를 덮지 않으면 타입이 계약과 어긋난다. **`proof?` 를 옵셔널로 둔 이유를 정확히 적는다 (3회차 감사 R-07)**: 이 **콜백 경로에서는 증명 없는 `welcome` 이 발생하지 않는다** — 채널은 항상 논스를 보내고(REQ-GWAUTH-001), 증명이 없거나 어긋난 `welcome` 에는 `onWelcome` 을 부르지 않는다(REQ-GWAUTH-006·008). **하향 협상 경로는 열려 있지 않으며** `SPEC-GWAUTH-001` 의 AC-GWAUTH-006 과 변이 H·I 가 그것을 잰다. 그럼에도 옵셔널인 것은 **서버 계약에 그 갈래가 실재하기 때문**이다 — 논스 없는 `hello` 에는 서버가 증명 없는 `welcome` 을 돌려주므로(REQ-GWAUTH-004, `SPEC-GATEWAY-001` v0.4.0), `welcome` 프레임의 타입은 그 형태까지 덮어야 한다. 즉 **필수로 좁히면 프레임 타입이 서버 계약보다 좁아진다.** 함께 `type` 과 `missed_after_id` 도 선언에 넣었다 — 이 조항이 «프레임 객체 그대로» 를 명령하는데 선언이 세 필드만 적고 있었고, 그 사실을 `SPEC-GWAUTH-001` §3.3 이 이미 «(그리고 이미 `missed_after_id` 를 싣고)» 로 적어 두고도 `proof?` 만 더했다 · ⑤ §1 흐름도(`:42`)와 ⑥ 용어표 `handshake`(`:62`)의 프레임 열거 · ⑦ **§4.2 머리 주석** «`welcome` 을 인증의 증거로 삼는 것은 아니다» → **뒤집혔다.** 이제 `welcome` 은 토큰(또는 그 저장 해시) 지식의 증거이며, 분배 전제가 «순서 위생» 과 «상대 신원» **두 겹**이 됐다 · ⑧ **§5 «게이팅이 서도 상대 인증은 여전히 없다»**(`:230`) → **상대 인증이 생겼다.** ⑧을 고치는 판단 근거를 적어 둔다: 운영자 결정 D4 가 보존하는 것은 **SPEC 이 자기 설계 결정이나 자기 카드의 미이행을 기록한 조항**(`SPEC-CHANAUTH-001` §2.1 부류)이고, 그 진실성은 그 카드에 날짜가 박혀 있다. `:230` 은 그것이 아니라 **시스템의 현재 상태에 대한 서술**이며, 살아 있는 소비자 문서의 본문을 읽는 사람은 그것을 «지금의 사실» 로 받아들인다. HISTORY 가 «그때 참이던 것» 을 지고 본문이 «지금 참인 것» 을 진다 — 현재 상태 서술에까지 D4 를 늘리는 것은 원칙의 적용이 아니라 오용이다. **요구사항 14개·수용 기준 16개는 개수 그대로다.** 수용 기준 본문 개정(AC-CHANCLIENT-001·002·011 과 `startServer` 하네스)은 `SPEC-GWAUTH-001` 의 run 단계 M4 가 수행한다. | manager-spec |
 | 0.5.0 | 2026-08-28 | **참조 정정 — 이력 렌더링 형식과 잔여 소유 분리 (카드 `t10`, `SPEC-CHANINJECT-001` v0.1.0 §3.3).** **이 SPEC 의 계약은 한 글자도 바뀌지 않는다.** `requestHistory` 가 프레임을 통째로 `resolve` 하는 성질(REQ-CHANCLIENT-005), 다섯 파라미터를 프레임 최상위에 싣는 성질(REQ-CHANCLIENT-007), 10초 타임아웃 — 전부 그대로다. 「커서를 별도 필드로 뺀다」는 것은 **모델이 읽는 표면**의 이야기이지 게이트웨이 프레임의 이야기가 아니며, `since_id` 는 이미 프레임 최상위 필드이고 본문에서 파생되지 않는다. 바뀐 것은 **두 줄의 참조**뿐이다. ① §5 범위 밖 열거가 이력 문자열의 옛 형식(`#<번호> [시각] 작성자: 본문`)을 리터럴로 적고 있었는데, 그 형식은 `SPEC-CHANWIRE-001` v0.4.0 에서 폐기됐다 — 형식 리터럴을 지우고 소유자를 적었다. ② §5 «상대 인증» 절이 게이팅 뒤 잔여를 카드 `t15` 소유로만 적었는데, 그 잔여는 두 층이다 — **내용 신뢰 경계는 `SPEC-CHANINJECT-001`(카드 `t10`), 상대 신원은 `t15`**. 갈라 적었다. **형제 회귀 기준은 하나도 깨지지 않는다** — `channel/test/gateway-client.test.ts` 의 이력 관련 세 기준(AC-CHANCLIENT-007·008·010)이 전부 프레임 객체를 단언하고 렌더링 문자열을 단언하지 않는다(`SPEC-CHANINJECT-001/spec.md` §3.5 무영향 표). | manager-spec |
@@ -41,7 +42,8 @@ followup_cards: [t15, t16, t20]
 이 부품이 하는 일은 넷이다.
 
 ```
-① 붙는다        connect → open → { type:'hello', token, nonce }  → 서버가 welcome { …, proof } 로 답한다
+① 붙는다        connect → open → { type:'hello', pub, client_nonce } → 서버 challenge 대조 → { type:'auth', signature }
+                → 서버가 봉투(env)에 담은 welcome 으로 답한다
 ② 받아 나눈다    message / permission_verdict / welcome / history_response 를 type 으로 갈라 콜백에 넘긴다
 ③ 보낸다        send(payload) — 소켓이 열려 있을 때만 true
 ④ 되묻는다       requestHistory(params) → history_request { rid } → 같은 rid 의 history_response 로 resolve
@@ -61,7 +63,7 @@ followup_cards: [t15, t16, t20]
 | 용어 | 뜻 |
 |------|-----|
 | 게이트웨이 | 서버의 WebSocket 엔드포인트 `/bot`. 봇 토큰으로 인증하고 방 하나에 묶인다. 구현은 `SPEC-GATEWAY-001` 소유 |
-| handshake | 소켓이 열린 직후 클라이언트가 보내는 `{ type:'hello', token, nonce }` 한 프레임과, 서버가 답하는 `welcome`(증명 `proof` 를 실은) 한 프레임. **v0.6.0 부터 상호 인증이다** — `nonce`·`proof` 의 소유는 `SPEC-GWAUTH-001` REQ-GWAUTH-001·003 이다 |
+| handshake | 소켓이 열린 직후 클라이언트가 보내는 `{ type:'hello', pub, client_nonce }`, 서버가 답하는 `challenge`(서버 증명 `server_proof` 를 실은), 채널이 그 증명을 대조한 뒤에만 보내는 `{ type:'auth', signature }`, 그리고 서버가 봉투 `env` 에 담아 보내는 `welcome` — 네 프레임이다. **v0.7.0 부터 v2 상호 인증이다 (카드 `t22`)** — `pub`·두 논스·`server_proof`·`signature`·봉투의 소유는 `SPEC-GWAUTH-002` REQ-GWAUTH2-004·005·007·009·012 다 |
 | 프레임 | 이 소켓을 오가는 JSON 객체 하나. 모두 `type` 필드를 갖는다 |
 | `rid` | `requestHistory` 한 번을 가리키는 요청 식별자. 요청 프레임과 응답 프레임에 같은 값이 실린다 |
 | 대기 맵 | 아직 응답이 오지 않은 `rid` 를 그 요청의 `resolve`/`reject`/타이머에 연결해 두는 프로세스 메모리 맵 |
@@ -91,7 +93,7 @@ export interface GatewayClientOpts {
   token: string
   onMessage?: (m: { type: 'message'; id: number; body: string; author_name: string; delivery: 'to' | 'cc'; files?: { name: string; local_path: string }[] }) => void
   onVerdict?: (v: { type: 'permission_verdict'; request_id: string; behavior: 'allow' | 'deny' }) => void
-  onWelcome?: (w: { type: 'welcome'; room_id: number; bot_id: number; bot_name: string; missed_after_id?: number; proof?: string }) => void
+  onWelcome?: (w: { type: 'welcome'; room_id: number; bot_id: number; bot_name: string; missed_after_id?: number }) => void
   sleep?: (ms: number) => Promise<void>   // 테스트 주입용
   maxBackoffMs?: number                    // 기본 30000
 }
@@ -116,11 +118,11 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 ### 4.1 연결과 handshake
 
 **REQ-CHANCLIENT-001** (When — 이벤트 구동)
-`start()` 가 호출되면 클라이언트는 `url` 이 가리키는 주소로 WebSocket 연결을 열어야 하고, 그 소켓이 `open` 된 직후 **첫 프레임으로** `{ "type": "hello", "token": <opts.token>, "nonce": <소켓마다 새로 만든 논스> }` 을 보내야 한다. 필드는 이 **셋**뿐이며, 다른 프레임이 hello 보다 먼저 나가서는 안 된다.
+`start()` 가 호출되면 클라이언트는 `url` 이 가리키는 주소로 WebSocket 연결을 열어야 하고, 그 소켓이 `open` 된 직후 **첫 프레임으로** `{ "type": "hello", "pub": <opts.token 에서 유도한 검증자 공개키>, "client_nonce": <소켓마다 새로 만든 논스> }` 을 보내야 한다. 필드는 이 **셋**뿐이고, **평문 토큰은 이 프레임에도 다른 어떤 프레임에도 실리지 않으며**, 다른 프레임이 hello 보다 먼저 나가서는 안 된다.
 
-**`nonce` 는 이 SPEC 의 계약이 아니라 받아 적는 전제다 (v0.6.0, 카드 `t15`).** 그 값의 형식(256비트 난수의 64자 hex)·수명(소켓마다 새로, 클로저로 올리지 않는다)·용도(서버 증명의 신선도)는 전부 **`SPEC-GWAUTH-001` REQ-GWAUTH-001·002** 가 소유한다. 이 조항이 좁히는 것은 «hello 에 몇 개의 필드가 실리는가» 하나이며, v0.5.0 까지의 «이 둘뿐» 은 그 SPEC 착지 후 거짓이 된다.
+**`pub` 과 `client_nonce` 는 이 SPEC 의 계약이 아니라 받아 적는 전제다 (v0.7.0, 카드 `t22`).** `pub` 의 유도(토큰에서 결정적으로 유도한 Ed25519 검증자 공개키)·논스의 형식(256비트 난수의 64자 hex)·수명(소켓마다 새로, 소켓 지역 범위 밖에 보관하지 않는다)·평문 토큰 부재는 전부 **`SPEC-GWAUTH-002` REQ-GWAUTH2-001·004·010·011** 이 소유한다. 이 조항이 좁히는 것은 «hello 에 몇 개의 필드가 실리는가» 하나다. v0.6.x 까지의 `{ token, nonce }` 형태는 `SPEC-GWAUTH-002` 착지로 **없어졌고**, 하위 호환 경로도 남기지 않았다(REQ-GWAUTH2-017 — 서버는 `pub` 없는 v1 `hello` 를 닫는다).
 
-토큰을 실은 첫 프레임이 곧 인증이다(`SPEC-GATEWAY-001`). 이름이나 값이 어긋나면 게이트웨이가 연결을 끊고, 그 실패는 재접속 루프에 흡수되어 조용한 무한 재시도로 보인다.
+**첫 프레임은 더 이상 그 자체로 인증이 아니다.** v1 에서는 토큰을 실은 `hello` 하나가 인증이었으나, v2 에서 인증은 서버의 `challenge` 증명을 채널이 대조하고 채널의 `auth` 서명을 서버가 검증하는 **왕복**으로 성립한다(`SPEC-GWAUTH-002` §4.2). 이름이나 값이 어긋나면 게이트웨이가 연결을 끊고, 그 실패는 재접속 루프에 흡수되어 조용한 무한 재시도로 보인다 — 그 성질은 v1 과 같다.
 
 **REQ-CHANCLIENT-002** (Ubiquitous)
 `url` 옵션은 문자열이거나 무인자 함수(`UrlRef`)이며, 클라이언트는 **연결을 시도할 때마다** 그 값을 다시 평가해야 한다. 한 번 평가해 캐시해서는 안 된다.
@@ -128,11 +130,11 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 또한 `createGatewayClient` 가 돌려주는 객체는 자신의 옵션 사본을 `opts` 프로퍼티로 노출해야 하고, 호출자가 `client.opts.url` 을 바꾸면 **다음 연결 시도부터** 그 값이 쓰여야 한다. 서버가 다른 주소로 되살아난 상황을 테스트가 재현하는 경로이며, 원본 계약이 이 노출을 명시한다.
 
 **REQ-CHANCLIENT-003** (When — 이벤트 구동)
-`type: 'welcome'` 프레임이 도착하고 **그 프레임의 증명(`proof`)이 대조를 통과하면**, 클라이언트는 `onWelcome` 콜백을 그 **프레임 객체 그대로** 호출해야 한다. 필드를 골라 새 객체로 다시 만들어서는 안 된다.
+`type: 'welcome'` 내부 프레임이 **대조를 통과한 봉투(`env`) 안에서** 도착하면, 클라이언트는 `onWelcome` 콜백을 그 **내부 프레임 객체 그대로** 호출해야 한다. 필드를 골라 새 객체로 다시 만들어서는 안 된다.
 
-**증명이 없거나 대조에 실패한 `welcome` 은 `onWelcome` 을 호출하지 않는다 (v0.6.0, 카드 `t15`).** 대조 규칙·거절 조치(소켓 닫기·stderr 한 줄)·상수 시간 요구는 **`SPEC-GWAUTH-001` REQ-GWAUTH-006·007·008·009** 가 소유하며, 이 SPEC 은 그 전제를 받아 적는다. **통과 충실성은 한 글자도 바뀌지 않는다** — 바뀌는 것은 «언제 부르는가» 뿐이고, 부를 때는 여전히 프레임 객체 통째다(`proof` 필드 포함).
+**서버 증명을 대조하지 않은 소켓의 `welcome`, 그리고 봉투 밖으로 도착한 `welcome` 은 `onWelcome` 을 호출하지 않는다 (v0.7.0, 카드 `t22`).** `challenge` 의 `server_proof` 대조 규칙·거절 조치(소켓 닫기·stderr 한 줄)·상수 시간 요구, 봉투의 `mac`·`seq` 검사, 그리고 «`challenge` 를 거치지 않고 도착한 `welcome` 을 받아들이지 않는다» 는 전부 **`SPEC-GWAUTH-002` REQ-GWAUTH2-006·012·013·014·016·017** 이 소유하며, 이 SPEC 은 그 전제를 받아 적는다. **통과 충실성은 한 글자도 바뀌지 않는다** — 바뀌는 것은 «언제, 어느 껍질 안에서 부르는가» 뿐이고, 부를 때는 여전히 내부 프레임 객체 통째다. v0.6.x 가 여기 적었던 `welcome` 의 `proof` 필드는 v2 에 **존재하지 않는다** — 서버 증명은 `welcome` 이 아니라 `challenge` 가 지고, `welcome` 의 진정성은 봉투의 `mac` 이 진다.
 
-게이트웨이의 `welcome` 은 `room_id`·`bot_id`·`bot_name` 외에 재전송 커서 `missed_after_id` 와 **증명 `proof`**(v0.6.0, `SPEC-GWAUTH-001` REQ-GWAUTH-003) 를 함께 싣는다(`SPEC-GATEWAY-001`, `server/src/gateway.ts`). **그 커서를 쓰는 쪽은 서버 자신이다** — 서버는 `welcome` 을 보낸 직후 그 커서 이후의 놓친 메시지를 스스로 재전송하고 `last_delivered_id` 를 전진시킨다(`server/src/gateway.ts:101-108`). 따라서 채널 쪽에는 이 값을 소비하는 자리가 없고, 지금 이 필드를 잃어도 실제 동작은 달라지지 않는다.
+게이트웨이의 `welcome` 은 `room_id`·`bot_id`·`bot_name` 외에 재전송 커서 `missed_after_id` 를 함께 싣는다(`SPEC-GATEWAY-001`, `server/src/gateway.ts`). **그 커서를 쓰는 쪽은 서버 자신이다** — 서버는 `welcome` 을 보낸 직후 그 커서 이후의 놓친 메시지를 스스로 재전송하고 `last_delivered_id` 를 전진시킨다(`server/src/gateway.ts:101-108`). 따라서 채널 쪽에는 이 값을 소비하는 자리가 없고, 지금 이 필드를 잃어도 실제 동작은 달라지지 않는다.
 
 이 요구사항이 겨냥하는 것은 그 필드 하나가 아니라 **통과 충실성**이다. 이 클라이언트는 프레임의 해석자가 아니라 전달자이며(§1), `type` 외의 어떤 필드도 읽지 않는다. 해석하지 않는 객체를 옵션 타입에 선언된 세 필드로 좁혀 다시 만들면, 서버가 지금 싣는 필드도 나중에 더할 필드도 채널 경계에서 소리 없이 사라진다 — 클라이언트가 그 필드의 의미를 모르므로 무엇이 사라졌는지 판단할 수도 없고, 타입 검사로도 잡히지 않는다. 받은 프레임을 그대로 넘기면 소비자가 생기든 필드가 늘든 이 SPEC 은 손댈 일이 없다.
 
@@ -145,6 +147,13 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 > 따라서 §4.2 의 분배 전제는 **두 겹**이다 — ① `welcome` 이 도착했는가(순서 위생, `SPEC-CHANAUTH-001` REQ-CHANAUTH-001) ② 그 `welcome` 의 증명이 대조를 통과했는가(상대 신원, `SPEC-GWAUTH-001` REQ-GWAUTH-006·011). 두 겹은 구현에서도 **서로 다른 강제 지점**이며, 그 분리 자체가 `SPEC-GWAUTH-001` `plan.md` §F M3-3 의 [HARD] 처방이다.
 >
 > **이 SPEC 이 배제하지 못하는 것도 함께 적는다**: 토큰 또는 `bot_tokens.token_hash` 를 아는 상대는 증명을 계산할 수 있으므로 두 겹 모두를 통과한다 (`SPEC-GWAUTH-001` §5 의 네 행 표).
+>
+> **v0.7.0 정정 (카드 `t22`, `SPEC-GWAUTH-002`) — 위 v0.6.0 기록의 기제는 교체됐다.** 위 두 문단은 v1(`SPEC-GWAUTH-001`)의 트리에서 참이었고 그 날짜에 대해서는 그대로 둔다. 지금 참인 것은 이렇다.
+>
+> - **증명의 자리와 열쇠가 바뀌었다.** 서버 증명은 `welcome` 의 `proof` 가 아니라 `challenge` 의 `server_proof` 이고, 열쇠는 토큰 유도 HMAC 이 아니라 저장된 `server_confirm_key` 다(`SPEC-GWAUTH-002` REQ-GWAUTH2-005). 확립 이후의 프레임은 봉투 `env` 의 `mac`·`seq` 가 따로 진다(REQ-GWAUTH2-012·013·014).
+> - **분배 전제는 세 겹이다.** ① `welcome` 이 도착했는가(순서 위생, `SPEC-CHANAUTH-001` REQ-CHANAUTH-001) ② 그 소켓이 서버 증명 대조를 통과했는가(상대 신원, `SPEC-GWAUTH-002` REQ-GWAUTH2-006·007) ③ 그 프레임이 대조를 통과한 봉투 안에서 왔는가(프레임 인증, REQ-GWAUTH2-014). 세 강제 지점의 **구조적 분리**는 REQ-GWAUTH2-015 가 명령한다.
+> - **«토큰 또는 `token_hash` 를 아는 상대» 는 더 이상 이 시스템의 무엇도 가리키지 않는다.** `bot_tokens.token_hash` 컬럼 자체가 없어졌고(`SPEC-GWAUTH-002` REQ-GWAUTH2-002·003), 저장되는 것은 검증자 `verifier_pub` 과 `server_confirm_key` 다. 읽기 전용 DB 유출로 무엇이 열리고 무엇이 닫히는지는 `SPEC-GWAUTH-002` §2.4 가 소유한다.
+> - **그래도 남는 것**: 서버가 TLS 를 종단하지 않는 이 저장소의 배치에서 채널 바인딩은 `unbound` 로 떨어지고, 그 접속에서 **중계형 중간자는 배제되지 않는다**(`SPEC-GWAUTH-002` §2.8.4·REQ-GWAUTH2-020 — 후속 카드 `t23` 소유). 밀어 넣어진 본문의 내용 신뢰 경계도 그대로 남는다(`SPEC-CHANINJECT-001`).
 
 **REQ-CHANCLIENT-004** (While — 상태 구동 + When — 이벤트 구동)
 현재 소켓으로 `welcome` 이 도착한 뒤에 `type: 'message'` 프레임이 도착하면 `onMessage` 를, `type: 'permission_verdict'` 프레임이 도착하면 `onVerdict` 를, 각각 그 프레임 객체 그대로 호출해야 한다. `files` 배열, `delivery` 값, `behavior` 값을 포함해 어떤 필드도 잃거나 바꾸지 않아야 한다.
@@ -227,7 +236,7 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 
 ### Out of Scope — 서버 쪽 게이트웨이 (`SPEC-GATEWAY-001`)
 
-- `server/src/gateway.ts` 전체 — `hello` 토큰 검증, `welcome` 발행, `history_request` 처리와 `since_id` 필터, `missed_after_id` 재전송
+- `server/src/gateway.ts` 전체 — `hello` 의 `pub` 조회와 `challenge` 발행, `auth` 서명 검증과 등록, 봉투에 담은 `welcome` 발행, `history_request` 처리와 `since_id` 필터, `missed_after_id` 재전송 (v0.7.0, 카드 `t22` — v1 의 «`hello` 토큰 검증» 은 없어졌다)
 - 이 SPEC 의 테스트는 실제 게이트웨이가 아니라 테스트 안의 가짜 `WebSocketServer` 를 상대한다. 두 쪽이 실제로 맞물리는지는 원본 Task 18 의 E2E 가 본다
 
 ### Out of Scope — 상대 인증과 접속 상태 게이팅 (감사 F-01 — 카드 `t9`·`t15` 로 인계 완료)
@@ -240,6 +249,12 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient
 > **v0.6.0 정정 (카드 `t15`) — 상대 인증이 생겼다.** v0.4.0~v0.5.0 은 이 자리를 «게이팅이 서도 상대 인증은 여전히 없다» 로 적었다. **그 문장은 현재 상태의 서술이었고, `SPEC-GWAUTH-001` 이 착지하면 거짓이 된다** — 그 SPEC 이 `hello` 의 논스에 대한 HMAC 증명을 `welcome` 에 싣고 채널이 상수 시간으로 대조하므로, **`hello` 에 답할 수 있다는 것만으로는 게이트가 열리지 않는다.** 증명을 계산하려면 토큰 또는 그 저장 해시를 알아야 한다.
 >
 > **그래도 남는 것을 정확히 적는다**: ① 토큰·`token_hash` 를 아는 상대, 손상된 서버는 여전히 통과한다(`SPEC-GWAUTH-001` §5) ② **밀어 넣어진 본문의 내용 신뢰 경계는 상대를 인증해도 해결되지 않는다** — 방 참가자가 쓴 본문은 정당한 상대를 통해 들어오며, 그 층은 `SPEC-CHANINJECT-001`(카드 `t10`) 소유다. 아래 v0.3.0 서술의 위협 기술은 **그 두 잔여의 범위에서만** 유효하다.
+>
+> **v0.7.0 정정 (카드 `t22`, `SPEC-GWAUTH-002`) — 위 v0.6.0 기록의 잔여 ①은 다른 것으로 바뀌었다.** 위 문단들은 v1 트리에서 참이었고 그 날짜에 대해서는 그대로 둔다. 지금의 잔여는 이렇다.
+>
+> - **잔여 ①은 성립하지 않는다** — `bot_tokens.token_hash` 는 없어졌으므로 «그 저장 해시를 아는 상대» 라는 부류 자체가 없다. 읽기 전용 DB 유출로 열리는 것과 닫히는 것의 경계는 `SPEC-GWAUTH-002` §2.4 가 다시 그었다.
+> - **대신 남는 잔여 ①′** — 서버가 TLS 를 종단하지 않으므로(`SPEC-GWAUTH-002` §2.8.4 실측) 채널 바인딩이 `unbound` 로 떨어지고, **중계형 중간자는 오늘의 어떤 배치에서도 배제되지 않는다**. 채널은 그 사실을 매 접속마다 stderr 로 공시한다(REQ-GWAUTH2-020). 닫는 일은 **후속 카드 `t23`**(서버 TLS 종단) 소유이며, 그 카드가 닫히기 전에는 생산 배치를 하지 않는다.
+> - **잔여 ②(내용 신뢰 경계)는 그대로다** — `SPEC-CHANINJECT-001`(카드 `t10`) 소유.
 >
 > **v0.5.0 정정 — 그 남은 몫은 한 카드가 아니라 두 층이다 (카드 `t10`).** v0.4.0 은 이 자리를 «남은 절반은 카드 `t15` 가 소유한다» 한 줄로 적었으나, 잔여는 성질이 다른 둘이고 소유자도 둘이다.
 >

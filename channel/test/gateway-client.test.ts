@@ -35,6 +35,7 @@ interface FakeServer {
   on(handler: (ws: WebSocket, msg: any) => void): void
   url(): string
   sendInner(ws: WebSocket, inner: object): void       // v2 — 내부 프레임을 봉투에 담아 보낸다
+  establishedCount(): number                          // v2 — 세션이 선 소켓의 수. sendInner 가 가능한 소켓만 센다
 }
 
 // autoWelcome: v2 핸드셰이크(challenge→auth)가 끝나면 봉투에 담긴 welcome 으로 답한다.
@@ -85,6 +86,9 @@ function startServer(opts: { autoWelcome?: boolean } = {}): FakeServer {
     wss, messages, sockets,
     on(handler) { handlers.push(handler) },
     sendInner,
+    // 확립 = auth 처리에서 sessions 에 항목이 선 것. sendInner 가 요구하는 바로 그 조건이므로
+    // 대기 술어가 이 값을 읽으면 「기다린 것」과 「필요한 것」이 같은 사실이 된다.
+    establishedCount: () => sessions.size,
     // address() 는 리스닝 전·close 후에 null 을 내므로 마지막 유효 주소를 돌려준다 —
     // null.port 로 예외가 나면 클라이언트의 재시도 루프가 죽어 AC-CHANCLIENT-013 이
     // 백오프 리셋이 아니라 하네스 결함으로 실패한다 (plan.md §H: 원인 규명 후 기록).
@@ -120,10 +124,17 @@ async function deadUrl(): Promise<string> {
   return u
 }
 
-// 클라이언트를 만들어 start() 하고, hello 가 서버에 도착할 때까지 기다린다.
+// 클라이언트를 만들어 start() 하고, 그 클라이언트의 소켓에 «세션이 설 때까지» 기다린다.
+// v1 에서는 hello 가 클라이언트가 보내는 마지막 악수 프레임이어서 「hello 도착 = 확립」이 참이었다.
+// v2 가 악수를 hello → challenge → auth → 봉투 넷으로 늘리면서 그 등식이 깨졌는데(SPEC-GWAUTH-002)
+// 이 술어만 v1 그대로 남아 있었다. hello 도착에서 반환하면 srv.sendInner 가 요구하는 세션이 아직
+// 없어서, 곧바로 sendInner 를 부르는 기준들이 두 왕복의 창을 경주하고 부하에서 진다.
+// 절대 개수가 아니라 «호출 전후의 증가» 를 재는 이유: 한 서버에 두 클라이언트를 붙이는 자리
+// (AC-CHANCLIENT-014)에서 앞선 클라이언트의 확립을 자기 것으로 착각하지 않기 위해서다.
 // sleeps 에는 재접속 대기 인자가 순서대로 쌓인다. 주입된 sleep 은 실제로 기다리지 않는다.
 async function connected(srv: FakeServer, over: Partial<GatewayClientOpts> = {}) {
   const sleeps: number[] = []
+  const establishedBefore = srv.establishedCount()
   const client = createGatewayClient({
     url: () => srv.url(),
     token: 'tok123',
@@ -132,7 +143,7 @@ async function connected(srv: FakeServer, over: Partial<GatewayClientOpts> = {})
   })
   cleanups.push(() => client.stop())
   client.start()
-  await waitFor(() => srv.messages.some(m => m.type === 'hello'))
+  await waitFor(() => srv.establishedCount() > establishedBefore)
   return { client, sleeps }
 }
 
@@ -324,7 +335,9 @@ describe('gateway client', () => {
       if (m.type === 'history_request') srv.sendInner(ws, { type: 'history_response', rid: m.rid, messages: [] })
     })
     client.start()
-    await waitFor(() => srv.messages.some(m => m.type === 'hello'))
+    // 확립까지 기다린다 — 이 기준은 connected() 를 쓰지 않고 직접 붙이므로 같은 술어를 여기에도 건다.
+    // hello 도착에서 진행하면 서버 핸들러의 srv.sendInner 가 세션 없이 불려 하네스가 던진다.
+    await waitFor(() => srv.establishedCount() >= 1)
     expect(await client.requestHistory({ limit: 1 })).toEqual(
       expect.objectContaining({ type: 'history_response', messages: [] }),
     )

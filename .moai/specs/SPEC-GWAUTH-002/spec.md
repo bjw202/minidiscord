@@ -2,9 +2,9 @@
 id: SPEC-GWAUTH-002
 title: "게이트웨이 상호 인증 v2 — 서버 선행 논스·Ed25519 검증자 저장·확립 후 프레임 인증"
 version: "0.4.1"
-status: in-progress
+status: completed
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-08-31
 author: manager-spec
 priority: P0
 phase: "v0.3.0 target"

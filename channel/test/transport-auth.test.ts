@@ -222,6 +222,13 @@ function rogueGateway(opts: {
     set challenge(v: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room' | 'bad-nonce' | 'pipe-nonce' | 'echoed' | 'oracle') { state.challenge = v },
     nonceSeen: () => nonceSeen,
     readHello: () => helloSeen,
+    // 세션이 선 소켓의 수. sendInner·envFrame 이 요구하는 바로 그 조건이다 (sendInner 는 조용히
+    // 무시하고 envFrame 은 던진다 — 둘 다 «확립 전» 이 원인인데 증상이 서로 다르다).
+    establishedCount: () => sessions.size,
+    // 이 스텁이 «붙는 즉시» 세션을 세우는 구성인가. 음성 갈래(증명을 깨거나 답하지 않는 스텁)는
+    // 확립이 오지 않는 것이 관측 그 자체이므로, 확립을 기다리면 영영 반환하지 않는다.
+    willEstablish: () => state.welcome === true && !state.deferChallenge &&
+      (state.proof ?? state.challenge ?? 'valid') === 'valid',
     authSeen: () => authSeenList,
     readIds: () => requestIds,
     pushChallenge,
@@ -255,6 +262,11 @@ async function attachWireTo(stub: Rogue) {
   cleanups.push(async () => { gw.stop(); await client.close() })
   gw.start()
   await waitFor(() => stub.sent.some(m => m.type === 'hello'), 'hello 도착')
+  // v1 에서는 hello 가 클라이언트의 마지막 악수 프레임이라 「hello 도착 = 확립」이 참이었다.
+  // v2 가 악수를 넷으로 늘리면서 그 등식이 깨졌으므로, 확립을 전제로 봉투를 미는 기준들을 위해
+  // 여기서 확립까지 기다린다. 다만 이 하네스는 «확립되지 않는 것» 을 재는 음성 갈래도 함께
+  // 태우므로, 확립을 기다리는 것은 그럴 구성인 스텁뿐이다 (willEstablish).
+  if (stub.willEstablish()) await waitFor(() => stub.establishedCount() >= 1, '세션 확립')
   return { stub, channel, gw, client, verdicts, notes, firstSocket: () => stub.firstSocket() }
 }
 
@@ -713,7 +725,7 @@ describe('transport auth', () => {
     await sendRequest(w.client, REQ)
     stub.push({ type: 'message', id: 1, author_name: 'alice', delivery: 'to', body: '첫 소켓' })
     stub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
-    await waitFor(() => w.notes.length === 1 && w.verdicts.length === 1, '첫 소켓 기준선')
+    await waitFor(() => w.notes.length === 1 && w.verdicts.length === 1, '첫 소켓 기준선', 4500)
 
     // 소켓을 끊고 재접속 뒤, 직전 소켓의 challenge 를 그대로 재생한다 (새 논스로 다시 계산하지 않는다)
     stub.replayNextChallenge()

@@ -131,6 +131,9 @@ function gatewayStub(token = 'tok') {
         c.send(JSON.stringify(envOf(s.sessKey, s.seq, msg)))
       }
     },
+    // 세션이 선 소켓의 수. push 가 확립되지 않은 소켓을 조용히 건너뛰므로, 대기 술어는
+    // 「hello 가 도착했는가」가 아니라 이 값을 읽어야 한다 (v2 악수는 네 프레임이다).
+    establishedCount: () => sessions.size,
   }
 }
 
@@ -295,7 +298,7 @@ describe('permission relay', () => {
     const { channel, gw } = wire({ url: `ws://127.0.0.1:${gwStub.port()}/bot`, token: 'tok' })
     gw.start()
     cleanups.push(() => { gw.stop() })
-    await waitFor(() => gwStub.sent.some(m => m.type === 'hello'), '게이트웨이 접속')
+    await waitFor(() => gwStub.establishedCount() >= 1, '게이트웨이 세션 확립')
 
     const client = new Client({ name: 't', version: '0' })
     const verdicts: { params: Record<string, unknown> }[] = []
