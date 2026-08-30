@@ -1,0 +1,17 @@
+server/package.json
+server/src/db.ts
+server/src/index.ts
+server/src/permissions.ts
+server/src/room-members.ts
+server/src/routes-bots.ts
+server/src/routes-events.ts
+server/src/routes-messages.ts
+server/src/routes-rooms.ts
+server/test/messages.test.ts
+server/test/permissions.test.ts
+server/test/room-members.test.ts
+server/test/sse.test.ts
+server/test/web-chat.test.ts
+server/test/web-permission-contract.test.ts
+server/test/web-rich.test.ts
+server/test/web-shell.test.ts

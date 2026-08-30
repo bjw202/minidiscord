@@ -1,0 +1,13 @@
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+
+
+ Test Files  10 passed (10)
+      Tests  109 passed (109)
+   Start at  00:06:08
+   Duration  15.25s (transform 6.35s, setup 0ms, import 12.93s, tests 43.14s, environment 1ms)
+

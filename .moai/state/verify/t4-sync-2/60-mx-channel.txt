@@ -1,0 +1,1 @@
+channel/src/index.ts:26:// @MX:NOTE: [AUTO] 판정만 하는 순수 함수다 — 진입점이 실제로 부르는지는 AC-CHANAUTH-011 이 따로 잰다

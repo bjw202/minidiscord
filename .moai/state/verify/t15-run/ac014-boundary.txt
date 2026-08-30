@@ -1,0 +1,21 @@
+spec_base_sha=b11bdc5  HEAD=2d7c1ef17b0c21158f516303b0443da0a8359190  branch=WT-rogue-frame-defense
+--- git diff --name-only b11bdc5..HEAD ---
+.moai/specs/SPEC-CHANPERM-001/acceptance.md
+.moai/specs/SPEC-CHANPERM-001/spec.md
+.moai/specs/SPEC-CHANWIRE-001/acceptance.md
+.moai/specs/SPEC-CHANWIRE-001/spec.md
+.moai/specs/SPEC-GWAUTH-001/progress.md
+.moai/specs/SPEC-GWAUTH-001/spec.md
+channel/src/gateway-client.ts
+channel/test/gateway-client.test.ts
+channel/test/gateway-mutual-auth.test.ts
+channel/test/index-wiring.test.ts
+channel/test/permission-relay.test.ts
+channel/test/transport-auth.test.ts
+server/src/gateway.ts
+server/test/gateway.test.ts
+--- deps diff (empty = pass) ---
+--- node:fs in channel/src (none = pass) ---
+none
+--- new message types (none = pass) ---
+none

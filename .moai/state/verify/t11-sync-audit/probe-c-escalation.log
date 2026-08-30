@@ -1,0 +1,45 @@
+=== C1. 극단 room id — 게이트가 던지는가 (P5 생존 변이의 두 번째 후보 입력) ===
+  isRoomMember(db, Infinity, alice) => false
+  isRoomMember(db, -Infinity, alice) => false
+  isRoomMember(db, NaN, alice) => false
+  isRoomMember(db, 1e+308, alice) => false
+  isRoomMember(db, 9007199254740992, alice) => false
+  isRoomMember(db, 0, alice) => false
+  GET id='1e999' (멤버 alice) => 404 {"error":"방을 찾을 수 없습니다"}
+  GET id='Infinity' (멤버 alice) => 404 {"error":"방을 찾을 수 없습니다"}
+  GET id='-1' (멤버 alice) => 404 {"error":"방을 찾을 수 없습니다"}
+  GET id='9007199254740995' (멤버 alice) => 404 {"error":"방을 찾을 수 없습니다"}
+  GET id='+1' (멤버 alice) => 200 {"messages":[]}
+  GET id=' 1' (멤버 alice) => 200 {"messages":[]}
+
+=== C2. 자가 승급 시도 — mallory 가 스스로 멤버가 되는 경로가 있는가 ===
+  비멤버 자가초대: 404 {"error":"방을 찾을 수 없습니다"}
+  POST .../join : 404 {"message":"Route POST:/api/rooms/1/join not found","error":"Not Found","statusC
+  판정 후 멤버?  : false
+
+=== C3. 멤버가 쓰는 사용자 존재 오라클 ===
+  없는 사용자 초대 : 400 {"error":"사용자를 찾을 수 없습니다"}
+  있는 사용자 초대 : 201 {"ok":true}
+  재초대(멱등)     : 200 {"ok":true,"already":true}
+
+=== C4. 권한 릴레이 — 비멤버가 대기 판정을 소모하거나 교란할 수 있는가 ===
+  비멤버 carol 판정 반환 : false
+  비멤버 carol 재시도    : false
+  멤버 alice 판정 반환   : true  (대기 항목이 남아 있었다면 true)
+  멤버 alice 재소비      : false  (이미 소모돼 false 여야 한다)
+  HTTP 비멤버 전송       : 415 {"statusCode":415,"code":"FST_ERR_CTP_INVALID_MEDIA_TYPE","e
+  HTTP 멤버 전송         : 415 {"statusCode":415,"code":"FST_ERR_CTP_INVALID_MEDIA_TYPE","error":"Unsupported M
+
+=== C5. 첨부 — 비멤버가 번호로 남의 방 첨부를 받는가 ===
+  alice 첨부 전송: 200, attachment id = 1
+  비멤버 carol 다운로드: 200 content-type=text/plain body="TOP SECRET"
+
+=== C6. 방 목록 — 비멤버에게 남의 방이 보이는가 ===
+  carol 목록: 200 {"active":[],"archived":[]}
+  alice 목록: 200 {"active":[{"id":2,"name":"relay","status":"active","created_at":"2026-08-29 07:48:06","archived_at":null},{"id":1,"name":"secret","status":"active","created_at":"2026-08-29 07:48:06","archived_at":nu
+
+=== C7. 백필 재실행 — 지운 멤버십이 재기동으로 되살아나는가 ===
+  재개방 전 행수=3 → 삭제 후=2 → 재개방 후=2
+  표식: [{"name":"roomauthz-001-backfill"}]
+  삭제한 멤버십 부활? false
+  표식 삭제 후 재개방: 부활? true, 총 행수=6

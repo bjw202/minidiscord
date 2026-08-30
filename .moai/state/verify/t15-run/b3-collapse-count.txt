@@ -1,0 +1,94 @@
+# B-3 실측 — M2+M3 구현 직후, 하네스 수정 전 (run 단계, 2026-08-29)
+# 명령: npm test -w channel  (worktree WT-rogue-frame-defense, base b11bdc5 + 미커밋 M2/M3 편집)
+# 결과: Tests  29 failed | 41 passed (70)
+# 상한 55 대조: 55 는 welcome 을 보내는 네 하네스 파일의 it() 총산출 상한이지 예측치가 아니다
+#   (spec.md §3.2 — «세션 확립에 의존하지 않는 기준은 하네스를 고치지 않아도 통과한다.
+#    실측은 구현 없이 불가능하므로 상한으로 남긴다»).
+# 파일별 실패: gateway-client.test.ts 15 · index-wiring.test.ts 11 · permission-relay.test.ts 1 · transport-auth.test.ts 2
+# 문서화된 본문-개정 3건 전부 실패 집합에 포함:
+#   AC-CHANCLIENT-001  «sends hello with the token as the very first frame»
+#   AC-CHANCLIENT-002  «passes the welcome frame through untouched, extra fields included»
+#   AC-CHANCLIENT-011  «waits then reconnects to the replaced opts.url and says hello again»
+# 형태 진단: transport-auth 의 t9 선(前)-welcome 게이트 기준 12건은 통과 — 무증명 welcome 이
+#   거절돼도 관측(프레임 폐기)이 동일하기 때문. M3-3 구조 처방과 정합한다.
+# stderr 진단: 거절 건당 «minidiscord-channel: welcome 증명 대조 실패 — 세션을 확립하지 않고 소켓을 닫는다»
+#   다수 관측(하네스 스텁이 전부 논스 없는 무증명 welcome 을 보내므로 — M4 가 증명을 계산하게 고친다).
+# unhandled rejection 3건: «gateway client is not connected» (gateway-client.ts:145 — 기존
+#   requestHistory 거부 경로, welcome 거절로 닫힌 소켓 뒤의 측정 부산물. 새 결함 아님).
+# 원문 로그: .moai/state/verify/t15-run/b3-collapse-raw.log
+# ===== npm test -w channel 원문 꼬리(tail) =====
+Error: gateway client is not connected
+ ❯ src/gateway-client.ts:145:16
+    143|         clearTimeout(timer)
+    144|         pending.delete(rid)
+    145|         reject(new Error('gateway client is not connected'))
+       |                ^
+    146|       }
+    147|     })
+ ❯ Object.requestHistory src/gateway-client.ts:134:12
+ ❯ test/gateway-client.test.ts:214:22
+ ❯ runNextTicks node:internal/process/task_queues:64:5
+ ❯ listOnTimeout node:internal/timers:567:9
+ ❯ processTimers node:internal/timers:541:7
+ ❯ ../node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20
+
+This error originated in "test/gateway-client.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "puts every history parameter on the frame top level, since_id included". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: gateway client is not connected
+ ❯ src/gateway-client.ts:145:16
+    143|         clearTimeout(timer)
+    144|         pending.delete(rid)
+    145|         reject(new Error('gateway client is not connected'))
+       |                ^
+    146|       }
+    147|     })
+ ❯ Object.requestHistory src/gateway-client.ts:134:12
+ ❯ test/gateway-client.test.ts:237:23
+ ❯ runNextTicks node:internal/process/task_queues:64:5
+ ❯ processTimers node:internal/timers:538:9
+ ❯ ../node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20
+
+This error originated in "test/gateway-client.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "matches responses by rid, not by arrival order". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: gateway client is not connected
+ ❯ src/gateway-client.ts:145:16
+    143|         clearTimeout(timer)
+    144|         pending.delete(rid)
+    145|         reject(new Error('gateway client is not connected'))
+       |                ^
+    146|       }
+    147|     })
+ ❯ Object.requestHistory src/gateway-client.ts:134:12
+ ❯ test/gateway-client.test.ts:238:23
+ ❯ runNextTicks node:internal/process/task_queues:64:5
+ ❯ processTimers node:internal/timers:538:9
+ ❯ ../node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20
+
+This error originated in "test/gateway-client.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "matches responses by rid, not by arrival order". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  4 failed | 1 passed (5)
+      Tests  29 failed | 41 passed (70)
+     Errors  3 errors
+   Start at  22:16:31
+   Duration  40.26s (transform 202ms, setup 0ms, import 648ms, tests 74.92s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+npm error command failed
+npm error command sh -c vitest run

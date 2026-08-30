@@ -1,0 +1,15 @@
+ROUTES>>>
+├── /api/health (GET, HEAD)
+├── /api/auth/register (POST)
+├── /api/auth/login (POST)
+├── /api/auth/logout (POST)
+├── /api/attachments/:id (GET, HEAD)
+├── /api/rooms (GET, HEAD, POST)
+│   ├── /:id/members (POST)
+│   ├── /:id/messages (POST, GET, HEAD)
+│   ├── /:id/archive (POST)
+│   ├── /:id/invites (POST, GET, HEAD)
+│   │   └── /:botId (DELETE)
+│   └── /:id/events (GET, HEAD)
+└── /api/bots (GET, HEAD, POST)
+

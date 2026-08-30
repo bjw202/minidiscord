@@ -1,0 +1,15 @@
+channel/src/gateway-client.ts:11:  onMessage?: (m: { type: 'message'; id: number; body: string; author_name: string; delivery: 'to' | 'cc'; files?: { name: string; local_path: string }[] }) => void
+channel/src/index.ts:61:    // 송신 갈래. files 는 경로 문자열을 { local_path } 객체로 바꿔 싣는다 — 게이트웨이가 읽는 필드 이름이다 (REQ-CHANWIRE-011).
+channel/src/index.ts:64:      gw.send({ type: 'bot_message', body: payload.text, files: (payload.files ?? []).map(local_path => ({ local_path })) })
+channel/src/channel-server.ts:35:  files?: { name: string; local_path: string }[]
+channel/src/channel-server.ts:134:      ? `\n(첨부 파일 경로: ${msg.files.map(f => neutralizeEnvelope(f.local_path)).join(', ')})`
+server/src/gateway.ts:12:  // stored_path 는 이 payload 에 싣지 않는다 — 서버 절대 경로가 HTTP 응답으로 새어 나갔다
+server/src/gateway.ts:13:  // (sync-audit F-02). 봇 프레임의 local_path 는 deliver 가 DB 에서 다시 읽어 채운다.
+server/src/gateway.ts:113:    const attachments = db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(m.id) as any[]
+server/src/gateway.ts:118:      files: attachments.map(a => ({ name: a.filename, local_path: a.stored_path })),
+server/src/gateway.ts:149:    for (const f of (msg.files ?? []) as { local_path?: string; name?: string }[]) {
+server/src/gateway.ts:155:        const src = realpathSync(String(f.local_path))
+server/src/gateway.ts:163:        db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, ?, ?)')
+server/src/gateway.ts:170:    // stored_path 를 뽑지 않는다 — 이 프레임은 방을 구독한 로그인 사용자 전원에게 가므로
+server/src/gateway.ts:199:      const attachments = db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(msg.id) as any[]
+server/src/gateway.ts:206:          files: attachments.map(a => ({ name: a.filename, local_path: a.stored_path })),
