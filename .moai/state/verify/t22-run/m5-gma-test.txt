@@ -1,0 +1,117 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/gateway-mutual-auth.test.ts > gateway mutual auth > a history response from the real server arrives inside an envelope and resolves
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/gateway-mutual-auth.test.ts (5 tests | 4 failed) 10171ms
+     × a relaying man in the middle passes the handshake and still injects nothing 5005ms
+     × a history response from the real server arrives inside an envelope and resolves 64ms
+     × a real relay terminating tls on both sides cannot take over the bot session 3ms
+     × on an unbound transport the same relay does take over, and the channel says so 5003ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:219:3
+    217|
+    218|   // AC-GWAUTH2-013 — 중계형 중간자는 핸드셰이크를 통과시키고도 아무것도 주입하지 못한다.
+    219|   it('a relaying man in the middle passes the handshake and still inje…
+       |   ^
+    220|     const { db, gateway, port: realPort, close } = await buildRealServ…
+    221|     const roomId = seedRoom(db)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a history response from the real server arrives inside an envelope and resolves
+AssertionError: expected 0 to be greater than 0
+ ❯ test/gateway-mutual-auth.test.ts:273:29
+    271|
+    272|     expect(settled).toBe('resolved')                                 /…
+    273|     expect(sentEnvs.length).toBeGreaterThan(0)                       /…
+       |                             ^
+    274|     expect(sentEnvs.some(f => JSON.stringify(f.payload).includes('hist…
+    275|     expect((await p).messages.length).toBeGreaterThanOrEqual(0)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a real relay terminating tls on both sides cannot take over the bot session
+TypeError: readFileSync is not a function
+ ❯ fixtureKeyPem test/gateway-mutual-auth.test.ts:50:10
+     48| const FIXTURE_CERT = fileURLToPath(new URL('../../server/test/fixtures…
+     49| function fixtureKeyPem(): string {
+     50|   return readFileSync(new URL('../../server/test/fixtures/tls-test-key…
+       |          ^
+     51| }
+     52| function fixtureCertPem(): string {
+ ❯ buildRealServer test/gateway-mutual-auth.test.ts:65:31
+ ❯ test/gateway-mutual-auth.test.ts:284:55
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > on an unbound transport the same relay does take over, and the channel says so
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:383:3
+    381|
+    382|   // AC-GWAUTH2-024 — 경계 기준: 바인딩이 서지 않는 연결에서는 같은 중계자가 이긴다.
+    383|   it('on an unbound transport the same relay does take over, and the c…
+       |   ^
+    384|     const errSpyLines: string[] = []
+    385|     const origErr = console.error
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 2 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: wss.listen is not a function
+ ❯ test/gateway-mutual-auth.test.ts:145:14
+    143|   const listenReady = new Promise<void>(r => {
+    144|     if (channelFacing) (channelFacing as import('node:https').Server).…
+    145|     else wss.listen(0, '127.0.0.1', () => r())
+       |              ^
+    146|   })
+    147|   cleanups.push(async () => {
+ ❯ relayMitm test/gateway-mutual-auth.test.ts:143:23
+ ❯ test/gateway-mutual-auth.test.ts:224:19
+ ❯ processTicksAndRejections node:internal/process/task_queues:103:5
+ ❯ ../node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20
+
+This error originated in "test/gateway-mutual-auth.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "a relaying man in the middle passes the handshake and still injects nothing". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: wss.listen is not a function
+ ❯ test/gateway-mutual-auth.test.ts:145:14
+    143|   const listenReady = new Promise<void>(r => {
+    144|     if (channelFacing) (channelFacing as import('node:https').Server).…
+    145|     else wss.listen(0, '127.0.0.1', () => r())
+       |              ^
+    146|   })
+    147|   cleanups.push(async () => {
+ ❯ relayMitm test/gateway-mutual-auth.test.ts:143:23
+ ❯ test/gateway-mutual-auth.test.ts:392:21
+ ❯ processTicksAndRejections node:internal/process/task_queues:103:5
+ ❯ ../node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20
+
+This error originated in "test/gateway-mutual-auth.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "on an unbound transport the same relay does take over, and the channel says so". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed (5)
+     Errors  2 errors
+   Start at  20:41:36
+   Duration  10.46s (transform 51ms, setup 0ms, import 223ms, tests 10.17s, environment 0ms)
+

@@ -506,7 +506,7 @@ it('the built artifact speaks MCP; the token gates only the gateway', async () =
 **Then** 네 가지가 모두 관측된다.
 
 1. (a) 의 stdout 에 그 요청의 `id` 를 가진 JSON-RPC 응답이 나오고, `result.serverInfo.name` 이 `minidiscord-channel` 이다.
-2. (a) 에서 스텁이 `{ type: 'hello', token: 'tok' }` 를 받는다. **v0.5.0 주 (카드 `t15`)**: `SPEC-GWAUTH-001` 착지 후 이 프레임은 `{ type: 'hello', token: 'tok', nonce: <64자 hex> }` 세 필드가 된다(REQ-GWAUTH-001). **이 기준이 재는 것은 «스텁이 hello 를 받았는가» 이지 필드 집합이 아니므로 단언 형태는 바뀌지 않는다** — 다만 위 리터럴을 «필드가 이 둘뿐» 으로 읽어서는 안 된다. **1 과 2 가 같은 프로세스에서 함께 성립하는 것**이 이 기준의 핵심이다 — 배선의 주장이 바로 "한 프로세스가 세션과 게이트웨이 양쪽에 동시에 붙어 있다"이기 때문이다.
+2. (a) 에서 스텁이 `{ type: 'hello', token: 'tok' }` 를 받는다. **v0.5.0 주 (카드 `t15`)**: `SPEC-GWAUTH-001` 착지 후 이 프레임은 `{ type: 'hello', token: 'tok', nonce: <64자 hex> }` 세 필드가 된다(REQ-GWAUTH-001). **[SPEC-GWAUTH-002 로 대체됨]**: v2 에서 hello 는 `{ type:'hello', pub, client_nonce }` — 토큰 자리를 결정적으로 유도한 검증자 `pub` 가 대신한다(REQ-GWAUTH2-004). **이 기준이 재는 것은 «스텁이 hello 를 받았는가» 이지 필드 집합이 아니므로 단언 형태는 바뀌지 않는다**. **1 과 2 가 같은 프로세스에서 함께 성립하는 것**이 이 기준의 핵심이다 — 배선의 주장이 바로 "한 프로세스가 세션과 게이트웨이 양쪽에 동시에 붙어 있다"이기 때문이다.
 3. (b) 의 stdout 에도 같은 형태의 `initialize` 응답이 나온다 (REQ-CHANWIRE-004 의 "stdio 를 막지 않는다" 절).
 4. (b) 에서 스텁이 받은 연결이 **0건**이다 (REQ-CHANWIRE-004 의 부정 절).
 

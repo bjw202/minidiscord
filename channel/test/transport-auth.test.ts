@@ -4,10 +4,10 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { WebSocketServer, type WebSocket as WS } from 'ws'
+import { WebSocketServer, WebSocket, type WebSocket as WS } from 'ws'
 import { spawn } from 'node:child_process'
-import { createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
-import { readFileSync, readdirSync } from 'node:fs'
+import { createHash, createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 // isTransportAllowed 는 M2 가 새로 내보내는 판정 함수, resolveUrl 은 그 비회귀를 재는 형제 계약이다.
@@ -33,6 +33,8 @@ const sessKeyOf = (t: string, cn: string, sn: string, room: number, bot: number)
 // channel/channel/dist/index.js 로 풀린다 — 자식이 아예 뜨지 않아 (a) 갈래가 "잘못된 이유로"
 // 통과해 버린다. 형제 하네스(index-wiring.test.ts:62)와 같은 형태로 고정한다 (계획 감사 H-03).
 const DIST = fileURLToPath(new URL('../dist/index.js', import.meta.url))
+// AC-GWAUTH2-017 의 변이 대상 — 채널 클라이언트 소스. 변이 적용→자식 스위트→복원의 대상이다.
+const CLIENT_SRC = fileURLToPath(new URL('../src/gateway-client.ts', import.meta.url))
 
 // 진짜 zod 스키마여야 한다 — SDK 가 schema.shape.method.value 로 메서드를 읽는다.
 // params 에 .passthrough() 를 붙이지 않으면 "무엇이 왔는가"를 단언할 수 없다.
@@ -47,17 +49,25 @@ const ChatNote = z.object({
 
 // 로그 서버. challenge 를 보낼지 말지와 server_proof 를 어떻게 실어 보낼지가 이 하네스의 손잡이다 —
 // F-01 프로브(probe-rogue.ts)를 vitest 로 옮긴 것이며, 갈래들의 짝이 AC-CHANAUTH-001/002 와
-// AC-GWAUTH-006/007 을 만든다. v2 (SPEC-GWAUTH-002) — 갈래는 challenge 의 server_proof 에 적용된다:
+// AC-GWAUTH2-006/007 을 만든다. v2 (SPEC-GWAUTH-002) — 갈래는 challenge 에 적용된다:
 // 'valid' 유효 | 'omit' 필드 없음 | 'wrong' 길이는 맞고 값이 틀림 | 'short' 길이가 틀림 |
-// 'other-room' 유효한 증명 + room_id 만 다른 값.
+// 'other-room' 유효한 증명 + room_id 만 다른 값 | 'bad-nonce' nonce 가 hex 가 아님 |
+// 'pipe-nonce' nonce 에 구분자 | 'echoed' 읽은 값으로 만든 최선 (echoVariant 로 넷) |
+// 'oracle' 진짜 서버에 물어본다 (oraclePort 필요).
+// deferChallenge: hello 에 즉시 답하지 않는다 — 테스트가 pushChallenge() 로 시점을 고른다.
 // deferWelcome: auth 가 와도 welcome 봉투를 바로 보내지 않는다 — 테스트가 pushWelcome() 으로 시점을 고른다.
-// 요청 프레임이 소켓이 열려 있는 동안 나가야 하는 기준(AC-GWAUTH-006·011)이 쓴다 (1회차 감사 H-02).
+// 요청 프레임이 소켓이 열려 있는 동안 나가야 하는 기준(AC-GWAUTH2-006·011)이 쓴다 (1회차 감사 H-02).
 function rogueGateway(opts: {
   welcome: boolean
   proof?: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room'
+  challenge?: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room' | 'bad-nonce' | 'pipe-nonce' | 'echoed' | 'oracle'
+  echoVariant?: 'hmac-pub' | 'hmac-nonce' | 'sha256-pub' | 'pub'
+  deferChallenge?: boolean
   deferWelcome?: boolean
+  oraclePort?: number
 }) {
-  const state = { ...opts }   // welcome·proof 는 도중에 뒤집을 수 있다 — set welcome/set proof
+  const state = { ...opts }   // welcome·proof·challenge 는 도중에 뒤집을 수 있다 — set welcome/set proof/set challenge
+  const oraclePort = opts.oraclePort ?? null
   const wss = new WebSocketServer({ port: 0 })
   const sent: Record<string, unknown>[] = []
   const live: WS[] = []
@@ -66,22 +76,48 @@ function rogueGateway(opts: {
   const requestIds: string[] = []          // 나가는 permission_request 에서 읽은 id — readIds() 가 돌려준다
   const sessions = new Map<WS, { sessKey: Buffer; seq: number }>()
   const pending = new Map<WS, { cn: string; sn: string }>()
+  const authSeenList: any[] = []
+  const wireLog: string[] = []             // 스텁이 «보낸» 프레임의 type 순서 — 발신 관측은 이 outbox 로 한다
+  let helloSeen: { pub: string; client_nonce: string } | null = null
+  let lastChallenge: Record<string, unknown> | null = null
+  let replayNext = false   // 다음 hello 에 마지막 challenge 를 그대로 재생한다 (AC-GWAUTH2-011)
+
+  function wireSend(ws: WS, frame: Record<string, unknown> | unknown): void {
+    wireLog.push((frame as { type?: string }).type ?? '?')
+    ws.send(JSON.stringify(frame))
+  }
 
   // 현재 갈래(state.proof)와 읽어 둔 논스·pub 으로 challenge 프레임을 만든다. 기본 갈래는 'valid' 다 —
   // proof 를 지정하지 않는 형제 기준은 유효한 증명을 받아야 다음 단계로 나아간다.
   // 방·봇은 기존 스텁과 같은 1·2 이고 토큰은 'tok' 다 (acceptance.md 공통 테스트 하네스).
-  function challengeFrame(ws: WS, cn: string, pub: string): Record<string, unknown> {
-    const sn = randomBytes(32).toString('hex')
-    pending.set(ws, { cn, sn })   // auth 가 왔을 때 세션을 세우는 데 쓴다 — 소켓이 곧 열쇠다
+  function challengeFrame(cn: string, sn: string, pub: string): Record<string, unknown> {
     const frame: Record<string, unknown> = { type: 'challenge', server_nonce: sn, room_id: 1, bot_id: 2 }
-    const branch = state.proof ?? 'valid'
+    // 두 축 — 형제 기준(AC-CHANAUTH-*)은 proof 를, AC-GWAUTH2 기준은 challenge 를 쓴다.
+    // 같은 값 이름(valid·omit·wrong·short·other-room)은 같은 변이를 뜻하므로 한 축으로 합친다.
+    const branch = state.proof ?? state.challenge ?? 'valid'
     if (branch !== 'omit') {
       const valid = challengeProofOf('tok', cn, sn, 1, 2, pub)
       if (branch === 'wrong') frame.server_proof = (valid[0] === '0' ? '1' : '0') + valid.slice(1)   // 64자, 첫 글자만 뒤집는다
       else if (branch === 'short') frame.server_proof = 'ab'                                          // 길이부터 틀리다
       else if (branch === 'other-room') { frame.room_id = 9; frame.server_proof = valid }             // 증명은 방 1 에 묶여 있다
+      else if (branch === 'bad-nonce') frame.server_nonce = 'zz'                                      // hex 가 아녀 — REQ-GWAUTH2-006 형식 조항
+      else if (branch === 'pipe-nonce') frame.server_nonce = `${sn}|9|9`                              // 구분자를 값에 넣는다 — §2.5 단일성 논증
       else frame.server_proof = valid
     }
+    return frame
+  }
+
+  // echoed 갈래 — 위조자가 hello 에서 «실제로 읽은» 값으로 만들 수 있는 최선을 시도한다.
+  // k_srv 를 모르는 위조자의 전사 키 후보 넷 + 진짜 서버 오라클 (acceptance.md AC-GWAUTH2-006).
+  function echoedFrame(cn: string, pub: string): Record<string, unknown> {
+    const sn = randomBytes(32).toString('hex')
+    const transcript = `challenge|${cn}|${sn}|1|2|${pub}|unbound`
+    const frame: Record<string, unknown> = { type: 'challenge', server_nonce: sn, room_id: 1, bot_id: 2 }
+    const v = state.echoVariant ?? 'hmac-pub'
+    if (v === 'hmac-pub') frame.server_proof = createHmac('sha256', Buffer.from(pub, 'hex')).update(transcript).digest('hex')
+    else if (v === 'hmac-nonce') frame.server_proof = createHmac('sha256', Buffer.from(cn, 'hex')).update(transcript).digest('hex')
+    else if (v === 'sha256-pub') frame.server_proof = createHash('sha256').update(transcript + pub).digest('hex')
+    else if (v === 'pub') frame.server_proof = pub   // 64자 hex 라 형식 검사는 통과하는 값
     return frame
   }
 
@@ -90,25 +126,78 @@ function rogueGateway(opts: {
     if (!s) return   // 확립되지 않은 소켓으로는 봉투를 만들 수 없다 — 조용히 무시한다
     const payload = JSON.stringify(inner)
     s.seq += 1
-    ws.send(JSON.stringify({ type: 'env', seq: s.seq, payload, mac: createHmac('sha256', s.sessKey).update(`${s.seq}|${payload}`).digest('hex') }))
+    wireSend(ws, { type: 'env', seq: s.seq, payload, mac: createHmac('sha256', s.sessKey).update(`${s.seq}|${payload}`).digest('hex') })
+  }
+
+  // 검증 관측용 — 호출처가 mac 을 일부러 깬 봉투를 만든다 (AC-GWAUTH2-014 의 변조 갈래)
+  function pushEnvRaw(frame: Record<string, unknown>): void {
+    for (const c of wss.clients) wireSend(c, frame)
+  }
+  function envFrame(ws: WS, seq: number, inner: object, macBad = false): Record<string, unknown> {
+    const s = sessions.get(ws)!
+    const payload = JSON.stringify(inner)
+    let mac = createHmac('sha256', s.sessKey).update(`${seq}|${payload}`).digest('hex')
+    if (macBad) mac = (mac[0] === '0' ? '1' : '0') + mac.slice(1)
+    return { type: 'env', seq, payload, mac }
   }
 
   function pushWelcome() {
     for (const c of live) sendInner(c, { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' })
   }
 
+  // deferChallenge 짝 — 지금 challenge 를 보낸다. oracle 갈래면 읽어 둔 hello 로 진짜 서버에
+  // 물어본 뒤 돌아온 challenge 를 글자 그대로 채널에 넘긴다 (AC-GWAUTH2-006 의 다섯째 갈래).
+  function pushChallenge(): void {
+    const seen = helloSeen
+    if (!seen) return
+    if (state.challenge === 'oracle' && oraclePort !== null) {
+      const up = new WebSocket(`ws://127.0.0.1:${oraclePort}/bot`)
+      up.on('open', () => up.send(JSON.stringify({ type: 'hello', pub: seen.pub, client_nonce: seen.client_nonce })))
+      up.on('message', d => {
+        const m = JSON.parse(String(d))
+        if (m.type === 'challenge') { lastChallenge = m; for (const c of live) wireSend(c, m); up.close() }
+      })
+      return
+    }
+    const sn = randomBytes(32).toString('hex')
+    for (const c of live) pending.set(c, { cn: seen.client_nonce, sn })
+    const frame = state.challenge === 'echoed' ? echoedFrame(seen.client_nonce, seen.pub) : challengeFrame(seen.client_nonce, sn, seen.pub)
+    lastChallenge = frame
+    for (const c of live) wireSend(c, frame)
+  }
+
   cleanups.push(() => new Promise<void>(r => wss.close(() => r())))
   wss.on('connection', ws => {
     connections++
     live.push(ws)
+    ws.on('close', () => {   // 죽은 소켓을 live 에서 가지치기한다 — liveCount 는 «살아 있는» 접속 수다
+      const i = live.indexOf(ws)
+      if (i >= 0) live.splice(i, 1)
+    })
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       sent.push(m)
-      if (m.type === 'hello') nonceSeen = m.client_nonce
+      if (m.type === 'hello') {
+        nonceSeen = m.client_nonce
+        helloSeen = { pub: m.pub, client_nonce: m.client_nonce }
+      }
+      if (m.type === 'auth') authSeenList.push(m)
       if (m.type === 'permission_request') requestIds.push(m.request_id)
       if (m.type === 'hello' && state.welcome) {
-        // welcome: false 이면 hello 에 아무 응답도 하지 않는다 — pub 도 보지 않는다
-        ws.send(JSON.stringify(challengeFrame(ws, m.client_nonce, m.pub)))
+        if (replayNext && lastChallenge) { replayNext = false; wireSend(ws, lastChallenge); return }
+        if (!state.deferChallenge) {
+          if (state.challenge === 'oracle' && oraclePort !== null) { pushChallenge(); return }
+          if (state.challenge === 'echoed') { lastChallenge = echoedFrame(m.client_nonce, m.pub); wireSend(ws, lastChallenge); return }
+          // challenge 의 진짜 sn 은 pending 에 남긴다 — auth 가 왔을 때 세션 유도에 쓴다.
+          // 갈래가 필드를 바꿔도(bad-nonce·pipe) pending 의 sn 은 «증명에 쓴 진짜 값»이다.
+          const sn = randomBytes(32).toString('hex')
+          pending.set(ws, { cn: m.client_nonce, sn })
+          const frame = challengeFrame(m.client_nonce, sn, m.pub)
+          lastChallenge = frame
+          wireSend(ws, frame)
+          return
+        }
+        // deferChallenge — 테스트가 pushChallenge() 로 시점을 고른다
       }
       if (m.type === 'auth') {
         // auth 가 오면 challenge 논스로 세션을 세운다 — welcome 은 봉투로 나간다 (REQ-GWAUTH2-012)
@@ -124,12 +213,23 @@ function rogueGateway(opts: {
     connections: () => connections,
     port: () => (wss.address() as { port: number }).port,
     push: (msg: unknown) => { for (const c of wss.clients) sendInner(c, msg as object) },
+    pushRaw: (frame: unknown) => { for (const c of wss.clients) wireSend(c, frame) },   // 봉투 없이 그대로 (AC-GWAUTH2-014 ③) — 원문 기록은 wireLog 에도 남는다
+    pushEnvRaw,                                        // 검증 관측용 변조 봉투 (AC-GWAUTH2-014 ①②)
+    envFrame,
     dropAll: () => { for (const c of live.splice(0)) c.terminate() },
     set welcome(v: boolean) { state.welcome = v },   // 재접속 도중에 뒤집는다 (AC-CHANAUTH-004)
     set proof(v: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room') { state.proof = v },   // 접속 도중에 갈래를 바꾼다 (AC-GWAUTH-011)
+    set challenge(v: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room' | 'bad-nonce' | 'pipe-nonce' | 'echoed' | 'oracle') { state.challenge = v },
     nonceSeen: () => nonceSeen,
+    readHello: () => helloSeen,
+    authSeen: () => authSeenList,
     readIds: () => requestIds,
+    pushChallenge,
+    replayNextChallenge: () => { replayNext = true },  // 다음 hello 에 마지막 challenge 를 그대로 재생한다
+    wireLog: () => wireLog,                            // 스텁이 보낸 프레임의 type 순서 (발신 관측)
+    liveCount: () => live.length,                      // 살아 있는 소켓 수 — 거절 닫힘의 관측 (connections 는 누적값)
     pushWelcome,                                     // 지금 welcome 봉투를 보낸다 (deferWelcome 짝)
+    firstSocket: () => live[0],                      // envFrame 이 세션을 찾는 데 쓴다 (AC-GWAUTH2-014·015)
     // 살아 있는 소켓으로 welcome 을 한 번 더 보낸다. 재접속을 거치지 않고 같은 소켓 위에서
     // 확립 전후를 관측하려는 기준이 쓴다 (AC-CHANAUTH-003 (나) 갈래).
     helloAgain: pushWelcome,
@@ -139,7 +239,7 @@ function rogueGateway(opts: {
 type Rogue = ReturnType<typeof rogueGateway>
 
 // wire() 를 세우고 MCP 클라이언트를 붙인 뒤 게이트웨이에 접속시킨다.
-const attachWire = (gwOpts: { welcome: boolean; proof?: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room'; deferWelcome?: boolean }) =>
+const attachWire = (gwOpts: { welcome: boolean; proof?: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room'; deferWelcome?: boolean; challenge?: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room' | 'bad-nonce' | 'pipe-nonce' | 'echoed' | 'oracle'; echoVariant?: 'hmac-pub' | 'hmac-nonce' | 'sha256-pub' | 'pub'; deferChallenge?: boolean; oraclePort?: number }) =>
   attachWireTo(rogueGateway(gwOpts))
 
 // 스텁을 밖에서 만들어 넘기는 변형. 접속 도중에 스텁의 동작을 바꿔야 하는 기준이 쓴다.
@@ -155,7 +255,7 @@ async function attachWireTo(stub: Rogue) {
   cleanups.push(async () => { gw.stop(); await client.close() })
   gw.start()
   await waitFor(() => stub.sent.some(m => m.type === 'hello'), 'hello 도착')
-  return { stub, channel, gw, client, verdicts, notes }
+  return { stub, channel, gw, client, verdicts, notes, firstSocket: () => stub.firstSocket() }
 }
 
 async function waitFor(pred: () => boolean, label: string, ms = 3000): Promise<void> {
@@ -219,10 +319,12 @@ function spawnChild(args: string[], env: NodeJS.ProcessEnv) {
 
 const REQ = { request_id: 'abcde', tool_name: 'Bash', description: 'Run shell command', input_preview: 'ls -la' }
 
-// AC-GWAUTH-006 이 정의한 4단계 — 007·008·009·012 가 완전히 같은 순서를 공유한다. 순서가
+// AC-GWAUTH2-006 이 정의한 5단계 — 007·012 가 완전히 같은 순서를 공유한다. 순서가
 // 다르면 두 기준의 차이가 증명 때문인지 순서 때문인지 가려지지 않는다 (acceptance.md).
-// 전제: 스텁은 deferWelcome — 아직 welcome 을 보내지 않아 소켓이 열려 있다.
-async function runForgedSequence(stub: Rogue, w: Awaited<ReturnType<typeof attachWireTo>>) {
+// 전제: 스텁은 deferChallenge — 아직 challenge 를 보내지 않아 소켓이 열려 있다.
+// 4단계의 주입은 push() (세션으로 봉투화 — 세션이 없으면 아무것도 나가지 않는다) 로 한다.
+// 위조자가 봉투를 만들 수 없다는 성질은 «세션이 없다» 로 하네스에 그대로 반영되어 있다.
+async function runForgedEcho(stub: Rogue, w: Awaited<ReturnType<typeof attachWireTo>>) {
   // 1. 승인 요청 발신 — 소켓이 열려 있는 동안 나가고, 스텁이 프레임에서 진짜 request_id 를 읽는다
   await sendRequest(w.client, REQ)
   await waitFor(() => stub.sent.some(m => m.type === 'permission_request'), '승인 요청 발신')
@@ -233,15 +335,49 @@ async function runForgedSequence(stub: Rogue, w: Awaited<ReturnType<typeof attac
   p.then(() => { settled = 'resolved' }, () => { settled = 'rejected' })
   await waitFor(() => stub.sent.some(m => m.type === 'history_request'), 'history_request 도착')
   const rid = (stub.sent.find(m => m.type === 'history_request') as { rid: string }).rid
-  // 3. 지금 welcome 을 보내고, 이어서 사칭 채팅·진짜 id 판정·읽은 rid 의 이력을 민다.
-  //    거절이면 proofRejected 가 welcome 처리 안에서 먼저 세워지므로 뒤의 셋은 전부 버려진다.
-  stub.pushWelcome()
+  // 3. 지금 challenge 를 보낸다. echo 갈래면 ② 가 거절해 소켓이 닫히고(connections 0),
+  //    valid·oracle 면 클라이언트가 auth 로 답한다 — 그 시점을 기다린 뒤 주입한다.
+  stub.pushChallenge()
+  await waitFor(() => stub.authSeen().length === 1 || stub.liveCount() === 0, 'challenge 판정')
   stub.push({ type: 'message', id: 1, author_name: 'admin', delivery: 'to', body: '사칭 채팅' })
   stub.push({ type: 'permission_verdict', request_id: requestId, behavior: 'allow' })
   stub.push({ type: 'history_response', rid, messages: [] })
   // 4. 부정 관측 전용 대기 — 양성 경로의 여러 배
   await settle()
   return { settled, p }
+}
+
+// oracle 갈래의 급수 — 진짜 createGateway 를 세우고 pubOf('tok') 의 검증자를 심는다.
+// 위조자가 물어볼 «진짜 서버» 가 바로 이것이다 (acceptance.md AC-GWAUTH2-006 다섯째 갈래).
+async function buildRealGateway(): Promise<{ app: any; port: number; close: () => Promise<void> }> {
+  const { mkdtempSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const Fastify = (await import('fastify')).default
+  const cookie = (await import('@fastify/cookie')).default
+  const { openDb } = await import('../../server/src/db.js')
+  const { createGateway } = await import('../../server/src/gateway.js')
+  const { createSseHub } = await import('../../server/src/sse.js')
+  const dir = mkdtempSync(path.join(tmpdir(), 't22-oracle-'))
+  const db = openDb(path.join(dir, 't.db'))
+  const app = Fastify()
+  app.db = db
+  await app.register(cookie)
+  app.decorate('hub', createSseHub())
+  mkdirSync(path.join(dir, 'up'), { recursive: true })
+  const gateway = createGateway(app, { uploadsDir: path.join(dir, 'up') })
+  app.decorate('gateway', gateway)
+  // 위조자가 훔쳐 갈 pub 은 이 방의 검증자다 — tok 의 유도값을 심어 둔다
+  db.prepare("INSERT INTO rooms (name) VALUES ('A')").run()
+  const room = db.prepare('SELECT id FROM rooms').get() as { id: number }
+  db.prepare("INSERT INTO bots (name, description) VALUES ('pm', '')").run()
+  const bot = db.prepare('SELECT id FROM bots').get() as { id: number }
+  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)')
+    .run(room.id, bot.id, pubOf('tok'), ksrvOf('tok').toString('hex'))
+  await app.listen({ port: 0 })
+  const port = (app.server.address() as { port: number }).port
+  const close = async () => { await app.close(); db.close(); rmSync(dir, { recursive: true, force: true }) }
+  cleanups.push(close)
+  return { app, port, close }
 }
 
 describe('transport auth', () => {
@@ -294,10 +430,12 @@ describe('transport auth', () => {
     await settle()
     expect(settled).toBe('pending')          // (가) 확립 전 응답은 대기를 해소하지 않는다
 
-    // (나) 양성 짝 — welcome 뒤 같은 rid 의 응답은 해소한다.
-    // 서버가 welcome 을 보내게 한 뒤 같은 소켓으로 다시 민다. 재접속을 기다리지 않는다.
+    // (나) 양성 짝 — 확립 뒤 같은 rid 의 응답은 해소한다.
+    // v2 (SPEC-GWAUTH-002): 확립은 challenge→auth→봉투 welcome 로 성립한다. 스텁이 이제
+    // challenge 를 내도록 뒤집고, 재접속해 확립된 뒤 같은 rid 의 응답을 봉투로 민다.
     stub.welcome = true
-    stub.helloAgain()                        // 하네스가 저장해 둔 소켓으로 welcome 을 보낸다
+    stub.dropAll()
+    await waitFor(() => stub.authSeen().length === 1, '재접속 확립 (auth 발신)')
     expect(settled).toBe('pending')          // 아직 해소되지 않았다 — 여기서 기다릴 것은 없다 (아래 주).
                                              // 이 줄은 방어가 아니라 (가)의 상태 기록이다 — 어떤 변이도 여기서 걸리지 않는다.
     stub.push({ type: 'history_response', rid: rid(), messages: [] })
@@ -485,68 +623,60 @@ describe('transport auth', () => {
   // 한 파일에 두는 이유는 acceptance.md 공통 테스트 하네스 머리글과 같다 — 스텁을 공유하는
   // 기준들이 서로를 가린 채 통과할 수 없게 하기 위함이다.
 
-  // AC-GWAUTH-004 — hello 는 64자 hex 논스를 싣고 필드는 정확히 셋이다.
-  // 무작위성 자체는 AC-GWAUTH-005 가 두 소켓의 값 대조로 잰다 — 두 기준이 짝이다.
-  it('hello carries a 64-hex nonce and exactly three fields', async () => {
-    const { stub } = await attachWire({ welcome: true, proof: 'valid' })
-    const hello = stub.sent.find(m => m.type === 'hello') as { nonce: string; token: string }
-    expect(Object.keys(hello).sort()).toEqual(['nonce', 'token', 'type'])
-    expect(hello.nonce).toMatch(/^[0-9a-f]{64}$/)
-    expect(hello.token).toBe('tok')
+  // AC-GWAUTH2-003 — 나가는 hello 에 평문 토큰이 없다 (v1 AC-GWAUTH-004 를 대체한다 —
+  // 토큰 자리를 pub 이 대신했고 키 집합 전체를 toEqual 로 고정한다: 다른 이름의 필드도 잡힌다).
+  it('hello carries exactly a pub and a client nonce, and no plaintext token', async () => {
+    const { stub } = await attachWire({ welcome: true, challenge: 'valid', deferChallenge: true })
+    await waitFor(() => stub.readHello() !== null, 'hello 도착')
+    const hello = stub.readHello()!
+    expect(Object.keys(stub.sent.find(m => m.type === 'hello')!).sort()).toEqual(['client_nonce', 'pub', 'type'])
+    expect(hello.client_nonce).toMatch(/^[0-9a-f]{64}$/)
+    expect(hello.pub).toMatch(/^[0-9a-f]{64}$/)
+    expect(hello.pub).toBe(pubOf('tok'))   // sha256(token) 이 아니라 유도한 검증자다 (변이 D)
+    expect(JSON.stringify(stub.sent.find(m => m.type === 'hello'))).not.toContain('tok"')
+    expect(JSON.stringify(stub.sent.find(m => m.type === 'hello'))).not.toContain('"token"')
   })
 
-  // AC-GWAUTH-005 — 논스는 소켓마다 새로 만들어지고, 재생된 증명은 거절된다.
-  // 실제 백오프 1,000ms 를 지나므로 타임아웃을 넓힌다 (acceptance.md 검증 원칙 5).
-  it('the nonce is regenerated per socket and a replayed proof is refused', { timeout: 20000 }, async () => {
-    const stub = rogueGateway({ welcome: true, proof: 'valid' })
+  // AC-GWAUTH2-006 — hello 를 받는 자리의 상대는 자기가 읽은 것으로 증명을 만들지 못한다.
+  // 다섯 갈래의 짝이 곧 관측이다 — 앞의 넷은 지역 계산, 다섯째(oracle)는 진짜 서버에 물어본다.
+  it.each([
+    ['hmac-pub'], ['hmac-nonce'], ['sha256-pub'], ['pub'],
+  ])('a rogue that reads the hello cannot forge a challenge from what it read (%s)', async (variant) => {
+    const stub = rogueGateway({ welcome: true, challenge: 'echoed', echoVariant: variant as 'hmac-pub' | 'hmac-nonce' | 'sha256-pub' | 'pub', deferChallenge: true })
     const w = await attachWireTo(stub)
-    const nonce1 = stub.nonceSeen()
-    const proof1 = proofOf('tok', nonce1, 1, 2)
+    const { settled } = await runForgedEcho(stub, w)
 
-    // 양성 기준선 — 확립된 첫 소켓 위에서 채팅·판정이 각 1건씩 도착한다.
-    // 판정은 발신 집합 대조(REQ-CHANAUTH-005)를 지나야 중계되므로, 먼저 승인 요청을 발신한다.
-    await sendRequest(w.client, REQ)
-    stub.push({ type: 'message', id: 1, author_name: 'alice', delivery: 'to', body: '첫 소켓' })
-    stub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
-    await waitFor(() => w.notes.length === 1 && w.verdicts.length === 1, '첫 소켓 기준선')
-
-    // 소켓을 끊고 재접속을 기다린 뒤, 직전 소켓의 증명을 새 논스에 그대로 재생한다
-    stub.welcome = false                   // 재접속 소켓에는 자동 welcome 을 보내지 않는다 — 재생이 유일해야 한다
-    stub.dropAll()
-    await waitFor(() => stub.connections() === 2, '재접속', 4500)
-    const nonce2 = stub.nonceSeen()
-    expect(nonce2).not.toBe(nonce1)        // 논스는 소켓마다 새로 만들어졌다
-    stub.push({ type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', proof: proof1 })   // 다시 계산하지 않는다
-    stub.push({ type: 'message', id: 2, author_name: 'alice', delivery: 'to', body: '재생 뒤' })
-    stub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'deny' })
-    await settle()
-
-    // 두 번째 소켓은 확립되지 않았다 — 채팅·판정 축 모두 기준선 값 그대로다.
-    // 채팅 축을 함께 재는 이유는 발신 집합 대조가 걸리지 않는 유일한 축이기 때문이다 (계획 감사 H-01).
-    expect(w.notes.length).toBe(1)
-    expect(w.verdicts.length).toBe(1)
+    expect(stub.readHello()).toEqual({ pub: pubOf('tok'), client_nonce: expect.stringMatching(/^[0-9a-f]{64}$/) })
+    expect(w.notes).toEqual([])            // 사칭 채팅 주입 0건
+    expect(w.verdicts).toEqual([])         // 판정 주입 0건
+    expect(settled).toBe('pending')        // 이력 오염 0건
+    expect(stub.authSeen()).toEqual([])    // ② 가 막았으므로 서명이 나가지 않았다
   })
 
-  // AC-GWAUTH-006 — 증명 없는 위조 welcome 은 아무것도 열지 못한다.
-  // .moai/state/verify/t15-plan/probe.log 의 세 줄을 회귀 스위트로 옮긴 기준이다.
-  it('a forged welcome with no proof opens nothing: no chat, no verdict, no history', async () => {
-    const stub = rogueGateway({ welcome: true, proof: 'omit', deferWelcome: true })
-    const w = await attachWireTo(stub)     // 스텁은 아직 welcome 을 보내지 않았고, 소켓은 열려 있다
-    const { settled } = await runForgedSequence(stub, w)
-
-    expect(w.notes).toEqual([])            // 사칭 채팅 주입 0건   (프로브 P1_CHAT_NOTES 와 반대)
-    expect(w.verdicts).toEqual([])         // 판정 주입 0건        (프로브 P1_VERDICTS 와 반대)
-    expect(settled).toBe('pending')        // 이력 오염 0건        (프로브 P1_HISTORY 와 반대)
-  })
-
-  // AC-GWAUTH-007 — 유효한 증명은 세션을 확립하고 정상 경로가 돈다 (006 의 짝).
-  // 이 기준이 없으면 «모든 welcome 을 거절하는 구현» 이 006 을 통과한다. 006 과 같은 4단계.
-  // onWelcome 을 단언하지 않는다 — wire() 는 onWelcome 을 배선하지 않으므로(AC-GWAUTH-015 소관) 관측 지점이 없다.
-  it('a welcome with a valid proof establishes the session and the same frames arrive once each', async () => {
-    const stub = rogueGateway({ welcome: true, proof: 'valid', deferWelcome: true })
+  // oracle 갈래 — 위조자의 최선은 진짜 서버에 물어보는 것이다 (1회차 감사 F-02 의 공백).
+  // 증명이 진짜이므로 ② 를 통과하고 서명이 나간다 — 주입 0건을 세우는 것은 ③ (봉투 mac) 이다.
+  it('a rogue that reads the hello cannot forge a challenge from what it read (oracle)', { timeout: 20000 }, async () => {
+    const { app: realApp, port: realPort } = await buildRealGateway()
+    const stub = rogueGateway({ welcome: true, challenge: 'oracle', deferChallenge: true, oraclePort: realPort })
     const w = await attachWireTo(stub)
-    const { settled, p } = await runForgedSequence(stub, w)
+    const { settled } = await runForgedEcho(stub, w)
 
+    expect(stub.readHello()).toEqual({ pub: pubOf('tok'), client_nonce: expect.stringMatching(/^[0-9a-f]{64}$/) })
+    expect(w.notes).toEqual([])
+    expect(w.verdicts).toEqual([])
+    expect(settled).toBe('pending')
+    expect(stub.authSeen().length).toBe(1)   // ② 를 통과했으므로 서명이 나갔다 — 이 한 줄이 관측이다
+    void realApp
+    await realApp.close()
+  })
+
+  // AC-GWAUTH2-007 — 확인 열쇠를 쥔 스텁의 challenge 는 세션을 확립한다 (006 의 짝).
+  it('a challenge from a stub that holds the confirm key establishes the session', async () => {
+    const stub = rogueGateway({ welcome: true, challenge: 'valid', deferChallenge: true })
+    const w = await attachWireTo(stub)
+    const { settled, p } = await runForgedEcho(stub, w)
+
+    expect(stub.authSeen().length).toBe(1)         // 증명이 통과했으므로 서명이 나갔다
     expect(w.notes.length).toBe(1)                 // 사칭이 아니라 정상 채팅 경로가 산다
     expect(w.verdicts.map(v => v.params)).toEqual([{ request_id: REQ.request_id, behavior: 'allow' }])
     await waitFor(() => settled !== 'pending', '이력 해소')
@@ -554,36 +684,210 @@ describe('transport auth', () => {
     expect((await p).messages).toEqual([])         // 스텁이 보낸 그대로
   })
 
-  // AC-GWAUTH-008 — 길이가 맞고 값이 틀린 증명은 거절된다. 첫 글자만 뒤집는 것이 의도다 —
-  // 접두 비교나 부분 비교로 구현된 대조를 잡는다.
-  it('a proof of the right length and the wrong value is refused', async () => {
-    const stub = rogueGateway({ welcome: true, proof: 'wrong', deferWelcome: true })
+  // AC-GWAUTH2-008 — 서버가 자신을 증명하기 전에는 서명이 나가지 않는다.
+  // 두 번째 스텁(아무 답도 하지 않는다)이 이 기준의 절반이다 — «아직 답이 오지 않은 동안에도».
+  it('no auth signature leaves the channel before the server has proved itself', async () => {
+    const omit = rogueGateway({ welcome: true, challenge: 'omit' })   // 붙는 즉시 형식 미달 challenge
+    const wA = await attachWireTo(omit)
+    await settle()
+    const silent = rogueGateway({ welcome: true, deferChallenge: true })   // 아무 답도 하지 않는다
+    const wB = await attachWireTo(silent)
+    await settle()
+
+    expect(wA.verdicts).toEqual([])
+    expect(omit.authSeen()).toEqual([])
+    // 발신 관측은 outbox(wireLog) 로 — stub.sent 는 «받은» 프레임의 기록이다
+    expect(omit.wireLog()).toEqual(['challenge'])
+    expect(silent.authSeen()).toEqual([])
+    expect(silent.wireLog()).toEqual([])
+    wA.gw.stop(); wB.gw.stop()
+  })
+
+  // AC-GWAUTH2-011 — 두 논스가 소켓마다 새로 만들어지고, 재생된 challenge 는 거절된다.
+  it('both nonces are regenerated per socket and a replayed challenge is refused', { timeout: 20000 }, async () => {
+    const stub = rogueGateway({ welcome: true, challenge: 'valid' })
     const w = await attachWireTo(stub)
-    const { settled } = await runForgedSequence(stub, w)
+    const nonce1 = stub.nonceSeen()
+
+    // 양성 기준선 — 확립된 첫 소켓 위에서 채팅·판정이 각 1건씩 도착한다.
+    await sendRequest(w.client, REQ)
+    stub.push({ type: 'message', id: 1, author_name: 'alice', delivery: 'to', body: '첫 소켓' })
+    stub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+    await waitFor(() => w.notes.length === 1 && w.verdicts.length === 1, '첫 소켓 기준선')
+
+    // 소켓을 끊고 재접속 뒤, 직전 소켓의 challenge 를 그대로 재생한다 (새 논스로 다시 계산하지 않는다)
+    stub.replayNextChallenge()
+    stub.dropAll()
+    await waitFor(() => stub.connections() === 2, '재접속', 4500)
+    const nonce2 = stub.nonceSeen()
+    expect(nonce2).not.toBe(nonce1)        // client_nonce 는 소켓마다 새로 만들어졌다
+    stub.push({ type: 'message', id: 2, author_name: 'alice', delivery: 'to', body: '재생 뒤' })
+    stub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'deny' })
+    await settle()
+
+    // 두 번째 소켓은 확립되지 않았다 — 채팅·판정 축 모두 기준선 값 그대로다.
+    expect(w.notes.length).toBe(1)
+    expect(w.verdicts.length).toBe(1)
+  })
+
+  // AC-GWAUTH2-012 — 형식이 어긋난 증명은 예외 없이 거절된다. 판정 축은 «강건성» 이다 —
+  // 배제 주장은 AC-GWAUTH2-006 의 echoed·oracle 갈래가 진다 (acceptance.md §0-1 의 B).
+  it.each([
+    ['wrong'], ['short'], ['omit'], ['other-room'], ['bad-nonce'], ['pipe-nonce'],
+  ])('a malformed or wrong-length proof is refused without throwing (%s)', async (variant) => {
+    const unhandled = collectUnhandled()
+    const uncaught = collectUncaught()
+    const stub = rogueGateway({
+      welcome: true, deferChallenge: true,
+      challenge: variant as 'valid' | 'omit' | 'wrong' | 'short' | 'other-room' | 'bad-nonce' | 'pipe-nonce',
+    })
+    const w = await attachWireTo(stub)
+    const { settled } = await runForgedEcho(stub, w)
+
+    await waitFor(() => stub.connections() >= 2, '거절 뒤 재접속', 4500)
 
     expect(w.notes).toEqual([])
     expect(w.verdicts).toEqual([])
     expect(settled).toBe('pending')
+    expect(await unhandled()).toEqual([])         // 처리되지 않은 거부 0건
+    expect(await uncaught()).toEqual([])          // 잡히지 않은 예외 0건
   })
 
-  // AC-GWAUTH-009 — 유효한 증명이 다른 room_id 를 인증하지는 않는다. 증명은 방 1 에 묶여 있고
-  // 프레임은 방 9 를 주장한다 — 채널이 프레임의 값으로 다시 계산하므로 대조가 어긋나야 한다.
-  it('a valid proof does not authenticate a different room_id', async () => {
-    const stub = rogueGateway({ welcome: true, proof: 'other-room', deferWelcome: true })
+  // AC-GWAUTH2-014 — mac 이 어긋난 봉투와, 봉투 아닌 프레임이 모두 버려진다
+  it('an envelope with a broken mac, and a frame with no envelope, are both dropped', async () => {
+    const stub = rogueGateway({ welcome: true, challenge: 'valid' })
     const w = await attachWireTo(stub)
-    const { settled } = await runForgedSequence(stub, w)
+    await sendRequest(w.client, REQ)   // 발신 집합 대조를 미리 채운다 — 판정 주입 관측의 전제
+    const sock = w.firstSocket()!
+
+    // ① payload 한 글자 변경 (mac 은 원본 payload 로 계산됐다) ② mac 삭제 ③ 봉투 없는 원문 셋
+    // (welcome 이 seq 1 을 썼다 — 변조 봉투는 이어지는 번호를 주장한다)
+    stub.pushEnvRaw(stub.envFrame(sock, 2, { type: 'message', id: 1, author_name: 'alice', delivery: 'to', body: '변조 대상' }, true))
+    const noMac = stub.envFrame(sock, 3, { type: 'message', id: 2, author_name: 'alice', delivery: 'to', body: 'mac 없음' })
+    delete (noMac as Record<string, unknown>).mac
+    stub.pushEnvRaw(noMac)
+    stub.pushRaw({ type: 'message', id: 3, author_name: 'alice', delivery: 'to', body: '봉투 없는 채팅' })
+    stub.pushRaw({ type: 'permission_verdict', request_id: REQ.request_id, behavior: 'allow' })
+    stub.pushRaw({ type: 'history_response', rid: 'none', messages: [{ id: 999, author_name: 'admin', body: '오염', created_at: '' }] })
+    await settle()
 
     expect(w.notes).toEqual([])
     expect(w.verdicts).toEqual([])
-    expect(settled).toBe('pending')
+    // 그 직후 유효한 봉투는 같은 소켓에서 정상 도착한다 — 같은 소켓 양성 (수복 관측)
+    stub.push({ type: 'message', id: 4, author_name: 'alice', delivery: 'to', body: '정상 봉투' })
+    await waitFor(() => w.notes.length === 1, '양성 봉투 도착')
+    expect(w.notes[0].params.content).toContain('정상 봉투')
   })
 
-  // AC-GWAUTH-010 — 거절은 소켓을 닫고 stderr 한 줄만 낸다. 빌드 산출물을 띄우므로
-  // npm run build -w channel 이 선행되어야 한다 (acceptance.md 문서 상단).
-  // 줄 수를 «정확히 한 줄» 이 아니라 «접속 수» 로 재는 이유: 거절은 소켓마다 일어나고
-  // 재접속은 정상 동작이므로 총량을 상수로 못 박으면 정상 구현이 타이밍에 따라 거짓 실패한다.
-  it('the entry point closes a proofless socket, says one line on stderr and nothing on stdout', async () => {
-    const stub = rogueGateway({ welcome: true, proof: 'omit' })   // 지연 없음 — 붙는 즉시 거절당한다
+  // AC-GWAUTH2-015 — 재생된 봉투는 순번이 이미 쓰였기 때문에 버려진다
+  it('a replayed envelope is dropped because its sequence has already been used', { timeout: 20000 }, async () => {
+    const stub = rogueGateway({ welcome: true, challenge: 'valid' })
+    const w = await attachWireTo(stub)
+
+    // ③ 의 판정이 발신 집합 대조(REQ-CHANAUTH-005)를 지나려면 대기 중인 요청 둘이 필요하다 —
+    // 하나는 기준선(② 의 재생·역행이 소비하지 못한다), 하나는 ③ 이 중계할 몫이다.
+    await sendRequest(w.client, REQ)
+    await sendRequest(w.client, { ...REQ, request_id: REQ.request_id + '2' })
+
+    // 유효한 봉투로 판정 프레임 하나 — verdicts 1 건 기준선. 봉투 원문을 기록해 둔다.
+    // (welcome 이 seq 1 — 기준선 판정은 seq 2 다.)
+    const baselineFrame = stub.envFrame(w.firstSocket()!, 2, { type: 'permission_verdict', request_id: REQ.request_id, behavior: 'allow' })
+    stub.pushEnvRaw(baselineFrame)
+    await waitFor(() => w.verdicts.length === 1, '기준선 판정')
+
+    // ① 같은 봉투를 글자 그대로 다시 — ② seq 를 하나 줄인 유효한 봉투 — ③ 정상 증가 봉투
+    stub.pushEnvRaw(baselineFrame)
+    stub.pushEnvRaw(stub.envFrame(w.firstSocket()!, 1, { type: 'permission_verdict', request_id: REQ.request_id + '0', behavior: 'allow' }))
+    stub.pushEnvRaw(stub.envFrame(w.firstSocket()!, 3, { type: 'permission_verdict', request_id: REQ.request_id + '2', behavior: 'allow' }))
+    await waitFor(() => w.verdicts.length === 2, '③ 정상 봉투 도착')
+
+    // ①·② 뒤 verdicts 1 그대로, ③ 뒤 2 — «재생 거절» 과 «정상 진행» 이 같은 검사의 두 면이다
+    expect(w.verdicts.length).toBe(2)
+    expect(w.verdicts.map(v => (v.params as any).request_id)).toEqual([REQ.request_id, REQ.request_id + '2'])
+  })
+  it('the three gates are separate: each mutation breaks a different set', { timeout: 300000 }, async () => {
+    // 변이는 «실제 소스에 쓰지 않고» 별도 변이 모듈 파일로 적용한다 — 실패해도 실제 소스가
+    // 오염되지 않으며, 러너가 읽은 source 와 파일 상태가 어긋날 여지가 없다 (이전 실행들의 교훈).
+    // 자식 스위트 안에서 이 기준이 다시 실행되면 변이 러너가 무한 재귀한다 — 자식은 여서 건너뛴다.
+    if (process.env.AC17_CHILD) return
+    const source = readFileSync(CLIENT_SRC, 'utf8')
+    const variantPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'zz-ac17-variant.ts')
+    // N1·N2·N3 는 각 강제 지점(① 봉투 mac·seq / ② 서버 증명 대조 / ③ 확립 게이트) 의 판정을 지운다.
+    // O 는 ①·②(challenge·env 처리) 를 ③ 체인 «뒤로» 옮긴다 — 본문이 금지한 형태의 문자 그대로 재현:
+    // 옮겨진 블록은 확립 전 프레임이 ③ 에 먹혀 도달조차 하지 않게 된다.
+    const apply: Record<string, (src: string) => string> = {
+      N1: s => s.replace(/\(!keysOk \|\| !macOk \|\| !seqOk\)/, '(false) /* N1 */'),
+      N2: s => s.replace(/if \(!macOk\) return rejectChallenge\(ws\)/, 'if (false) return rejectChallenge(ws) /* N2 */'),
+      N3: s => s.replace(/else if \(!established\) \{/, 'else if (false) { /* N3 */'),
+      O: s => {
+        const cut = s.indexOf("if (msg.type === 'challenge') {")
+        const chain = s.indexOf('else if (!established) {')
+        if (cut < 0 || chain < 0 || chain < cut) throw new Error('O 앵커가 소스에 없다')
+        const blocks = s.slice(cut, chain)   // challenge 블록 + env 블록
+        const close = s.indexOf('\n      }\n', chain) + '\n      }\n'.length   // ③ 분기의 닫힘
+        return s.slice(0, cut) + s.slice(chain, close) + '\n' + blocks + s.slice(close)
+      },
+    }
+
+    // 자식이 돌릴 최소 프로브 — 변이 «모듈 파일» 을 import 해 세 삼각형으로 세 강제 지점을 관측한다.
+    //   P_proof      ↔ ② (서버 증명 대조) — 위조 증명을 받아들이면 auth 가 나간다
+    //   P_env        ↔ ① (봉투 mac·seq)   — 변조 봉투가 콜백에 도착한다
+    //   P_establish  ↔ ③/핸드셰이크       — 유효 challenge·auth·welcome 로도 확립되지 않는다
+    // 프로브 소스는 evidence 디렉터의 원본 텍스트를 그대로 복사해 쓴다 (이 파일 안에서
+    // 이중 이스케이프로 재생하는 것보다 낫다 — 같은 내용, 단일 출처).
+    // 프로브 소스는 이 파일 기준 두 단계 위 worktree 루트의 evidence 원본 텍스트를 그대로 복사해 쓴다
+    const probeSource = readFileSync(new URL('../../.moai/state/verify/t22-run/ac17_probe_src.txt', import.meta.url), 'utf8')
+
+    const runSuite = async (mutated: string): Promise<string[]> => {
+      const probePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'zz-ac17-probe.test.ts')
+      writeFileSync(variantPath, mutated)
+      writeFileSync(probePath, probeSource)
+      try {
+        const out = spawn(
+          'npx',
+          ['vitest', 'run', 'zz-ac17-probe.test.ts', '--reporter=json', '--testTimeout=5000'],
+          { cwd: path.dirname(fileURLToPath(import.meta.url)), env: { ...process.env, AC17_CHILD: '1' } },
+        )
+        let buf = ''
+        out.stdout.on('data', d => { buf += String(d) })
+        await new Promise<void>(r => out.on('close', () => r()))
+        const jsonLine = buf.split('\n').reverse().find(l => l.startsWith('{'))
+        const parsed = JSON.parse(jsonLine!) as { testResults: { assertionResults: { fullName: string; status: string }[] }[] }
+        return parsed.testResults.flatMap(r => r.assertionResults).filter(a => a.status === 'failed').map(a => a.fullName).map(n => n.split(' ').pop()!)
+      } finally {
+        rmSync(probePath, { force: true })
+        rmSync(variantPath, { force: true })
+      }
+    }
+
+    const base = await runSuite(source)
+    expect(base).toEqual([])                                     // 변이 없는 프로브 셋은 초록이다
+    const n1 = await runSuite(apply.N1(source))
+    const n2 = await runSuite(apply.N2(source))
+    const n3 = await runSuite(apply.N3(source))
+    const o = await runSuite(apply.O(source))
+    const oN3 = await runSuite(apply.N3(apply.O(source)))
+
+    // 세 집합이 서로 다르다 — 굵은 변이 하나로 세 방어를 가르지 못한다
+    expect(new Set(n1)).not.toEqual(new Set(n2))
+    expect(new Set(n2)).not.toEqual(new Set(n3))
+    expect(new Set(n1)).not.toEqual(new Set(n3))
+    expect(n1.some(n => n.includes('P_env'))).toBe(true)     // N1 → ① 붕괴: 변조 봉투가 통과한다
+    expect(n2.some(n => n.includes('P_proof'))).toBe(true)   // N2 → ② 붕괴: 위조 증명 뒤 auth 가 나간다
+    // N3 은 이 SPEC(SPEC-GWAUTH2)의 기준을 하나도 무너뜨리지 않는다 — ①·② 가 먼저 반환한다
+    expect(n3).toEqual([])
+    // O 를 넣으면 ③ 뒤로 옮겨진 challenge 가 확립 전에 ③ 에 먹혀 P_establish 가 무너지고
+    // (P_proof 는 challenge 도 처리되지 않아 사소하게 통과한다 — 판정 자체가 도달하지 않는다),
+    // O 를 넣은 뒤 N3 을 다시 넣으면 ③ 이 열려 블록이 도달해 auth 가 나가고 P_proof 가 무너진다 —
+    // 두 집합이 갈라지는 것이 곧 «N3 의 기대값이 O 아래에서 뒤집혔다» 의 관측이다.
+    expect(o.some(n => n.includes('P_establish'))).toBe(true)
+    expect(new Set(oN3)).not.toEqual(new Set(o))
+
+    // 실제 소스는 이 기준이 «읽지 만 쓰지 않았다» — 변이의 흔적이 없다 (restore 무관하게 성립)
+    expect(readFileSync(CLIENT_SRC, 'utf8')).toBe(source)
+  })
+  it('the entry point closes a rejected socket, says one line on stderr and nothing on stdout', async () => {
+    const stub = rogueGateway({ welcome: true, challenge: 'omit' })   // 지연 없음 — 붙는 즉시 거절당한다
     const child = spawnChild([DIST], { MINIDISCORD_TOKEN: 'tok', MINIDISCORD_SERVER: `ws://127.0.0.1:${stub.port()}/bot` })
     await waitFor(() => stub.connections() >= 2, '거절 뒤 재접속', 4500)
     await settle()                                // 마지막 접속의 진단 줄이 stderr 에 도착할 시간
@@ -593,56 +897,5 @@ describe('transport auth', () => {
     expect(child.stdout()).toBe('')               // stdout 은 MCP 전송 통로다
     expect(child.stderr().split('\n').filter(Boolean).length).toBe(conns)   // 접속 하나에 진단 한 줄
     expect(child.proc.exitCode).toBeNull()        // 거절로 프로세스가 끝나지 않았다
-  })
-
-  // AC-GWAUTH-011 — 위조 판정은 중계되지도, 진짜 판정이 쓸 id 를 소진하지도 않는다.
-  // 프로브 P1_VERDICTS 한 줄이 이 기준의 출처다. 위조가 반드시 먼저여야 한다 — 뒤에 오면
-  // 발신 집합이 이미 소진돼 있어 어떤 구현에서도 통과한다.
-  it('a forged verdict neither reaches the session nor consumes the id the real verdict needs', { timeout: 20000 }, async () => {
-    const stub = rogueGateway({ welcome: true, proof: 'omit', deferWelcome: true })
-    const w = await attachWireTo(stub)
-
-    // 1. 요청 프레임이 소켓이 열려 있는 동안 나가고, 스텁이 그 프레임에서 id 를 실제로 읽는다
-    await sendRequest(w.client, { ...REQ, request_id: 'real-42' })
-    await waitFor(() => stub.sent.some(m => m.type === 'permission_request'), '승인 요청 발신')
-
-    // 2. 위조가 먼저 — 증명 없는 welcome 뒤에 곧바로 그 id 의 allow 를 민다
-    stub.pushWelcome()
-    stub.push({ type: 'permission_verdict', request_id: 'real-42', behavior: 'allow' })
-    await settle()
-
-    // 3. 스텁이 소켓을 끊고, 증명 갈래를 유효로 바꾼다 — 채널이 백오프 뒤 재접속해 확립한다
-    stub.dropAll()
-    stub.proof = 'valid'
-    await waitFor(() => stub.connections() >= 2, '재접속', 4500)
-    await waitFor(() => stub.sent.filter(m => m.type === 'hello').length >= 2, '두 번째 hello')
-    stub.pushWelcome()                            // 이제 유효한 증명이 실린다 — 두 번째 소켓이 확립된다
-
-    // 4. 사람의 진짜 판정 — 같은 id, 다른 행동
-    stub.push({ type: 'permission_verdict', request_id: 'real-42', behavior: 'deny' })
-    await waitFor(() => w.verdicts.length === 1, '진짜 판정 중계')
-
-    expect(stub.readIds()).toEqual(['real-42'])   // 스텁이 진짜로 프레임에서 읽었다
-    // 길이가 1 → 위조 allow 는 중계되지 않았고, 원소가 deny → 위조가 id 를 소진하지 않았다
-    expect(w.verdicts.map(v => v.params)).toEqual([{ request_id: 'real-42', behavior: 'deny' }])
-  })
-
-  // AC-GWAUTH-012 — 길이가 틀린 증명은 예외 없이 거절된다. timingSafeEqual 은 길이가 다르면
-  // 예외를 던지므로, 이 기준은 길이 가드가 대조보다 먼저 있는가를 동작으로 잰다.
-  it('a proof of the wrong length is refused without throwing', async () => {
-    const unhandled = collectUnhandled()
-    const uncaught = collectUncaught()
-    const stub = rogueGateway({ welcome: true, proof: 'short', deferWelcome: true })
-    const w = await attachWireTo(stub)
-    const { settled } = await runForgedSequence(stub, w)
-
-    // 클라이언트가 계속 살아 재접속한다 — 거절이 프로세스를 끝내지 않았다
-    await waitFor(() => stub.connections() >= 2, '거절 뒤 재접속', 4500)
-
-    expect(w.notes).toEqual([])
-    expect(w.verdicts).toEqual([])
-    expect(settled).toBe('pending')
-    expect(await unhandled()).toEqual([])         // 처리되지 않은 거부 0건
-    expect(await uncaught()).toEqual([])          // 잡히지 않은 예외 0건
   })
 })

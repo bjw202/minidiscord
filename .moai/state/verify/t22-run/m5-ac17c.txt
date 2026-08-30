@@ -1,0 +1,35 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed | 29 skipped) 2891ms
+     × the three gates are separate: each mutation breaks a different set 2890ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected [ 'AC17 probes P_establish' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "AC17 probes P_establish",
++ ]
+
+ ❯ test/transport-auth.test.ts:928:18
+    926|
+    927|     const base = await runSuite(source)
+    928|     expect(base).toEqual([])                                     // 변이…
+       |                  ^
+    929|     const n1 = await runSuite(apply.N1(source))
+    930|     const n2 = await runSuite(apply.N2(source))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 skipped (30)
+   Start at  19:12:37
+   Duration  3.04s (transform 36ms, setup 0ms, import 94ms, tests 2.89s, environment 0ms)
+

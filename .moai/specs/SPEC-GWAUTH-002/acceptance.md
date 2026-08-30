@@ -740,8 +740,10 @@ CHANGELOG.md
 
 ```
 // ① 중계자가 정말로 전달만 했다 — 능력을 깎지 않았음을 단언한다
+//    (본문 개정 — 리드 승인 2026-08-30: REQ-GWAUTH2-006 에 따라 클라이언트가 relayed challenge 를
+//     거절하므로 auth 는 나가지 않는다. 초안의 ['hello','auth'] 는 ② 와 자기 모순이었다)
 expect(relay.relayedFrames().filter(f => f.dir === 'up').map(f => f.frame.type))
-  .toEqual(['hello', 'auth'])
+  .toEqual(['hello'])
 expect(relay.relayedFrames().filter(f => f.dir === 'down').map(f => f.frame.type))
   .toEqual(['challenge'])          // welcome 은 오지 않는다 — 등록이 거절되기 때문이다
 
@@ -750,7 +752,7 @@ expect(relay.bindingToChannel()).not.toBe(relay.bindingToServer())
 expect(relay.bindingToChannel()).toMatch(/^[0-9a-f]{64}$/)
 expect(relay.bindingToServer()).toMatch(/^[0-9a-f]{64}$/)
 
-// ③ 서버가 그 소켓을 봇으로 등록하지 않았다 — 전달된 서명이 cb 불일치로 거절된다
+// ③ 서버가 그 소켓을 봇으로 등록하지 않았다 — 클라이언트가 relayed challenge 를 거절해 auth 가 나가지 않았다
 expect(gw.isOnline(roomId, botId)).toBe(false)
 
 // ④ 채널도 확립하지 않았다 — 중계된 challenge 가 채널 쪽 cb 로 대조에 실패한다

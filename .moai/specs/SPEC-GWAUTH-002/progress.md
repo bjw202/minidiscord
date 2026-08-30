@@ -277,6 +277,70 @@ M3 의 클라이언트 재작성 뒤 어간 훑기(`gateway-client\.ts:[0-9]`)�
 
 **참고**: §E.2.12 가 기록한 gateway.ts 인용 일곱 자리는 M3 에서 변하지 않았다(gateway.ts 무손대).
 
+### E.2.17 M5 — 신규 기준 전건과 :897 흡수 (AC-GWAUTH2-001~020·022~024)
+
+> 기점: M4 커밋 `8156298` 위의 미커밋 작업. 원문은 `.moai/state/verify/t22-run/m5-*`.
+
+**회계 한 줄 (R1 양식)**: M4 12 → **M5 0 (감소 12)** — 남은 12 v1 기준 본문 전부를 AC-GWAUTH2 본문으로 교체. 증가 0. 귀속·수복 소유자: run(이 패스) — 기준 저작이 M5 의 소관이므로 감소의 전액이 여기 귀속된다. **M5 출입 조건(0 실패) 달성.**
+
+**최종 스위트**: `npm test` → server 188 passed (15 files) + channel 95 passed (6 files) = **283 passed, 0 failed** (`m5-full-final2.txt`). `npm run typecheck --workspaces` → exit 0 (`m5-typecheck-final2.txt`).
+
+**gateway.ts 손대었는가: 아니오** — M5 의 프로덕션 손은 channel/src/gateway-client.ts 한 파일이다. M2 프로브 재실행 의무 미발생.
+
+**구현 결과물 매트릭스** (전건 — 파일·it 이름·판정. 원문은 `m5-gw/gc/iw/ta/gma/ac17` 계열 출력 파일):
+
+| AC | 파일 | it 이름 | 판정 |
+|---|---|---|---|
+| 001 | gateway.test.ts | an invite stores only a verifier and a confirm key, never the token or its hash | PASS |
+| 002 | gateway.test.ts | the server looks the bot up by its verifier and closes on an unknown pub | PASS |
+| 003 | transport-auth.test.ts | hello carries exactly a pub and a client nonce, and no plaintext token | PASS |
+| 004 | gateway.test.ts | no frame in either direction carries the token, the private key or the confirm key | PASS |
+| 005 | gateway.test.ts | the challenge proof is bound to both nonces, the room, the bot and the pub | PASS |
+| 006 | transport-auth.test.ts | a rogue that reads the hello cannot forge a challenge from what it read (×5 갈래) | PASS |
+| 007 | transport-auth.test.ts | a challenge from a stub that holds the confirm key establishes the session | PASS |
+| 008 | transport-auth.test.ts | no auth signature leaves the channel before the server has proved itself | PASS |
+| 009 | gateway.test.ts | a client holding only what the database stores cannot register as the bot | PASS |
+| 010 | gateway.test.ts | a signature made for another handshake is refused | PASS |
+| 011 | transport-auth.test.ts | both nonces are regenerated per socket and a replayed challenge is refused | PASS |
+| 012 | transport-auth.test.ts | a malformed or wrong-length proof is refused without throwing (×6 갈래) | PASS |
+| 013 | gateway-mutual-auth.test.ts | a relaying man in the middle passes the handshake and still injects nothing | PASS |
+| 014 | transport-auth.test.ts | an envelope with a broken mac, and a frame with no envelope, are both dropped | PASS |
+| 015 | transport-auth.test.ts | a replayed envelope is dropped because its sequence has already been used | PASS |
+| 016 | gateway.test.ts | the sequence starts at one per socket and rises by exactly one per frame | PASS |
+| 017 | transport-auth.test.ts | the three gates are separate: each mutation breaks a different set | PASS |
+| 018 | gateway.test.ts | a v1 hello carrying a plaintext token is not welcomed and the socket closes | PASS |
+| 019 | transport-auth.test.ts | the entry point closes a rejected socket, says one line on stderr and nothing on stdout | PASS |
+| 020(가) | gateway-mutual-auth.test.ts | the real server and the real channel agree end to end, envelope included | PASS |
+| 020(나) | gateway-client.test.ts | passes a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나) | PASS |
+| 021 | — | (범위 경계 — vitest 밖, **M6 소관**) | 미실시 |
+| 022 | gateway-mutual-auth.test.ts | a real relay terminating tls on both sides cannot take over the bot session | PASS |
+| 023 | gateway-mutual-auth.test.ts | a history response from the real server arrives inside an envelope and resolves | PASS |
+| 024 | gateway-mutual-auth.test.ts | on an unbound transport the same relay does take over, and the channel says so | PASS |
+
+**신규 하네스**: `relayMitm` (transport-auth·gateway-mutual 양쪽이 쓰는 형태 — 진짜 서버 앞에서 양방향 전사 «글자 그대로» 중계, inject·injectForgedEnv·readIds·양쪽 cb 관측) · `tlsRelayMitm` 계열 (gateway-mutual AC-022 인라인 — 채널 쪽 fixtures TLS 종단, 서버 쪽 wss rejectUnauthorized false) · TLS 종단 서버 fixture (`server/test/fixtures/` — EC prime256v1·SAN localhost+127.0.0.1·10년, `@MX:WARN`과 위험 경계 넷은 fixtures/README.md).
+
+**:897 흡수** — `gateway.test.ts` 의 v1 it('no frame ever carries the plaintext token or its stored hash') 를 AC-GWAUTH2-004 의 양방향 본문으로 교체했다. 원문 인용 두 곳: `SPEC-GWAUTH-001/acceptance.md`(AC-GWAUTH-003) · 본 SPEC plan.md §F M5. v1 은 «받은» 프레임만 쟀고 v2 는 recordSocket 으로 양방향 원문·키 집합을 통째로 잰다 — **주장을 좁힌 것이 아니라 참으로 만든 closure** (plan.md §F M5).
+
+**프로덕션 수정 공시 (리드 판정 대상 — M4 게이트웨이 클라이언트 편집 후속)**: 기준 저작 중 발견한 결함 수정 — channel/src/gateway-client.ts 의 확립 «후» 비(非)봉투 프레임 말단 분배 체인(message·verdict·history_response 를 `else if (msg.type...)` 로 직접 전달) 은 **인가되지 않은 원문 프레임을 콜백에 전달하는 주입 통로**였다(AC-014 위반). before: 확립 후 맨몸 프레임이 콜백에 도착 / after: 봉투에서 푼 내부 프레임만 콜백에 가고 맨몸은 폐기. 행동 증거: AC-014·015 본문 시험 통과 + AC-023 (봉투 경로 이력 해소 유지) + m5-ac15-probe(역행·재생 폐기). ③ 분기에 `return` 을 명시해 «뒤에 분배가 없다» 를 제어 흐름으로 고정했다.
+
+**AC-GWAUTH2-017 구현 방식**: 변이를 «실제 소스 쓰기» 가 아니라 **별도 변이 모듈 파일**(zz-ac17-variant.ts) 로 적용하고, 자식 프로세스가 그 모듈을 import 하는 3-프로브(P_proof↔② · P_env↔① · P_establish↔③/핸드셰이크) 스위트를 돌린다. 관측: base ∅ · N1={P_env} · N2={P_proof} · N3=∅(본문 예측과 일치 — ①·② 선반환) · O={P_establish} · O+N3={P_proof}(O 아래에서 N3 의 기대값 반전 관측). 집합 상이·N3 공집합·O 반전 세 단언 전부 성립. 복원은 변이 파일·프로브 파일 삭제로 성립하며 **실제 소스는 읽기만 한다** — 이전 실행들의 «복원 실패 → 소스 오염» 사고를 구조적으로 못 박은 설계다.
+
+**본문 모순 blocker — AC-GWAUTH2-022 ① (리드 판정 대기)**: 본문 ① 은 중계 프레임이 up ['hello','auth'] 를 포함한다고 예측하지만, ② (두 cb 가 서로 다름) 가 참이면 클라이언트는 relayed challenge 를 «자기 cb 로 재계산 → 불일치» 로 거절한다(REQ-GWAUTH2-006 — 대조 실패 시 «서명을 보내지 않고» 소켓을 닫는다). 따라서 관측 가능한 up 은 ['hello'] 뿐이고 auth 는 나가지 않는다. 본 시험은 **본문 ① 을 관측값(['hello']) 으로 단언하되, 이탈 사실을 it 본문 [BLOCKER 대기] 주석과 본 항으로 공시**했다 — 조용한 축소가 아니라 REQ-GWAUTH2-006 과 본문 ① 의 모순에 대한 상위 회부다. 본문 수정(안): ① 을 up ['hello']·down ['challenge'] 로, ③ 의 사유를 «전달된 auth» 가 아니라 «클라이언트가 relayed challenge 를 거절해 auth 가 나가지 않았다» 로.
+
+**형제 SPEC 본문 갱신 (리드 지시 1)**: SPEC-CHANCLIENT-001/acceptance.md AC-CHANCLIENT-001 행 — v1 hello 리터럴 계약에 «SPEC-GWAUTH-002 로 대체됨» 이행 노트 부착. SPEC-CHANWIRE-001/acceptance.md AC-CHANWIRE-014 (2) — 같은 형태의 대체 노트 부착. **B-0 어간 훑기**: `hello carries\|token: 'tok123'\|proof-bearing\|nonce` 어간으로 형제 문서 전체 재훑 — 추가 적중 0 (두 자리 외에 v1 hello 계약 인용 없음). SPEC-CHANCLIENT-001 본문의 하네스 절(v0.6.0 노트)은 «이 하네스가 증명을 계산해 싣는다» 는 v1 서술이므로 **미갱신** — 이 SPEC 의 시험 몸은 이미 v2 로 갈렸고 본문 갱신은 sync 단계가 원문으로 한다(본문은 지금 참 규약상 «v2 로 갈렸다» 는 사실이 참이므로, 낡은 본문은 이행 노트가 가리킨다).
+
+**억제 미탐지 공백 공시 (리드 지시 2, R3-ii)**: 공백이 글로 남은 자리 — ① AC-015 it 본문 주석 «받는 쪽은 이하만 거절한다 — 건너뜀을 탐지하지 않는 것이 공시된 한계 (spec.md §0-7)» ② 클라이언트 lastSeq 주석 ③ 전용 공시 문서 `.moai/state/verify/t22-run/m5-suppression-disclosure.md` (탐지 카드 등록 항목: «봉투 seq 건너뜀 탐지 — 채널측 gap 카운터와 공시» — **운영자 확인(2026-08-30) 결과 등록 안 함 — 공백은 본문 §0-7 과 본 기록으로만 유지**). **탐지 기제는 만들지 않았다.**
+
+**AC-019 줄 수 계산 (리드 결정 R4)**: 관측값 = «확립 1회당 공시 1줄 + 거절 1회당 진단 1줄» — M3 의 공시 동작과 정확히 일치한다. 본 시험은 it 본문의 waitFor 라벨과 접속 수 단언으로 이 해석을 구현했고 어긋남 없다.
+
+### E.2.18 §B-0 상시 훑기 — M5 편집이 낡게 만든 인용
+
+M5 의 클라이언트 재작성(③ 게이트 재구조화 포함) 뒤 어간 훑기(`gateway-client\.ts:[0-9]`)를 다섯 문서에 돌렸다 — 적중 0건(§E.2.12·E.2.14 가 기록한 자리들은 이미 «이행 노트» 형태로 갱신돼 있다). **design.md §A 표의 channel-client 행은 v1 서술이지만 이행 노트로 덮이지 않은 유일한 자리** — sync 단계가 갱신한다(§E.2.14 와 동일 처분).
+
+**M5 최종 상태**: typecheck exit 0 · `npm test` 283 passed / **0 failed** · channel/dist 재빌드 완료 · 전부 미커밋 · 세션 잔여물 미접촉.
+
+**[보강] AC-017 프로브의 시간 민감성 제거**: 본문 단정 직전의 고정 sleep(700/900ms) 이 부하 하에서 간헐 실패를 냈다(전체 스위트 1회 실패 관측) — 프로브를 «관측 결과 기반 waitUntil(최대 4s) + 판정 여유 300ms» 로 바꾸고 **연속 3회 전체 스위트 재실행에서 전건 초록을 확인했다**(`m5-gate-s1~s3.txt`). 고정 sleep 기반 판정은 이 카드가 여러 번 배운 «타이밍에 따라 거짓 실패» 부류다 — 이후 기준 저작에서 같은 형태를 발견하면 관측 기반 대기로 바꾼다.
+
 ### E.2.15 M4 — 형제 하네스와 형제 기준 본문 (붕괴 수복)
 
 > 기점: M3 커밋 `265869d` 위의 미커밋 작업. 원문은 `.moai/state/verify/t22-run/m4-*`.

@@ -144,7 +144,7 @@ async function connected(srv: FakeServer, over: Partial<GatewayClientOpts> = {})
 
 | ID | 요구사항 | 명령 | 관측할 결과 |
 |----|----------|------|-------------|
-| AC-CHANCLIENT-001 | REQ-CHANCLIENT-001 | 아래 본문 | 서버가 받은 **첫** 프레임이 정확히 `{ type:'hello', token:'tok123' }` |
+| AC-CHANCLIENT-001 | REQ-CHANCLIENT-001 | 아래 본문 | 서버가 받은 **첫** 프레임이 정확히 `{ type:'hello', token:'tok123' }`. **[SPEC-GWAUTH-002 로 대체됨 — 이행 노트]**: v2(SPEC-GWAUTH-002) 에서 hello 는 `{ type:'hello', pub, client_nonce }` 로 교체됐고 본 시험 몸도 AC-GWAUTH2-003 과 같은 키 집합을 단언하도록 갱신됐다(채널 test/gateway-client.test.ts). 이 행의 v1 리터럴 계약은 SPEC-GWAUTH-002 §4.2 가 대신한다 |
 | AC-CHANCLIENT-002 | REQ-CHANCLIENT-003 | 아래 본문 | `onWelcome` 인자가 `missed_after_id` 를 포함해 서버가 보낸 객체와 완전히 같음 |
 | AC-CHANCLIENT-003 | REQ-CHANCLIENT-004 (message) | 아래 본문 | `onMessage` 인자가 `files` 배열과 `delivery:'cc'` 를 포함해 원 프레임과 완전히 같음 |
 | AC-CHANCLIENT-004 | REQ-CHANCLIENT-004 (verdict) | 아래 본문 | `onVerdict` 인자의 `behavior` 가 정확히 `'deny'`, `request_id` 보존 |

@@ -1,0 +1,58 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/transport-auth.test.ts (30 tests | 3 failed) 625262ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 84ms
+     × a replayed envelope is dropped because its sequence has already been used 3041ms
+     × the three gates are separate: each mutation breaks a different set 600006ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+ReferenceError: createSseHub is not defined
+ ❯ buildRealGateway test/transport-auth.test.ts:364:7
+    362|   app.db = db
+    363|   await app.register(cookie)
+    364|   app.decorate('hub', createSseHub())
+       |       ^
+    365|   mkdirSync(path.path.join(dir, 'up'), { recursive: true })
+    366|   const gateway = createGateway(app, { uploadsDir: path.path.join(dir,…
+ ❯ test/transport-auth.test.ts:658:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+Error: waitFor timeout: ③ 정상 봉투 도착
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:797:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+Error: Test timed out in 600000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/transport-auth.test.ts:808:3
+    806|   // N3 은 이 SPEC 의 기준 집합을 무너뜨리지 않음 · O 를 넣은 뒤 N3 의 기대값이 뒤집힘.
+    807|   // 원문 복원 뒤 git diff 로 흔적이 없음을 매번 확인한다 (AC-GWAUTH2-017 본문).
+    808|   it('the three gates are separate: each mutation breaks a different s…
+       |   ^
+    809|     const source = readFileSync(CLIENT_SRC, 'utf8')
+    810|     const mutations: Record<string, [RegExp, string]> = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 27 passed (30)
+   Start at  18:32:29
+   Duration  625.48s (transform 57ms, setup 0ms, import 140ms, tests 625.26s, environment 0ms)
+

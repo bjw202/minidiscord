@@ -1,0 +1,135 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/gateway.test.ts (31 tests | 5 failed) 16628ms
+     × no frame in either direction carries the token, the private key or the confirm key 416ms
+     × an invite stores only a verifier and a confirm key, never the token or its hash 60ms
+     × the server looks the bot up by its verifier and closes on an unknown pub 5005ms
+     × a client holding only what the database stores cannot register as the bot 5ms
+     × a signature made for another handshake is refused 5008ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > no frame in either direction carries the token, the private key or the confirm key
+TypeError: Cannot read properties of undefined (reading 'map')
+ ❯ test/gateway.test.ts:992:36
+    990|     expect(recorders.length).toBe(1)
+    991|     const rec = recorders[0]
+    992|     const kinds = [...rec.received.map(f => f.type), ...rec.sent.map(f…
+       |                                    ^
+    993|     expect(kinds).toEqual(expect.arrayContaining(['hello', 'challenge'…
+    994|     expect(rec.received.some(f => f.type === 'hello')).toBe(true)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > an invite stores only a verifier and a confirm key, never the token or its hash
+TypeError: Cannot read properties of undefined (reading 'prepare')
+ ❯ test/gateway.test.ts:1075:23
+    1073|     // 방·멤버십은 직접 심는다 — 이 파일의 build() 는 방 라우트를 등록하지 않고, 초대 경로의
+    1074|     // 멤버십 게이트(REQ-ROOMAUTHZ-017)를 통과하려면 게이트 행이 필요하다 (permissions.test…
+    1075|     const roomId = db.prepare("INSERT INTO rooms (name) VALUES ('A')")…
+       |                       ^
+    1076|     const alice = db.prepare("SELECT id FROM users WHERE username = 'a…
+    1077|     db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?,…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > the server looks the bot up by its verifier and closes on an unknown pub
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:1097:3
+    1095|
+    1096|   // AC-GWAUTH2-002 — 서버는 검증자로 조회하고, 모르는 pub 에는 닫는다
+    1097|   it('the server looks the bot up by its verifier and closes on an unk…
+       |   ^
+    1098|     const { app, gateway, port } = await build()
+    1099|     const roomA = seedRoom('A'), roomB = seedRoom('B')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > a client holding only what the database stores cannot register as the bot
+TypeError: Cannot read properties of undefined (reading 'prepare')
+ ❯ test/gateway.test.ts:1132:20
+    1130|     const room = seedRoom(), pm = seedBot('pm')
+    1131|     invite(room, pm)   // 평문 토큰은 하네스가 쓰지 않는다 — 상대의 소지품을 둘로 한정한다
+    1132|     const row = db.prepare('SELECT verifier_pub, server_confirm_key FR…
+       |                    ^
+    1133|
+    1134|     const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > a signature made for another handshake is refused
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:1168:3
+    1166|
+    1167|   // AC-GWAUTH2-010 — 다른 핸드셰이크의 서명은 거절되고, 그 접속의 전사로 만든 서명은 받아들여진다
+    1168|   it('a signature made for another handshake is refused', async () => {
+       |   ^
+    1169|     const { app, gateway, port } = await build()
+    1170|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 2 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+ReferenceError: client_nonce is not defined
+ ❯ WebSocket.<anonymous> test/gateway.test.ts:1057:86
+    1055|       })
+    1056|       ws.on('error', reject)
+    1057|       ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', pub:…
+       |                                                                                      ^
+    1058|       ws.on('close', () => { if (frames.some(f => f.type === 'challeng…
+    1059|     })
+ ❯ WebSocket.emit node:events:508:28
+ ❯ WebSocket.setSocket ../node_modules/ws/lib/websocket.js:258:10
+ ❯ ClientRequest.<anonymous> ../node_modules/ws/lib/websocket.js:1029:15
+ ❯ ClientRequest.emit node:events:508:28
+ ❯ Socket.socketOnData node:_http_client:655:11
+ ❯ Socket.emit node:events:508:28
+ ❯ addChunk node:internal/streams/readable:559:12
+ ❯ readableAddChunkPushByteMode node:internal/streams/readable:510:3
+ ❯ Socket.Readable.push node:internal/streams/readable:390:5
+
+This error originated in "test/gateway.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "the server looks the bot up by its verifier and closes on an unknown pub". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+ReferenceError: client_nonce is not defined
+ ❯ WebSocket.<anonymous> test/gateway.test.ts:1057:86
+    1055|       })
+    1056|       ws.on('error', reject)
+    1057|       ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', pub:…
+       |                                                                                      ^
+    1058|       ws.on('close', () => { if (frames.some(f => f.type === 'challeng…
+    1059|     })
+ ❯ WebSocket.emit node:events:508:28
+ ❯ WebSocket.setSocket ../node_modules/ws/lib/websocket.js:258:10
+ ❯ ClientRequest.<anonymous> ../node_modules/ws/lib/websocket.js:1029:15
+ ❯ ClientRequest.emit node:events:508:28
+ ❯ Socket.socketOnData node:_http_client:655:11
+ ❯ Socket.emit node:events:508:28
+ ❯ addChunk node:internal/streams/readable:559:12
+ ❯ readableAddChunkPushByteMode node:internal/streams/readable:510:3
+ ❯ Socket.Readable.push node:internal/streams/readable:390:5
+
+This error originated in "test/gateway.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "a signature made for another handshake is refused". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 26 passed (31)
+     Errors  2 errors
+   Start at  17:41:03
+   Duration  16.84s (transform 88ms, setup 0ms, import 144ms, tests 16.63s, environment 0ms)
+

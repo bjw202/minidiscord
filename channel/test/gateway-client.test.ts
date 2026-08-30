@@ -321,7 +321,7 @@ describe('gateway client', () => {
     expect(srv.messages.length).toBe(0)                 // 아무 프레임도 나가지 않았다
 
     srv.on((ws, m) => {
-      if (m.type === 'history_request') ws.send(JSON.stringify({ type: 'history_response', rid: m.rid, messages: [] }))
+      if (m.type === 'history_request') srv.sendInner(ws, { type: 'history_response', rid: m.rid, messages: [] })
     })
     client.start()
     await waitFor(() => srv.messages.some(m => m.type === 'hello'))
@@ -417,15 +417,15 @@ describe('gateway client', () => {
   // AC-GWAUTH-015 — 증명을 실은 welcome 도 손대지 않고 그대로 넘긴다 (SPEC-GWAUTH-001).
   // wire() 는 onWelcome 을 배선하지 않으므로 이 관측은 createGatewayClient 를 직접 쓰는
   // 이 하네스에서만 성립한다 — AC-CHANCLIENT-002 와 별개로 이 SPEC 이 들이는 필드의 관측이다.
-  it('passes a proof-bearing welcome through untouched, proof field included', async () => {
+  it('passes a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나)', async () => {
+    // AC-GWAUTH2-020 (나) — v1 AC-GWAUTH-015 의 이월 항목을 대체한다: v2 에서는 welcome 이
+    // 봉투 «안» 에 도착하고, 클라이언트는 봉투에서 푼 내부 프레임을 통째로 그대로 넘긴다.
     const srv = startServer({ autoWelcome: false })
     const got: any[] = []
     await connected(srv, { onWelcome: w => got.push(w) })
-    // 이 하네스는 rogueGateway 가 아니므로 논스를 srv.messages 에서 읽는다 (nonceSeen 접근자 없음)
-    const helloNonce = srv.messages.find(m => m.type === 'hello').nonce
-    const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 42, proof: proofOf('tok123', helloNonce, 1, 2) }
-    srv.sockets[0].send(JSON.stringify(frame))
+    const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm', missed_after_id: 42 }
+    srv.sendInner(srv.sockets[0], frame)
     await waitFor(() => got.length === 1)
-    expect(got[0]).toEqual(frame)                        // proof 필드를 포함해 프레임 객체가 통째로 그대로
+    expect(got[0]).toEqual(frame)                        // 봉투에서 푼 내부 프레임이 통째로 그대로
   })
 })

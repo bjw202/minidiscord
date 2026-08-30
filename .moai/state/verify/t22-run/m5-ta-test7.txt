@@ -1,0 +1,9 @@
+365:  mkdirSync(path.join(dir, 'up'), { recursive: true })
+366:  const gateway = createGateway(app, { uploadsDir: path.join(dir, 'up') })
+exit=1
+      Tests  3 failed | 27 passed (30)
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 84ms
+     × a replayed envelope is dropped because its sequence has already been used 3041ms
+     × the three gates are separate: each mutation breaks a different set 600006ms
+
+[exited with code 0]

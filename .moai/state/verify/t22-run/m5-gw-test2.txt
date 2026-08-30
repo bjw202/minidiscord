@@ -1,0 +1,110 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/gateway.test.ts (31 tests | 3 failed) 21618ms
+     × the server looks the bot up by its verifier and closes on an unknown pub 5006ms
+     × a client holding only what the database stores cannot register as the bot 5009ms
+     × a signature made for another handshake is refused 5012ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > the server looks the bot up by its verifier and closes on an unknown pub
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:1097:3
+    1095|
+    1096|   // AC-GWAUTH2-002 — 서버는 검증자로 조회하고, 모르는 pub 에는 닫는다
+    1097|   it('the server looks the bot up by its verifier and closes on an unk…
+       |   ^
+    1098|     const { app, gateway, port } = await build()
+    1099|     const roomA = seedRoom('A'), roomB = seedRoom('B')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > a client holding only what the database stores cannot register as the bot
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:1128:3
+    1126|   // REQ-GWAUTH2-002(독립 유도)의 전이적 관측이기도 하다 — 한쪽에서 다른 쪽을 유도할 수 있으면
+    1127|   // 이 상대가 auth 서명을 만들어 첫 단언이 붉어진다 (변이 AA).
+    1128|   it('a client holding only what the database stores cannot register a…
+       |   ^
+    1129|     const { app, gateway, db, port } = await build()
+    1130|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > a signature made for another handshake is refused
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:1168:3
+    1166|
+    1167|   // AC-GWAUTH2-010 — 다른 핸드셰이크의 서명은 거절되고, 그 접속의 전사로 만든 서명은 받아들여진다
+    1168|   it('a signature made for another handshake is refused', async () => {
+       |   ^
+    1169|     const { app, gateway, port } = await build()
+    1170|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 2 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+ReferenceError: cn is not defined
+ ❯ WebSocket.<anonymous> test/gateway.test.ts:1057:100
+    1055|       })
+    1056|       ws.on('error', reject)
+    1057|       ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', pub:…
+       |                                                                                                    ^
+    1058|       ws.on('close', () => { if (frames.some(f => f.type === 'challeng…
+    1059|     })
+ ❯ WebSocket.emit node:events:508:28
+ ❯ WebSocket.setSocket ../node_modules/ws/lib/websocket.js:258:10
+ ❯ ClientRequest.<anonymous> ../node_modules/ws/lib/websocket.js:1029:15
+ ❯ ClientRequest.emit node:events:508:28
+ ❯ Socket.socketOnData node:_http_client:655:11
+ ❯ Socket.emit node:events:508:28
+ ❯ addChunk node:internal/streams/readable:559:12
+ ❯ readableAddChunkPushByteMode node:internal/streams/readable:510:3
+ ❯ Socket.Readable.push node:internal/streams/readable:390:5
+
+This error originated in "test/gateway.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "the server looks the bot up by its verifier and closes on an unknown pub". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+ReferenceError: cn is not defined
+ ❯ WebSocket.<anonymous> test/gateway.test.ts:1057:100
+    1055|       })
+    1056|       ws.on('error', reject)
+    1057|       ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', pub:…
+       |                                                                                                    ^
+    1058|       ws.on('close', () => { if (frames.some(f => f.type === 'challeng…
+    1059|     })
+ ❯ WebSocket.emit node:events:508:28
+ ❯ WebSocket.setSocket ../node_modules/ws/lib/websocket.js:258:10
+ ❯ ClientRequest.<anonymous> ../node_modules/ws/lib/websocket.js:1029:15
+ ❯ ClientRequest.emit node:events:508:28
+ ❯ Socket.socketOnData node:_http_client:655:11
+ ❯ Socket.emit node:events:508:28
+ ❯ addChunk node:internal/streams/readable:559:12
+ ❯ readableAddChunkPushByteMode node:internal/streams/readable:510:3
+ ❯ Socket.Readable.push node:internal/streams/readable:390:5
+
+This error originated in "test/gateway.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "a signature made for another handshake is refused". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 28 passed (31)
+     Errors  2 errors
+   Start at  17:42:36
+   Duration  21.83s (transform 82ms, setup 0ms, import 140ms, tests 21.62s, environment 0ms)
+

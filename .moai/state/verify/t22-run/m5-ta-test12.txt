@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed) 34329ms
+     × the three gates are separate: each mutation breaks a different set 11739ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+Error: O 앵커가 소스에 없다
+ ❯ Object.O test/transport-auth.test.ts:822:56
+    820|         const cut = s.indexOf("if (msg.type === 'challenge') {")
+    821|         const chain = s.indexOf('else if (!established) {')
+    822|         if (cut < 0 || chain < 0 || chain < cut) throw new Error('O 앵커…
+       |                                                        ^
+    823|         const blocks = s.slice(cut, chain)   // challenge 블록 + env 블록
+    824|         const close = s.indexOf('\n      }\n', chain) + '\n      }\n'.…
+ ❯ test/transport-auth.test.ts:932:36
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 passed (30)
+   Start at  20:58:49
+   Duration  34.54s (transform 55ms, setup 0ms, import 139ms, tests 34.33s, environment 0ms)
+

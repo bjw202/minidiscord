@@ -133,6 +133,7 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient {
       // ② 핸드셰이크 강제 지점 — 체인 밖 독립 문장이고 ③ 보다 앞선다 (REQ-GWAUTH2-015). 거절 뒤에
       // 버퍼에 이미 들어와 있던 프레임도 여기서 버려진다 — close() 가 디스패치를 앞지르지 못하기 때문이다.
       if (proofRejected) return
+
       if (msg.type === 'challenge') {
         // 형식 검사가 대조보다 먼저다 (REQ-GWAUTH2-006) — §2.5 의 구분자 단일성 논증은 «논스는 hex, 방·봇은
         // 정수» 라는 성질에 서는데 그 값들은 신뢰할 수 없는 프레임이 실어 온 것이다. 어느 갈래가 걸렸는지는
@@ -207,23 +208,15 @@ export function createGatewayClient(input: GatewayClientOpts): GatewayClient {
         return
       }
       else if (!established) {
-        // 확립 전에 온 봉투 아닌 프레임 — v1 형태의 맨몸 welcome 을 포함해 — 어떤 콜백에도 넘기지 않고
-        // 버린다 (REQ-GWAUTH2-017, REQ-CHANAUTH-001). 예외도 버퍼링도 없다 — 버퍼링하면 확립 전 주입이
-        // 확립 후에 되살아나 게이트가 무의미해진다.
+        // ③ — 확립 전에 온 봉투 아닌 프레임(v1 형태의 맨몸 welcome 포함)은 버려진다
+        // (REQ-GWAUTH2-017, REQ-CHANAUTH-001). 버퍼링도 예외도 없다. return — 뒤에 어떤
+        // 분배도 두지 않는다는 것을 제어 흐름으로 고정한다 (변이 O 의 이동 대상이 «뒤» 가
+        // 되면 확립 전 challenge 가 ③ 에 먹혀 핸드셰이크가 멈춘다 — AC-GWAUTH2-017 이 관측).
+        return
       }
-      else if (msg.type === 'message') opts.onMessage?.(msg)
-      else if (msg.type === 'permission_verdict') opts.onVerdict?.(msg)
-      else if (msg.type === 'history_response') {
-        // 확립 이후에도 봉투 없이 온 이력 응답은 ① 에서 이미 걸러지지만, 이 갈래가 남는 것은 ③ 의
-        // 분배 대상이 여전히 프레임이라는 뜻일 뿐이다 — 방어적 나머지다.
-        const entry = pending.get(msg.rid)
-        if (entry) {
-          clearTimeout(entry.timer)
-          pending.delete(msg.rid)
-          entry.resolve(msg)
-        }
-      }
-      // 그 외 type 은 해석하지 않는다 — else 로 흘려보내지 않는다
+      // 여기 도달한 프레임(확립 «후» 의 비(非)봉투 프레임)은 전선 위 다섯 종류 어디에도 해당하지
+      // 않는 위반 프레임이다 — 봉투에서 푼 내부 프레임만 콜백에 간다 (REQ-GWAUTH2-014).
+      // 그래서 이 자리에는 분배 체인이 없다 — 있는 그 자체가 주입 통로가 된다.
     })
 
     // challenge 거절 — 갈래와 무관하게 이 한 경로다. 플래그를 먼저 세우고 stderr 한 줄(stdout 은 MCP

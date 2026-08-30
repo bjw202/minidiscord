@@ -204,15 +204,20 @@ describe('invites', () => {
     expect(c.c).toBe(0)
   })
 
-  it('stores only the sha256 hash of the issued token', async () => {
-    const { sha256Hex } = await import('../src/routes-bots.js')
+  it('stores only the verifier and the confirm key of the issued token, never the token', async () => {
+    // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — v1 의 sha256 해시 저장(«stores only the sha256 hash»
+    // — SPEC-BOT-001)을 대체한다. AC-GWAUTH2-001 이 전체 단언을 gateway.test.ts 에서 재고,
+    // 여기서는 초대 SPEC의 자체 회귀로 저장 값의 성질을 유지 관측한다.
     const { app, cookie } = await build()
     const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie }, payload: { name: 'A' } })).json()
     const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'pm' } })).json()
     const body = (await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/invites`, headers: { cookie }, payload: { bot_id: bot.id } })).json()
-    const row = db.prepare('SELECT token_hash FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL').get(room.id) as { token_hash: string }
-    expect(row.token_hash).toBe(sha256Hex(body.token))
-    expect(row.token_hash).not.toBe(body.token)
+    const row = db.prepare('SELECT * FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL').get(room.id) as Record<string, unknown>
+    expect(row.verifier_pub).toBeTruthy()
+    expect(row.server_confirm_key).toBeTruthy()
+    expect(Object.keys(row)).not.toContain('token_hash')
+    const dump = JSON.stringify(row)
+    expect(dump).not.toContain(body.token)
   })
 
   it('lists invites without token', async () => {

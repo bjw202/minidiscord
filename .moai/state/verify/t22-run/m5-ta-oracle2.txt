@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed | 25 skipped) 1889ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 66ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+TypeError: Cannot read properties of undefined (reading 'join')
+ ❯ buildRealGateway test/transport-auth.test.ts:366:23
+    364|   await app.register(cookie)
+    365|   app.decorate('hub', createSseHub())
+    366|   mkdirSync(path.path.join(dir, 'up'), { recursive: true })
+       |                       ^
+    367|   const gateway = createGateway(app, { uploadsDir: path.path.join(dir,…
+    368|   app.decorate('gateway', gateway)
+ ❯ test/transport-auth.test.ts:659:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed | 25 skipped (30)
+   Start at  18:48:49
+   Duration  2.06s (transform 54ms, setup 0ms, import 103ms, tests 1.89s, environment 0ms)
+

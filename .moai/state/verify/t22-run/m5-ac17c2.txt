@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed | 29 skipped) 4ms
+     × the three gates are separate: each mutation breaks a different set 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+Error: ENOENT: no such file or directory, open '/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/.moai/state/verify/t22-run/ac17_probe_src.txt'
+ ❯ test/transport-auth.test.ts:839:25
+    837|     // 이중 이스케이프로 재생하는 것보다 낫다 — 같은 내용, 단일 출처).
+    838|     const PROBE_SRC_TXT = '.moai/state/verify/t22-run/ac17_probe_src.t…
+    839|     const probeSource = readFileSync(new URL('../../../' + PROBE_SRC_T…
+       |                         ^
+    840|
+    841|     const runSuite = async (mutated: string): Promise<string[]> => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 skipped (30)
+   Start at  21:05:12
+   Duration  236ms (transform 41ms, setup 0ms, import 160ms, tests 4ms, environment 0ms)
+

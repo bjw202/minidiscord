@@ -628,8 +628,8 @@ describe('room membership gates', () => {
     const botId = await makeBot(app, alice.cookie)
     expect((await botInvite(app, alice.cookie, roomId, botId)).statusCode).toBe(201)
     expect(activeTokenCount(roomId)).toBe(1)
-    const issuedAt = (db.prepare('SELECT token_hash FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL')
-      .get(roomId) as { token_hash: string }).token_hash
+    const issuedAt = (db.prepare('SELECT verifier_pub AS stored FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL')
+      .get(roomId) as { stored: string }).stored
 
     // 부정 사례 1 — 발급. 토큰이 응답에 실려 나가지 않는다
     const refusedPost = await botInvite(app, mallory.cookie, roomId, botId)
@@ -646,8 +646,8 @@ describe('room membership gates', () => {
     const refusedDelete = await botInviteRevoke(app, mallory.cookie, roomId, botId)
     expect(refusedDelete.statusCode).toBe(404)
     expect(activeTokenCount(roomId)).toBe(1)
-    expect((db.prepare('SELECT token_hash FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL')
-      .get(roomId) as { token_hash: string }).token_hash).toBe(issuedAt)   // 같은 토큰이 그대로 살아 있다
+    expect((db.prepare('SELECT verifier_pub AS stored FROM bot_tokens WHERE room_id=? AND revoked_at IS NULL')
+      .get(roomId) as { stored: string }).stored).toBe(issuedAt)   // 같은 토큰이 그대로 살아 있다
 
     // 없는 방과 구별되지 않는다 (REQ-ROOMAUTHZ-013)
     const missing = await botInviteList(app, mallory.cookie, 999999)

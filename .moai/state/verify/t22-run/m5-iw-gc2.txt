@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+
+ Test Files  2 passed (2)
+      Tests  31 passed (31)
+   Start at  20:52:03
+   Duration  1.51s (transform 66ms, setup 0ms, import 206ms, tests 1.51s, environment 0ms)
+

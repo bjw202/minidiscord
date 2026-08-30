@@ -1,0 +1,82 @@
+import { describe, it, expect, afterEach } from 'vitest'
+import { WebSocketServer } from 'ws'
+import { createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
+import { createGatewayClient } from './zz-ac17-variant.js'
+const skOf = t => createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), createHmac('sha256', t).update('minidiscord/v2/sign').digest()]), format: 'der', type: 'pkcs8' })
+const pubOf = t => createPublicKey(skOf(t)).export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex')
+const ksrvOf = t => createHmac('sha256', t).update('minidiscord/v2/server-confirm').digest()
+const cleanups: (() => void)[] = []
+afterEach(() => { for (const c of cleanups.splice(0).reverse()) c() })
+function stubServer(opts: { proof?: string | null; envAfterAuth?: boolean; envSeq?: number; envBadMac?: boolean }) {
+  const wss = new WebSocketServer({ port: 0 })
+  const sent: any[] = []
+  let sn = ''
+  let sessKey: Buffer | null = null
+  cleanups.push(() => wss.close())
+  wss.on('connection', ws => {
+    ws.on('message', d => {
+      const m = JSON.parse(String(d))
+      sent.push(m)
+      if (m.type === 'hello') {
+        sn = randomBytes(32).toString('hex')
+        const frame: Record<string, unknown> = { type: 'challenge', server_nonce: sn, room_id: 1, bot_id: 2 }
+        if (opts.proof !== null) {
+          const valid = createHmac('sha256', ksrvOf('tok')).update(`challenge|${m.client_nonce}|${sn}|1|2|${m.pub}|unbound`).digest('hex')
+          frame.server_proof = opts.proof === 'wrong' ? (valid[0] === '0' ? '1' : '0') + valid.slice(1) : valid
+        }
+        ws.send(JSON.stringify(frame))
+      }
+      if (m.type === 'auth' && opts.envAfterAuth) {
+        sessKey = createHmac('sha256', ksrvOf('tok')).update(`session|${sent.find(x => x.type === 'hello').client_nonce}|${sn}|1|2|unbound`).digest()
+        const seal = (seq: number, inner: unknown, bad = false) => {
+          const payload = JSON.stringify(inner)
+          let mac = createHmac('sha256', sessKey!).update(`${seq}|${payload}`).digest('hex')
+          if (bad) mac = (mac[0] === '0' ? '1' : '0') + mac.slice(1)
+          ws.send(JSON.stringify({ type: 'env', seq, payload, mac }))
+        }
+        seal(1, { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' })
+        if (opts.envSeq !== undefined) seal(opts.envSeq, { type: 'message', id: 1, author_name: 'alice', delivery: 'to', body: 'probe' }, opts.envBadMac)
+      }
+    })
+  })
+  return { port: () => (wss.address() as { port: number }).port, sent }
+}
+describe('AC17 probes', () => {
+  const waitUntil = async (pred: () => boolean, ms = 4000): Promise<boolean> => {
+    const t0 = Date.now()
+    while (!pred()) {
+      if (Date.now() - t0 > ms) return false
+      await new Promise(r => setTimeout(r, 20))
+    }
+    return true
+  }
+  it('P_proof', async () => {
+    const srv = stubServer({ proof: 'wrong', envAfterAuth: false })
+    const client = createGatewayClient({ url: `ws://127.0.0.1:${srv.port()}/bot`, token: 'tok', sleep: async () => {} })
+    cleanups.push(() => client.stop())
+    client.start()
+    await waitUntil(() => srv.sent.some(m => m.type === 'challenge'))   // challenge 도착 관측
+    await new Promise(r => setTimeout(r, 300))                          // 클라이언트의 판정·반응 여유
+    const auths = srv.sent.filter(m => m.type === 'auth')
+    expect(auths.length).toBe(0)   // ② 가 산다 — 위조 증명 뒤 auth 가 나가지 않는다
+  })
+  it('P_env', async () => {
+    const notes: unknown[] = []
+    const srv = stubServer({ proof: 'valid', envAfterAuth: true, envSeq: 2, envBadMac: true })
+    const client = createGatewayClient({ url: `ws://127.0.0.1:${srv.port()}/bot`, token: 'tok', sleep: async () => {}, onMessage: m => notes.push(m) })
+    cleanups.push(() => client.stop())
+    client.start()
+    await waitUntil(() => srv.sent.some(m => m.type === 'auth'))
+    await new Promise(r => setTimeout(r, 900))
+    expect(notes).toEqual([])      // ① 이 산다 — 변조 봉투가 콜백에 도착하지 않는다
+  })
+  it('P_establish', async () => {
+    const got: unknown[] = []
+    const srv = stubServer({ proof: 'valid', envAfterAuth: true, envSeq: 2 })
+    const client = createGatewayClient({ url: `ws://127.0.0.1:${srv.port()}/bot`, token: 'tok', sleep: async () => {}, onMessage: m => got.push(m) })
+    cleanups.push(() => client.stop())
+    client.start()
+    await waitUntil(() => got.length === 1, 4000)
+    expect(got.length).toBe(1)     // 핸드셰이크가 산다 — 유효 왕복 뒤 내부 프레임이 도착한다
+  })
+})

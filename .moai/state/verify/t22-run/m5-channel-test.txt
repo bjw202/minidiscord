@@ -1,0 +1,186 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/gateway-client.test.ts (17 tests | 2 failed) 5223ms
+     × fails a history request immediately when not connected, and recovers after connecting 5007ms
+     × passes a proof-bearing welcome through untouched, proof field included 6ms
+stderr | test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/gateway-mutual-auth.test.ts (5 tests | 3 failed) 10178ms
+     × a relaying man in the middle passes the handshake and still injects nothing 5009ms
+     × a real relay terminating tls on both sides cannot take over the bot session 8ms
+     × on an unbound transport the same relay does take over, and the channel says so 5005ms
+stderr | test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/index-wiring.test.ts (14 tests | 5 failed) 26247ms
+     × fetch_history forwards since_id and limit verbatim 5006ms
+     × history renders as one structured JSON document 5002ms
+     × empty history renders the same JSON shape with a null cursor 5002ms
+     × a single poisoned message stays a single element and carries no live envelope sequence 5003ms
+     × derives the cursor from ids only, never from body text, and nulls it when empty 5002ms
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed) 39883ms
+     × the three gates are separate: each mutation breaks a different set 17390ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:315:3
+    313|
+    314|   // AC-CHANCLIENT-010 — 연결이 없으면 즉시 실패하고 흔적을 남기지 않는다
+    315|   it('fails a history request immediately when not connected, and reco…
+       |   ^
+    316|     const srv = startServer()
+    317|     const client = createGatewayClient({ url: () => srv.url(), token: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes a proof-bearing welcome through untouched, proof field included
+ReferenceError: proofOf is not defined
+ ❯ test/gateway-client.test.ts:426:105
+    424|     // 이 하네스는 rogueGateway 가 아니므로 논스를 srv.messages 에서 읽는다 (nonceSeen 접…
+    425|     const helloNonce = srv.messages.find(m => m.type === 'hello').nonce
+    426|     const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: …
+       |                                                                                                         ^
+    427|     srv.sockets[0].send(JSON.stringify(frame))
+    428|     await waitFor(() => got.length === 1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:208:3
+    206|   // AC-GWAUTH2-013 — 중계형 중간자는 핸드셰이크를 통과시키고도 아무것도 주입하지 못한다.
+    207|   // 이 상대는 위조하지 않고 «중계» 한다 — 그러나 k_sess 가 없어 봉투를 만들지 못한다.
+    208|   it('a relaying man in the middle passes the handshake and still inje…
+       |   ^
+    209|     const { db, gateway, port: realPort, close } = await buildRealServ…
+    210|     const roomId = seedRoom(db)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a real relay terminating tls on both sides cannot take over the bot session
+TypeError: readFileSync is not a function
+ ❯ fixtureKeyPem test/gateway-mutual-auth.test.ts:179:10
+    177| function fixtureKeyPem(): string {
+    178|   const p = new URL('../../server/test/fixtures/tls-test-key.pem', imp…
+    179|   return readFileSync(p, 'utf8')
+       |          ^
+    180| }
+    181| void FIXTURE_CERT
+ ❯ test/gateway-mutual-auth.test.ts:278:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > on an unbound transport the same relay does take over, and the channel says so
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:358:3
+    356|   // AC-GWAUTH2-024 — 경계 기준: 바인딩이 서지 않는 연결에서는 같은 중계자가 이긴다.
+    357|   // 이 기준은 방어를 재지 않는다 — «상대가 이겼다» 를 양성 단언으로 매 실행 기록한다.
+    358|   it('on an unbound transport the same relay does take over, and the c…
+       |   ^
+    359|     const { db, gateway, port: realPort, close } = await buildRealServ…
+    360|     const roomId = seedRoom(db)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:234:3
+    232|
+    233|   // AC-CHANWIRE-006 — fetch_history 파라미터가 게이트웨이까지 그대로 간다
+    234|   it('fetch_history forwards since_id and limit verbatim', async () =>…
+       |   ^
+    235|     const { stub, obs } = await connected()
+    236|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:247:3
+    245|   // AC-CHANWIRE-007 — 이력은 구조화 JSON 문서 하나로 렌더링된다
+    246|   // (v0.4.0 개정, 카드 t10 — SPEC-CHANINJECT-001 §3.2. 줄 형식 대신 JSON.parse…
+    247|   it('history renders as one structured JSON document', async () => {
+       |   ^
+    248|     const { stub, obs } = await connected()
+    249|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:264:3
+    262|   // AC-CHANWIRE-008 — 빈 이력도 같은 모양의 JSON 이다
+    263|   // (v0.4.0 개정, 카드 t10 — '(기록 없음)' 문구는 결과 타입을 갈리므로 버려졌다)
+    264|   it('empty history renders the same JSON shape with a null cursor', a…
+       |   ^
+    265|     const { stub, obs } = await connected()
+    266|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:275:3
+    273|   // AC-CHANINJECT-004 (v0.3.0 재정의, sync 감사 F-01) — 오염된 본문 한 건이 이력 원소 …
+    274|   // 그 안의 봉투 시퀀스가 모델에 닿지 않는다. 두 방어를 서로 다른 단언으로 잰다 — (a) 구조(F-03), (b)·…
+    275|   it('a single poisoned message stays a single element and carries no …
+       |   ^
+    276|     const { stub, obs } = await connected()
+    277|     // 프로브 P3 의 줄 오염 + 프로브 P-A 의 봉투 오염을 한 고정값에 담는다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:324:3
+    322|
+    323|   // AC-CHANINJECT-005 — 커서는 배열 밖에서 나오고, 본문이 정하지 못한다 (AC-CHANINJECT-00…
+    324|   it('derives the cursor from ids only, never from body text, and null…
+       |   ^
+    325|     const { stub, obs } = await connected()
+    326|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected [ 'AC17 probes P_env' ] to include 'P_env'
+ ❯ test/transport-auth.test.ts:939:16
+    937|     expect(new Set(n2)).not.toEqual(new Set(n3))
+    938|     expect(new Set(n1)).not.toEqual(new Set(n3))
+    939|     expect(n1).toContain('P_env')          // N1 → ① 붕괴: 변조 봉투가 통과한다
+       |                ^
+    940|     expect(n2).toContain('P_proof')        // N2 → ② 붕괴: 위조 증명 뒤 auth …
+    941|     // N3 은 이 SPEC(SPEC-GWAUTH2)의 기준을 하나도 무너뜨리지 않는다 — ①·② 가 먼저 반환한다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+ Test Files  4 failed | 1 passed (5)
+      Tests  11 failed | 69 passed (80)
+   Start at  20:35:06
+   Duration  40.14s (transform 267ms, setup 0ms, import 833ms, tests 83.53s, environment 0ms)
+
