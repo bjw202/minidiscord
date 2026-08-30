@@ -6,7 +6,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { WebSocketServer, type WebSocket as WS } from 'ws'
 import { spawn } from 'node:child_process'
-import { createHash, createHmac } from 'node:crypto'
+import { createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -16,11 +16,18 @@ import { wire, isTransportAllowed, resolveUrl } from '../src/index.js'
 const cleanups: (() => Promise<void> | void)[] = []
 afterEach(async () => { for (const c of cleanups.splice(0).reverse()) await c() })
 
-// 증명 계산 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
+// v2 열쇠 유도 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
 // 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 토큰 상수는 이 하네스의 'tok' 다.
-const keyOf = (token: string) => createHash('sha256').update(token).digest('hex')
-const proofOf = (token: string, nonce: string, roomId: number, botId: number) =>
-  createHmac('sha256', keyOf(token)).update(`${nonce}|${roomId}|${botId}`).digest('hex')
+// (SPEC-GWAUTH-002 plan.md §D-9 — 이 사본은 channel/test 의 다른 하네스와 상수를 공유하지 않는다.)
+const pubOf = (t: string) => createPublicKey(createPrivateKey({
+  key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), createHmac('sha256', t).update('minidiscord/v2/sign').digest()]),
+  format: 'der', type: 'pkcs8',
+})).export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex')
+const ksrvOf = (t: string) => createHmac('sha256', t).update('minidiscord/v2/server-confirm').digest()
+const challengeProofOf = (t: string, cn: string, sn: string, room: number, bot: number, pub: string) =>
+  createHmac('sha256', ksrvOf(t)).update(`challenge|${cn}|${sn}|${room}|${bot}|${pub}|unbound`).digest('hex')
+const sessKeyOf = (t: string, cn: string, sn: string, room: number, bot: number) =>
+  createHmac('sha256', ksrvOf(t)).update(`session|${cn}|${sn}|${room}|${bot}|unbound`).digest()
 
 // 빌드 산출물의 절대 경로. vitest 의 cwd 는 channel/ 이므로 'channel/dist/index.js' 는
 // channel/channel/dist/index.js 로 풀린다 — 자식이 아예 뜨지 않아 (a) 갈래가 "잘못된 이유로"
@@ -38,11 +45,12 @@ const ChatNote = z.object({
   params: z.object({ content: z.string() }).passthrough(),
 })
 
-// 로그 서버. welcome 을 보낼지 말지와 증명을 어떻게 실어 보낼지가 이 하네스의 손잡이다 —
+// 로그 서버. challenge 를 보낼지 말지와 server_proof 를 어떻게 실어 보낼지가 이 하네스의 손잡이다 —
 // F-01 프로브(probe-rogue.ts)를 vitest 로 옮긴 것이며, 갈래들의 짝이 AC-CHANAUTH-001/002 와
-// AC-GWAUTH-006/007 을 만든다. proof 갈래: 'valid' 유효 | 'omit' 필드 없음 | 'wrong' 길이는
-// 맞고 값이 틀림 | 'short' 길이가 틀림 | 'other-room' 유효한 증명 + room_id 만 다른 값.
-// deferWelcome: hello 에 즉시 답하지 않는다 — 테스트가 pushWelcome() 으로 시점을 고른다.
+// AC-GWAUTH-006/007 을 만든다. v2 (SPEC-GWAUTH-002) — 갈래는 challenge 의 server_proof 에 적용된다:
+// 'valid' 유효 | 'omit' 필드 없음 | 'wrong' 길이는 맞고 값이 틀림 | 'short' 길이가 틀림 |
+// 'other-room' 유효한 증명 + room_id 만 다른 값.
+// deferWelcome: auth 가 와도 welcome 봉투를 바로 보내지 않는다 — 테스트가 pushWelcome() 으로 시점을 고른다.
 // 요청 프레임이 소켓이 열려 있는 동안 나가야 하는 기준(AC-GWAUTH-006·011)이 쓴다 (1회차 감사 H-02).
 function rogueGateway(opts: {
   welcome: boolean
@@ -54,27 +62,39 @@ function rogueGateway(opts: {
   const sent: Record<string, unknown>[] = []
   const live: WS[] = []
   let connections = 0
-  let nonceSeen = ''                       // 마지막 hello 에서 읽은 논스 — nonceSeen() 이 돌려준다
+  let nonceSeen = ''                       // 마지막 hello 에서 읽은 client_nonce — nonceSeen() 이 돌려준다
   const requestIds: string[] = []          // 나가는 permission_request 에서 읽은 id — readIds() 가 돌려준다
+  const sessions = new Map<WS, { sessKey: Buffer; seq: number }>()
+  const pending = new Map<WS, { cn: string; sn: string }>()
 
-  // 현재 갈래(state.proof)와 읽어 둔 논스로 welcome 프레임을 만든다. 기본 갈래는 'valid' 다 —
-  // proof 를 지정하지 않는 형제 기준(AC-CHANAUTH-001..005 등)은 유효한 증명을 받아야 확립된다.
+  // 현재 갈래(state.proof)와 읽어 둔 논스·pub 으로 challenge 프레임을 만든다. 기본 갈래는 'valid' 다 —
+  // proof 를 지정하지 않는 형제 기준은 유효한 증명을 받아야 다음 단계로 나아간다.
   // 방·봇은 기존 스텁과 같은 1·2 이고 토큰은 'tok' 다 (acceptance.md 공통 테스트 하네스).
-  function welcomeFrame(): Record<string, unknown> {
-    const frame: Record<string, unknown> = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' }
+  function challengeFrame(ws: WS, cn: string, pub: string): Record<string, unknown> {
+    const sn = randomBytes(32).toString('hex')
+    pending.set(ws, { cn, sn })   // auth 가 왔을 때 세션을 세우는 데 쓴다 — 소켓이 곧 열쇠다
+    const frame: Record<string, unknown> = { type: 'challenge', server_nonce: sn, room_id: 1, bot_id: 2 }
     const branch = state.proof ?? 'valid'
     if (branch !== 'omit') {
-      const valid = proofOf('tok', nonceSeen, 1, 2)
-      if (branch === 'wrong') frame.proof = (valid[0] === '0' ? '1' : '0') + valid.slice(1)   // 64자, 첫 글자만 뒤집는다
-      else if (branch === 'short') frame.proof = 'ab'                                          // 길이부터 틀리다
-      else if (branch === 'other-room') { frame.room_id = 9; frame.proof = valid }             // 증명은 방 1 에 묶여 있다
-      else frame.proof = valid
+      const valid = challengeProofOf('tok', cn, sn, 1, 2, pub)
+      if (branch === 'wrong') frame.server_proof = (valid[0] === '0' ? '1' : '0') + valid.slice(1)   // 64자, 첫 글자만 뒤집는다
+      else if (branch === 'short') frame.server_proof = 'ab'                                          // 길이부터 틀리다
+      else if (branch === 'other-room') { frame.room_id = 9; frame.server_proof = valid }             // 증명은 방 1 에 묶여 있다
+      else frame.server_proof = valid
     }
     return frame
   }
 
+  function sendInner(ws: WS, inner: object): void {
+    const s = sessions.get(ws)
+    if (!s) return   // 확립되지 않은 소켓으로는 봉투를 만들 수 없다 — 조용히 무시한다
+    const payload = JSON.stringify(inner)
+    s.seq += 1
+    ws.send(JSON.stringify({ type: 'env', seq: s.seq, payload, mac: createHmac('sha256', s.sessKey).update(`${s.seq}|${payload}`).digest('hex') }))
+  }
+
   function pushWelcome() {
-    for (const c of live) c.send(JSON.stringify(welcomeFrame()))
+    for (const c of live) sendInner(c, { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' })
   }
 
   cleanups.push(() => new Promise<void>(r => wss.close(() => r())))
@@ -84,25 +104,34 @@ function rogueGateway(opts: {
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       sent.push(m)
-      if (m.type === 'hello') nonceSeen = m.nonce
+      if (m.type === 'hello') nonceSeen = m.client_nonce
       if (m.type === 'permission_request') requestIds.push(m.request_id)
-      if (m.type === 'hello' && state.welcome && !state.deferWelcome) pushWelcome()
-      // welcome: false 이면 hello 에 아무 응답도 하지 않는다 — 토큰도 보지 않는다
+      if (m.type === 'hello' && state.welcome) {
+        // welcome: false 이면 hello 에 아무 응답도 하지 않는다 — pub 도 보지 않는다
+        ws.send(JSON.stringify(challengeFrame(ws, m.client_nonce, m.pub)))
+      }
+      if (m.type === 'auth') {
+        // auth 가 오면 challenge 논스로 세션을 세운다 — welcome 은 봉투로 나간다 (REQ-GWAUTH2-012)
+        const p = pending.get(ws)
+        if (!p) return
+        sessions.set(ws, { sessKey: sessKeyOf('tok', p.cn, p.sn, 1, 2), seq: 0 })
+        if (!state.deferWelcome) pushWelcome()
+      }
     })
   })
   return {
     sent,
     connections: () => connections,
     port: () => (wss.address() as { port: number }).port,
-    push: (msg: unknown) => { for (const c of wss.clients) c.send(JSON.stringify(msg)) },
+    push: (msg: unknown) => { for (const c of wss.clients) sendInner(c, msg as object) },
     dropAll: () => { for (const c of live.splice(0)) c.terminate() },
     set welcome(v: boolean) { state.welcome = v },   // 재접속 도중에 뒤집는다 (AC-CHANAUTH-004)
     set proof(v: 'valid' | 'omit' | 'wrong' | 'short' | 'other-room') { state.proof = v },   // 접속 도중에 갈래를 바꾼다 (AC-GWAUTH-011)
     nonceSeen: () => nonceSeen,
     readIds: () => requestIds,
-    pushWelcome,                                     // 지금 welcome 을 보낸다 (deferWelcome 짝)
+    pushWelcome,                                     // 지금 welcome 봉투를 보낸다 (deferWelcome 짝)
     // 살아 있는 소켓으로 welcome 을 한 번 더 보낸다. 재접속을 거치지 않고 같은 소켓 위에서
-    // 확립 전후를 관측하려는 기준이 쓴다 (AC-CHANAUTH-003 (나) 갈래). 논스는 hello 에서 읽은 값이다.
+    // 확립 전후를 관측하려는 기준이 쓴다 (AC-CHANAUTH-003 (나) 갈래).
     helloAgain: pushWelcome,
   }
 }

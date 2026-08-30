@@ -82,7 +82,9 @@ function handshakeTranscript(
 // botFilesDir: 봇이 bot_message 로 첨부할 수 있는 파일의 허용 뿌리. 미지정이면 봇 첨부를 전부
 // 거부한다(fail-closed) — 검사가 없던 동안 봇 토큰 하나로 서버가 읽는 임의 파일을 uploads 안으로
 // 복사해 내려받을 수 있었다 (sync-audit F-01, 유출 재현됨).
-export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; botFilesDir?: string }): Gateway {
+// onConnection: 하네스가 서버 쪽 소켓을 관측하는 유일한 창구 (SPEC-GWAUTH-002 acceptance.md §「서버
+// 소켓 프레임 기록」 — recordSocket 의 부착점). 생산 경로는 넘기지 않는다 — 옵션이 없으면 아무 일도 하지 않는다.
+export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; botFilesDir?: string; onConnection?: (ws: WebSocket) => void }): Gateway {
   const db = app.db
   const hub = app.hub
   const conns = new Map<WebSocket, Established>()
@@ -98,6 +100,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
   })
 
   wss.on('connection', ws => {
+    opts.onConnection?.(ws)
     ws.on('message', raw => {
       let msg: any
       try { msg = JSON.parse(String(raw)) } catch { dropConn(ws); return }   // 인자 위치에서 파싱하지 않는다 (plan.md §D 8번)

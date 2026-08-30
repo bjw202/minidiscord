@@ -1,0 +1,19 @@
+
+> typecheck
+> tsc --noEmit
+
+test/gateway-v2.ts(113,10): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'BufferLike'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error command failed
+npm error command sh -c tsc --noEmit
+
+
+> @minidiscord/channel@0.1.0 typecheck
+> tsc --noEmit
+

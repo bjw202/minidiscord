@@ -1,0 +1,63 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/rooms-bots.test.ts (21 tests | 1 failed) 1193ms
+     × stores only the sha256 hash of the issued token 46ms
+ ❯ test/room-members.test.ts (21 tests | 1 failed) 3475ms
+     × refuses all three bot-invite routes to a non-member while a member keeps the old behaviour 79ms
+ ❯ test/gateway.test.ts (26 tests | 1 failed) 6396ms
+     × welcome carries a proof bound to the nonce, room and bot, keyed on the stored token hash 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > welcome carries a proof bound to the nonce, room and bot, keyed on the stored token hash
+AssertionError: expected undefined to be 'e562329ad93553e2e8d116fe5b0f9d4ff0f56…' // Object.is equality
+
+- Expected:
+"e562329ad93553e2e8d116fe5b0f9d4ff0f568c8dcf9f3ebfcf2dbff8de98dcf"
+
++ Received:
+undefined
+
+ ❯ test/gateway.test.ts:909:29
+    907|     // 각 증명은 테스트가 독립 계산한 값과 정확히 같다. 열쇠가 저장 해시가 아니면(평문 토큰,
+    908|     // room_id 문자열 등) 여기서 깨진다 — 상수 증명도 두 토큰 대조에서 깨진다.
+    909|     expect(a.welcome.proof).toBe(proofOf(tokenA, n1, roomA, pm))
+       |                             ^
+    910|     expect(b.welcome.proof).toBe(proofOf(tokenB, n2, roomB, qa))
+    911|     expect(a.welcome.proof).not.toBe(b.welcome.proof)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > refuses all three bot-invite routes to a non-member while a member keeps the old behaviour
+SqliteError: no such column: token_hash
+ ❯ Database.prepare ../node_modules/better-sqlite3/lib/methods/wrappers.js:5:21
+ ❯ test/room-members.test.ts:631:26
+    629|     expect((await botInvite(app, alice.cookie, roomId, botId)).statusC…
+    630|     expect(activeTokenCount(roomId)).toBe(1)
+    631|     const issuedAt = (db.prepare('SELECT token_hash FROM bot_tokens WH…
+       |                          ^
+    632|       .get(roomId) as { token_hash: string }).token_hash
+    633|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token
+SqliteError: no such column: token_hash
+ ❯ Database.prepare ../node_modules/better-sqlite3/lib/methods/wrappers.js:5:21
+ ❯ test/rooms-bots.test.ts:213:20
+    211|     const bot = (await app.inject({ method: 'POST', url: '/api/bots', …
+    212|     const body = (await app.inject({ method: 'POST', url: `/api/rooms/…
+    213|     const row = db.prepare('SELECT token_hash FROM bot_tokens WHERE ro…
+       |                    ^
+    214|     expect(row.token_hash).toBe(sha256Hex(body.token))
+    215|     expect(row.token_hash).not.toBe(body.token)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  3 failed | 12 passed (15)
+      Tests  3 failed | 180 passed (183)
+   Start at  17:06:27
+   Duration  7.75s (transform 862ms, setup 0ms, import 1.99s, tests 21.83s, environment 1.80s)
+

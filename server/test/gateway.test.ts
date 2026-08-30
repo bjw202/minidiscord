@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHash, createHmac, randomBytes } from 'node:crypto'
+import { createHash, createHmac, randomBytes, sign, timingSafeEqual } from 'node:crypto'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import WebSocket from 'ws'
@@ -10,7 +10,7 @@ import { openDb, type Db } from '../src/db.js'
 import { createSseHub } from '../src/sse.js'
 import { createGateway } from '../src/gateway.js'
 import { registerAuthRoutes } from '../src/auth.js'
-import { sha256Hex } from '../src/routes-bots.js'
+import { pubOf, ksrvHexOf, skOf, connectV2 } from './gateway-v2.js'
 
 let dir: string
 let db: Db
@@ -55,7 +55,10 @@ function seedBot(name = 'pm'): number {
 }
 function invite(roomId: number, botId: number): string {
   const token = randomBytes(32).toString('hex')
-  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+  // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 검증자와 확인 열쇠만 저장한다. 유도는 이 파일의
+  // 하니스 사본(gateway-v2.ts)으로 한다 — 구현을 부르지 않는다.
+  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)')
+    .run(roomId, botId, pubOf(token), ksrvHexOf(token))
   return token
 }
 function cursorOf(roomId: number, botId: number): number {
@@ -76,12 +79,55 @@ function wsConnect(port: number, token: string, extra: object = {}): Promise<{ w
     const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
     const inbox: Inbox = { queue: [], waiters: [] }
     inboxes.set(ws, inbox)
-    ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', token, ...extra })))
+    // v2 핸드셰이크 (SPEC-GWAUTH-002) — hello{pub, client_nonce} → challenge 대조 → auth 서명.
+    // 이후 프레임은 전부 봉투다 — 검증하고 풀어 내부 프레임을 큐에 넣는다. 대조·검증 규칙은 이
+    // 파일의 사본으로 계산한다(위 gateway-v2.ts 와 같은 근거). extra 는 v1 증명 기준(M5 대체 예정)이
+    // 쓰던 자리라 형태를 유지한다 — v2 hello 에 붙는 추가 필드는 서버가 무시한다.
+    const clientNonce = randomBytes(32).toString('hex')
+    let sessKey: Buffer | null = null
+    let lastSeq = 0
+    let welcomed = false
+    ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', pub: pubOf(token), client_nonce: clientNonce, ...extra })))
     ws.on('message', data => {
       const msg = JSON.parse(String(data))
-      if (msg.type === 'welcome') { resolve({ ws, welcome: msg }); return }
-      const w = inbox.waiters.shift()
-      if (w) { clearTimeout(w.timer); w.resolve(msg) } else inbox.queue.push(msg)
+      if (msg.type === 'challenge') {
+        const expected = createHmac('sha256', Buffer.from(ksrvHexOf(token), 'hex'))
+          .update(`challenge|${clientNonce}|${msg.server_nonce}|${msg.room_id}|${msg.bot_id}|${pubOf(token)}|unbound`)
+          .digest('hex')
+        if (typeof msg.server_proof !== 'string' || msg.server_proof.length !== expected.length ||
+            !timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(msg.server_proof, 'hex'))) {
+          ws.close()
+          reject(new Error('harness: challenge 대조 실패'))
+          return
+        }
+        sessKey = createHmac('sha256', Buffer.from(ksrvHexOf(token), 'hex'))
+          .update(`session|${clientNonce}|${msg.server_nonce}|${msg.room_id}|${msg.bot_id}|unbound`)
+          .digest()
+        const signature = sign(
+          null,
+          Buffer.from(`auth|${clientNonce}|${msg.server_nonce}|${msg.room_id}|${msg.bot_id}|${pubOf(token)}|unbound`),
+          skOf(token),   // 하니스의 개인키도 스스로 유도한다 — 구현의 deriveBotKeys 를 부르지 않는다
+        ).toString('hex')
+        ws.send(JSON.stringify({ type: 'auth', signature }))
+        return
+      }
+      if (msg.type === 'env') {
+        const expected = createHmac('sha256', sessKey!).update(`${msg.seq}|${msg.payload}`).digest('hex')
+        if (sessKey === null || typeof msg.mac !== 'string' || msg.mac.length !== expected.length ||
+            msg.seq <= lastSeq || !timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(msg.mac, 'hex'))) return
+        lastSeq = msg.seq
+        let inner: any
+        try { inner = JSON.parse(msg.payload) } catch { return }
+        if (inner.type === 'welcome' && !welcomed) {
+          welcomed = true
+          resolve({ ws, welcome: inner })   // welcome 은 큐에 넣지 않는다 — v1 하니스와 같은 의미다
+          return
+        }
+        const w = inbox.waiters.shift()
+        if (w) { clearTimeout(w.timer); w.resolve(inner) } else inbox.queue.push(inner)
+        return
+      }
+      // challenge·env 이외(맨몸 welcome 등)는 이 하니스가 기다리는 프레임이 아니다 — 무시한다
     })
     ws.on('error', reject)
     ws.on('close', () => reject(new Error('closed before welcome')))   // 이미 settle 됐으면 무해하다
@@ -174,7 +220,7 @@ describe('gateway', () => {
     const pm = seedBot('pm'), qa = seedBot('qa')
     const good = invite(room, pm)
     const revoked = invite(room, qa)
-    db.prepare("UPDATE bot_tokens SET revoked_at=datetime('now') WHERE token_hash=?").run(sha256Hex(revoked))
+    db.prepare("UPDATE bot_tokens SET revoked_at=datetime('now') WHERE verifier_pub=?").run(pubOf(revoked))
     const archivedToken = invite(archived, qa)
     db.prepare("UPDATE rooms SET status='archived' WHERE id=?").run(archived)
 
@@ -827,8 +873,8 @@ describe('gateway', () => {
     const before = (await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/invites`, headers: { cookie: ck } })).json()
     expect(before[0].online).toBe(false)
 
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
-    await new Promise<void>(r => { ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', token: inv.token }))); ws.on('message', () => r()) })
+    // v2 핸드셰이크로 접속한다 — API 가 발급한 평문 토큰으로 유도가 맞는지까지 같이 잰다
+    const { ws } = await connectV2(port, inv.token)
 
     // 접속 후: 같은 라우트가 true 로 바뀐다 — 상수 false 를 배제하는 분별 단언
     const during = (await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/invites`, headers: { cookie: ck } })).json()

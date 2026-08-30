@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { WebSocketServer, WebSocket } from 'ws'
 import { spawn } from 'node:child_process'
-import { createHash, createHmac } from 'node:crypto'
+import { createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { AddressInfo } from 'node:net'
 import { z } from 'zod'
@@ -10,11 +10,22 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { wire } from '../src/index.js'
 
-// 증명 계산 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
+// v2 열쇠 유도 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
 // 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 스텁의 토큰 상수는 'tok' 다.
-const keyOf = (token: string) => createHash('sha256').update(token).digest('hex')
-const proofOf = (token: string, nonce: string, roomId: number, botId: number) =>
-  createHmac('sha256', keyOf(token)).update(`${nonce}|${roomId}|${botId}`).digest('hex')
+// (SPEC-GWAUTH-002 plan.md §D-9 — 이 사본은 channel/test 의 다른 하네스와 상수를 공유하지 않는다.)
+const pubOf = (t: string) => createPublicKey(createPrivateKey({
+  key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), createHmac('sha256', t).update('minidiscord/v2/sign').digest()]),
+  format: 'der', type: 'pkcs8',
+})).export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex')
+const ksrvOf = (t: string) => createHmac('sha256', t).update('minidiscord/v2/server-confirm').digest()
+const challengeProofOf = (t: string, cn: string, sn: string, room: number, bot: number, pub: string) =>
+  createHmac('sha256', ksrvOf(t)).update(`challenge|${cn}|${sn}|${room}|${bot}|${pub}|unbound`).digest('hex')
+const sessKeyOf = (t: string, cn: string, sn: string, room: number, bot: number) =>
+  createHmac('sha256', ksrvOf(t)).update(`session|${cn}|${sn}|${room}|${bot}|unbound`).digest()
+const envOf = (sessKey: Buffer, seq: number, inner: object) => {
+  const payload = JSON.stringify(inner)
+  return { type: 'env', seq, payload, mac: createHmac('sha256', sessKey).update(`${seq}|${payload}`).digest('hex') }
+}
 
 // 열어 둔 자원(WS 서버·게이트웨이 클라이언트·MCP 관찰자)의 일괄 정리 목록. 등록 역순으로 닫는다.
 const cleanups: (() => Promise<void> | void)[] = []
@@ -43,20 +54,31 @@ const ChannelNotification = z.object({
   }).passthrough(),
 })
 
-function gatewayStub() {
+function gatewayStub(token = 'tok') {
   const wss = new WebSocketServer({ port: 0 })
   const sent: any[] = []                                    // 봇이 게이트웨이로 보낸 프레임 전부, 순서대로
   const hooks: ((ws: WebSocket, m: any) => void)[] = []
+  const sessions = new Map<WebSocket, { sessKey: Buffer; seq: number }>()
+  const pending = new Map<WebSocket, { cn: string; sn: string }>()
   wss.on('connection', ws => {
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       sent.push(m)
       if (m.type === 'hello') {
-        // SPEC-GWAUTH-001: hello 의 논스로 증명을 계산해 싣는다 — 증명 없는 welcome 은 거절되므로
-        // 이 하네스를 쓰는 기준들은 스텁 서버가 같은 규칙을 따라야 세션을 확립한다.
-        const welcome: Record<string, unknown> = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' }
-        if (typeof m.nonce === 'string') welcome.proof = proofOf(m.token, m.nonce, 1, 2)
-        ws.send(JSON.stringify(welcome))
+        // v2 (SPEC-GWAUTH-002) — hello 의 pub·client_nonce 로 challenge 를 계산해 답한다. 증명은
+        // 이 하네스가 자체 유도한 k_srv 로 계산한다(구현 미호출).
+        const sn = randomBytes(32).toString('hex')
+        pending.set(ws, { cn: m.client_nonce, sn })
+        ws.send(JSON.stringify({ type: 'challenge', server_nonce: sn, room_id: 1, bot_id: 2, server_proof: challengeProofOf(token, m.client_nonce, sn, 1, 2, m.pub) }))
+        return
+      }
+      if (m.type === 'auth') {
+        // auth 통과 — 세션 확립. 확립 welcome 도 봉투로 나간다 (REQ-GWAUTH2-012)
+        const p = pending.get(ws)!
+        const sessKey = sessKeyOf(token, p.cn, p.sn, 1, 2)
+        sessions.set(ws, { sessKey, seq: 1 })
+        ws.send(JSON.stringify(envOf(sessKey, 1, { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' })))
+        return
       }
       for (const h of hooks) h(ws, m)
     })
@@ -65,7 +87,14 @@ function gatewayStub() {
   return {
     sent,
     port: () => (wss.address() as AddressInfo).port,
-    push: (msg: any) => { for (const c of wss.clients) c.send(JSON.stringify(msg)) },
+    push: (msg: any) => {
+      for (const c of wss.clients) {
+        const s = sessions.get(c)
+        if (!s) continue
+        s.seq += 1
+        c.send(JSON.stringify(envOf(s.sessKey, s.seq, msg)))
+      }
+    },
     onFrame: (h: (ws: WebSocket, m: any) => void) => hooks.push(h),
     countOf: (pred: (m: any) => boolean) => sent.filter(pred).length,
   }
@@ -379,7 +408,10 @@ describe('channel wiring', () => {
     await waitFor(() => rpcResponse(withToken.out(), 1) !== undefined, '(a) initialize 응답')
     expect(rpcResponse(withToken.out(), 1).result.serverInfo.name).toBe('minidiscord-channel')
     await waitFor(() => stub.sent.some(m => m.type === 'hello'), '(a) hello 도착')
-    expect(stub.sent.find(m => m.type === 'hello').token).toBe('tok')
+    // v2 (SPEC-GWAUTH-002) — 토큰이 게이트웨이를 여는 방식은 pub 유도로 바뀌었다. hello 가 토큰에서
+    // 유도한 검증자를 실어 나르는 것이 «토큰이 게이트웨이만을 여는다» 의 v2 관측이고, 평문은 전선에 없다
+    expect(stub.sent.find(m => m.type === 'hello').pub).toBe(pubOf('tok'))
+    expect(stub.sent.some(m => JSON.stringify(m).includes('tok'))).toBe(false)
 
     // (b) 토큰 없음 — MCP 는 여전히 말하고, 게이트웨이에는 붙지 않는다
     const helloBefore = stub.countOf(m => m.type === 'hello')

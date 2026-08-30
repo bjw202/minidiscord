@@ -17,7 +17,8 @@ import { createGateway } from '../src/gateway.js'
 import { createPermissionBroker } from '../src/permissions.js'
 import { registerAuthRoutes, requireAuth } from '../src/auth.js'
 import { registerMessageRoutes } from '../src/routes-messages.js'
-import { registerBotRoutes, sha256Hex } from '../src/routes-bots.js'
+import { registerBotRoutes } from '../src/routes-bots.js'
+import { connectV2, innerOf, pubOf, ksrvHexOf } from './gateway-v2.js'
 import {
   permissionRequestId, permissionResolutionId, verdictForm, applyInviteResult,
 } from '../../web/rich.js'
@@ -74,18 +75,15 @@ function seedRoomAndBot(roomName = 'A', botName = 'pm') {
   db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES (?, '')").run(botName).lastInsertRowid as number
   const token = randomBytes(32).toString('hex')
-  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+  // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 검증자와 확인 열쇠를 하니스 사본으로 유도해 저장한다
+  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)')
+    .run(roomId, botId, pubOf(token), ksrvHexOf(token))
   return { roomId, botId, token }
 }
 
+// v2 (SPEC-GWAUTH-002) — 접속은 challenge 대조와 auth 서명을 거친다 (gateway-v2.ts).
 function wsConnect(port: number, token: string): Promise<WebSocket> {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
-    cleanups.push(() => { ws.close() })
-    ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', token })))
-    ws.on('message', d => { if (JSON.parse(String(d)).type === 'welcome') resolve(ws) })
-    ws.on('error', reject)
-  })
+  return connectV2(port, token).then(r => { cleanups.push(() => { r.ws.close() }); return r.ws })
 }
 
 // 조건이 참이 될 때까지 잠깐씩 기다린다. 브로커 저장은 ws 프레임보다 늦게 보일 수 있다.
@@ -117,10 +115,17 @@ async function raisePermissionRequest(ws: WebSocket, roomId: number, botId: numb
 }
 
 // 봇이 받은 다음 프레임을 원시 문자열로 돌려준다 — 호출처에서 JSON.parse 한다 (acceptance.md 골격 A 형태).
-// 오지 않으면 vitest 타임아웃으로 실패한다 — 그것이 이 검사의 의도다.
+// v2 (SPEC-GWAUTH-002) — 전선의 프레임은 봉투다. innerOf 가 검증하고 푼 내부 프레임을 문자열로 돌려
+// 호출처의 JSON.parse 계약이 유지된다. 오지 않으면 vitest 타임아웃으로 실패한다 — 그것이 이 검사의 의도다.
 function nextBotFrame(ws: WebSocket): Promise<string> {
   return new Promise(resolve => {
-    ws.once('message', d => resolve(String(d)))
+    const on = (d: unknown) => {
+      const inner = innerOf(ws, JSON.parse(String(d)))
+      if (inner === null) return   // 봉투 아님·검증 실패 — 다음 프레임을 기다린다
+      ws.off('message', on)
+      resolve(JSON.stringify(inner))
+    }
+    ws.on('message', on)
   })
 }
 
@@ -249,15 +254,10 @@ describe('AC-WEBRICH-001..004 permission & invite contract', () => {
     expect(resultEl.hidden).toBe(false)
     expect(commandEl.textContent).toBe(invite.command)
 
-    // 화면 문자열에서 토큰을 되뽑아 그 토큰만으로 게이트웨이에 붙는다
+    // 화면 문자열에서 토큰을 되뽑아 그 토큰만으로 게이트웨이에 붙는다 — v2 핸드셰이크(gateway-v2.ts)로
     const token = /MINIDISCORD_TOKEN=([0-9a-f]{64})/.exec(commandEl.textContent!)![1]
-    const ws = new WebSocket(`ws://127.0.0.1:${c.port}/bot`)
+    const { ws, welcome } = await connectV2(c.port, token)
     cleanups.push(() => { ws.close() })
-    await new Promise<void>((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject) })
-    ws.send(JSON.stringify({ type: 'hello', token }))
-    const welcome = await new Promise<any>(resolve => {
-      ws.on('message', d => { const v = JSON.parse(String(d)); if (v.type === 'welcome') resolve(v) })
-    })
     expect(welcome).toMatchObject({ type: 'welcome', room_id: roomId })
   })
 })

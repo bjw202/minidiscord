@@ -1,0 +1,33 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/index-wiring.test.ts (14 tests | 1 failed) 945ms
+     × the built artifact speaks MCP; the token gates only the gateway 114ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > the built artifact speaks MCP; the token gates only the gateway
+AssertionError: expected undefined to be 'tok' // Object.is equality
+
+- Expected:
+"tok"
+
++ Received:
+undefined
+
+ ❯ test/index-wiring.test.ts:411:59
+    409|     expect(rpcResponse(withToken.out(), 1).result.serverInfo.name).toB…
+    410|     await waitFor(() => stub.sent.some(m => m.type === 'hello'), '(a) …
+    411|     expect(stub.sent.find(m => m.type === 'hello').token).toBe('tok')
+       |                                                           ^
+    412|
+    413|     // (b) 토큰 없음 — MCP 는 여전히 말하고, 게이트웨이에는 붙지 않는다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  17:13:27
+   Duration  1.14s (transform 32ms, setup 0ms, import 123ms, tests 945ms, environment 0ms)
+

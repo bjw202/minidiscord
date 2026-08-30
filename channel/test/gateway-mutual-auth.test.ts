@@ -18,7 +18,7 @@ import { openDb } from '../../server/src/db.js'
 import { createSseHub } from '../../server/src/sse.js'
 import { createGateway } from '../../server/src/gateway.js'
 import { registerAuthRoutes } from '../../server/src/auth.js'
-import { sha256Hex } from '../../server/src/routes-bots.js'
+import { deriveBotKeys } from '../../server/src/routes-bots.js'
 import { wire } from '../src/index.js'
 
 // 열어 둔 자원(서버 앱·DB·임시 디렉터리·게이트웨이 클라이언트·MCP 클라이언트)의 일괄 정리 목록.
@@ -67,7 +67,11 @@ function seedBot(db: any, name = 'pm'): number {
 }
 function invite(db: any, roomId: number, botId: number): string {
   const token = randomBytes(32).toString('hex')
-  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+  // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 진짜 발급 경로와 같은 유도를 쓴다. 이 시험은 진짜 서버와
+  // 진짜 채널의 왕복이므로 양쪽이 같은 규칙에 합의해야만 확립된다.
+  const { verifierPub, serverConfirmKey } = deriveBotKeys(token)
+  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)')
+    .run(roomId, botId, verifierPub, serverConfirmKey)
   return token
 }
 

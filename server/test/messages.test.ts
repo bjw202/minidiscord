@@ -12,7 +12,7 @@ import { createSseHub } from '../src/sse.js'
 import { createGateway } from '../src/gateway.js'
 import { registerAuthRoutes, requireAuth } from '../src/auth.js'
 import { registerMessageRoutes } from '../src/routes-messages.js'
-import { sha256Hex } from '../src/routes-bots.js'
+import { pubOf, ksrvHexOf } from './gateway-v2.js'
 
 let dir: string
 let db: Db
@@ -55,8 +55,10 @@ function seed(): { roomId: number; botId: number } {
   const alice = db.prepare("SELECT id FROM users WHERE username = 'alice'").get() as { id: number }
   db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES ('pm', '')").run().lastInsertRowid as number
-  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)')
-    .run(roomId, botId, sha256Hex(randomBytes(32).toString('hex')))
+  // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 이 시험은 접속하지 않는 방 보조 봇이지만 스키마는 v2 다
+  const seedToken = randomBytes(32).toString('hex')
+  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)')
+    .run(roomId, botId, pubOf(seedToken), ksrvHexOf(seedToken))
   return { roomId, botId }
 }
 

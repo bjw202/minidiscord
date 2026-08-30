@@ -16,7 +16,7 @@ import { createPermissionBroker } from '../src/permissions.js'
 import { registerAuthRoutes } from '../src/auth.js'
 import { registerMessageRoutes } from '../src/routes-messages.js'
 import { registerEventRoute } from '../src/routes-events.js'
-import { sha256Hex } from '../src/routes-bots.js'
+import { connectV2, innerOf, pubOf, ksrvHexOf } from './gateway-v2.js'
 
 let dir: string
 let db: Db
@@ -72,19 +72,16 @@ function seedRoomAndBot(roomName = 'A', botName = 'pm') {
   db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES (?, '')").run(botName).lastInsertRowid as number
   const token = randomBytes(32).toString('hex')
-  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+  // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 검증자와 확인 열쇠를 하니스 사본으로 유도해 저장한다
+  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)')
+    .run(roomId, botId, pubOf(token), ksrvHexOf(token))
   return { roomId, botId, token }
 }
 
 // 가짜 채널 클라이언트. Task 8 게이트웨이 테스트와 같은 형태이며 그쪽은 내보내지 않으므로 여기 다시 둔다.
+// v2 (SPEC-GWAUTH-002) — 접속은 challenge 대조와 auth 서명을 거치고 프레임은 봉투로 온다 (gateway-v2.ts).
 function wsConnect(port: number, token: string): Promise<WebSocket> {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
-    cleanups.push(() => { ws.close() })
-    ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', token })))
-    ws.on('message', d => { if (JSON.parse(String(d)).type === 'welcome') resolve(ws) })
-    ws.on('error', reject)
-  })
+  return connectV2(port, token).then(r => { cleanups.push(() => { r.ws.close() }); return r.ws })
 }
 
 // SSE 스트림을 연다. abort() 로 클라이언트 쪽 연결을 끊을 수 있다.
@@ -109,10 +106,17 @@ async function readFrame(reader: ReadableStreamDefaultReader<Uint8Array>): Promi
 }
 
 // 다음 한 건을 기다린다. timeoutMs 안에 아무것도 안 오면 null — "오지 않았음"을 단언하는 데 쓴다.
+// 도착 원문은 봉투다 — innerOf 가 검증하고 풀어 내부 프레임만 관측 대상이 된다 (SPEC-GWAUTH-002).
 function nextMessage(ws: WebSocket, timeoutMs = 1500): Promise<any | null> {
   return new Promise(resolve => {
     const t = setTimeout(() => { ws.off('message', h); resolve(null) }, timeoutMs)
-    function h(d: unknown) { clearTimeout(t); ws.off('message', h); resolve(JSON.parse(String(d))) }
+    function h(d: unknown) {
+      const inner = innerOf(ws, JSON.parse(String(d)))
+      if (inner === null) return   // 봉투 아님·검증 실패 — 다음 프레임을 기다린다
+      clearTimeout(t)
+      ws.off('message', h)
+      resolve(inner)
+    }
     ws.on('message', h)
   })
 }

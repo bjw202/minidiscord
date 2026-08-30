@@ -276,3 +276,51 @@ M3 의 클라이언트 재작성 뒤 어간 훑기(`gateway-client\.ts:[0-9]`)�
 | `spec.md` :294-305·:577 | `:82` 인용 처분 기록(t23 소유) | 날짜 박힌 처분 기록 — 손대지 않는다. **다만 M3 로 그 처분의 대상(평문 hello)이 코드에서 사라졌다** — t23 이 집행할 «앵커로 재도출» 은 이제 삭제가 아니라 소멸 확인이 된다. 이 사실만 여기 남긴다 |
 
 **참고**: §E.2.12 가 기록한 gateway.ts 인용 일곱 자리는 M3 에서 변하지 않았다(gateway.ts 무손대).
+
+### E.2.15 M4 — 형제 하네스와 형제 기준 본문 (붕괴 수복)
+
+> 기점: M3 커밋 `265869d` 위의 미커밋 작업. 원문은 `.moai/state/verify/t22-run/m4-*`.
+
+**회계 한 줄 (리드 결정 R1 양식)**: M3 102 → **M4 12 (감소 90)** — 28 채널 하네스 파손 전건 수복 + server 시드 이행 62건(74 기준선 대비 순감소 **−62**). 증가 0. 귀속: 남은 12 전건이 v1 프로토콜 기준 본문(M5 대체 예정 — 리드 지시대로 run 이 기준 본문을 재작성하지 않는다). 수복 소유자: 이 파일들의 시드·하네스는 M4 가 소유하고 그 안의 v1 기준 본문 교체는 M5 가 소유한다.
+
+**M4 출입 조건 달성 (리드 R1)**: ① **74 기준선 대비 순감소** — 74 → 12 ✓ ② **timeout 1 소멸** — `gateway.test.ts` buildServer 배선 관측이 실패 목록에 없다(`m4-full-test2.txt` — raw v1 접속을 공용 `connectV2` 로 교체했다).
+
+**무엇을 수복했는가**:
+
+- **공용 하네스 신설** `server/test/gateway-v2.ts` — server/test 가 각자 둘러왔던 v2 유도·접속을 한 사본으로 모은다(구현 미호출 — acceptance.md §공통 테스트 하네스의 사본 원칙대로). 내보내기: `skOf`·`pubOf`·`ksrvHexOf`·`connectV2`(challenge 대조→auth 서명→봉투 welcome 도착까지 수행)·`innerOf`(봉투 검증·해제 — 실패는 null)·`recordSocket`(아래).
+- **server 시드 이행**: `gateway.test.ts` invite() · `permissions.test.ts` seedRoomAndBot · `messages.test.ts` seed · `room-members.test.ts` seedBot · `web-permission-contract.test.ts` seedRoomAndBot — 전부 `token_hash` INSERT 를 `verifier_pub`+`server_confirm_key` 로. `gateway.test.ts` 의 철회 UPDATE 도 `verifier_pub` 로.
+- **server wsConnect 계열**: `gateway.test.ts` wsConnect(v2 핸드셰이크+봉투 해제, inbox 큐에 내부 프레임) · permissions/room-members/wpc 의 wsConnect → `connectV2` · 세 파일의 nextMessage/nextBotFrame → `innerOf` 경유.
+- **channel 하네스 v2 전환**: `gateway-client.test.ts` FakeServer(challenge→auth→env welcome, `sendInner`) · `index-wiring.test.ts`·`permission-relay.test.ts` gatewayStub(동일, push 가 봉투화) · `transport-auth.test.ts` rogueGateway(challenge 갈래 5종을 server_proof 에 적용, 세션 뒤 push 를 봉투화) — 전부 각 파일의 자체 유도 사본으로(구현 미호출). channel/dist 재빌드(`npm run build -w channel`) — 빌드 산출물 시험이 낡은 v1 dist 를 쓰던 문제를 함께 잡았다.
+- **형제 기준 본문 갱신(M4 승인 범위)**: `gateway-client.test.ts` 의 hello 형태 단언 둘(AC-CHANCLIENT-001·011)을 v2 키 집합으로, `index-wiring.test.ts` AC-CHANWIRE-014 의 토큰 단언을 «pub 유도+평문 부재» 로. 대응 형제 SPEC(SPEC-CHANCLIENT-001·SPEC-CHANWIRE-001) 본문 갱신은 M5 가 기준 교체와 함께 한다 — 이 패스는 시험 몸만 v2 로 맞춰 수복했다(본문과의 어긋남은 §E.2.16 에 기록).
+- **recordSocket 구축 [J-02 표면]**: `createGateway` opts 에 `onConnection?` 콜백 신설(생산 경로 무동작) — M1 정의의 «어느 끝에서» 를 서버 끝으로 고정하는 유일한 창구. `recordSocket(ws)` 는 gateway-v2.ts 에 구현: sentFrames·receivedFrames(파싱, 전선 순서) + rawSent·rawReceived(원문). 실측 `m4-record-probe.out` 6/6 PASS — 부착·양방향·순서·원문 병행 전건.
+
+**붕괴 귀속표 (M4 종료 시점, 리드 결정 2 양식)**:
+
+| 파일 | M1 | M3 | M4 | 남은 실패의 성격 |
+|---|---|---|---|---|
+| server/gateway.test.ts | 26 | 26 | **1** | v1 welcome.proof 계약 — M5 대체 |
+| server/permissions.test.ts | 24 | 24 | **0** | 수복 |
+| server/messages.test.ts | 13 | 13 | **0** | 수복 |
+| server/web-permission-contract.test.ts | 5 | 5 | **0** | 수복 |
+| server/room-members.test.ts | 4 | 4 | **1** | 재초대 토큰 안정성의 token_hash 단언 — M5 대체 |
+| server/rooms-bots.test.ts | 1 | 1 | **1** | «sha256 해시만 저장» v1 저장 계약 — M5 대체(AC-GWAUTH2-001 이 오는 자리) |
+| channel/gateway-client.test.ts | 0 | 11 | **1** | AC-GWAUTH-015 증명 welcome 통과 — M5 대체 |
+| channel/index-wiring.test.ts | 0 | 9 | **0** | 수복 |
+| channel/transport-auth.test.ts | 0 | 7 | **8** | SPEC-GWAUTH-001 v1 핸드셰이크 기준(AC-GWAUTH-004..012 계열) — M5 대체. v1 유도 헬퍼 제거로 1건이 단언 실패에서 ReferenceError 로 이동 |
+| channel/permission-relay.test.ts | 0 | 1 | **0** | 수복 |
+| channel/gateway-mutual-auth.test.ts | 1 | 1 | **0** | **수복 — 진짜 서버↔진짜 채널 왕복이 v2 로 초록** |
+| 합계 | 74 | 102 | **12** | |
+
+**타입 검사**: exit 0 (`m4-typecheck3.txt`).
+
+**gateway.ts 손대었는가: 예.** `onConnection?` opts 콜백 신설(recordSocket 부착점 — M1 정의가 M4 의 선택으로 남겨 둔 자리). 리드 결정 2 의무 이행: 신규 컴파일 dist(`m4-dist/server`)에서 M2 프로브 재실행 → **15/15 PASS**(`m4-m2probe-recheck.out`) — onConnection 추가가 다섯 발신 지점·등록 순서·봉투 규칙에 미친 바람 없음.
+
+**하니스 과정에서 잡은 결함(스스로)**: ① 공용 connectV2 에 `open` 핸들러가 없어 hello 가 나가지 않았다(permissions 9건의 타임아웃 원인 — M4_DEBUG 추적으로 특정) ② welcome 해소 뒤에도 connectV2 가 프레임을 계속 소비해 innerOf 의 seq 검증이 어긋나는 이중 소비 ③ gateway.test wsConnect 가 welcome 을 큐에 넣어 다음 관측을 오염. 셋 다 하니스 결함이며 구현 결함이 아니었다.
+
+**이 M4 가 주장하지 않는 것**: 남은 12의 기준 본문은 손대지 않았다(리드 지시). transport-auth 의 8은 v1 기준이 유도 헬퍼 제거로 단언 실패 또는 ReferenceError 로 붉은 상태며, M5 가 AC-GWAUTH2-* 로 교체한다. 채널 → 서버 방향 무결성 공백(spec §0-4)과 R3-ii 의 «선택적 억제 미탐지» 는 이 패스에서 아무것도 메우지 않았다.
+
+### E.2.16 §B-0 상시 훑기 — M4 편집이 낡게 만든 인용
+
+M4 의 gateway.ts 손대(onConnection 1줄)로 §E.2.11 이 기록한 gateway.ts 줄 번호가 1씩 밀렸다 — 그 줄의 기록은 «그 시점» 값이고, 현재값은 앵커로 재도출한다: challenge 발신 «확립 이전 프레임이라 봉투에 담지 않는다» · conns.set «등록이 옮겨 온 자리» · sendEstablished «v2 봉투 함수». §E.2.12 가 기록한 design/spec/research 의 gateway.ts 인용 일곱 자리는 여전히 범위 밖 기록으로 유지된다(밀림 폭 +1 누적). acceptance.md 의 «서버 소켓 프레임 기록» 절에는 M4 의 방법 선택을 «[M4 이행 기록]» 으로 덧붙였다 — J-02 처방의 마지막 열린 자리다.
+
+**[리드 판독 정정(2026-08-30)]** 위 표의 `server/gateway.test.ts` M4 값 2 는 원문 권위(`test/gateway.test.ts (26 tests | 1 failed)` — 유일 실패는 «welcome carries a proof … keyed on the stored token hash», v1 welcome.proof 계약)로 **1** 로 정정됐다. «token_hash 저장 계약» 실패는 `rooms-bots.test.ts` 의 «stores only the sha256 hash» 이고 그 행은 이미 정확했다. 총합 12(server 3 + channel 9)는 정정 전후 모두 옳다 — **«개수를 맞춰 보는 것»(§B-0b 3번)이 리드 판독에서 실제로 결함을 잡은 사례**로 남긴다.

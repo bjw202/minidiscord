@@ -8,14 +8,25 @@ import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { WebSocketServer } from 'ws'
-import { createHash, createHmac } from 'node:crypto'
+import { createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
 import { createChannelServer } from '../src/channel-server.js'
 
-// 증명 계산 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
+// v2 열쇠 유도 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
 // 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 스텁의 토큰 상수는 'tok' 다.
-const keyOf = (token: string) => createHash('sha256').update(token).digest('hex')
-const proofOf = (token: string, nonce: string, roomId: number, botId: number) =>
-  createHmac('sha256', keyOf(token)).update(`${nonce}|${roomId}|${botId}`).digest('hex')
+// (SPEC-GWAUTH-002 plan.md §D-9 — 이 사본은 channel/test 의 다른 하네스와 상수를 공유하지 않는다.)
+const pubOf = (t: string) => createPublicKey(createPrivateKey({
+  key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), createHmac('sha256', t).update('minidiscord/v2/sign').digest()]),
+  format: 'der', type: 'pkcs8',
+})).export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex')
+const ksrvOf = (t: string) => createHmac('sha256', t).update('minidiscord/v2/server-confirm').digest()
+const challengeProofOf = (t: string, cn: string, sn: string, room: number, bot: number, pub: string) =>
+  createHmac('sha256', ksrvOf(t)).update(`challenge|${cn}|${sn}|${room}|${bot}|${pub}|unbound`).digest('hex')
+const sessKeyOf = (t: string, cn: string, sn: string, room: number, bot: number) =>
+  createHmac('sha256', ksrvOf(t)).update(`session|${cn}|${sn}|${room}|${bot}|unbound`).digest()
+const envOf = (sessKey: Buffer, seq: number, inner: object) => {
+  const payload = JSON.stringify(inner)
+  return { type: 'env', seq, payload, mac: createHmac('sha256', sessKey).update(`${seq}|${payload}`).digest('hex') }
+}
 
 // 열어 둔 자원(MCP 클라이언트·게이트웨이 스텁)의 일괄 정리 목록. 등록 역순으로 닫는다.
 const cleanups: (() => Promise<void> | void)[] = []
@@ -82,27 +93,44 @@ function collectUnhandled() {
 }
 
 // 게이트웨이 스텁. Task 13 의 것과 같은 형태다.
-function gatewayStub() {
+// v2 (SPEC-GWAUTH-002) — challenge→auth 로 세션을 세우고 이후 발신은 전부 봉투로 나간다.
+function gatewayStub(token = 'tok') {
   const wss = new WebSocketServer({ port: 0 })
   const sent: Record<string, unknown>[] = []
+  const sessions = new Map<WebSocket, { sessKey: Buffer; seq: number }>()
+  const pending = new Map<WebSocket, { cn: string; sn: string }>()
   cleanups.push(() => new Promise<void>(r => wss.close(() => r())))
   wss.on('connection', ws => {
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       sent.push(m)
       if (m.type === 'hello') {
-        // SPEC-GWAUTH-001: hello 의 논스로 증명을 계산해 싣는다 — 증명 없는 welcome 은 거절되므로
-        // 이 하네스를 쓰는 기준들은 스텁 서버가 같은 규칙을 따라야 세션을 확립한다.
-        const welcome: Record<string, unknown> = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' }
-        if (typeof m.nonce === 'string') welcome.proof = proofOf(m.token, m.nonce, 1, 2)
-        ws.send(JSON.stringify(welcome))
+        // v2 (SPEC-GWAUTH-002) — hello 의 pub·client_nonce 로 challenge 를 계산해 답한다(구현 미호출).
+        const sn = randomBytes(32).toString('hex')
+        pending.set(ws, { cn: m.client_nonce, sn })
+        ws.send(JSON.stringify({ type: 'challenge', server_nonce: sn, room_id: 1, bot_id: 2, server_proof: challengeProofOf(token, m.client_nonce, sn, 1, 2, m.pub) }))
+        return
+      }
+      if (m.type === 'auth') {
+        const p = pending.get(ws)!
+        const sessKey = sessKeyOf(token, p.cn, p.sn, 1, 2)
+        sessions.set(ws, { sessKey, seq: 1 })
+        ws.send(JSON.stringify(envOf(sessKey, 1, { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' })))
+        return
       }
     })
   })
   return {
     sent,
     port: () => (wss.address() as { port: number }).port,
-    push: (msg: unknown) => { for (const c of wss.clients) c.send(JSON.stringify(msg)) },
+    push: (msg: unknown) => {
+      for (const c of wss.clients) {
+        const s = sessions.get(c)
+        if (!s) continue
+        s.seq += 1
+        c.send(JSON.stringify(envOf(s.sessKey, s.seq, msg)))
+      }
+    },
   }
 }
 

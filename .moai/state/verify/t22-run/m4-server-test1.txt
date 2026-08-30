@@ -1,0 +1,538 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/rooms-bots.test.ts (21 tests | 1 failed) 1170ms
+     × stores only the sha256 hash of the issued token 49ms
+ ❯ test/gateway.test.ts (26 tests | 14 failed) 8506ms
+     × replays only missed messages targeted at that bot and advances the cursor 21ms
+     × never redelivers a message after reconnect 9ms
+     × deliver reaches only targeted bots in that room and moves only their cursor 19ms
+     × deliver carries per-bot delivery and the message attachments 14ms
+     × history_request returns the room messages in id order and echoes rid 12ms
+     × history_request with since_id returns only later messages 9ms
+     × history_request applies limit before since_id, speaker, since and until 7ms
+     × history_response carries id, author_name, body and created_at 8ms
+     × history_response goes only to the requesting bot 7ms
+     × closeRoom disconnects only that room 8ms
+     × relays permission_request to the handler and sendToBot reports delivery 213ms
+     × buildServer wires the gateway, archive hook and invite online flag 5008ms
+     × welcome carries a proof bound to the nonce, room and bot, keyed on the stored token hash 10ms
+     × a hello without a nonce is still welcomed, and that welcome carries no proof 7ms
+ ❯ test/room-members.test.ts (21 tests | 4 failed) 16688ms
+     × never lets a non-member approve, and leaves the request for a member to answer 5009ms
+     × the broker itself refuses a non-member verdict, independent of the route gate 5013ms
+     × refuses all three bot-invite routes to a non-member while a member keeps the old behaviour 78ms
+     × leaves the bot gateway path untouched by room membership 5010ms
+ ❯ test/web-permission-contract.test.ts (5 tests | 5 failed) 25073ms
+   × dumps the real broker bodies shared with skeleton B 5024ms
+     × AC-001 delivers an approve verdict to the bot with the exact request_id 5010ms
+     × AC-002 delivers a deny verdict 5010ms
+     × AC-003 extracts the real request_id even when the preview contains lookalike runs 5013ms
+     × AC-004 shows an invite command whose token actually authenticates 5014ms
+ ❯ test/permissions.test.ts (24 tests | 9 failed) 45937ms
+     × delivers an allow verdict to the connected bot 5011ms
+     × delivers a deny verdict as deny, not as allow 5007ms
+     × accepts a verdict once and lets a repeat fall through as chat 5004ms
+     × never resolves a request from a different room 5009ms
+     × refuses an unauthenticated verdict and leaves the request pending 5006ms
+     × falls through non-matching text and unknown ids without touching the pending request 5008ms
+     × marks an undelivered verdict differently from a delivered one 5007ms
+     × accepts all four verdict words, normalizes case, and rejects ids containing l 5006ms
+     × same request_id in two rooms keeps both requests resolvable 5007ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 33 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > replays only missed messages targeted at that bot and advances the cursor
+AssertionError: expected 'welcome' to be 'message' // Object.is equality
+
+Expected: "message"
+Received: "welcome"
+
+ ❯ test/gateway.test.ts:274:25
+    272|     const { ws } = await wsConnect(port, token)
+    273|     const replay = await nextMessage(ws)
+    274|     expect(replay.type).toBe('message')
+       |                         ^
+    275|     expect(replay.id).toBe(mine)
+    276|     expect(replay.delivery).toBe('to')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > never redelivers a message after reconnect
+AssertionError: expected undefined to be 1 // Object.is equality
+
+- Expected:
+1
+
++ Received:
+undefined
+
+ ❯ test/gateway.test.ts:298:20
+    296|     gateway.deliver(room, { ...row, author_name: 'alice' }, [{ botId: …
+    297|     const got = await nextMessage(first.ws)
+    298|     expect(got.id).toBe(msgId)
+       |                    ^
+    299|     expect(cursorOf(room, pm)).toBe(msgId)
+    300|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > deliver reaches only targeted bots in that room and moves only their cursor
+AssertionError: expected undefined to be 'alice' // Object.is equality
+
+- Expected:
+"alice"
+
++ Received:
+undefined
+
+ ❯ test/gateway.test.ts:327:29
+    325|
+    326|     const got = await nextMessage(wsPm.ws)
+    327|     expect(got.author_name).toBe('alice')
+       |                             ^
+    328|     expect(got.id).toBe(msgId)
+    329|     // 부정 관측 둘: 같은 방 비타깃도, 다른 방도 받지 않는다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > deliver carries per-bot delivery and the message attachments
+AssertionError: expected undefined to be 'to' // Object.is equality
+
+- Expected:
+"to"
+
++ Received:
+undefined
+
+ ❯ test/gateway.test.ts:363:28
+    361|     const ccMsg = await nextMessage(wsQa.ws)
+    362|     // 분별: 같은 메시지인데 delivery 가 봇마다 다르다. 'to' 하드코딩은 여기서 깨진다.
+    363|     expect(toMsg.delivery).toBe('to')
+       |                            ^
+    364|     expect(ccMsg.delivery).toBe('cc')
+    365|     expect(toMsg.files).toEqual([{ name: '보고서.md', local_path: stored …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request returns the room messages in id order and echoes rid
+AssertionError: expected 'welcome' to be 'history_response' // Object.is equality
+
+Expected: "history_response"
+Received: "welcome"
+
+ ❯ test/gateway.test.ts:655:23
+    653|     ws.send(JSON.stringify({ type: 'history_request', rid: 'r1', limit…
+    654|     const res1 = await nextMessage(ws)
+    655|     expect(res1.type).toBe('history_response')
+       |                       ^
+    656|     expect(res1.rid).toBe('r1')
+    657|     expect(res1.messages.map((m: any) => m.body)).toEqual(['하나', '둘', …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request with since_id returns only later messages
+TypeError: Cannot read properties of undefined (reading 'map')
+ ❯ test/gateway.test.ts:683:29
+    681|     ws.send(JSON.stringify({ type: 'history_request', rid: 'ctl', limi…
+    682|     const control = await nextMessage(ws)
+    683|     expect(control.messages.map((m: any) => m.id)).toEqual(ids)
+       |                             ^
+    684|     expect(control.messages.some((m: any) => m.id <= cursor)).toBe(tru…
+    685|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until
+TypeError: Cannot read properties of undefined (reading 'map')
+ ❯ test/gateway.test.ts:720:29
+    718|     ws.send(JSON.stringify({ type: 'history_request', rid: 'a', since_…
+    719|     const limited = await nextMessage(ws)
+    720|     expect(limited.messages.map((m: any) => m.body)).toEqual(['m5', '봇…
+       |                             ^
+    721|
+    722|     // speaker 필터
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_response carries id, author_name, body and created_at
+TypeError: res.messages is not iterable
+ ❯ test/gateway.test.ts:751:25
+    749|     const res = await nextMessage(ws)
+    750|
+    751|     for (const m of res.messages) {
+       |                         ^
+    752|       // 네 조각: 채널이 `#<번호> [시각] 작성자: 본문` 을 만들 때 쓰는 필드 전부
+    753|       expect(typeof m.id).toBe('number')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_response goes only to the requesting bot
+AssertionError: expected undefined to be 'r' // Object.is equality
+
+- Expected:
+"r"
+
++ Received:
+undefined
+
+ ❯ test/gateway.test.ts:777:21
+    775|     wsPm.ws.send(JSON.stringify({ type: 'history_request', rid: 'r', l…
+    776|     const res = await nextMessage(wsPm.ws)
+    777|     expect(res.rid).toBe('r')
+       |                     ^
+    778|     await expectNoMessage(wsQa.ws)   // 부정 관측: 옆 봇에게 새지 않는다
+    779|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > closeRoom disconnects only that room
+AssertionError: expected undefined to be 'alive' // Object.is equality
+
+- Expected:
+"alive"
+
++ Received:
+undefined
+
+ ❯ test/gateway.test.ts:803:21
+    801|     wsB.ws.send(JSON.stringify({ type: 'history_request', rid: 'alive'…
+    802|     const res = await nextMessage(wsB.ws)
+    803|     expect(res.rid).toBe('alive')
+       |                     ^
+    804|     expect(res.messages.map((m: any) => m.body)).toEqual(['B 방 메시지'])
+    805|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery
+AssertionError: expected { type: 'welcome', room_id: 1, …(3) } to deeply equal { type: 'permission_verdict', …(2) }
+
+- Expected
++ Received
+
+  {
+-   "behavior": "allow",
+-   "request_id": "p1",
+-   "type": "permission_verdict",
++   "bot_id": 1,
++   "bot_name": "pm",
++   "missed_after_id": 0,
++   "room_id": 1,
++   "type": "welcome",
+  }
+
+ ❯ test/gateway.test.ts:830:21
+    828|     expect(gateway.sendToBot(room, pm, { type: 'permission_verdict', r…
+    829|     const verdict = await nextMessage(ws)
+    830|     expect(verdict).toEqual({ type: 'permission_verdict', request_id: …
+       |                     ^
+    831|     // 분별: 오프라인 봇에게는 false 이고 아무 일도 일어나지 않는다. `return true` 는 여기서 깨진다.
+    832|     expect(gateway.sendToBot(room, qa, { type: 'permission_verdict', r…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:846:3
+    844|
+    845|   // AC-GW-018 — 조립: buildServer 배선과 초대 목록의 online
+    846|   it('buildServer wires the gateway, archive hook and invite online fl…
+       |   ^
+    847|     process.env.MINIDISCORD_DATA_DIR = join(dir, 'srv')
+    848|     const { buildServer } = await import('../src/index.js')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > welcome carries a proof bound to the nonce, room and bot, keyed on the stored token hash
+AssertionError: expected undefined to be '95b1693c12c318e4ca57022c8b9d26d3ef673…' // Object.is equality
+
+- Expected:
+"95b1693c12c318e4ca57022c8b9d26d3ef6731ccb346f63811096ceb4afcabf7"
+
++ Received:
+undefined
+
+ ❯ test/gateway.test.ts:905:29
+    903|     // 각 증명은 테스트가 독립 계산한 값과 정확히 같다. 열쇠가 저장 해시가 아니면(평문 토큰,
+    904|     // room_id 문자열 등) 여기서 깨진다 — 상수 증명도 두 토큰 대조에서 깨진다.
+    905|     expect(a.welcome.proof).toBe(proofOf(tokenA, n1, roomA, pm))
+       |                             ^
+    906|     expect(b.welcome.proof).toBe(proofOf(tokenB, n2, roomB, qa))
+    907|     expect(a.welcome.proof).not.toBe(b.welcome.proof)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/33]⎯
+
+ FAIL  test/gateway.test.ts > gateway > a hello without a nonce is still welcomed, and that welcome carries no proof
+AssertionError: expected undefined to be 'alive' // Object.is equality
+
+- Expected:
+"alive"
+
++ Received:
+undefined
+
+ ❯ test/gateway.test.ts:930:21
+    928|     ws.send(JSON.stringify({ type: 'history_request', rid: 'alive', li…
+    929|     const res = await nextMessage(ws)
+    930|     expect(res.rid).toBe('alive')
+       |                     ^
+    931|     // 증명 키의 부재 — undefined 만이 아니라 키 집합에서 아예 없어야 한다. 키 집합 전체를
+    932|     // toEqual 로 재면 다른 이름의 필드가 조용히 늘어도 잡힌다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:191:3
+    189|   })
+    190|
+    191|   it('delivers an allow verdict to the connected bot', async () => {
+       |   ^
+    192|     const { app, broker, port, cookie } = await build()
+    193|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:201:3
+    199|   })
+    200|
+    201|   it('delivers a deny verdict as deny, not as allow', async () => {
+       |   ^
+    202|     const { app, broker, port, cookie } = await build()
+    203|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:224:3
+    222|   })
+    223|
+    224|   it('accepts a verdict once and lets a repeat fall through as chat', …
+       |   ^
+    225|     const { app, broker, port, cookie } = await build()
+    226|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > never resolves a request from a different room
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:241:3
+    239|   })
+    240|
+    241|   it('never resolves a request from a different room', async () => {
+       |   ^
+    242|     const { app, broker, port, cookie } = await build()
+    243|     const a = seedRoomAndBot('A', 'pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:258:3
+    256|   })
+    257|
+    258|   it('refuses an unauthenticated verdict and leaves the request pendin…
+       |   ^
+    259|     const { app, broker, port, cookie } = await build()
+    260|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:275:3
+    273|   })
+    274|
+    275|   it('falls through non-matching text and unknown ids without touching…
+       |   ^
+    276|     const { app, broker, port, cookie } = await build()
+    277|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:297:3
+    295|   })
+    296|
+    297|   it('marks an undelivered verdict differently from a delivered one', …
+       |   ^
+    298|     const { app, broker, port, cookie } = await build()
+    299|     const on = seedRoomAndBot('A', 'pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:319:3
+    317|   })
+    318|
+    319|   it('accepts all four verdict words, normalizes case, and rejects ids…
+       |   ^
+    320|     const { app, broker, port, cookie } = await build()
+    321|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/33]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > same request_id in two rooms keeps both requests resolvable
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:341:3
+    339|
+    340|   // 두 방이 같은 request_id 를 동시에 걸어도 서로를 덮어쓰지 않고 각자 풀려야 한다 (t7 결함1)
+    341|   it('same request_id in two rooms keeps both requests resolvable', as…
+       |   ^
+    342|     const { app, broker, port, cookie } = await build()
+    343|     const a = seedRoomAndBot('A', 'pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/33]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > never lets a non-member approve, and leaves the request for a member to answer
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/room-members.test.ts:522:3
+    520|   // AC-ROOMAUTHZ-012 시나리오 1 — 비멤버의 yes 는 소비되지 않고, 대기 항목은 멤버의 몫으로 남는다.
+    521|   // 이것이 .moai/reports/t4/sync-audit.md §F-14 를 직접 재는 기준이다
+    522|   it('never lets a non-member approve, and leaves the request for a me…
+       |   ^
+    523|     const { app, broker, port, alice, mallory } = await build()
+    524|     const roomId = await createRoom(app, alice.cookie)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/33]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > the broker itself refuses a non-member verdict, independent of the route gate
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/room-members.test.ts:544:3
+    542|   // AC-ROOMAUTHZ-012 시나리오 2 — 브로커 자신도 비멤버를 막는다 (라우트 게이트와 독립인 백스톱).
+    543|   // 브로커를 직접 불러야 라우트 게이트만으로는 보이지 않는 검사의 유무가 갈린다
+    544|   it('the broker itself refuses a non-member verdict, independent of t…
+       |   ^
+    545|     const { broker, port, alice, mallory, app } = await build()
+    546|     const roomId = await createRoom(app, alice.cookie)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/33]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > refuses all three bot-invite routes to a non-member while a member keeps the old behaviour
+SqliteError: no such column: token_hash
+ ❯ Database.prepare ../node_modules/better-sqlite3/lib/methods/wrappers.js:5:21
+ ❯ test/room-members.test.ts:631:26
+    629|     expect((await botInvite(app, alice.cookie, roomId, botId)).statusC…
+    630|     expect(activeTokenCount(roomId)).toBe(1)
+    631|     const issuedAt = (db.prepare('SELECT token_hash FROM bot_tokens WH…
+       |                          ^
+    632|       .get(roomId) as { token_hash: string }).token_hash
+    633|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/33]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > leaves the bot gateway path untouched by room membership
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/room-members.test.ts:701:3
+    699|   // (RED 불요). M3 이전에 쓰면 게이트도 없어 아무것도 재지 못했으므로, M4 의 형제 하네스 교정과
+    700|   // 함께 심는다. 본문은 acceptance.md 의 시나리오 코드를 그대로 옮겼다
+    701|   it('leaves the bot gateway path untouched by room membership', async…
+       |   ^
+    702|     const { app, gateway, port, alice } = await build()
+    703|     const roomId = await createRoom(app, alice.cookie)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/33]⎯
+
+ FAIL  test/rooms-bots.test.ts > invites > stores only the sha256 hash of the issued token
+SqliteError: no such column: token_hash
+ ❯ Database.prepare ../node_modules/better-sqlite3/lib/methods/wrappers.js:5:21
+ ❯ test/rooms-bots.test.ts:213:20
+    211|     const bot = (await app.inject({ method: 'POST', url: '/api/bots', …
+    212|     const body = (await app.inject({ method: 'POST', url: `/api/rooms/…
+    213|     const row = db.prepare('SELECT token_hash FROM bot_tokens WHERE ro…
+       |                    ^
+    214|     expect(row.token_hash).toBe(sha256Hex(body.token))
+    215|     expect(row.token_hash).not.toBe(body.token)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/33]⎯
+
+ FAIL  test/web-permission-contract.test.ts > dumps the real broker bodies shared with skeleton B
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:135:1
+    133| // 출력에서 왔다 — 손으로 발명하지 않고 브로커 실물을 옮겨 적었다. 서버 템플릿이 바뀌면
+    134| // 이 출력이 달라지므로 상수의 낡음을 여기서 눈으로 확인할 수 있다.
+    135| it('dumps the real broker bodies shared with skeleton B', async () => {
+       | ^
+    136|   const c = await build()
+    137|   const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/33]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-001 delivers an approve verdict to the bot with the exact request_id
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:174:3
+    172|
+    173| describe('AC-WEBRICH-001..004 permission & invite contract', () => {
+    174|   it('AC-001 delivers an approve verdict to the bot with the exact req…
+       |   ^
+    175|     const c = await build()
+    176|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/33]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-002 delivers a deny verdict
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:202:3
+    200|   })
+    201|
+    202|   it('AC-002 delivers a deny verdict', async () => {
+       |   ^
+    203|     const c = await build()
+    204|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/33]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-003 extracts the real request_id even when the preview contains lookalike runs
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:216:3
+    214|   })
+    215|
+    216|   it('AC-003 extracts the real request_id even when the preview contai…
+       |   ^
+    217|     const c = await build()
+    218|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/33]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-004 shows an invite command whose token actually authenticates
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:235:3
+    233|   })
+    234|
+    235|   it('AC-004 shows an invite command whose token actually authenticate…
+       |   ^
+    236|     const c = await build()
+    237|     const { roomId, botId } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/33]⎯
+
+
+ Test Files  5 failed | 10 passed (15)
+      Tests  33 failed | 150 passed (183)
+   Start at  16:59:38
+   Duration  46.30s (transform 957ms, setup 0ms, import 2.17s, tests 100.04s, environment 1.76s)
+

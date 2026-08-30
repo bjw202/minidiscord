@@ -18,7 +18,8 @@ import { registerAuthRoutes } from '../src/auth.js'
 import { registerRoomRoutes } from '../src/routes-rooms.js'
 import { registerMessageRoutes } from '../src/routes-messages.js'
 import { registerEventRoute } from '../src/routes-events.js'     // REQ-ROOMAUTHZ-010 — index.ts 와 같은 함수
-import { registerBotRoutes, sha256Hex } from '../src/routes-bots.js'
+import { registerBotRoutes } from '../src/routes-bots.js'
+import { connectV2, innerOf, pubOf, ksrvHexOf } from './gateway-v2.js'
 
 let dir: string
 let db: Db
@@ -154,25 +155,29 @@ async function makeBot(app: any, ck: string, name = 'pm'): Promise<number> {
 function seedBot(roomId: number, botName = 'pm') {
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES (?, '')").run(botName).lastInsertRowid as number
   const token = randomBytes(32).toString('hex')
-  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+  // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 검증자와 확인 열쇠를 하니스 사본으로 유도해 저장한다
+  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)')
+    .run(roomId, botId, pubOf(token), ksrvHexOf(token))
   return { botId, token }
 }
 
+// v2 (SPEC-GWAUTH-002) — 접속은 challenge 대조와 auth 서명을 거친다 (gateway-v2.ts).
 function wsConnect(port: number, token: string): Promise<WebSocket> {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
-    cleanups.push(() => { ws.close() })
-    ws.on('open', () => ws.send(JSON.stringify({ type: 'hello', token })))
-    ws.on('message', d => { if (JSON.parse(String(d)).type === 'welcome') resolve(ws) })
-    ws.on('error', reject)
-  })
+  return connectV2(port, token).then(r => { cleanups.push(() => { r.ws.close() }); return r.ws })
 }
 
 // 프레임 하나를 기다린다. 오지 않으면 null — 부정 관측 도구다.
+// 도착 원문은 봉투다 — innerOf 가 검증하고 풀어 내부 프레임만 관측 대상이 된다 (SPEC-GWAUTH-002).
 function nextMessage(ws: WebSocket, ms = 1500): Promise<any | null> {
   return new Promise(resolve => {
     const t = setTimeout(() => { ws.off('message', on); resolve(null) }, ms)
-    const on = (d: WebSocket.RawData) => { clearTimeout(t); ws.off('message', on); resolve(JSON.parse(String(d))) }
+    const on = (d: WebSocket.RawData) => {
+      const inner = innerOf(ws, JSON.parse(String(d)))
+      if (inner === null) return   // 봉투 아님·검증 실패 — 다음 프레임을 기다린다
+      clearTimeout(t)
+      ws.off('message', on)
+      resolve(inner)
+    }
     ws.on('message', on)
   })
 }
