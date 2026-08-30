@@ -1,0 +1,15 @@
+PASS A. 진짜 왕복 확립(onWelcome) — {"type":"welcome","room_id":1,"bot_id":1,"bot_name":"pm","missed_after_id":0}
+PASS B. welcome 안에 봉투 흔적 없음(내부 프레임만 전달)
+PASS C. 확립 후 메시지가 봉투로 도착
+PASS D. 이력 요청 해소(봉투 응답)
+PASS E. unbound 공시 한 줄(중계|바인딩|unbound) — lines=["minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다"]
+PASS F. 변조 challenge → auth 미송신 — frames=["hello"]
+PASS G. 거절 stderr 정확히 한 줄 — lines=["minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다"]
+PASS H. mac 변조 봉투는 버려진다
+PASS I. 같은 소켓에서 다음 유효 봉투는 도착한다
+PASS J. seq 재생은 버려진다
+PASS K. 재생 뒤 정상 seq 는 도착한다
+PASS L. 도착 순서가 전선 순서대로다 — ["good-after-bad","after-replay"]
+PASS M. 맨몸 welcome 은 콜백에 안 간다(established 유지)
+PASS N. 처리되지 않은 거부·예외 0 — []
+PROBE PASS — 14/14
