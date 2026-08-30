@@ -4,7 +4,7 @@
 |---|---|
 | 카드 | `t15` |
 | Tier | M (spec.md + plan.md + acceptance.md) |
-| 현재 상태 | `in-progress` v0.4.0 — **run 단계 완료**(M2~M6 착지, 감사 준비 — §E.2·§E.3). plan 감사 궤적: 1회차 FAIL 0.67 → 2회차 PASS 0.89 → 3회차 PASS 0.84 |
+| 현재 상태 | `completed` v0.5.0 — **sync 단계 종료**(델타 재감사 3차 **PASS 0.870**, 차단 0 — §E.4). plan 감사 궤적: 1회차 FAIL 0.67 → 2회차 PASS 0.89 → 3회차 PASS 0.84. 직전 판은 «`in-progress` v0.4.0 — run 단계 완료» 였고, sync 종결이 이 줄을 낡게 만들었다 |
 | 감사 궤적 | 1회차 **FAIL 0.67** → v0.2.0 → 2회차 **PASS 0.89** → v0.3.0 → 3회차 `plan-audit-3.md` **PASS 0.84**(계약 개정 8자리가 범위에 들어오며 신규 7건 중 5건이 새 범위에서만 발생) → v0.4.0. 감사 §7-1 권고에 따라 **4회차 전체 재감사 없이** 한정 교정 후 run 진입 |
 | 인계 출처 | `SPEC-CHANAUTH-001` v0.4.0 §5 «카드 `t15` 소유» |
 | base 실측 | `npm test` → 250/250 초록 (server 180 · channel 70), 2026-08-29 이 워크트리에서 실행 |
@@ -178,10 +178,17 @@ blockers: 0
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_status: audit-failed        # 그대로 둔다 — 재감사가 아직 돌지 않았다. 처분을 이행했다고 통과로 바꾸지 않는다
+sync_status: audit-passed        # 델타 재감사가 돌았고 통과했다. 직전 판의 값은 audit-failed 였다 —
+                                 # 그때는 재감사가 실시되지 않았기 때문이고, 이제 실시됐으므로 이 자리를 바꾼다
+audit_trajectory: "FAIL 0.70(1차) → FAIL 0.835(2차) → PASS 0.870(3차) — 세 라운드 전부 코드 무변경"
+                                 # 최종 숫자만 적으면 «한 번에 통과했다» 로 읽힌다. 두 번의 FAIL 이 이 카드의 실질이다
 sync_attempted_at: 2026-08-30
-sync_commit: none                # sync_commit_sha 필드는 일부러 적지 않는다 — 재감사 전이므로
-                                 # 그 이름을 쓰면 종료된 카드로 오독된다
+sync_closed_at: 2026-08-30
+audit_head: 007d461              # 3차 재감사가 관측한 HEAD. 이 트리 · 브랜치 WT-rogue-frame-defense
+sync_commit_sha: "self — 이 파일을 담은 종결 커밋 자신. 확인: git log -1 --format=%h -- .moai/specs/SPEC-GWAUTH-001/progress.md"
+# 자기 SHA 를 본문에 미리 적을 수는 없다. «백필하겠다» 는 자리표는 백필되지 않은 채 남는 쪽이
+# 흔하므로 두지 않고, 대신 언제든 실행해 해소되는 명령을 적는다 — 값이 없는 것이 아니라 찾는
+# 방법이 있는 것이다. 선행 커밋들은 위 blocking_findings_closed 가 SHA 로 지목한다.
 operator_disposition:
   chosen: "(b) 정직 정정 + 후속 카드 t22"
   decided_at: 2026-08-30
@@ -195,16 +202,34 @@ sync_lane_corrections:            # 이 커밋에서 sync 레인이 한 일
   - "§E.3 boundary_statement — 같은 교체 + boundary_statement_superseded 로 사유 기록"
   - "§E.2.4 변이 C — «C → 001·013» 정정. mutation-C.txt 재판독으로 013 생존 확인, 잡는 기준은 서버 쪽 001 하나"
   - "CHANGELOG.md [Unreleased] 항목 신설 · README.md 네 자리(현재 상태·게이트웨이 프로토콜·F-01·F-07) 갱신 — 잔여 범위를 그대로 옮겼다"
-audit:
+audit:                            # 1차 — 이 자리는 그때의 관측으로서 그대로 둔다
   report: ".moai/reports/t15/sync-audit.md"
   verdict: "FAIL 0.70 (Tier M 임계 0.80)"
   dimensions: "Functionality 0.76 · Security 0.55(must-pass, 독립 미달) · Craft 0.85 · Consistency 0.70"
   lens: "--security --deep"
+audit_round_2:                    # 델타 재감사 — HEAD f05fac4
+  report: ".moai/reports/t15/sync-audit-2.md"   # 본문
+  verdict: "FAIL 0.835 (종합은 임계 0.80 을 넘었으나 Security 0.78 이 must-pass 독립 임계 0.80 에 미달)"
+  dimensions: "Functionality 0.88 · Security 0.78(must-pass, 독립 미달) · Craft 0.85 · Consistency 0.80"
+  closed_here: "F-01 · F-03 · F-04"
+  new_finding: "G-01(High, 차단) — acceptance.md 가 자기 기준 다섯의 공허함을 한 줄도 적지 않는다. 처방은 문장 하나"
+audit_round_3:                    # 델타 재감사 — HEAD 007d461. 최종 판정
+  report: ".moai/reports/t15/sync-audit-2.md"   # 별도 파일이 아니라 위 파일에 «부록 A» 로 덧붙인 절이다
+  verdict: "PASS 0.870 (Tier M 임계 0.80, must-pass 두 차원 독립 통과)"
+  dimensions: "Functionality 0.90 · Security 0.86(must-pass, 독립 통과) · Craft 0.85 · Consistency 0.84"
+  blocking_findings: 0
+  scope: "지시된 델타만 — G-01 + 회귀 3건. F-01·F-03·F-04 는 2차에서 닫혔으므로 다시 재지 않았다"
 blocking_findings:
   - "F-01 [Critical] spec.md §5 배제표 1행이 거짓 — hello 를 받는 자리가 방금 건네받은 평문 토큰에서 증명 열쇠를 만든다. 처방은 문서 정정뿐이며 코드 변경을 요구하지 않는다"
   - "F-02 [High] 부정 기준 다섯(AC-GWAUTH-006·008·009·011·012)이 §1.1 이 지목한 상대보다 엄격히 약한 상대를 잰다"
   - "F-03 [High] Definition of Done «변이표와 정확히 일치» 미충족 — 13행 중 7행이 어긋났다"
   - "F-04 [Medium] 이 §E.4 의 공백 자체 — 비어 있으면 F-A8 포인터가 카드와 함께 조용히 사라진다"
+blocking_findings_closed:         # 위 넷과 2차의 G-01 이 어떻게 닫혔는가 — 전부 문서 편집이며 코드는 한 줄도 바뀌지 않았다
+  - "F-01 — plan 레인 커밋 26b2f71(spec.md §5 배제표 1행을 둘로 가름) + sync 레인 커밋 a4fe573(§E.2.8·§E.3 경계 진술 교체). 2차 감사가 닫힘 확인"
+  - "F-03 — 같은 두 커밋. 변이표 13행을 실측에서 재도출. 2차 감사가 mutation-*.txt 원문에서 A~M 13행을 행별로 독립 대조해 전건 일치 확인"
+  - "F-04 — 같은 두 커밋. 이 §E.4 의 f_a8_reachability 블록이 그 처방이며 소유자가 t22 로 명시됐다"
+  - "F-02 · G-01 — 커밋 007d461. 공시가 acceptance.md:15 에 착지했다. AC-GWAUTH-006 은 :233 이므로 218줄 앞서고, 독자는 «프로브의 상대와 같은 자리다»(:237)에 닿기 전에 «토큰을 되받는 상대는 그 다섯을 전부 통과한다» 를 먼저 읽는다"
+  - "G-02 · G-03 · G-04 — 같은 커밋 007d461 에서 함께 닫혔다 (배포 문서는 고정 끝점 이후라 측정 구간 밖임을 명시 · spec.md:392 오인용을 §7-2 로 정정 · 변이표 O 행 다섯 → 여섯)"
 sync_lane_finding:
   - "S-01 [High] AC-GWAUTH-003 의 제목은 «어떤 프레임도» 라 적지만 본문은 그 접속이 받은 프레임만 잰다. 내보내는 hello 는 평문 토큰을 싣는다. 소유 manager-spec, plan 이월"
 suite: "server 183/183 + channel 81/81 = 264 초록 — npm test exit 0, sync 레인이 이 HEAD 에서 직접 실행 (.moai/state/verify/t15-sync-npm-test.txt)"
@@ -236,19 +261,37 @@ carried_to_plan:                 # 전부 manager-spec 소유 본문. sync 는 �
 open_conflict:
   item: "증거 파일 커밋과 AC-GWAUTH-014 의 충돌 — **해소됨** (커밋 26b2f71 의 AC-014 개정)"
   detail: "끝점이 구현 HEAD 2d7c1ef 에 고정되고 허용 집합이 .moai/reports/** · .moai/state/verify/** 를 포함하므로, sync 단계 증거·보고서 커밋은 이 기준의 측정 밖이다"
-re_audit_owed:
-  scope: "F-01~F-04 델타 + 회귀 3건 (감사 §8)"
-  state: "미실시 — 이 커밋 시점에 재감사는 돌지 않았다. 그래서 sync_status 가 audit-failed 로 남는다"
-blockers: 4                       # 처분은 이행했으나 재감사 전이므로 숫자를 내리지 않는다
+re_audit_done:                    # 직전 판의 이름은 re_audit_owed 였다 — 갚을 것이 있다는 뜻이었고, 이제 갚았다
+  scope: "1차 F-01~F-04 델타 + 회귀 3건 (2차) → G-01 + 회귀 3건 (3차)"
+  state: "실시 완료 — 2차(f05fac4) FAIL 0.835, 3차(007d461) PASS 0.870. 그래서 sync_status 가 audit-passed 로 바뀐다"
+regression_at_head:               # HEAD 007d461. 감사관과 sync 레인이 각각 독립으로 실행했고 값이 일치한다
+  suite: "npm test exit 0 — server 183 + channel 81 = 264 초록"
+  typecheck: "npm run typecheck --workspaces exit 0 — 양쪽 오류 0"
+  boundary: "AC-GWAUTH-014 고정 끝점(b11bdc5..2d7c1ef) 14파일, 전건 허용 집합 안"
+  source_unchanged: "git diff --name-only 2d7c1ef..HEAD -- '*/src/*' → 빈 출력. 고정 끝점 이후 소스 무변경을 가정하지 않고 측정했다"
+blockers: 0                       # 직전 판은 4 였다 — 처분은 이행했으나 재감사 전이라 내리지 않았던 숫자다.
+                                  # 재감사가 넷을 전건 닫았고 2차가 추가한 G-01 도 닫혔으므로 이제 0 이다
+carried_non_blocking:             # 카드와 함께 사라지지 않도록 여기 적는다. 어느 것도 이 게이트의 통과 조건이 아니었다
+  - "G-06 [Low] acceptance.md:60 §검증 원칙 표의 H 행이 다섯(006·008·009·011·012)을 적지만 실측은 일곱이다(005·010 도 함께 무너진다). 권위 있는 자리인 변이표 H 행은 일곱을 정확히 적고 있고 DoD 판정도 이 표를 읽지 않으므로 비차단이다"
+  - "G-07 [Info] plan.md:278 문장 파손 — 인용문 뒤에 조사가 남았다. 커밋 007d461 의 삭제 줄에도 같은 파손이 있으므로 이번 개정이 만든 것이 아니라 선재 결함이다"
+  - "F-06(형제 명세 코드 블록 미개정) · F-08 · F-09 · F-10(린터 부재) · G-05 — 1차·2차부터 비차단이며 델타 밖이다"
+gaps:                             # 통과했지만 재지 않은 것 — 통과가 이것들을 덮지 않는다
+  - "재현되지 않은 pre-commit 게이트 차단이 한 번 있었다. 최초 커밋 시도가 moai gate 에 막혔고, 우회는 쓰지 않았으며, 재시도에서 통과했고, 원인은 끝내 규명되지 않았다"
+  - "그 한 번을 일반화하는 발견: 이 트리에서 moai gate 는 출력 0바이트로 종료 0 을 낸다. 즉 게이트 통과는 아무것도 귀속하지 않으며 증거로 인용해서는 안 된다(2차 감사 G-05). 위 regression_at_head 의 초록 값은 전부 직접 실행한 명령의 출력이지 게이트 통과가 아니다"
+  - "변이는 재실행하지 않았다 — 결과 파일 원문 대조뿐이며, 그 파일이 해당 변이의 산물이라는 것은 run 레인 기록에 의존한다"
+  - "t22 카드의 큐 실재를 감사관이 확인하지 않았다(리드 소유 영역). 문서 일곱 자리가 t22 를 소유자로 지목하며 F-02·F-04 두 종결의 근거가 그 카드의 실재에 의존한다"
 disposition:
-  card: "닫지 않았다"
+  card: "닫는다 — sync 게이트 통과 (PASS 0.870, 차단 0)"
   operator_choice: "(b) 문서를 정직하게 정정하고 후속 카드 t22 를 연다 — 2026-08-30 결정"
+  what_was_wrong: "코드가 아니라 코드가 무엇을 했는지에 대한 서술이었다. 세 라운드가 그 서술을 실측에 맞춰 좁혔고 구현은 한 줄도 바뀌지 않았다"
 ```
 
 **§E.4 를 남기는 이유.** 이 절이 비어 있는 것 자체가 감사의 차단 결함 F-04 였다. 위 `f_a8_reachability` 블록이 그 처방이다 — 칸반 리드가 도달성을 실측했고(2026-08-30) **구조적 도달성이 성립해 기각할 수 없다**는 판정이 나왔으며, 소유는 후속 카드 `t22` 로 넘어갔다. 기록이 없었다면 이 항목은 카드가 닫히는 순간 소유자 없이 사라졌을 것이다.
 
 **문서 동기화를 미뤘던 이유와, 지금 쓴 이유.** 이 SPEC 의 중심 방어 주장이 실행으로 반증됐으므로(F-01), 처분이 서기 전에는 CHANGELOG·README 를 쓰지 않았다 — 「게이트웨이 상호 인증 추가」로만 적히는 순간 독자는 서지 않은 방어가 섰다고 읽기 때문이다. 운영자가 (b)를 골랐고 `spec.md` §5 가 개정됐으므로, 이제 그 절의 잔여 범위를 **그대로 옮긴** 문안으로 두 문서를 썼다. 두 문서 어디에도 F-01 이 닫혔다고 적지 않았고, README 의 채널 플러그인 판정은 **FAIL 그대로**다.
 
-**아직 남은 것 하나.** **재감사 미실시** — F-01~F-04 델타 + 회귀 3건이 아직 재측정되지 않았으므로 `sync_status` 는 `audit-failed` 로 남고, 네 SPEC 산출물의 `status:` 는 `in-progress` 에서 움직이지 않았다.
+**남은 것은 없다 — 카드를 닫는다.** 델타 재감사가 두 번 더 돌았고 3차에서 통과했다(`PASS 0.870`, 차단 0). 궤적은 **FAIL 0.70 → FAIL 0.835 → PASS 0.870** 이며 **세 라운드 전부 코드 무변경**이다. 1차가 지목한 넷(F-01~F-04)과 2차가 추가한 하나(G-01)가 전건 닫혔으므로 `sync_status` 는 `audit-passed` 로, `blockers` 는 `0` 으로 내려간다. 네 산출물 중 `status:` 를 가진 것은 `spec.md` 하나뿐이며 그것을 `in-progress` → `completed` 로 옮겼다 — `plan.md`·`acceptance.md`·`progress.md` 에는 그 필드가 없으므로 없는 자리를 만들지 않는다.
 
-> **이 문단은 한 번 줄었다.** 직전 판까지 여기에는 «남은 것 둘» 로 `f_a8_reachability` 가 함께 적혀 있었다. 리드의 F-A8 실측(2026-08-30)이 그 항목을 닫아 `t22` 로 넘겼으므로 하나로 줄인다 — 위 블록만 고치고 이 문단을 그대로 두면, 같은 파일이 «실측됐다» 와 «미실측이다» 를 동시에 말하게 된다.
+**닫히지 않은 채로 넘어가는 것들은 위 `carried_non_blocking` 과 `gaps` 에 적었다.** 특히 재현되지 않은 게이트 차단 한 번은 그대로 남으며, 그것을 일반화한 발견 — **`moai gate` 통과는 아무것도 귀속하지 않는다** — 도 함께 남는다. 이 절의 초록 값은 전부 직접 실행한 명령의 출력이다.
+
+> **이 문단은 두 번 고쳐졌다.** 직전 판은 «아직 남은 것 하나 — 재감사 미실시» 였고, 그 앞판은 «남은 것 둘»로 `f_a8_reachability` 를 함께 세고 있었다. 먼저 리드의 F-A8 실측(2026-08-30)이 하나를 닫았고, 이제 3차 재감사가 나머지 하나를 닫았다. 옛 문장을 지우고 새로 쓰는 대신 무엇이 언제 왜 바뀌었는지를 이 각주에 남긴다 — 위 블록만 고치고 문단을 그대로 두면 같은 파일이 «재감사가 돌았다» 와 «재감사가 아직 안 돌았다» 를 동시에 말하게 되고, 그 부류가 이 카드에서 세 라운드 연속으로 재현된 결함이다.
