@@ -1,0 +1,100 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+
+ Test Files  15 passed (15)
+      Tests  188 passed (188)
+   Start at  22:21:54
+   Duration  7.89s (transform 1.01s, setup 0ms, import 2.19s, tests 23.23s, environment 2.08s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/transport-auth.test.ts (30 tests | 2 failed) 28375ms
+     × an envelope with a broken mac, and a frame with no envelope, are both dropped 425ms
+     × the three gates are separate: each mutation breaks a different set 5906ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "method": "notifications/claude/channel",
++     "params": {
++       "content": "[alice] 변조 대상",
++       "meta": {
++         "chat_id": "1",
++         "delivery": "to",
++         "sender": "alice",
++       },
++     },
++   },
++ ]
+
+ ❯ test/transport-auth.test.ts:774:21
+    772|     await settle()
+    773|
+    774|     expect(w.notes).toEqual([])
+       |                     ^
+    775|     expect(w.verdicts).toEqual([])
+    776|     // 그 직후 유효한 봉투는 같은 소켓에서 정상 도착한다 — 같은 소켓 양성 (수복 관측)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected [ 'P_env' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "P_env",
++ ]
+
+ ❯ test/transport-auth.test.ts:864:18
+    862|
+    863|     const base = await runSuite(source)
+    864|     expect(base).toEqual([])                                     // 변이…
+       |                  ^
+    865|     const n1 = await runSuite(apply.N1(source))
+    866|     const n2 = await runSuite(apply.N2(source))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  2 failed | 93 passed (95)
+   Start at  22:22:02
+   Duration  28.57s (transform 287ms, setup 0ms, import 738ms, tests 33.64s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error command failed
+npm error command sh -c vitest run
+
+[exit=1]
