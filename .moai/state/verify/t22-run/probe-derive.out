@@ -1,0 +1,6 @@
+pub len: 64 /^[0-9a-f]{64}$/: true
+deterministic (same token twice): true
+token-bound (other token differs): true
+ksrv len: 64 ksrv differs from pub: true
+signature round-trip (64B hex, verifies): true true
+tampered message rejected: true

@@ -1,15 +1,37 @@
 // 봇 등록/목록/초대 API (표시용 정보만 — 페르소나는 각 세션 디렉터리가 담당)
 import type { FastifyInstance } from 'fastify'
-import { createHash, randomBytes } from 'node:crypto'
+import { createHash, createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
 import { requireAuth } from './auth.js'
 import { requireRoomMember } from './room-members.js'
 import { config } from './config.js'
 import type { Gateway } from './gateway.js'
 
-// @MX:ANCHOR: [AUTO] 토큰 해시 공개 계약 — 카드 t3 게이트웨이가 hello { token } 인증에서 같은 함수로 bot_tokens 를 조회한다
-// @MX:REASON: 해시 방식이 이 함수 하나에 고정돼 있어야 발급(여기)과 조회(t3 게이트웨이)가 갈라지지 않는다. 형식을 바꾸면 이미 발급된 초대가 전부 무효가 된다
+// @MX:ANCHOR: [AUTO] v1 토큰 해시 유도 — 이행기 계약. v2 에서 bot_tokens 저장은 이 함수를 쓰지 않는다(§D-3).
+// 남은 소비자는 v1 조회 경로뿐이다: server/src/gateway.ts 의 handleHello 가 쓰는 hello 조회와, 같은 유도로 v1 모양
+// 행을 심는 형제 하네스 셋(server/test 다섯 파일 · channel/test/gateway-mutual-auth.test.ts). gateway-client.ts 의
+// v1 hello 전송도 같은 값을 쓴다. 마지막 소비자가 M2(게이트웨이 v2 핸드셰이크)와 M3/M4(채널·하네스)에서 떠나면
+// 이 함수는 지운다 — 줄 번호를 적지 않은 이유는 두 파일 모두 이 카드의 뒤 마일스톤이 고치기 때문이다
+// @MX:REASON: v1 발급(여기)과 v1 조회(gateway)가 같은 해시를 쓰게 하는 것이 지금의 유일한 계약이다 — v2 검증자
+// 계약은 아래 deriveBotKeys 가 대신한다. 형식을 바꾸면 남은 v1 조회 경로가 전부 어긋난다
 export function sha256Hex(s: string): string {
   return createHash('sha256').update(s).digest('hex')
+}
+
+// @MX:ANCHOR: [AUTO] v2 열쇠 유도의 정본 위치 — 서명·확인 열쇠 라벨과 Ed25519 DER 접두가 이 함수 하나에 모여 있다 (SPEC-GWAUTH-002 plan.md §D-9)
+// @MX:REASON: 채널(channel/src/gateway-client.ts)은 server/ 를 import 할 수 없어 같은 규칙의 사본을 지닌다 —
+// 사본이 갈라지면 정상 구현이 거짓 실패하고 그 어긋남은 왕복 기준(AC-GWAUTH2-020)만이 잡는다. 양쪽 사본의
+// @MX:ANCHOR 가 서로를 가리켜 한쪽 고침이 다른 쪽을 따라오게 한다. 라벨이나 접두를 바꾸면 이미 발급된 초대가
+// 전부 무효가 된다 — 검증자 저장 계약(REQ-GWAUTH2-003)과 결정적 유도(REQ-GWAUTH2-001)가 이 함수 위에 선다
+// 서명 개인키(sk)는 유도에만 쓰고 돌려주지 않는다 — 개인키는 프로세스 메모리를 벗어나지 않는다(REQ-GWAUTH2-001)
+export function deriveBotKeys(token: string): { verifierPub: string; serverConfirmKey: string } {
+  const SIGN_LABEL = 'minidiscord/v2/sign'
+  const CONFIRM_LABEL = 'minidiscord/v2/server-confirm'
+  const PKCS8_ED25519_PREFIX = '302e020100300506032b657004220420' // 개인키 DER 머리 — Ed25519 고정값, 값에 따라 변하지 않는다
+  const seed = createHmac('sha256', token).update(SIGN_LABEL).digest()
+  const sk = createPrivateKey({ key: Buffer.concat([Buffer.from(PKCS8_ED25519_PREFIX, 'hex'), seed]), format: 'der', type: 'pkcs8' })
+  const verifierPub = createPublicKey(sk).export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex')
+  const serverConfirmKey = createHmac('sha256', token).update(CONFIRM_LABEL).digest('hex')
+  return { verifierPub, serverConfirmKey }
 }
 
 // @MX:NOTE: [AUTO] 세션 실행 명령 안내 문자열 — 포트 기본값을 두지 않고 호출부가 config.port 를 넘기게 한다 (plan.md §D 2)
@@ -44,7 +66,10 @@ export function registerBotRoutes(app: FastifyInstance): void {
     }
   })
 
-  // 초대 발급 — 평문 토큰은 이 응답에 한 번만 실리고 bot_tokens 에는 sha256Hex 해시만 저장한다.
+  // 초대 발급 — 평문 토큰은 이 응답에 한 번만 실리고 bot_tokens 에는 그로부터 유도한 검증자와 확인 열쇠만 저장한다
+  // (REQ-GWAUTH2-003). v1 은 sha256 해시를 저장했는데 그 값만으로 봇을 사칭할 수 있었다(SPEC-GWAUTH-001 §1.1) —
+  // v2 검증자는 공개키라 저장 값을 읽은 상대가 봇 방향으로는 아무것도 만들지 못한다. 확인 열쇠는 그 반대 절반의
+  // 대용이며 그 한계는 spec §5 표가 진다
   // 멤버십 게이트가 방 조회보다 앞선다 (REQ-ROOMAUTHZ-017) — 초대 라우트는 "봇 하나 추가"가 아니라
   // 그 방 대화 전체로 통하는 두 번째 문이다. 뒤에 두면 비멤버가 보관된 방에서 409 를 받아 실재가 샌다
   app.post('/api/rooms/:id/invites', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
@@ -61,7 +86,8 @@ export function registerBotRoutes(app: FastifyInstance): void {
     // 재초대: 기존 활성 토큰을 먼저 철회한 뒤 새 토큰을 발급한다 (REQ-BOT-003)
     db.prepare("UPDATE bot_tokens SET revoked_at=datetime('now') WHERE room_id=? AND bot_id=? AND revoked_at IS NULL").run(roomId, bot.id)
     const token = randomBytes(32).toString('hex')
-    db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, bot.id, sha256Hex(token))
+    const { verifierPub, serverConfirmKey } = deriveBotKeys(token)
+    db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)').run(roomId, bot.id, verifierPub, serverConfirmKey)
     return reply.code(201).send({ bot_id: bot.id, bot_name: bot.name, token, command: inviteCommand(token, config.port) })
   })
 

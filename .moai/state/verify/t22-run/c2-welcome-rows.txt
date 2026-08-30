@@ -1,0 +1,6 @@
+channel/test/channel-server.test.ts:0
+channel/test/gateway-mutual-auth.test.ts:0
+channel/test/gateway-client.test.ts:3
+channel/test/index-wiring.test.ts:1
+channel/test/permission-relay.test.ts:1
+channel/test/transport-auth.test.ts:2

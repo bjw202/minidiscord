@@ -1,0 +1,3 @@
+const SIGN_LABEL = 'minidiscord/v2/sign'
+const CONFIRM_LABEL = 'minidiscord/v2/server-confirm'
+const PKCS8_ED25519_PREFIX = '302e020100300506032b657004220420'
