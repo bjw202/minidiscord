@@ -7,10 +7,10 @@ import { config } from './config.js'
 import type { Gateway } from './gateway.js'
 
 // @MX:ANCHOR: [AUTO] v1 토큰 해시 유도 — 이행기 계약. v2 에서 bot_tokens 저장은 이 함수를 쓰지 않는다(§D-3).
-// 남은 소비자는 v1 조회 경로뿐이다: server/src/gateway.ts 의 handleHello 가 쓰는 hello 조회와, 같은 유도로 v1 모양
-// 행을 심는 형제 하네스 셋(server/test 다섯 파일 · channel/test/gateway-mutual-auth.test.ts). gateway-client.ts 의
-// v1 hello 전송도 같은 값을 쓴다. 마지막 소비자가 M2(게이트웨이 v2 핸드셰이크)와 M3/M4(채널·하네스)에서 떠나면
-// 이 함수는 지운다 — 줄 번호를 적지 않은 이유는 두 파일 모두 이 카드의 뒤 마일스톤이 고치기 때문이다
+// 남은 소비자는 v1 하네스뿐이다: gateway-client.ts 의 v1 hello 전송(M3 에서 v2 로 교체)과, 같은 유도로 v1 모양
+// 행을 심는 형제 하네스 셋(server/test 다섯 파일 · channel/test/gateway-mutual-auth.test.ts — M4/M5 에서 교체).
+// M2 에서 server/src/gateway.ts 의 v1 조회가 떠났다. 마지막 소비자가 M3/M4 에서 떠나면 이 함수는 지운다
+// — 줄 번호를 적지 않은 이유는 두 파일 모두 이 카드의 뒤 마일스톤이 고치기 때문이다
 // @MX:REASON: v1 발급(여기)과 v1 조회(gateway)가 같은 해시를 쓰게 하는 것이 지금의 유일한 계약이다 — v2 검증자
 // 계약은 아래 deriveBotKeys 가 대신한다. 형식을 바꾸면 남은 v1 조회 경로가 전부 어긋난다
 export function sha256Hex(s: string): string {

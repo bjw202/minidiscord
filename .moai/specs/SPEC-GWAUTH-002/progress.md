@@ -179,3 +179,56 @@ M1 이 코드를 고친 뒤 어간 훑기(`routes-bots.ts:[0-9]` · `db.ts:[0-9]
 Decision: serial
 
 **근거**: 구현이 의미적 신규 코드이고 스키마→발급→(M2 이후)핸드셰이크가 순차 의존을 갖는다. 단일 워커 위임(general-purpose + manager-develop 역할 프롬프트, 카드 나무 안 — `isolation: worktree` 는 원격 기본 브랜치에서 새 나무를 만드는 회귀가 있어 배제)으로 쓰기 충돌이 구조적으로 배제된다. 이 결정은 리드 디스패치(Kickoff 승인, 반자동 진행)와 일치한다. **run 진입 감사 게이트 귀속**: plan 감사 PASS 0.86 은 4차 판정·사전 정리 수정 이전 트리(v0.4.0) 측정값이고(plan-done §0), 최종 나무(v0.4.1) 재채점은 없음 — run 진입은 연산자 Kickoff 승인(§6.1·§6.2 공시 후)으로 성립하며, artifact-hash 불변 조건은 성립하지 않은 채 운영자 결정으로 진입했다.
+
+### E.2.11 M2 — 서버 핸드셰이크와 봉투 (gateway.ts, REQ-GWAUTH2-005·009·011·012·013·017)
+
+> 기점: M1 커밋 `d08d2c2` 위의 미커밋 작업. 원문은 `.moai/state/verify/t22-run/m2-*.txt`·`m2-*.out`.
+
+**무엇을 착지했는가** (`server/src/gateway.ts` 재작성):
+
+- **`handleHello` v2** — `hello{pub, client_nonce}` 의 형식 검사 하나에서 v1 형태({type:'hello', token})까지 같이 닫는다(REQ-GWAUTH2-017, 갈래를 나눠 응답 차이를 주지 않는다). `verifier_pub` 으로 `bot_tokens` 를 조회(철회·보관 방 필터 유지)하고, 모르는 pub 은 무응답 폐쇄(REQ-GWAUTH2-005). `server_nonce` 는 hello 마다 `randomBytes(32)` 로 새로 만들고 소켓 지역에만 둔다(REQ-GWAUTH2-010). **이 자리에서는 등록하지 않는다.**
+- **`handleAuth` 신설** — challenge 없는 auth 는 폐쇄, 서명 형식(128자 소문자 hex) 검사가 검증보다 먼저(REQ-GWAUTH2-016), 대조는 문자열 `===` 가 아니라 Ed25519 `verify` 한 번(plan.md §G 안티패턴의 구조적 차단), **등록(`conns.set`)이 서명 검증 통과 시점으로 옮겨졌다**(REQ-GWAUTH2-009). 등록과 함께 세션 열쇠를 소켓 지역으로 유도(`session|cn|sn|room|bot|cb`)하고 `seq: 1` 로 시작한다(REQ-GWAUTH2-013).
+- **봉투 함수 `sendEstablished` [D-6]** — payload 는 서버가 만든 문자열 그대로 MAC 하고(정규화 규칙 없음), seq 증가는 이 함수 안에서만 일어난다. **발신 다섯 자리 전부가 이 함수를 지난다**(아래 덮개 실측).
+- **`channelBinding` [D-10]** — `instanceof TLSSocket` + `typeof exportKeyingMaterial === 'function'` 검사, try/catch 로 전부 `'unbound'` 낙하, **2인자 형태만 사용** — 설치된 @types/node 는 3인자 overload 만 표기하지만 컨텍스트를 넘기면 «생략» 과 «길이 0» 이 갈라 D-10 쌍대 조건이 깨지므로 호출 형태를 코드에 직접 박았다.
+- **D-9 앵커 셋** — `handshakeTranscript`(challenge·auth·session 라벨과 구분자를 한 함수에) + `channelBinding`(바인딩 라벨·길이·호출 형태) + SPKI 접두 상수가 gateway.ts에, 유도 라벨·PKCS8 접두는 routes-bots.ts `deriveBotKeys`(M1)가 지고, 서로를 이름으로 가리킨다. 채널 쪽 쌍은 M3.
+
+**붕괴 대조표(리드 결정 2 — 마일스톤 간 감소 추적)**: M1 74 → **M2 74 (감소 0, 증가도 0)**. 파일별 귀속은 M1 표와 글자 하나 다르지 않다: gateway 26 · permissions 24 · messages 13 · web-permission-contract 5 · room-members 4 · rooms-bots 1 · channel gateway-mutual-auth 1. 오류 부류도 동일(token_hash 시드 INSERT 71 · 계약 SELECT 2 · timeout 1). M2 의 gateway.ts 변경이 닿는 경로를 지나는 통과 시험은 없다 — 통과 190건은 전부 스텁·비봇 경로다. **붕괴 부류 밖의 새로운 실패는 없다.** M4 의 시험 교체가 이 74를 줄이는 자리고, gateway.test.ts buildServer 배선 관측의 timeout 1이 시드 제거와 함께 사라지는가를 M4 가 확인할 과제다(리드 결정 3).
+
+**타입 검사**: `npm run typecheck --workspaces` → exit 0 (`m2-typecheck2.txt`; 1차는 @types/node 의 3인자 overload 표기 차이로 TS2554 — 위 D-10 대응으로 해소).
+
+**봉투 덮개 실측** — `grep -n 'send(ws\|sendEstablished(\|conns\.set' server/src/gateway.ts`:
+
+```
+:179   send(ws, { type: 'challenge', … })            ← 확립 이전 raw (D-4·D-6 — 유일한 예외)
+:209   conns.set(ws, conn)                           ← 등록의 새 자리 (auth 검증 통과 후, 유일)
+:212   sendEstablished(conn, ws, { welcome … })      ← 다섯 자리 ①
+:226   sendEstablished(c, ws, { … })                 ← 다섯 자리 ② sendStoredMessage 재전송
+:247   function send(…)                              ← 저수준 발신기
+:255   function sendEstablished(…)                   ← 봉투 함수 본체
+:259   send(ws, { type: 'env', seq, payload, mac })  ← raw send 의 둘째이자 마지막 사용처
+:317   sendEstablished(c, ws, payload)               ← 다섯 자리 ③ sendToConn/history_response
+:328   sendEstablished(c, ws, { … })                 ← 다섯 자리 ④ deliver
+:346   sendEstablished(c, ws, payload)               ← 다섯 자리 ⑤ sendToBot
+```
+
+raw `send(ws, …)` 호출처는 정확히 둘(challenge·env 본체)이고, §C 2b 의 다섯 지점(:109·:123·:202·:213·:231 — M1 실측)이 전부 sendEstablished 로 모였다. 등록은 conns.set 이 유일하고 auth 통과 뒤에만 있다. **맨몸으로 나갈 수 있는 프레임은 challenge 하나뿐이다** — 설계 그대로다.
+
+**런타임 실측** — `m2-handshake-probe.mjs`(컴파일 dist `m2-dist/` 상의 진짜 게이트웨이와 실제 WebSocket 왕복, 독립 재계산) → **15/15 PASS** (`m2-handshake-probe.out`): ① v1 hello 닫힘·무응답 ② challenge 없는 auth 닫힘 ③ hello 전·challenge 후 등록 없음 ④ challenge 키 집합 고정 ⑤ 증명=독립 재계산(cb='unbound') ⑥ **등록은 auth 통과 후**(REQ-GWAUTH2-009 의 행동 실측) ⑦ welcome 이 봉투 안(맨몸 welcome 0) ⑧ 봉투 키 집합 고정 ⑨ seq 1 시작 ⑩ mac 전건 유효 ⑪ 재전송 seq 2,3 ⑫ deliver 봉투 seq 4 ⑬ sendToBot 봉투 seq 5 ⑭ 틀린 서명 닫힘·미등록. 1차 실행의 O 실패는 프로브 쪽 단언 결함(정상 소켓이 남아 있어 isOnline 이 판별 불능)이었고 — 구현 결함이 아니라 — 정상 소켓을 먼저 닫아 기준선을 만든 뒤 PASS 로 갈렸다.
+
+**이 M2 가 주장하지 않는 것**: 채널 쪽(M3)은 아직 v1 hello 를 보내므로 진짜 채널↔진짜 서버 왕복은 이 시점에서 깨진 상태가 정상이다(붕괴 표의 channel 1건이 그것이다). `cb` 는 현 배치에서 언제나 'unbound'다(spec.md §2.8.4 — TLS 종단은 t23). D-8 의 세 강제 지점 구조는 채널 층(M3)의 처방이며 서버 쪽은 폐쇄형 거절(각 독립 문장에서 닫음)로 같은 성질을 띤다 — 소켓 지역성(handshakes·conns 맵)은 지켰다. M4 의 recordSocket 과 M5 의 기준이 이 코드를 처음으로 검증 스위트 안에 넣는다.
+
+### E.2.12 §B-0 상시 훑기 — M2 편집이 낡게 만든 인용
+
+M2 의 gateway.ts 재작성 뒤 어간 훑기(`gateway\.ts:[0-9]`)를 다섯 문서에 돌렸다 — 적중 일곱, **전부 내 손 범위 밖의 문서라 기록만 남긴다**:
+
+| 자리 | 내용 | 현재값(앵커로 재도출) | 처분 |
+|---|---|---|---|
+| `design.md` §A :22 | `gateway.ts:88-108`·`:101` handleHello 등록 | handleHello는 `:120` 부근, `conns.set` 은 `handleAuth` 안 `:209` | 다음에 design.md 를 여는 단계(sync 또는 M5 형제 개정)가 앵커로 재도출 |
+| `design.md` §A :23 | `:106-107` welcome.proof 분리 예정 | 제거됨 — challenge 프레임으로 분리 완료 | 같음 |
+| `design.md` §D :140 | `gateway.ts:101` 앵커 conns.set | 앵커 `conns.set` 은 유효(위치만 이동) | 같음 |
+| `spec.md` :358 | `gateway.ts:7` sha256Hex import | **import 가 사라졌다**(M2) — «열거하지 않았다» 예고는 §E.2.2 §C 3 으로 이행됨 | 같음 |
+| `spec.md` :412 | `gateway.ts:101` 등록 시점 서술 | 앵커 conns.set 유효, REQ-GWAUTH2-009 이행됨 | 같음 |
+| `spec.md` :623 | `gateway.ts:88-108`·`:101` | 위와 같음 | 같음 |
+| `research.md` :177 | `gateway.ts:7` import | import 소멸 — §C 3 이 전건을 뽑았다 | 같음 |
+
+routes-bots.ts 의 M1 주석(M2 에서 소비자 변동 반영으로 갱신)은 한 줄 늘렸다 — **그래서 §E.2.9 가 적은 routes-bots 현재값도 함께 낡았다**: `sha256Hex` 정의는 `:15-17` → **`:16-18`**, 발급 INSERT 는 `:66` → **`:90`**(deriveBotKeys 함수 본문이 중간에 더해진 M1 이후의 누적). 이 줄의 기록이 그 정정이다 — 앵커 «v1 토큰 해시 유도»·«INSERT INTO bot_tokens (room_id, bot_id, verifier_pub» 으로 재도출할 것.
