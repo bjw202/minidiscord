@@ -60,7 +60,46 @@ _다음: 3회차 델타 감사(N-01~N-04 범위) → Kickoff 승인 → run 진�
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 결정 확정과 골격
+
+**리드 D1·D2·D3 확정 (M1 착수 전 확인 — plan.md §A [HARD] 이행)**
+- 리드 회신 (2026-08-31): «D1·D2·D3 확인 — 셋 모두 잠정대로 확정. 뒤집을 것 없음. 3회차 감사 PASS 0.911 이 그 선택을 받은 트리에서 나왔다 — 재판정 근거 없음»
+- ① D1 = 재사용 (`scripts/e2e.mts` + `npx tsx`, `server/test/gateway-v2.ts` 의 `connectV2`/`innerOf` import, 셋째 사본 금지)
+- ② D2 = 별도 `npm run e2e`, 루트 `scripts.test` 값 불변 (CI 배선은 t27)
+- ③ D3 = 문서로만·실행 안 함, «수동 검증 수행» 주장 금지 유지
+- D5 = t26 이월·과도기 공시 — §E.1 확정 기록 유지 (재판정 없음)
+
+**§C 착수 전 확인 (run 레인 직접 실행 출력)**
+
+- `npm install` → `INSTALL_EXIT=0`, `found 0 vulnerabilities` (로그: `.moai/state/verify/t6-run/npm-install.log`)
+- `node -e "console.log(require.resolve('ws/package.json'))"` → `/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t6/node_modules/ws/package.json` · 버전 `8.21.3` — **npm install 후에는 이 나무 로컬 해소** (npm install 전에는 부모 체크아웃 해소였다; D4 가 공시한 함정이 run 환경에서는 해소됨 — CI·새 클론 대비 의존성 부재 안내 경로는 유지)
+- `npx --no-install tsx --version` → `tsx v4.23.12` / `node v24.12.0` (§7.1 측정 6 값과 동일)
+- 기준선 생존 가드: `git rev-parse --verify 2a19d7d >/dev/null; echo "GUARD_EXIT=$?"` → `GUARD_EXIT=0` · HEAD `4cd0a85`
+- `npm run build -w channel` → `BUILD_EXIT=0` (pre-commit 게이트 대비 — 로그: `.moai/state/verify/t6-run/build.log`)
+- 기준선 `npm test` (npm install **전**): `188 passed (188) + 95 passed (95)` = **283 passed, exit 0** (`.moai/state/verify/t6-run/baseline.log` — plan 레인 기준선과 일치)
+- 기준선 `npm test` (npm install **후** 재측정): `188 passed (188) + 95 passed (95)` = **283 passed, exit 0** (`.moai/state/verify/t6-run/baseline-after-install.log` — 설치 전 값과 동일. 이 카드의 모든 변이·E2E 실행은 이 환경 기준)
+
+**M1 골격 측정 (구현 위임 — 익명 스폰 opus/high · 레인 표본 재현 포함)**
+
+산출물: `scripts/e2e.mts` (신규, 172행, 미추적). 구성: 포트 확보(`E2E_FORCE_PORT` verbatim 우선, 빈 문자열은 미설정 취급) → `mkdtemp` 임시 데이터 디렉터리 → 서버 spawn(`MINIDISCORD_PORT`·`HOST`·`DATA_DIR`·`BOT_FILES_DIR` 네 env 주입, config.ts:3·6·8·13 실측 근거 주석) → `/api/health` **준비 신호 폴링**(조기 사망 감지 포함 → `[boot-timeout]` 정확히 1회 + exit 9) → 정상·단언 실패·예외 3경로 `finally` 정리(SIGTERM 그룹 → 3초 유예 → SIGKILL → `rmSync`) → `step(n)` 단언-성공-뒤 계약(역순·중복·건너뜀 호출 즉시 실패). MX: `@MX:TODO`(M2 ①~⑮ 충전)·`@MX:NOTE`(D1(a) 상대 import 근거).
+
+| 검사 | 명령(축자) | 관측 |
+|---|---|---|
+| E1 초록 실행 | `npx tsx scripts/e2e.mts; echo "exit=$?"` | `exit=0` — 스폰 1회 + 레인 직접 재현 2회 = **3회 전부 초록** |
+| E1 잔여 프로세스 | `pgrep -f "tsx server/src/index.ts"; echo "pgrep=$?"` | `pgrep=1` (적중 없음) — 3회 전부 |
+| E1 임시 디렉터리 | tmpdir 내 `minidiscord-e2e-*` 나열 | `tmp-leftovers=0` |
+| E2 AC-E2E-006 (P-06 형태) | 실제 점유자(node one-liner — 포트·pid를 `.moai/state/verify/t6-run/port-holder.txt`에 기록, `setInterval` 유지) + 폴링 대기(파일 존재 + TCP 접수, 200ms) 후 `E2E_FORCE_PORT=<점유> npx tsx scripts/e2e.mts > boot-timeout.log 2>&1` | `exit=9` · `grep -c '\[boot-timeout\]'` → `1` · 로그에 서버 `EADDRINUSE` 조기 사망 흔적(「프로세스 조기 사망 → 시한 경로」 분기 실밟) · 점유자 `kill` 회수(exit 143) |
+| E3 AC-E2E-005 | `find data -type f 2>/dev/null \| sort \| xargs -r shasum -a 256 \| shasum -a 256` 전/후 | 동일(빈 입력 해시) · `./data` 부재 유지 |
+| E4 실패 경로 잔여물 | E2 직후 `pgrep` + tmpdir 나열 | `pgrep=1` · `tmp-leftovers=0` |
+| E5 의존성 부재 | 실제 파일을 바이트동일 사본으로 워크트리 밖에서 실행(가드 분기) | 한 줄 안내(스택 없음) + `exit=1`(9 아님) · 해소-성공 쪽 `tsx -e` import → `deps-ok` |
+
+**P-06 이월 작업 — run 에서 정해진 최종 형태**: `sleep 1` → **준비 신호 폴링**(포트 파일 존재 + TCP 접수, 200ms 간격) · `/tmp` 증거 경로 → `.moai/state/verify/t6-run/`. AC-E2E-006 이 공시한 취약점 둘(`sleep 1` 경주·`/tmp` 경로)이 모두 이 형태로 닫혔다.
+
+**레인 재검증에서 발견·수정한 결함 1건**: 첫 E1 재현 출력에서 서버 경고 «MINIDISCORD_BOT_FILES_DIR 이 없어 봇 첨부를 받지 않습니다» 를 관측 — `config.ts:13` 은 fail-closed(미설정 시 봇 첨부 전부 거부)인데 골격이 이 env 를 주입하지 않았다. M2 ⑧첨부 저장·⑨내려받기 단계가 그대로 밟을 결함이라, 스폰에 지시해 `spawnServer` 에 `MINIDISCORD_BOT_FILES_DIR`(dataDir 안 `bot-files` 하위, `mkdirSync` 생성 — cleanup 은 dataDir 재귀 삭제로 함께 정리) 주입을 완성하고 재실행으로 경고 소멸을 확인했다(레인 직접 재현 `exit=0`).
+
+**Gaps (M1 종료 시점)**: ① `npm run e2e` 형태는 미측정 — 배선은 M4 가 만들며, M4 착지 후 AC-E2E-005·006 을 배선 형태로 한 번 더 잰다 ② AC-E2E-004 본 측정(단언 조작 변이)은 M6 변이표 몫 — M1 은 부팅-시한 경로로 같은 성질(잔여물 0)만 확인 ③ 빈 포트 탐침의 닫힘→재사용 TOCTOU 미측정(발생 시 exit 9 의 안전 방향으로 실패) ④ `process.kill(-pid)` 그룹 정리는 POSIX 전용 — Windows 미측정(이 카드의 관측 규약도 macOS 기준, `shasum`) ⑤ E5 사본 재현 증거는 env 주입 수정 **이전** 파일 기준 — 가드 로직과 수정 영역(spawnServer·main 배선)은 겹치지 않는다.
+
+**Residual-risk**: 모든 측정은 이 나무(npm install 완료·로컬 해소) 기준 — 신규 클론에서의 가드 동작은 사본 재현으로만 검증됐다. 러너의 자연 종료(`exitCode` 방식)는 3회 전부 즉시 종료가 관측됐으나 이벤트 루프 고착의 스트레스 시험은 없다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

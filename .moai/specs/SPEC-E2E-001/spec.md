@@ -2,7 +2,7 @@
 id: SPEC-E2E-001
 title: "종단 간 시나리오 검증 · 서버 재시작 영속성 · README 갱신"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec
