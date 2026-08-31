@@ -33,9 +33,11 @@ related_specs: [SPEC-GWAUTH-002]
 
 ## 1. 배경과 목적
 
-### 1.1 지금 무엇이 없는가 (실측)
+### 1.1 이 SPEC 을 쓸 때 무엇이 없었나 (실측)
 
-이 나무에서 `.github/workflows/` 를 나열하면 파일은 **`label-sync.yml` 하나뿐**이다. 라벨 동기화 워크플로이며, 테스트를 돌리는 워크플로는 **없다**.
+이 SPEC 을 쓸 당시 이 나무에서 `.github/workflows/` 를 나열하면 파일은 **`label-sync.yml` 하나뿐**이었다. 라벨 동기화 워크플로이며, 테스트를 돌리는 워크플로는 **없었다**.
+
+> **지금은 있다** — 이 SPEC 이 세운 `.github/workflows/ci.yml` 이 그것이다. 이 절은 그 워크플로가 **없던 시점의 실측 기록**이며, 현재 상태 서술이 아니다. (sync 단계 정정, 카드 `t27`)
 
 그 결과 지금까지 모든 카드에서 **사람이 손으로** `npm test` 를 돌리고 그 출력을 증거로 인용해 왔다. 카드 `t22`·`t24`·`t6` 의 판정이 전부 그 방식이었다. 사람이 돌리는 판정에는 두 가지 비용이 붙는다.
 
@@ -94,7 +96,7 @@ channel: Test Files  6 passed (6)  · Tests  95 passed  (95)
 ### 2.3 도구 사슬
 
 - 로컬 실측: node **v24.12.0**, npm **11.6.2**.
-- `.nvmrc` **없음**, 어떤 `package.json` 에도 `engines` 필드 **없음** → CI 가 고르는 Node 버전을 강제하는 저장소 내 근거가 현재 **존재하지 않는다**(§4 OD-2 가 이것을 다룬다).
+- `.nvmrc` **없었음**, 어떤 `package.json` 에도 `engines` 필드 **없었음** → CI 가 고르는 Node 버전을 강제하는 저장소 내 근거가 **당시 존재하지 않았다**(§4 OD-2 가 이것을 다룬다). **지금은 `.nvmrc` 가 있다** — OD-2 = (b) 로 이 SPEC 이 추가했고, 워크플로가 `node-version-file: .nvmrc` 로 그것을 읽는다. (sync 단계 정정, 카드 `t27`)
 - `npm run typecheck -w server` exit 0, `npm run typecheck -w channel` exit 0 (`typecheck-server.log` · `typecheck-channel.log`, 각 마지막 줄 `exit=0`). **v0.5.0 까지 이 두 값은 「초록이지만 카드 범위 밖」이었다** — 리드가 OD-1 을 (b) 로 닫으면서 **범위 안으로 들어왔고**, REQ-CI-013 이 그것을 요구로 세운다(§3.4).
 
 ### 2.4 네이티브 의존성
