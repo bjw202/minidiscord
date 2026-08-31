@@ -465,7 +465,85 @@ FALLOUT TABLE COMPLETE
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- 카드 `t27` (N4 — CI 테스트 배선) · SPEC `SPEC-CI-001` · Tier M. 나무 `.claude/worktrees/t27` · 브랜치 `WT-ci-test-wiring`.
+- 측정 head: `ce4431bed8eacbfb00a2fc75eb2ba5151c91d5d3` (= run 단계 M5 종료 커밋). 아래 모든 관측은 **sync 커밋이 착지하기 전** 이 트리에서 이루어졌다.
+- sync 단계 증거 뿌리: `.moai/state/verify/t27-sync/`.
+
+### Claim (주장)
+
+1. **run 단계가 남긴 단 하나의 열린 Gap — 「M5 종료 head 의 원격 CI 실행은 아직 관측되지 않았다」 — 이 닫혔다.** 그 head 의 원격 실행을 직접 관측했고 결론은 `success` 다.
+2. **푸시가 확인됐다** — `origin/WT-ci-test-wiring` 이 로컬 head 와 같은 커밋을 가리킨다.
+3. **문서가 동기화됐다** — `CHANGELOG.md` 에 카드 `t27` 항목을 더하고, `README.md` 의 「명령어」 절과 「문서」 목록을 이 변경에 맞춰 고쳤다.
+4. **상태 전이를 sync 가 수행했다** — `spec.md` 프런트매터의 `status` 가 `draft` 로 남아 있던 것을 `completed` 로 옮겼다.
+
+### Evidence (증거)
+
+**① 푸시 확인** — `git ls-remote origin WT-ci-test-wiring` 의 출력:
+
+```
+ce4431bed8eacbfb00a2fc75eb2ba5151c91d5d3	refs/heads/WT-ci-test-wiring
+```
+
+같은 회차의 `git rev-parse HEAD` 가 `ce4431bed8eacbfb00a2fc75eb2ba5151c91d5d3` 이다 — 두 값이 같으므로 run 단계 `run-done.md` 가 스스로 남긴 「푸시 확인 출력이 본 보고서 안에 없다」는 Gap 이 이 자리에서 닫힌다.
+
+**② run 단계의 열린 Gap 종결 — M5 종료 head 의 원격 CI 초록** — `gh run list --commit ce4431bed8eacbfb00a2fc75eb2ba5151c91d5d3 --json conclusion,createdAt,databaseId,event,headSha,status,updatedAt,url,workflowName` 의 출력을 `.moai/state/verify/t27-sync/sync-head-ci.json` 에 원문으로 남겼다. 실행은 **한 건**이고 필드는 다음과 같다:
+
+| 필드 | 값 |
+|---|---|
+| `databaseId` | `33398053285` |
+| `workflowName` | `CI` |
+| `event` | `push` |
+| `status` | `completed` |
+| `conclusion` | **`success`** |
+| `headSha` | `ce4431bed8eacbfb00a2fc75eb2ba5151c91d5d3` |
+| `createdAt` | `2026-08-31T13:38:10Z` |
+| `updatedAt` | `2026-08-31T13:40:30Z` |
+| `url` | `https://github.com/bjw202/minidiscord/actions/runs/33398053285` |
+
+`headSha` 가 위 ①의 head 와 글자 그대로 같다 — 곧 이 초록은 M2 시점의 `eb68257` 이 아니라 **파괴·되돌림·증거·M5 커밋이 전부 얹힌 종료 head** 에 대한 관측이다. run 단계 §E.3 과 `run-done.md` Gaps 둘째 항이 sync 의 첫 확인 사항으로 남긴 바로 그 관측이며, 이로써 run 단계 Gaps 는 원격 관측 축에서 남는 것이 없다.
+
+**③ sync 가 찾은 결함 — `status` 전이 누락** — `spec.md` 프런트매터의 `status` 가 이 시점까지 `draft` 였다(`.moai/specs/SPEC-CI-001/spec.md:5`, 프런트매터 5행). **`draft → in-progress` 전이는 run 단계가 소유하는 행위인데 run 단계가 그것을 수행하지 않았다** — `run-done.md` 도 §E.3 도 이 전이를 언급하지 않으며, 열두 기준·DoD 여섯 항 어느 것도 프런트매터를 재지 않으므로 **모든 기준이 통과한 채로 이 누락이 살아남았다.** sync 단계가 3단계 종결(in-progress → implemented → completed)의 몫으로 같은 자리를 `completed` 로 옮기면서 이 결함을 흡수했다. 「기준이 통과했다」가 「전이가 수행됐다」를 함의하지 않는다는 사실을 기록으로 남긴다.
+
+형제 문서 `plan.md`·`acceptance.md`·`progress.md` 에는 **YAML 프런트매터가 아예 없다**(각 파일의 첫 12행 판독으로 확인). 이 SPEC 의 원래 형태이므로 없는 프런트매터를 새로 만들지 않았다.
+
+**④ 문서 동기화 — 손댄 자리**
+
+| 파일 | 편집 |
+|---|---|
+| `CHANGELOG.md` | `## [Unreleased]` 아래, 카드 `t22` 항목 앞에 카드 `t27` 항목 신설 |
+| `README.md` | 「명령어」 표 뒤에 CI 자동 실행·`pretest` 자족성 안내 문단 추가 · 「문서」 목록에 `SPEC-CI-001` 한 줄 추가 · 「필요한 것」 절에 `.nvmrc` 안내 추가(sync 레인 판독으로 더함 — 「Node.js 20 이상」은 여전히 참이라 고치지 않았고, 저장소가 `24` 를 적어 둔 사실이 어디에도 없던 간극만 메웠다) |
+| `.moai/specs/SPEC-CI-001/spec.md` | 프런트매터 `status: draft → completed` · `updated: 2026-08-31`(값 불변) |
+| `.moai/specs/SPEC-CI-001/progress.md` | 본 §E.4 절 |
+
+`plan.md` 와 `acceptance.md` 는 손대지 않았다.
+
+**⑤ sync 레인이 판독했으나 이 카드가 고치지 않은 것 둘** — 둘 다 소유권이 sync 밖이라 리드·감사 회부로 남긴다.
+
+- **`spec.md` §1.1 「테스트를 돌리는 워크플로는 **없다**」가 현재형으로 거짓이 됐다.** 절 제목이 「지금 무엇이 없는가 (실측)」이라 현재 상태 서술로 읽힌다. 이 프로젝트가 이름 붙인 부류 「정정이 스스로 낡은 기록을 남긴다」의 한 사례다. **고치지 않은 이유는 소유권이다** — `spec.md` 본문은 `manager-spec` 의 것이고 sync 단계는 프런트매터 `status`·`updated` 만 만진다. 판단은 감사·리드에 회부한다.
+- **`.moai/state/verify/t27-run/m5-final-head-ci.txt`(추적 안 됨, 30바이트, 내용 `observed: success 33398053285`)가 나무에 있다.** 파일 시각은 22:40 으로 M5 커밋(보고서 22:36) 이후다. 내용은 위 ②가 독립으로 관측한 사실과 일치하지만 **누가 언제 만들었는지 이 세션은 관측하지 않았다.** 귀속할 수 없는 증거를 커밋에 넣지 않는다는 원칙대로 추적에 넣지 않았고, ②의 주장은 이 파일이 아니라 이 세션이 직접 실행한 `gh run list` 출력(`sync-head-ci.json`)에 귀속한다.
+
+### Baseline-attribution (baseline 귀속)
+
+**[HARD] 이 절의 모든 관측은 나무 `.claude/worktrees/t27` · 브랜치 `WT-ci-test-wiring` · head `ce4431bed8eacbfb00a2fc75eb2ba5151c91d5d3` 트리에서, sync 커밋이 착지하기 **전에** 수행됐다.** sync 커밋이 착지하면 head 가 바뀌지만 위 값들은 다시 재지 않았다 — 어떤 점수·관측도 sync 커밋 이후 트리의 값으로 제시해서는 안 된다.
+
+- 푸시 확인과 원격 CI 관측: 위 head 에 귀속. 명령은 각각 `git ls-remote origin WT-ci-test-wiring` 과 `gh run list --commit ce4431b… --json …`.
+- 열두 수용 기준의 통과 판정은 **run 단계의 값**이며 sync 가 재측정하지 않았다 — 귀속은 §E.2·§E.3 과 `run-done.md` 가 적은 대로 M2 는 `eb68257`, M3 원격 관측은 `eb682571d953…`, M4 는 파괴/revert 쌍, M5 재실행은 `014ed37` + 문서 편집 상태다.
+- 이 카드에는 sync 단계의 자체 테스트 재실행 기록이 없다 — sync 가 인용하는 초록은 위 ②의 **원격 CI 실행 하나**이며, 그 실행이 곧 `npm ci → typecheck ×2 → npm test` 를 깨끗한 러너에서 돌린 결과다. 로컬 재실행을 별도로 하지 않았다는 사실을 여기 적는다.
+
+### Gaps (미검증)
+
+- **흔들림(flake) 실패율은 여전히 측정돼 있지 않다.** `spec.md` §2.6·§5 가 이를 명시적으로 배제한다. plan 단계의 3회 반복 실행이 깨끗했다는 기록(`t27-plan/flake-run1~3.log`)은 **측정이지 실패율이 아니다** — 향후 CI 가 간헐적으로 붉어질 때 그것이 흔들림인지 판단할 데이터는 이 카드가 남기지 않는다.
+- **`pull_request` 트리거는 head `ce4431b` 에서 다시 관측하지 않았다.** AC-CI-010 의 통과는 `eb68257` 에 개설했던 draft PR #1(run `33393227672`)의 관측이고, 그 PR 은 닫혔으므로 종료 head 에서 같은 트리거를 재관측할 PR 이 존재하지 않는다. **AC-CI-010 의 귀속은 `eb68257` 로 남는다** — 종료 head 의 초록(②)은 `event: push` 한 건이며 pull_request 축을 대신 증명하지 않는다. `ci.yml` 의 `on:` 블록이 M2 이후 바뀌지 않았다는 사실이 그 간극을 좁히지만, 그것은 정적 대조이지 원격 관측이 아니다.
+- **sync 커밋 자신의 원격 CI 실행은 관측할 수 없다** — 커밋이 아직 존재하지 않기 때문이다. 관측 주체는 **sync 레인**(이 커밋을 만들고 푸시하는 쪽)이며, 방법은 착지 후 `gh run list --commit <sync-커밋-SHA>` 로 `conclusion: success` 를 새로 읽는 것이다. 이 문서는 그 값을 갖지 않는다.
+- **AC-CI-011 은 여전히 커밋 전 작업 나무 상태의 측정이다** — run 단계가 남긴 그대로이며 sync 가 재실행하지 않았다.
+- **README 낡은 기록 훑기는 어간 기준 판독이지 전수 증명이 아니다** — 훑은 어간과 결과는 sync 보고에 적었고, 어간 목록은 하한이지 상한이 아니다(`plan.md` §G-3.1 이 같은 성질을 기록한다).
+
+### Residual-risk (잔여 위험)
+
+- **`ac007-bad.txt` 에 ANSI 색상 이스케이프가 원문 보존을 위해 그대로 남아 있다** — 이 파일을 `grep` 으로 다룰 때 이스케이프가 매칭을 가릴 수 있다(§E.2 AC-CI-007 절·§E.3 의 공시와 같다).
+- **AC-CI-006·007 의 파괴 커밋과 그 revert 넷이 브랜치 이력에 남는 것은 설계대로다** — 통합 대상은 revert 이후 head 이며, **스쿼시 여부 판단은 리드의 몫**이다. sync 는 이 결정을 하지 않는다.
+- **원격 CI 관측 세 건(AC-CI-005·010 과 위 ②)은 GitHub Actions 의 실행 이력에 의존한다** — 보존 기간이 지나면 `33392889584`·`33393227672`·`33398053285` 는 조회되지 않고, 재확인은 `git log` 와 본 기록으로만 가능해진다.
+- 흔들림이 실제로 존재하면 이 CI 는 간헐적으로 붉어질 수 있고, 그때 「코드가 깨졌다」와 「흔들렸다」를 가를 데이터가 없다(위 Gaps 첫 항과 같은 뿌리).
 
 ## §F Phase 4 Mode Selection
 

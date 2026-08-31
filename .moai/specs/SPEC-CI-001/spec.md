@@ -2,7 +2,7 @@
 id: SPEC-CI-001
 title: "CI 테스트 배선 — push·pull_request 에서 npm ci → typecheck → npm test 를 자동 실행"
 version: "0.6.0"
-status: draft
+status: completed
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec
