@@ -193,7 +193,7 @@ _다음: 3회차 델타 감사(N-01~N-04 범위) → Kickoff 승인 → run 진�
 | J | innerOf→원문 JSON.parse (**현재 세대 489행 사본**) | 사본 실행 뒤 삭제 | AC-E2E-003 — `[6/15]` 뒤 step7 실패 (**M2 이월분 — 현재 세대 재측정으로 닫힘**) | 일치 | `mut-J-e2e.log` 판독 |
 
 - **AC-E2E-016 전건**: ① 은 스폰 실행에서 **적중 1건** — `progress.md:69`(레인 소유 결정 요약 행)의 **금지어 해당 문언**이 기계 필터에 걸린 것으로, 결정 기록이지 실행 주장이 아니었다. **레인 처분: 문언 조정** — «수동 체크리스트의 실행 주장 금지 유지» 로 교체(면제 표지 미사용 — ①-b 상한 7 보존) → **① 재실행 `exit=1`(적중 0)** · ①-b `7`(상한 이내) · ①-c README 0·scripts 0 · ② `exit=1` · ③ **해당 없음 명시**(체크리스트 미게재 — ①② 는 그래도 실행).
-- **범위 확인(기준선 있음)**: `git diff --name-only 2a19d7d..HEAD` → 18파일 전부 허용 집합(`scripts/e2e.mts`·`server/test/restart-persistence.test.ts`·`package.json`·`README.md`·`.moai/specs/SPEC-E2E-001/*` 4 · `.moai/reports/t6/*` 7 · plan-auditor 메모리 2 는 plan 커밋 산출·run 변경 0) — **`server/src/**` 0건** ✓
+- **범위 확인(기준선 있음)** — **[정정 · sync 감사 F-02, 2026-08-31]**: 이 줄이 적었던 「18파일 · `.moai/reports/t6/*` 7 · plan-auditor 메모리 2」는 **셋 다 인도 시점 실측과 달랐다**(재지 않고 쓴 수 — DoD 5 위반). sync 레인 실측(`f02-measure.log`): `git diff --name-only 2a19d7d..8f4d273 | wc -l` → **19** · reports **8** · 메모리 **3**. 이후 sync 커밋 `0b784c1` 이 `CHANGELOG.md` 와 `sync-blocked.md` 를 더해 현재 값은 `git diff --name-only 2a19d7d..HEAD | wc -l` → **21**(specs 4 · reports 9 · 메모리 3 · 제품 5 = `scripts/e2e.mts`·`server/test/restart-persistence.test.ts`·`package.json`·`README.md`·`CHANGELOG.md`)이다. **plan-auditor 메모리 3건은 plan 커밋 `4cd0a85` 산출이고 run·sync 변경 0** — 허용 집합의 근거는 「이 카드가 만든 것」이 아니라 「기준선 이후 이 브랜치에 들어온 것」이므로 집합 자체는 성립하나, **DoD 4 가 문면으로 열거한 허용 집합에는 `.claude/agent-memory/*` 와 `CHANGELOG.md` 가 없어 4건이 문면 밖이다**(감사 F-02 — 이월). DoD 4 의 핵심절은 재실행해 유지 확인: `git diff --name-only 2a19d7d..HEAD | grep -c '^server/src/'` → **0** — **`server/src/**` 0건** ✓
 - **DoD 6 재훑기 — 값과 명제**: 값 축 — `BASE`·`:173`·`sha256sum`·`124`·`생산 배치`·`/13]` 측정 줄·SPEC 디렉터리에서 **전부 0**; «내 PC» 는 측정 줄에 2건이나 둘 다 울타리 기준 자신의 명령문(② 카운트·③ v0.3.2 정정형) — 낡은 값 0건. 명제 축 — «어긋나지 않» 1(§1.2 이력 각주)·«종결 정의\|종결 조건» 3(HISTORY 0.3.0행·§1.2 제목·«실 세션은 종결 조건이 아니다») — 서로 정합, v0.3.1 문서값과 동일.
 - **DoD 7**: `grep '^- 측정' acceptance.md \| grep -c 'BASE'` → **0** (측정 줄 34).
 - **마지막 초록**: `npm run e2e` → 15표지·`exit=0`(`m6-final-e2e.log`) · `npm test` → **285 passed (190+95)**, `exit=0`(`m6-final-npmtest.log` — transport-auth 우연 재발 없음).
@@ -258,8 +258,53 @@ _다음: 3회차 델타 감사(N-01~N-04 범위) → Kickoff 승인 → run 진�
 - AC-E2E-016 은 **문언 검사**라, 금지된 주장을 다른 표현으로 쓰면 통과한다. 이번 처분도 표현을 바꾼 것이지 주장 자체가 있었던 것은 아니다 — 검사의 한계는 그대로다.
 - 이 §E.4 자신이 B-01 과 같은 부류를 낳을 수 있다. 그래서 최종 판정을 이 문서 작성 **이후**의 재실행에 두었다.
 
+### sync 감사 판정과 기록 정정 라운드 (2026-08-31)
+
+- **판정: PASS 0.827** — 통과선 **0.80**(Tier M). 감사관이 SSOT 에서 직접 읽음:
+  `.claude/rules/moai/workflow/spec-workflow.md:141` 표 + `spec.md:14` `tier: M`, 프로파일
+  `.moai/config/evaluator-profiles/default.md`(가중 40/25/20/15, must-pass = Functionality·Security).
+  차원 점수 Functionality 0.82 · Security 0.92 · Craft 0.85 · Consistency 0.70 → 가중 조화평균 0.8271.
+  보고 `.moai/reports/t6/sync-audit.md`.
+- **[HARD] 귀속: `0.827` 은 커밋 `0b784c1` 트리의 값이며, 아래 정정 이후 트리는 재채점되지 않는다**
+  (리드 결정 2026-08-31). 이 절 아래의 어떤 정정도 점수를 바꾸지 않으며, 점수를 인용할 때는
+  반드시 이 귀속을 함께 적는다.
+- **[HARD] 얇은 통과 공시 (감사관 자기 공시 — 리드 수용)**: 여유 +0.027. Consistency 0.70→0.50 이면
+  0.772 **FAIL**, Functionality 0.82→0.70(F-01 을 「AC-014 미충족」으로 읽으면) 이면 0.775 **FAIL**
+  이며 must-pass 방화벽이 깨져 점수 무관 FAIL, Craft 0.85→0.70 이면 0.803 PASS(여유 0.003).
+  이 PASS 는 «F-01 = 기준 강도 결함(인도물은 옳음)», «F-02·F-03 = 기록 결함(기계 사실은 옳음)»
+  이라는 **분류에 걸려 있다**. 리드가 그 분류를 검토해 수용했다(표본 재현 전건 일치).
+
+**차단 3건의 처분 (리드 지시)**
+
+| 발견 | 요지 | 처분 |
+|---|---|---|
+| **F-01** [Medium] | AC-E2E-014 ㉠ 이 자기 대상을 재지 못한다 — 보안 절 「서비스화」 3건 중 트리거 줄 `README:240` 을 빼도 **2** 가 남아 판정 `≥1` 이 초록. 원인은 형제 기준 AC-012 ②㉡(`:225`)·②㉢(`:236`)이 같은 절에 같은 어간을 의무로 심는 것. 기준 본문의 「어느 하나를 빼면 그 줄의 측정이 0」은 ㉠ 에 대해 **거짓**. 변이표 행 H 는 ㉡ 만 실행했다. | **이월** — `acceptance.md` 개정이 필요하고 이 카드는 `completed` 다. 인도물은 옳다(`:240` 실재 확인). 남는 것은 **회귀 창**: `:240` 이 지워져도 AC-014 는 침묵한다. |
+| **F-02** [Medium] | DoD 4 문면 위반 + §E.2 숫자 셋 오류 | **지금 정정**(위 「범위 확인」 줄 + `run-done.md:24` 각주). 문면 밖 4건(`.claude/agent-memory/*` 3 + `CHANGELOG.md`)의 DoD 4 열거 갱신은 `acceptance.md` 개정이라 **이월**. |
+| **F-03** [Low] | `sync-blocked.md` §5 가 「비추적·커밋 0·status in-progress」를 적은 채 `0b784c1` 에 커밋 | **지금 정정** — 파일 머리에 무효 각주. **sync 레인 자신의 결함**이며 B-01 과 같은 부류다. |
+
+- **권고 4건**: **F-04** AC-016 측정 ① 범위가 `.moai/reports/` 를 빼므로 같은 자기지시 부류가 그
+  자리에 산다(`sync-blocked.md` 가 금지어를 축자 인용한 채 커밋 — 기준 위반은 아니나 **범위의 한계**로
+  공시한다) · **F-05** §E.2·`run-done.md` §5-5 의 「`./data` 생성 시험 7종」은 실제로 **`server/data`**
+  (실측: 루트 `data` 부재, `server/data` 존재) — **t27 디스패치에서 인계**(리드 확인: t27 카드 본문에
+  `./data` 언급 없음) · **F-06** CHANGELOG 「손댄 것은 … 뿐」에 제품 파일 한정어가 없어 문면상 넓다
+  (「`server/src` 무변경」은 참으로 확인) · **F-07** AC-005 는 기존 `./data` **내용 변경**은 못 잰다.
+- **감사관이 반증에 실패한 것(= 인도 보고가 옳았다)**: 필수 `openDb(':memory:')` 변이의 좁음은
+  `mut-A-vitest.log:51-52` 가 서버 스위트 **전체** 기준 `2 failed | 188 passed (190)` 로 기록하므로
+  **Gap 이 아니라 검증됨** · `step()` 가드(`e2e.mts:128-132`)가 건너뜀·역순을 즉시 실패시킴 ·
+  P-06 폴링 형태 종결.
+- **감사가 남긴 Gap (리드 결정: 공시 유지)**: 프로파일 `default` 는 「Coverage < 85% = Craft FAIL」을
+  하드 임계로 두는데 **이 저장소에 커버리지 스크립트 배선이 없어 미측정·미적용**이다. 즉 Craft 0.85 는
+  그 임계를 통과한 값이 아니라 **임계가 적용되지 않은 값**이다. 변이 10건 중 9건은 감사관도 미재현
+  (A 만 로그 판독 — 「살아남은 변이 0건」은 run 레인 귀속). 스위트·e2e 각 1회.
+
 ### 완료 신호
 
 - **`status: in-progress → completed`** — 4개 산출물 중 frontmatter `status` 를 가진 것은 `spec.md` 하나이며(`plan.md`·`acceptance.md` 는 status 필드 없음), 그 전이는 이 단일 sync 커밋이 수행한다.
-- 판독 보고 `.moai/reports/t6/sync-blocked.md`(B-01 회부 시점 기록 — 이력으로 보존) · 증거 `.moai/state/verify/t6-sync/`.
-- **sync 단계 종결 — sync 감사 진행 후 리드 판독 대기.**
+- 판독 보고 `.moai/reports/t6/sync-blocked.md` — **회부 시점 기록으로 보존하되 §5 는 무효**이며,
+  그 사실을 파일 머리 각주에 적었다(F-03 처분). 감사 보고 `.moai/reports/t6/sync-audit.md`.
+  증거 `.moai/state/verify/t6-sync/`(`npm-test.log` · `e2e.log` · `ac016-recheck.log` ·
+  `ac016-final.log` · `post-commit.log` · `audit-recheck.log` · `f02-measure.log`).
+- **sync 단계 종결 — 감사 PASS 0.827(`0b784c1` 트리 값·재채점 없음) · 리드 판정 수용 ·
+  기록 정정 커밋으로 F-02·F-03 처분 완료. F-01 이월 · F-05 는 t27 인계 · 커버리지 임계는 공시 유지.**
+- **커밋 궤적(sync 단계)**: `0b784c1` sync 종결(§E.4 신설·CHANGELOG·status 전이) →
+  이 기록 정정 커밋(F-02·F-03 처분). **감사 점수는 앞의 것에 귀속된다.**
