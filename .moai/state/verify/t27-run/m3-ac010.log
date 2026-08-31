@@ -1,0 +1,65 @@
+# M3 / AC-CI-010 — pull_request-trigger remote observation (SPEC-CI-001, card t27)
+# worktree: /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27
+# branch: WT-ci-test-wiring · head eb682571d953e5a7679cbfe848f838e3b6076b77 (pushed in AC-CI-005)
+# Given-condition check: AC-CI-005 observed success BEFORE this criterion ran (m3-ac005.log).
+
+## Step 1 — draft PR created (acceptance.md command, verbatim)
+$ gh pr create --repo bjw202/minidiscord --draft \
+    --base main --head WT-ci-test-wiring \
+    --title "chore(SPEC-CI-001): CI 트리거 관측용 draft (병합 금지)" \
+    --body "AC-CI-010 관측 전용. 관측 후 닫는다."
+https://github.com/bjw202/minidiscord/pull/1
+→ PR number 1
+
+## PR number + head SHA (acceptance.md step, with one mechanical adaptation)
+$ PR=$(gh pr view --repo bjw202/minidiscord --json number --jq .number)
+argument required when using the --repo flag
+Usage:  gh pr view [<number> | <url> | <branch>] [flags]
+   [...]
+# [DEVIATION DISCLOSED] the doc's argument-less `gh pr view --repo …` form requires an
+# explicit argument in this gh version; PR number was taken unambiguously from the
+# create output URL (pull/1). Semantic step unchanged.
+$ gh pr view 1 --repo bjw202/minidiscord --json number --jq .number
+1
+$ gh pr view 1 --repo bjw202/minidiscord --json headRefOid --jq .headRefOid
+eb682571d953e5a7679cbfe848f838e3b6076b77
+$ gh pr view 1 --repo bjw202/minidiscord --json state,isDraft --jq '.'
+{"isDraft":true,"state":"OPEN"}
+# PR=1 · SHA=eb682571… == pushed branch head (same SHA → the pull_request run and the
+# push run are distinguishable ONLY by the event field — which is why the filter is load-bearing)
+
+## Step 2 — observation: pull_request-event run conclusion (acceptance.md command, verbatim)
+$ SHA=eb682571d953e5a7679cbfe848f838e3b6076b77
+$ gh run list --repo bjw202/minidiscord --commit "$SHA" --workflow ci.yml \
+    --json conclusion,status,event \
+    --jq '.[] | select(.event=="pull_request" and .status=="completed") | .conclusion'
+# poll 1 (immediately after PR open): (EMPTY — no completed pull_request run yet ⇒ NOT-OBSERVED)
+# poll 2 (t+30s): (EMPTY)  rc=0
+# poll 3 (t+60s): (EMPTY)  rc=0
+# poll 4 (t+90s): (EMPTY)  rc=0
+# poll 5 (t+120s): success rc=0   ← FINAL
+
+FINAL=success
+
+## Run identification (both triggers, same SHA — events differ)
+$ gh run list --repo bjw202/minidiscord --commit "$SHA" --workflow ci.yml \
+    --json databaseId,conclusion,status,event,createdAt --jq '.[]'
+{"conclusion":"success","createdAt":"2026-08-31T12:43:59Z","databaseId":33393227672,"event":"pull_request","status":"completed"}
+{"conclusion":"success","createdAt":"2026-08-31T12:39:57Z","databaseId":33392889584,"event":"push","status":"completed"}
+# pull_request run id: 33393227672 · conclusion=success
+# push run id:        33392889584 · conclusion=success (separate run, earlier trigger)
+
+## Step 3 — cleanup: PR closed, NEVER merged
+$ gh pr close 1 --repo bjw202/minidiscord
+✓ Closed pull request bjw202/minidiscord#1 (chore(SPEC-CI-001): CI 트리거 관측용 draft (병합 금지))
+
+$ gh pr view 1 --repo bjw202/minidiscord --json state,merged
+Unknown JSON field: "merged"
+   [...field list shows mergedAt / mergeCommit, no `merged`...]
+# [DEVIATION DISCLOSED] the doc's `--json state,merged` form: `merged` is not a valid
+# JSON field in this gh version. Substitute fields carrying the same fact:
+$ gh pr view 1 --repo bjw202/minidiscord --json state,mergedAt,mergeCommit,isDraft
+{"isDraft":true,"mergeCommit":null,"mergedAt":null,"state":"CLOSED"}
+# state=CLOSED · mergedAt=null · mergeCommit=null ⇒ closed and NOT merged
+
+exit=0

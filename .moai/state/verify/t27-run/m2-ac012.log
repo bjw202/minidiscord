@@ -1,0 +1,3 @@
+server step: npm run typecheck -w server
+channel step: npm run typecheck -w channel
+TYPECHECK COVERAGE OK

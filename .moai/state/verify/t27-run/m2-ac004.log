@@ -1,0 +1,3 @@
+node pin: .nvmrc -> 24
+runs-on/timeout/permissions/concurrency/node/cache 모두 고정됨
+HYGIENE OK

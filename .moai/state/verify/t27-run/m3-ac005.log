@@ -1,0 +1,62 @@
+# M3 / AC-CI-005 — push-trigger remote observation (SPEC-CI-001, card t27)
+# worktree: /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27
+# branch: WT-ci-test-wiring
+
+## Preflight
+$ pwd
+/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27
+$ git branch --show-current
+WT-ci-test-wiring
+$ git rev-parse --short HEAD
+eb68257
+$ gh auth status (excerpt)
+  ✓ Logged in to github.com account bjw202 (keyring)
+  - Active account: true
+  - Token scopes: 'gist', 'read:org', 'repo'
+
+## Push
+$ git push origin WT-ci-test-wiring
+[pre-push] No Makefile found — skipping ci-local
+remote:
+remote: Create a pull request for 'WT-ci-test-wiring' on GitHub by visiting:
+remote:      https://github.com/bjw202/minidiscord/pull/new/WT-ci-test-wiring
+remote:
+To https://github.com/bjw202/minidiscord.git
+ * [new branch]      WT-ci-test-wiring -> WT-ci-test-wiring
+
+## Pushed-SHA verification
+$ git rev-parse HEAD
+eb682571d953e5a7679cbfe848f838e3b6076b77
+$ git ls-remote origin WT-ci-test-wiring
+eb682571d953e5a7679cbfe848f838e3b6076b77	refs/heads/WT-ci-test-wiring
+(local HEAD == remote branch ref — matched)
+
+## AC-CI-005 — acceptance.md command, verbatim
+$ SHA=$(git rev-parse HEAD)
+$ gh run list --repo bjw202/minidiscord --commit "$SHA" --workflow ci.yml \
+  --json conclusion,headSha,status --jq '.[0] | select(.status=="completed") | .conclusion'
+
+# poll 1 (immediately after push): SHA=eb682571d953e5a7679cbfe848f838e3b6076b77
+# output: (EMPTY — run not yet completed ⇒ NOT-OBSERVED, not a pass)
+# poll 2 (t+30s): (EMPTY)  rc=0
+# poll 3 (t+60s): (EMPTY)  rc=0
+# poll 4 (t+90s): (EMPTY)  rc=0
+# poll 5 (t+120s): success rc=0   ← FINAL
+
+FINAL=success
+
+## Run identification
+$ gh run list --repo bjw202/minidiscord --commit "$SHA" --workflow ci.yml \
+    --json databaseId,conclusion,headSha,status,event,createdAt --jq '.[]'
+{"conclusion":"success","createdAt":"2026-08-31T12:39:57Z","databaseId":33392889584,"event":"push","headSha":"eb682571d953e5a7679cbfe848f838e3b6076b77","status":"completed"}
+# run id: 33392889584 · event=push · conclusion=success · headSha matches pushed SHA
+
+## Supplementary human-readable evidence (gh run view 33392889584 --log, test-count lines)
+test	Run npm test	2026-08-31T12:40:53.6360508Z  Test Files  15 passed (15)
+test	Run npm test	2026-08-31T12:40:53.6371199Z       Tests  188 passed (188)      ← server suite
+test	Run npm test	2026-08-31T12:42:10.9973283Z  Test Files  6 passed (6)
+test	Run npm test	2026-08-31T12:42:10.9974610Z       Tests  95 passed (95)        ← channel suite
+# 188 + 95 = 283 — matches the baseline suite (npm test 283 = 188+95)
+# full log tail (last 30 lines): .moai/state/verify/t27-run/m3-ac005-log-tail.log
+
+exit=0

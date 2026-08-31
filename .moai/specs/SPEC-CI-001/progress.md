@@ -174,7 +174,50 @@ FALLOUT TABLE COMPLETE
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### AC-CI-006 — 테스트가 깨지면 결론이 `failure` 다 (변별 · M4, 2026-08-31)
+
+`acceptance.md` §C AC-CI-006 명령열을 그대로 이행했다. 나무 `.claude/worktrees/t27` · 브랜치 `WT-ci-test-wiring` · 진입 head `eb68257` (AC-CI-005·010 이 관측된 그 SHA).
+
+**1) 파괴 커밋** — `server/test/zz-scratch-fail.test.ts` 하나만 경로 명시로 스테이징했다(`git add server/test/zz-scratch-fail.test.ts` — `-a` 미사용, `git diff --cached --name-only` 로 스테이지 집합 1파일 확인).
+
+- **[HARD] 게이트 우회 공시**: 이 한 커밋에서만 `SKIP_MOAI_PRECOMMIT=1` 을 사용했다. pre-commit 훅의 heavy gate(`moai gate`)가 방금 만든 실패 테스트를 붉게 만들어 커밋이 거부되기 때문이며, 붉음이 측정 대상 자체라 게이트를 통과시키면 잴 것이 사라진다. 이유는 커밋 메시지 본문에도 적었다. 훅 출력 원문: `[pre-commit] SKIP_MOAI_PRECOMMIT=1 -- bypass requested`.
+- 커밋 결과 원문:
+  ```
+  [WT-ci-test-wiring b6ec899] scratch: CI 변별 — 의도적 실패 (병합 금지)
+   1 file changed, 7 insertions(+)
+   create mode 100644 server/test/zz-scratch-fail.test.ts
+  ```
+
+**2) 관측 (BAD)** — push(`eb68257..b6ec899`) 후 아래 명령(폴링으로 completed 대기):
+
+```bash
+gh run list --repo bjw202/minidiscord --commit b6ec8998ccd8c4fca1f3639dbcf3c3bc27551607 \
+  --workflow ci.yml --json conclusion,status --jq '.[0] | select(.status=="completed") | .conclusion'
+```
+
+출력 원문:
+```
+failure
+```
+
+- run id `33394386914` (event push). 원문 파일: `.moai/state/verify/t27-run/ac006-bad.txt` · sha 기록: `ac006-sha.txt`.
+
+**3) 되돌림** — `git revert --no-edit b6ec8998ccd8c4fca1f3639dbcf3c3bc27551607` → push(`b6ec899..89cc137`). 원문:
+```
+[WT-ci-test-wiring 89cc137] Revert "scratch: CI 변별 — 의도적 실패 (병합 금지)"
+ 1 file changed, 7 deletions(-)
+ delete mode 100644 server/test/zz-scratch-fail.test.ts
+```
+
+**4) 원상 확인 (GOOD)** — 같은 명령을 GOOD sha 로:
+
+```
+success
+```
+
+- run id `33394645385` (event push). 원문 파일: `.moai/state/verify/t27-run/ac006-good.txt`.
+
+기대(`failure` → 되돌림 → `success`) 성립. 파괴 커밋과 그 revert 는 이 브랜치에만 살고 병합 대상은 revert 이후 head 다. 이 증거 기록 커밋은 되돌림 **뒤에** 별도 커밋으로 착지한다(DoD 2). 이 섹션의 나머지 기준 원문 기록은 후속 마일스톤(M4 의 AC-CI-007, M5 의 잔여 기준)이 채운다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -183,3 +226,12 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- 카드 `t27` run 레인. 나무 `.claude/worktrees/t27` · 브랜치 `WT-ci-test-wiring` · 진입 head `2e76f8a`.
+- 입력: tier **M** · 범위 3파일(`ci.yml`·`.nvmrc`·`channel/package.json`)+`.moai/` 증거 · 도메인 1(CI YAML 저작+원격 관측) · 파일 언어 YAML/JSON/Markdown · 병렬 이득 **낮음**(마일스톤이 강한 순서 — M3 은 M2 의 커밋을, M4 는 M3 의 push 를 전제).
+- 진입 게이트 확인(직접 실행): AC-CI-009 → `CLOSED 3`(원문 `.moai/state/verify/t27-run/ac009-entry-gate.log`) · baseline build+test exit 0 · 283 통과(`baseline-build.log`·`baseline-test.log`). plan 레인의 독립 재실행 판독과 일치.
+- 평가: `direct` — 결정이 닫힌 지금 남은 것은 지정된 명령열의 이행이라 단순하지만, Tier M 위임 템플릿 요건과 커밋 저작이 있어 스폰이 맞다. `fanout` — 쓰기 충돌이 같은 나무 3파일 위에서 나므로 배제. `sweep` — 파일 3개로 임계 미달, 배제. `agent-team` — 요청 없음, 배제.
+- Decision: serial — 마일스톤당 순차 스폰(M2 → M3 → M4 → M5), 각 마일스톤의 증거를 레인이 판독한 뒤 다음을 스폰한다.
+- Justification: 마일스톤 사이에 강한 데이터 의존(커밋→push→파괴/revert→기록)이 있어 Anthropic coding-task 병렬화 경고가 그대로 적용된다. 순차 단일 스폰이 유일하게 안전한 형태다.
