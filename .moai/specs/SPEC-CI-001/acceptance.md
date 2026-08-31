@@ -4,7 +4,7 @@
 >
 > 이 카드가 특히 경계하는 두 형태:
 > - **「검증하지 않는 수용 기준」** — 기준이 이름 붙인 동작을 통째로 지워도 초록으로 남는 기준.
-> - **「초록이면 통과」** — CI 기준을 «워크플로가 성공했다» 로 적으면 **아무것도 실행하지 않는 워크플로**가 그 기준을 만족시킨다. 그래서 §D 의 변별 기준(AC-CI-004·005)이 이 집합의 무게 중심이다.
+> - **「초록이면 통과」** — CI 기준을 «워크플로가 성공했다» 로 적으면 **아무것도 실행하지 않는 워크플로**가 그 기준을 만족시킨다. 그래서 §C 의 변별 기준(AC-CI-006·007)이 이 집합의 무게 중심이다.
 
 용어: 워크플로 파일 경로는 **`.github/workflows/ci.yml` 로 고정**돼 있다(`plan.md` §E — 미결 결정이 아니라 고정 기본값). v0.2.0 의 `<WF>` 대리 표기는 폐기했다 — 「기본 후보」라 적어 놓고 기준들이 리터럴을 하드코딩해 파일명이 사실상 네 번째 미결 결정이 돼 있었다(감사 O2). 저장소는 `bjw202/minidiscord` 다.
 
@@ -45,6 +45,7 @@ PY
 - **반증 가능성**: 파일을 지우면 `FileNotFoundError`, 트리거 하나를 빼면 `AssertionError`, **어느 트리거든 `paths`/`branches` 필터를 달면 `AssertionError`**. 셋 다 종료 코드 0 이 아니다.
 - **[HARD] 이 기준은 선언만 잰다.** 실제로 실행되는지는 AC-CI-005(push)와 **AC-CI-010(pull_request)** 의 원격 관측이 잰다. 필터 단언은 그 사이의 가장 흔한 무력화 형태를 막을 뿐이며, **원격 관측을 대체하지 않는다.**
 
+<!-- [OD-DEP:1] OD-1 (b) 는 단계를 하나 더한다 / [OD-DEP:3] OD-3 (b) 는 세 단계를 두 단계로 줄인다 -->
 ### AC-CI-002 — 세 명령이 선언된 순서로 존재한다
 
 - **Given** 워크플로 파일이 AC-CI-001 을 통과했고,
@@ -97,8 +98,9 @@ PY
 
 - 검증 대상 요구사항: REQ-CI-006.
 - **반증 가능성**: 어느 단계에든 `continue-on-error: true` 를 넣으면 `hits` 가 비지 않아 실패한다.
-- **한계 공시**: 이 기준은 **열거한 형태**만 잡는다. 열거되지 않은 새 억제 수단은 잡지 못하며, 실제 붉어짐의 관측은 AC-CI-004 가 담당한다.
+- **한계 공시**: 이 기준은 **열거한 형태**만 잡는다. 열거되지 않은 새 억제 수단은 잡지 못하며, 실제 붉어짐의 관측은 §C 의 AC-CI-006·007 이 담당한다.
 
+<!-- [OD-DEP:2] OD-2 는 node-version / node-version-file 중 어느 형태가 서는지 정한다 -->
 ### AC-CI-004 — 실행 환경·권한·동시성·시간 제한이 명시적으로 고정돼 있다
 
 - **Given** 워크플로 파일이 존재하고,
@@ -110,23 +112,25 @@ python3 - <<'PY'
 import yaml
 d = yaml.safe_load(open('.github/workflows/ci.yml'))
 job = next(iter(d['jobs'].values()))
-assert job['runs-on'] == 'ubuntu-latest', job['runs-on']
-assert isinstance(job.get('timeout-minutes'), int), job.get('timeout-minutes')
+# 단언마다 어느 요구를 지키는지 메시지에 적는다 (감사 R2-9). 이 기준 하나가 요구 다섯을
+# 겨누므로, 붉어졌을 때 어느 요구가 깨졌는지가 단언 메시지에서 바로 읽혀야 한다.
+assert job['runs-on'] == 'ubuntu-latest', ('REQ-CI-008 러너', job['runs-on'])
+assert isinstance(job.get('timeout-minutes'), int), ('REQ-CI-012 시간 제한', job.get('timeout-minutes'))
 perms = d.get('permissions') or job.get('permissions')
-assert perms == {'contents': 'read'}, perms
+assert perms == {'contents': 'read'}, ('REQ-CI-010 최소 권한', perms)
 conc = d.get('concurrency') or job.get('concurrency')
-assert conc and conc.get('cancel-in-progress') is True, conc
+assert conc and conc.get('cancel-in-progress') is True, ('REQ-CI-011 동시성', conc)
 setup = [s for s in job['steps'] if 'setup-node' in str(s.get('uses', ''))]
-assert len(setup) == 1, setup
+assert len(setup) == 1, ('REQ-CI-008 setup-node 단일', setup)
 w = setup[0]['with']
-assert w.get('cache') == 'npm', w
+assert w.get('cache') == 'npm', ('REQ-CI-009 npm 캐시', w)
 
 # Node 버전 고정 — OD-2 의 두 형태를 모두 수용한다 (감사 D6).
 #   (a) 워크플로에만 고정  → node-version: '24'
 #   (b) .nvmrc 단일 출처   → node-version-file: .nvmrc  (node-version 키가 아예 없다)
 # v0.2.0 은 (a) 만 가정해 str(None).startswith('24') 로 깨졌다.
 nv, nvf = w.get('node-version'), w.get('node-version-file')
-assert (nv is None) != (nvf is None), ('정확히 한 형태만 쓸 것', w)
+assert (nv is None) != (nvf is None), ('REQ-CI-008 하나의 출처 — 정확히 한 형태만', w)
 if nv is not None:
     assert str(nv).startswith('24'), w
     print('node pin: node-version =', nv)
@@ -142,6 +146,7 @@ PY
 
 - 검증 대상 요구사항: REQ-CI-008 · REQ-CI-009 · REQ-CI-010 · REQ-CI-011 · REQ-CI-012.
 - **[HARD] 두 형태를 모두 수용하되 배타적으로 단언한다** (감사 D6). OD-2 (b) 는 값을 바꾸는 것이 아니라 **`node-version` 키를 없앤다** — v0.2.0 의 공시 두 자리는 「값이 바뀔 수 있다」만 말했고 키 제거를 예고하지 못했다. `!=` 배타 단언은 두 키를 동시에 쓰는 모호한 형태도 함께 막는다.
+- **[HARD] 이 기준 하나가 요구 다섯을 겨눈다 — 기준을 쪼개는 대신 단언 메시지에 요구 이름을 넣었다** (감사 R2-9). O5 가 REQ-CI-010 을 셋으로 쪼갠 이유는 「요구 하나가 위반 하나를 가리키도록」인데, 기준이 쪼개지지 않으면 그 목적이 기준 층에서 절반만 달성된다. **기준을 다섯으로 쪼개지 않은 이유**: 다섯 기준이 전부 같은 파일의 같은 파싱을 반복하게 되고, AC 가 11 → 15 로 늘어 Tier 예산과 감사관의 인지 부담을 함께 밀어 올린다(`plan.md` §0.2.1 이 셈한 것과 같은 대가). 대신 **각 단언 메시지가 자기 요구 이름을 담게** 해서, 붉어졌을 때 `AssertionError: ('REQ-CI-011 동시성', …)` 처럼 어느 요구가 깨졌는지 출력에서 바로 읽힌다. **완전한 1:1 은 아니며 그 차이를 여기 적는다.**
 - **남은 결합**: 메이저 버전 `24` 자체는 여전히 이 기준에 리터럴로 박혀 있다. 리드가 다른 메이저를 고르면 **이 자리 두 곳**(`startswith('24')` ×2)을 함께 고친다 — `plan.md` §D-2 파급표 OD-2 행이 그 의무를 진다.
 
 ---
@@ -234,7 +239,14 @@ describe('scratch', () => {
 })
 EOF
 git add server/test/zz-scratch-fail.test.ts          # 경로 명시. -a 금지
-git commit -m "scratch: CI 변별 — 의도적 실패 (병합 금지)"
+
+# 이 저장소의 pre-commit 훅은 `moai gate` 로 JS 스위트를 돌린다. 방금 만든 실패가
+# 게이트를 붉게 만들어 커밋이 거부되므로, 이 한 커밋에서만 공식 우회를 쓴다.
+# [HARD] 우회 사실과 이유를 커밋 메시지 본문에 반드시 적는다 — 조용한 우회는 금지.
+SKIP_MOAI_PRECOMMIT=1 git commit -m "scratch: CI 변별 — 의도적 실패 (병합 금지)" -m \
+"pre-commit 게이트 우회(SKIP_MOAI_PRECOMMIT=1): 이 커밋의 실패는 결함이 아니라
+AC-CI-006 의 측정 대상 자체다. 게이트를 통과시키면 잴 것이 사라진다.
+이 커밋은 병합되지 않으며 같은 절차의 3) 에서 git revert 로 되돌린다."
 git push origin WT-ci-test-wiring
 BAD=$(git rev-parse HEAD); echo "BAD=$BAD" | tee .moai/state/verify/t27-run/ac006-sha.txt
 
@@ -261,11 +273,24 @@ git commit -m "docs(SPEC-CI-001): M4 AC-CI-006 변별 증거 (card t27)"
 ```
 
 - 검증 대상 요구사항: REQ-CI-006 · REQ-CI-007.
+- **[HARD] 이 절차에서만 pre-commit 게이트를 우회하며, 그 정당성을 여기와 커밋 메시지 두 곳에 공시한다** (감사 R2-1). 이 저장소의 `pre-commit` 훅(`$(git rev-parse --git-common-dir)/hooks/pre-commit`)은 마지막 단계에서 `moai gate` 를 돌리고, 그 게이트가 JS 스위트를 실행한다. **의도적으로 실패하는 테스트를 담은 커밋은 게이트에 막힌다.**
+  - **측정으로 확인했다** — 감사관은 이 고리를 가설로 표시했으나, 이 개정에서 직접 쟀다. 같은 나무에서 실패 테스트 하나를 두고 `moai gate` 를 돌린 출력:
+    ```
+    quality gate failed: npm test
+     FAIL  test/zz-gate-probe.test.ts > gate-probe > probe: 의도적 실패
+    AssertionError: expected 1 to be 2
+    exit=1
+    ```
+    같은 명령이 실패 테스트 없는 나무에서는 `exit=0`. 원문: `.moai/state/verify/t27-plan/moai-gate-probe.log` · `moai-gate.log`. 탐침 파일은 측정 직후 삭제했다.
+  - **왜 여기서만 우회가 옳은가**: 이 커밋의 **붉음이 측정 대상 그 자체**다. 게이트를 통과시키려면 실패를 없애야 하고, 그러면 잴 것이 사라진다. 그리고 이 커밋은 병합되지 않고 같은 절차 안에서 되돌려진다.
+  - **조용한 우회는 금지**. 카드 `t22` 가 같은 상황에서 공식 우회 + 커밋 공시를 함께 했고, 이 기준은 그 형식을 따른다. 우회를 명령열에만 넣고 이유를 적지 않으면 그것이 다음 회차의 결함이 된다.
+  - **AC-CI-007 은 우회하지 않는다** — 그 파괴 커밋은 `ci.yml` 만 담아 로컬 스위트가 초록이고 게이트를 통과한다(깨끗한 나무에서 `moai gate` → `exit=0` 로 실측). 두 기준을 같은 형식으로 맞추려고 불필요한 우회를 넣지 않는다.
 - **무엇이 변이되는가**: 새 테스트 파일 하나(`server/test/zz-scratch-fail.test.ts`)의 추가. 기존 코드·기존 테스트는 건드리지 않는다.
 - **기대**: `failure` → 되돌림 → `success`.
 - **병합 금지**: 파괴 커밋과 그 revert 는 이 브랜치 안에서만 살고, 리드의 통합 대상은 **되돌림 이후의 head** 다.
 - **이 기준이 없으면 무엇이 무너지는가**: `npm test` 단계를 통째로 지운 워크플로도 AC-CI-005 를 통과한다. 이 기준만이 그것을 배제한다.
 
+<!-- [OD-DEP:3] OD-3 (b) 는 이 기준의 변이 대상을 pretest 로 옮긴다 -->
 ### AC-CI-007 — 빌드 단계를 빼면 채널 6건이 실패한다 (순서 요구의 변별)
 
 - **Given** AC-CI-006 이 통과했고,
@@ -276,18 +301,43 @@ git commit -m "docs(SPEC-CI-001): M4 AC-CI-006 변별 증거 (card t27)"
 # 1) 파괴: 워크플로에서 빌드 단계를 제거한다. 편집을 명령으로 표현한다 —
 #    PyYAML 로 읽어 해당 step 을 지우면 들여쓰기 실수 없이 재현 가능하다.
 python3 - <<'PY'
-import re, pathlib
+import re, pathlib, yaml
 p = pathlib.Path('.github/workflows/ci.yml')
+
+def steps_of(text):
+    d = yaml.safe_load(text)
+    return list(next(iter(d['jobs'].values()))['steps'])
+
+before = steps_of(p.read_text())
 lines = p.read_text().splitlines(keepends=True)
-# 'npm run build -w channel' 을 담은 step 블록(그 앞의 '- name:' 부터 다음 '- name:' 전까지)을 지운다.
+
+# 빌드 step 블록만 지운다. 경계 정규식은 GitHub Actions 의 세 step 시작 형태를 전부 안다 —
+# name / run / uses. (감사 R2-2: 'uses' 가 빠져 있으면 setup-node 같은 이름 없는 uses 단계를
+# 건너뛰고 그 다음 단계까지 함께 지운다.)
+STEP = r'\s*- (name|run|uses):'
 hit = next(i for i, l in enumerate(lines) if 'npm run build -w channel' in l)
-start = max(i for i in range(hit + 1) if re.match(r'\s*- (name|run):', lines[i]))
+start = max(i for i in range(hit + 1) if re.match(STEP, lines[i]))
 indent = len(lines[start]) - len(lines[start].lstrip())
 end = next((i for i in range(start + 1, len(lines))
-            if re.match(r'\s*- (name|run):', lines[i])
+            if re.match(STEP, lines[i])
             and len(lines[i]) - len(lines[i].lstrip()) == indent), len(lines))
 p.write_text(''.join(lines[:start] + lines[end:]))
-print('removed lines', start, '..', end)
+
+# [HARD] 삭제 폭을 단언한다. grep 하나로는 「빌드 단계가 사라졌다」만 알 뿐
+# 「그것만 사라졌다」를 알 수 없다 — 과삭제가 일어나면 관측된 failure 의 원인이
+# 빌드 순서인지 함께 지워진 단계인지 갈리지 않는다(「굵은 변이는 절반을 가린다」).
+after = steps_of(p.read_text())
+print('steps:', len(before), '->', len(after), '| removed lines', start, '..', end)
+assert len(before) - len(after) == 1, ('정확히 한 단계만 지워져야 한다', len(before), len(after))
+
+def key(s): return s.get('name') or s.get('run') or s.get('uses')
+removed = [key(s) for s in before if key(s) not in [key(x) for x in after]]
+assert len(removed) == 1 and 'build' in str(removed[0]), ('지워진 것이 빌드 단계여야 한다', removed)
+survivors = [key(s) for s in after]
+assert any('setup-node' in str(k) for k in survivors), ('setup-node 가 살아남아야 한다', survivors)
+print('removed exactly:', removed[0])
+print('survivors:', survivors)
+print('MUTATION EXACT')
 PY
 grep -c 'npm run build -w channel' .github/workflows/ci.yml   # → 0 (제거 확인)
 
@@ -305,11 +355,24 @@ gh run view "$RUN_ID" --repo bjw202/minidiscord --log \
   | grep -E "Tests +6 failed|gateway-mutual-auth|index-wiring|transport-auth" \
   | tee -a .moai/state/verify/t27-run/ac007-bad.txt
 
-# 3) 되돌림 + 원상 확인 + 증거 커밋: AC-CI-006 의 3)~5) 와 같은 형태
-#    (`git revert --no-edit "$BAD"` → push → success 재관측 → 되돌림 뒤 별도 증거 커밋).
+# 3) 되돌림 (AC-CI-006 의 3) 과 같은 형태이나, 산문 참조가 아니라 명령으로 적는다 — 감사 R2-8).
+#    이 커밋은 게이트를 통과하므로 SKIP 이 필요 없다.
+git revert --no-edit "$BAD"
+git push origin WT-ci-test-wiring
+GOOD=$(git rev-parse HEAD); echo "GOOD=$GOOD" | tee -a .moai/state/verify/t27-run/ac007-sha.txt
+
+# 4) 원상 확인.
+gh run list --repo bjw202/minidiscord --commit "$GOOD" --workflow ci.yml \
+  --json conclusion,status --jq '.[0] | select(.status=="completed") | .conclusion' \
+  | tee -a .moai/state/verify/t27-run/ac007-good.txt     # → success
+
+# 5) 증거 기록은 되돌림 뒤 별도 커밋.
+git add .moai/specs/SPEC-CI-001/progress.md .moai/state/verify/t27-run/
+git commit -m "docs(SPEC-CI-001): M4 AC-CI-007 변별 증거 (card t27)"
 ```
 
 - 검증 대상 요구사항: REQ-CI-005.
+- **[HARD] 변이가 굵어지지 않음을 단언으로 잰다** (감사 R2-2). 이전 형태는 경계 정규식이 `- (name|run):` 둘만 알아서, 빌드 단계 **바로 다음**이 이름 없는 `- uses:` 단계(`actions/setup-node` 가 반드시 그렇다)이면 그것을 건너뛰고 **그 다음 단계까지 지웠다.** 유일한 확인이던 `grep -c … → 0` 은 「빌드 단계가 사라졌다」만 재고 **「그것만 사라졌다」는 재지 못한다.** 과삭제가 일어나면 관측된 `failure` 의 원인이 빌드 순서인지 함께 지워진 단계인지 **갈리지 않는다** — `plan.md` §G 가 스스로 이름 붙인 「굵은 변이는 절반을 가린다」이며, 같은 행이 「빌드 단계 하나만 변이」라고 **주장만** 하고 있었다. 이제 세 단언이 그 주장을 진짜로 잰다: ① 단계 수 차이가 정확히 1, ② 지워진 것이 빌드 단계, ③ `setup-node` 가 살아남음.
 - **로컬 절반은 이미 측정됐다**: 빌드 없이 돌린 로컬 실행이 `Tests 6 failed | 89 passed (95)`, exit 1 을 냈다(`.moai/state/verify/t27-plan/test-no-build.log`, `spec.md` §2.2). 이 기준은 그 **원격 절반**을 채운다.
 - **[HARD] 두 절반은 서로를 대체하지 않는다.** 로컬 실측만으로는 «CI 도 그럴 것» 이 추정이고, 원격 관측만으로는 실패 원인이 빌드 순서임이 확정되지 않는다.
 
@@ -342,38 +405,94 @@ git status --porcelain
 ```bash
 python3 - <<'PY'
 import re
-lines = open('.moai/specs/SPEC-CI-001/plan.md').read().splitlines()
+raw = open('.moai/specs/SPEC-CI-001/plan.md').read().splitlines()
 
-# 판정 자리는 각 '### OD-N' 헤딩부터 다음 헤딩(어떤 수준이든 '#' 로 시작) 직전까지다.
+# 코드펜스 안의 줄은 문서가 아니라 '예시'다. 판정에서 제외한다 (감사 R2-5·R2-7):
+#   - R2-5: 펜스 안의 `결정됨: (b) …` 가 진짜 줄 행세를 해 CLOSED 1 이 나왔다.
+#   - R2-7: 펜스 안의 `#` 로 시작하는 셸 주석이 절 종결자로 오인돼 절이 잘렸다.
+# fenced[i] 가 True 면 그 줄은 펜스 내부다.
+fenced, inside = [], False
+for l in raw:
+    if l.lstrip().startswith('```'):
+        fenced.append(True); inside = not inside; continue
+    fenced.append(inside)
+
+def is_doc(i):            # 문서 본문 줄인가 (펜스 밖인가)
+    return not fenced[i]
+
+# 판정 자리는 각 '### OD-N' 헤딩부터 다음 헤딩(펜스 밖에서 '#' 로 시작) 직전까지다.
 # 범위를 '## D.'~'## E.' 로 잡으면 그 사이의 다른 하위절까지 삼킨다 — 감사 D1 이 그 경로로
 # 미끼 3줄을 심어 OD 셋이 전부 (대기) 인 채로 기준을 통과시켰다.
-starts = [i for i, l in enumerate(lines) if re.match(r'^### OD-\d', l)]
+starts = [i for i, l in enumerate(raw) if is_doc(i) and re.match(r'^### OD-\d', l)]
 assert len(starts) == 3, ('OD 절이 정확히 셋이어야 한다', starts)
 
+MIN_BASIS = 10            # (a)/(b)/(c) 뒤 근거의 최소 길이. 한 글자 대시는 근거가 아니다.
 closed = 0
 for s in starts:
-    e = next((j for j in range(s + 1, len(lines)) if lines[j].startswith('#')), len(lines))
-    hits = [l for l in lines[s:e] if l.startswith('결정됨:')]
-    assert len(hits) == 1, ('각 OD 절에 결정됨: 은 정확히 1줄', lines[s], hits)
+    e = next((j for j in range(s + 1, len(raw)) if is_doc(j) and raw[j].startswith('#')), len(raw))
+    hits = [raw[j] for j in range(s, e) if is_doc(j) and raw[j].startswith('결정됨:')]
+    assert len(hits) == 1, ('각 OD 절에 결정됨: 은 정확히 1줄', raw[s], hits)
     v = hits[0][len('결정됨:'):].strip()
-    print(lines[s][:40].strip(), '->', v)
-    if re.match(r'^\((a|b|c)\)\s*\S', v):
+    print(raw[s][:40].strip(), '->', v)
+    m = re.match(r'^\((a|b|c)\)\s*(\S.*)$', v)
+    if m and len(m.group(2).strip()) >= MIN_BASIS:
         closed += 1
 print('CLOSED', closed)
 PY
 ```
 
 - 검증 대상: `spec.md` §4 · `plan.md` §D · §D-2 파급표.
-- **[HARD] 이 기준에는 대응 `REQ-CI-*` 가 없다 — 의도된 것이며 여기 공시한다** (감사 O11). AC-CI-001~008·010 은 전부 요구를 겨누지만 이것은 **절차 기준**이다: 「결정이 닫혔는가」는 CI 워크플로의 성질이 아니라 이 SPEC 의 진행 조건이므로 요구 집합에 대응물이 없다. DoD 1 이 열 건을 동등하게 다루므로, 성질이 다른 한 건이 섞여 있다는 사실을 적어 둔다.
+- **[HARD] 이 기준에는 대응 `REQ-CI-*` 가 없다 — 의도된 것이며 여기 공시한다** (감사 O11). AC-CI-001~008·010 은 전부 요구를 겨누지만 이것과 AC-CI-011 은 **절차 기준**이다: 「결정이 닫혔는가」는 CI 워크플로의 성질이 아니라 이 SPEC 의 진행 조건이므로 요구 집합에 대응물이 없다. DoD 1 이 열한 건을 동등하게 다루므로, 성질이 다른 **두 건**(AC-CI-009·011)이 섞여 있다는 사실을 적어 둔다.
 - **[HARD] 왜 이 형태인가 — v0.2.0 의 이 기준은 아무 결정도 닫지 않고 통과했다** (감사 D1, 기계적으로 입증됨). 이전 형태는 `sed '/^## D\./,/^## E\./p'` 로 범위를 잡았는데 그 범위가 `#### 형제 카드 제약` 하위절까지 삼켰다. 감사관이 그 하위절에 OD 와 무관한 `결정됨:` 3줄을 심자 **OD 셋이 전부 `(대기)` 인 채로 기준이 `3` 을 냈다.** 「위 세 줄이 유일한 판정 자리다」라는 `plan.md` 의 산문은 **아무 명령도 강제하지 않는 의도 선언**이었다 — 이 프로젝트가 반복 기록한 「검증하지 않는 수용 기준」 부류다.
 - **새 형태가 그것을 막는 세 가지**:
   1. **범위가 아니라 헤딩에 앵커한다.** 각 `### OD-N` 부터 다음 `#` 헤딩 직전까지만 본다 — 다른 절의 `결정됨:` 문자열은 어떤 절에도 속하지 않아 세지 않는다.
   2. **절당 정확히 1줄을 단언한다.** OD 절 **안에** 미끼를 심어도 `len(hits) == 1` 이 깨진다.
-  3. **값의 형태를 단언한다.** `(a)`/`(b)`/`(c)` 뒤에 실제 근거 문자가 있어야 센다 — `결정됨:` 뒤를 비우거나 `(대기)` 를 지우기만 하는 우회가 막힌다(v0.2.0 은 이 구멍을 공시만 하고 닫지 않아 사람 눈에 의존했다).
+  3. **값의 형태와 근거의 길이를 단언한다.** `(a)`/`(b)`/`(c)` 뒤에 **10자 이상의 근거**가 있어야 센다 — `결정됨:` 뒤를 비우거나 `(대기)` 를 지우기만 하는 우회가 막힌다(v0.2.0 은 이 구멍을 공시만 하고 닫지 않아 사람 눈에 의존했다).
+  4. **코드펜스 안의 줄을 판정에서 제외한다** (감사 R2-5·R2-7). v0.3.0 의 파서는 펜스를 몰라 두 방향으로 틀렸다 — 펜스 안의 `결정됨: (b) …` 를 진짜 줄로 세어 **`CLOSED 1` 오탐**을 냈고(R2-5), 펜스 안의 `#` 셸 주석을 절 종결자로 오인해 **정당한 편집이 판정 장치를 깨뜨렸다**(R2-7). 토글 한 줄이 두 구멍을 함께 닫는다.
+- **[HARD] 「10자」는 자의적 하한이며 근거의 *질*을 재지 않는다** (감사 R2-6 의 정직한 한계). v0.3.0 본문은 「실제 근거 문자」라고 적었으나 명령이 요구한 것은 **비공백 한 자**여서 `결정됨: (a) —` 로 `CLOSED 3` 이 나왔다 — 산문이 명령보다 넓은, 이 SPEC 이 반복해 온 부류였다. 길이 하한은 그 간극을 좁힐 뿐 없애지 못한다: 10자짜리 무의미한 문자열은 여전히 통과한다. **근거가 실제로 근거인지는 리드가 읽어 판단하며, 이 기준은 그 판단을 대신하지 않는다** — 그 사실을 숨기지 않고 여기 적는다.
 - **반증 가능성**: 전부 미결이면 `CLOSED 0`, 둘만 닫으면 `CLOSED 2`. OD 절이 늘거나 줄면 첫 `assert` 가 깨진다.
-- **[HARD] 이 기준만 닫아서는 부족하다.** 결정을 닫는 커밋은 `plan.md` §D-2 **결정 파급표에서 그 행의 모든 열**(요구·수용 기준·§5 배제·DoD)을 함께 고쳐야 한다. 특히 OD-3 (b) 는 REQ-CI-004·005 를 거짓으로 만들고, OD-1 (b) 는 DoD 1 의 기준 개수를 바꾼다.
+- **[HARD] 이 기준만 닫아서는 부족하다.** 결정을 닫는 커밋은 `plan.md` §D-2 **결정 파급표에서 그 행이 지목하는 모든 자리**(요구·수용 기준·§5 배제·DoD·그 밖의 자리)를 함께 고쳐야 한다. 특히 OD-3 (b) 는 REQ-CI-004·005 를 거짓으로 만들고, OD-1 (b) 는 DoD 1 의 기준 개수를 바꾼다.
 - **의미**: OD-1·OD-2 는 이 SPEC 이 스스로 정하지 않는다. 리드가 결정하면 `plan.md` §D 의 각 항목에 `결정됨: <값> — <근거>` 를 적고, 그 결정이 워크플로 내용을 바꾸면 AC-CI-002·AC-CI-004 를 함께 고친다.
 - **[HARD]** 미결인 채 run 으로 넘어가면, 구현이 결정을 대신 내리게 된다.
+
+---
+
+### AC-CI-011 — 결정 파급표의 완전성이 기계로 확인된다
+
+- **Given** `plan.md` §D-2.1 이 결정별 종속 자리 수를 선언하고, 각 종속 자리에 `[OD-DEP:N]` 마커가 심겨 있고,
+- **When** 아래 명령을 실행하면,
+- **Then** 출력의 마지막 줄이 `FALLOUT TABLE COMPLETE` 다.
+
+```bash
+python3 - <<'PY'
+import re, pathlib
+base = pathlib.Path('.moai/specs/SPEC-CI-001')
+
+# 출처 ①: plan.md §D-2.1 의 선언
+decl_src = (base / 'plan.md').read_text()
+m = re.search(r'<!--\s*OD-DEP-EXPECT:\s*(.*?)-->', decl_src)
+assert m, 'OD-DEP-EXPECT 선언이 없다'
+declared = {int(k): int(v) for k, v in re.findall(r'OD-(\d)=(\d+)', m.group(1))}
+
+# 출처 ②: 세 문서에 실제로 심긴 마커 (선언과 독립인 두 번째 출처)
+actual = {}
+for fn in ('spec.md', 'plan.md', 'acceptance.md'):
+    for n in re.findall(r'\[OD-DEP:(\d)\]', (base / fn).read_text()):
+        actual[int(n)] = actual.get(int(n), 0) + 1
+
+print('declared:', dict(sorted(declared.items())))
+print('actual  :', dict(sorted(actual.items())))
+assert declared == actual, ('선언과 마커가 어긋난다', declared, actual)
+assert set(declared) == {1, 2, 3}, ('OD 는 셋이어야 한다', sorted(declared))
+print('FALLOUT TABLE COMPLETE')
+PY
+```
+
+- 검증 대상: `plan.md` §D-2 결정 파급표 · §D-2.1 선언.
+- **[HARD] 왜 이 기준이 있는가** (감사 R2-4). v0.3.0 의 파급표는 세 자리를 빠뜨렸고 **그중 둘은 이미 거짓이었는데 아무 명령도 잡지 못했다.** 표 자신이 `plan.md` 에서 「한 층만 고치면 나머지가 조용히 거짓이 되고, 그 거짓은 아무 명령도 잡지 못한다」고 경고하는 바로 그 상태에 표 자신이 빠져 있었다 — **완전성이 주장인 표는 자기가 경고하는 결함의 한 겹 위 사례다.**
+- **두 출처가 독립이어야 대조가 성립한다.** 마커는 종속 자리 **자신**에, 선언은 `plan.md` 의 **다른 절**에 있다. 한쪽만 고치면 어긋남이 드러난다.
+- **반증 가능성**: 마커 하나를 지우면 `actual` 이 줄어 `AssertionError`. 선언만 늘려도 마찬가지. 새 종속 자리에 마커를 심고 선언을 안 고쳐도 마찬가지.
+- **한계 공시**: 마커도 선언도 없는 **완전히 누락된** 종속은 이 기준이 잡지 못한다(`plan.md` §D-2.1 에 같은 공시). 이 기준은 **기록과 문서의 불일치**를 잡는 장치이지 미지의 종속을 발견하는 장치가 아니다.
 
 ---
 
@@ -381,10 +500,12 @@ PY
 
 아래를 **전부** 만족할 때만 이 SPEC 은 run 단계를 종료한다.
 
-1. AC-CI-001 ~ AC-CI-010 **열 건**이 전부 통과하고, 각 기준의 명령 출력이 `progress.md` §E.2 에 **원문으로** 기록됐다.
-   - **[HARD] 이 개수는 OD-1 에 종속된다** (감사 D6 후단). OD-1 이 (b)(typecheck 편입)로 결정되면 AC 가 1건 늘어 **열한 건**이 된다. v0.2.0 은 이 연동을 어느 문서에도 적지 않았다. `plan.md` §D-2 파급표 OD-1 행이 그 의무를 진다. 반면 **AC-CI-009 의 기대값 `CLOSED 3` 은 어떤 결정에서도 변하지 않는다** — 결정의 *수*는 늘지 않기 때문이다. 두 수가 서로 다른 것에 매여 있음을 여기 적는다.
+<!-- [OD-DEP:1] OD-1 (b) 는 이 개수를 열한 건으로 바꾼다 -->
+1. AC-CI-001 ~ AC-CI-011 **열한 건**이 전부 통과하고, 각 기준의 명령 출력이 `progress.md` §E.2 에 **원문으로** 기록됐다.
+   - **[HARD] 이 개수는 OD-1 에 종속된다** (감사 D6 후단). OD-1 이 (b)(typecheck 편입)로 결정되면 AC 가 1건 늘어 **열두 건**이 된다. v0.2.0 은 이 연동을 어느 문서에도 적지 않았다. `plan.md` §D-2 파급표 OD-1 행이 그 의무를 진다. 반면 **AC-CI-009 의 기대값 `CLOSED 3` 은 어떤 결정에서도 변하지 않는다** — 결정의 *수*는 늘지 않기 때문이다. 두 수가 서로 다른 것에 매여 있음을 여기 적는다.
 2. AC-CI-006 · AC-CI-007 의 파괴 커밋이 **되돌려졌고**, 되돌림 이후 head 에서 결론 `success` 가 다시 관측됐다. **증거 기록 커밋이 되돌림 뒤에 있다**(파괴 커밋에 실리지 않았다) — `git log --oneline` 으로 순서를 확인한다.
 3. AC-CI-010 의 draft PR 이 **닫혔고 병합되지 않았다** (`gh pr view <PR> --json state,merged`).
+<!-- [OD-DEP:2] .nvmrc 가 더해진다 / [OD-DEP:3] channel/package.json 이 더해진다 -->
 4. 변경된 파일이 결정된 범위와 정확히 일치한다 — `git diff --stat main...HEAD` 가 `.github/workflows/` 아래 한 파일 + `.moai/` 문서·증거만 보인다. 여기에 더해질 수 있는 파일은 **결정에 의해서만** 늘어난다: OD-2 가 (b) 면 `.nvmrc`, **OD-3 이 (b)/(c) 면 `channel/package.json`**. 결정되지 않은 파일이 보이면 범위 이탈이다.
 5. `spec.md` §2.6 의 흔들림에 대해 **어떤 재시도 장치도 추가되지 않았음**이 AC-CI-003 으로 확인됐다.
 6. **AC-CI-009 가 `CLOSED 3` 을 낸다** — 세 리드 결정이 전부 닫혔고, `plan.md` §D-2 파급표에서 각 결정 행의 네 열이 함께 반영됐다.
