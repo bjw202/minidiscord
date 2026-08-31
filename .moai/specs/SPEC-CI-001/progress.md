@@ -219,6 +219,53 @@ success
 
 기대(`failure` → 되돌림 → `success`) 성립. 파괴 커밋과 그 revert 는 이 브랜치에만 살고 병합 대상은 revert 이후 head 다. 이 증거 기록 커밋은 되돌림 **뒤에** 별도 커밋으로 착지한다(DoD 2). 이 섹션의 나머지 기준 원문 기록은 후속 마일스톤(M4 의 AC-CI-007, M5 의 잔여 기준)이 채운다.
 
+### AC-CI-007 — `pretest` 를 빼면 채널 6건이 실패한다 (변별 · M4, 2026-08-31)
+
+`acceptance.md` §C AC-CI-007 명령열을 그대로 이행했다. 시작 head `e321368`(AC-CI-006 증거 커밋).
+
+**1) 파괴 (변이 폭 단언 원문)** — `channel/package.json` 에서 `pretest` 키 하나만 제거하는 python 변이. 출력 원문(`.moai/state/verify/t27-run/ac007-mutation.txt`):
+```
+scripts: 5 -> 4
+removed exactly: pretest = tsc
+survivors: ['build', 'dev', 'test', 'typecheck']
+MUTATION EXACT
+```
+세 단언(①키 수 차이 정확히 1 ②지워진 것이 pretest ③`scripts.test` 글자 그대로 보존) 전부 통과. `! grep -q '"pretest"' channel/package.json` 통과.
+
+**게이트 경로 관측 ([HARD] 예단 금지)** — 우회 없이 커밋을 먼저 시도했다. 결과 원문(`.moai/state/verify/t27-run/ac007-gate.txt`):
+```
+gate=passed (우회 없음)
+```
+커밋 `cd7e983` — 1 file changed, 1 deletion(-). **우회를 쓰지 않았다** — 이 나무에 `channel/dist` 가 남아 있어(M2 가 만든 것) 로컬 `npm test` 가 붉지 않았기 때문이다. acceptance.md 가 예고한 두 경로 중 통과 쪽이 실측됐다.
+
+**2) 관측 (BAD)** — push(`e321368..cd7e983`) 후 `gh run list --commit cd7e9833466615f59080da8721a2fd8e473c80b9 --workflow ci.yml` → run id `33395356613` (event push), 결론:
+```
+failure
+```
+`gh run view 33395356613 --log` 의 실패 요약 원문(`.moai/state/verify/t27-run/ac007-bad.txt`):
+```
+❯ test/transport-auth.test.ts (30 tests | 3 failed) 73233ms
+❯ test/index-wiring.test.ts (14 tests | 2 failed) 3752ms
+❯ test/gateway-mutual-auth.test.ts (5 tests | 1 failed) 5769ms
+Tests  6 failed | 89 passed (95)
+```
+채널 워크스페이스 실패 **6건**(3+2+1)과 세 파일 이름(`gateway-mutual-auth` · `index-wiring` · `transport-auth`)이 모두 보인다. 공정 비고: 본문 명령의 grep 패턴 `Tests +6 failed` 는 요약 줄의 ANSI 색상 코드(`Tests [22m [1m[31m6 failed`) 사이에서 적중하지 못했다 — 요약 줄은 같은 로그에서 별도 추출로 보완해 위에 원문으로 옮겼다(기준의 실질인 «6건 + 세 파일 이름»은 두 근거로 성립).
+
+**3) 되돌림** — `git revert --no-edit cd7e9833466615f59080da8721a2fd8e473c80b9` → push(`cd7e983..e296163`). 원문:
+```
+[WT-ci-test-wiring e296163] Revert "scratch: CI 변별 — channel pretest 제거 (병합 금지)"
+ 1 file changed, 1 insertion(+)
+```
+[HARD] 잔여 검사: `git status --porcelain` 에 `channel/package.json` 행 **없음** — `json.dumps` 재출력을 revert 가 온전히 복구했다. `grep -c '"pretest"' channel/package.json` → `1` (복구 확인).
+
+**4) 원상 확인 (GOOD)** — `gh run list --commit e2961631e99f740fb1d75eec19d71b3954abc6ab --workflow ci.yml` → run id `33395698553` (event push), 결론:
+```
+success
+```
+원문 파일: `.moai/state/verify/t27-run/ac007-good.txt`.
+
+기대(`failure` + 채널 6건 → 되돌림 → `success`) 성립. 로컬 절반(`.moai/state/verify/t27-plan/test-no-build.log` — `Tests 6 failed | 89 passed (95)`, exit 1)과 원격 절반이 서로를 대체하지 않고 함께 성립한다. 파괴 커밋과 그 revert 는 이 브랜치에만 살고 병합 대상은 revert 이후 head 다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

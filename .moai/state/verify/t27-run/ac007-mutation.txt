@@ -1,0 +1,4 @@
+scripts: 5 -> 4
+removed exactly: pretest = tsc
+survivors: ['build', 'dev', 'test', 'typecheck']
+MUTATION EXACT
