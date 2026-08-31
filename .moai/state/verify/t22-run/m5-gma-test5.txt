@@ -1,0 +1,43 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/gateway-mutual-auth.test.ts (5 tests | 2 failed) 6271ms
+     × a relaying man in the middle passes the handshake and still injects nothing 35ms
+     × on an unbound transport the same relay does take over, and the channel says so 5005ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+AssertionError: expected [ 'down:challenge', 'up:auth', …(1) ] to include 'up:hello'
+ ❯ test/gateway-mutual-auth.test.ts:241:19
+    239|     await waitFor(() => gateway.isOnline(roomId, botId), '중계 핸드셰이크 확립')
+    240|     const types = relay.relayedFrames().map(f => `${f.dir}:${f.frame.t…
+    241|     expect(types).toContain('up:hello')
+       |                   ^
+    242|     expect(types).toContain('down:challenge')
+    243|     expect(types).toContain('up:auth')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > on an unbound transport the same relay does take over, and the channel says so
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:404:3
+    402|
+    403|   // AC-GWAUTH2-024 — 경계 기준: 바인딩이 서지 않는 연결에서는 같은 중계자가 이긴다.
+    404|   it('on an unbound transport the same relay does take over, and the c…
+       |   ^
+    405|     const errSpyLines: string[] = []
+    406|     const origErr = console.error
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed (5)
+   Start at  20:46:00
+   Duration  6.53s (transform 49ms, setup 0ms, import 188ms, tests 6.27s, environment 0ms)
+

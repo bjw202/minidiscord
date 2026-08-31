@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed | 29 skipped) 4ms
+     × the three gates are separate: each mutation breaks a different set 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+ReferenceError: probePath is not defined
+ ❯ runSuite test/transport-auth.test.ts:843:21
+    841|     const runSuite = async (mutated: string): Promise<string[]> => {
+    842|       writeFileSync(variantPath, mutated)
+    843|       writeFileSync(probePath, probeSource)
+       |                     ^
+    844|       try {
+    845|         const out = spawn(
+ ❯ test/transport-auth.test.ts:862:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 skipped (30)
+   Start at  21:05:39
+   Duration  221ms (transform 51ms, setup 0ms, import 148ms, tests 4ms, environment 0ms)
+

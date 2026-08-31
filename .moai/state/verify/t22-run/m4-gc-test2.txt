@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/gateway-client.test.ts (17 tests | 1 failed) 242ms
+     × passes a proof-bearing welcome through untouched, proof field included 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes a proof-bearing welcome through untouched, proof field included
+ReferenceError: proofOf is not defined
+ ❯ test/gateway-client.test.ts:426:105
+    424|     // 이 하네스는 rogueGateway 가 아니므로 논스를 srv.messages 에서 읽는다 (nonceSeen 접…
+    425|     const helloNonce = srv.messages.find(m => m.type === 'hello').nonce
+    426|     const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: …
+       |                                                                                                         ^
+    427|     srv.sockets[0].send(JSON.stringify(frame))
+    428|     await waitFor(() => got.length === 1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 passed (17)
+   Start at  17:11:19
+   Duration  346ms (transform 23ms, setup 0ms, import 41ms, tests 242ms, environment 0ms)
+

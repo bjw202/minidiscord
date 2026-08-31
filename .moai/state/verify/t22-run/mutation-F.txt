@@ -1,0 +1,64 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/gateway.test.ts (31 tests | 1 failed) 7028ms
+     × a client holding only what the database stores cannot register as the bot 186ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > a client holding only what the database stores cannot register as the bot
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/gateway.test.ts:1170:42
+    1168|       wsTry.send(JSON.stringify({ type: 'auth', signature: sig }))
+    1169|       await new Promise(r => setTimeout(r, 150))
+    1170|       expect(gateway.isOnline(room, pm)).toBe(false)   // 어떤 시도로도 등록되지…
+       |                                          ^
+    1171|       wsTry.close()
+    1172|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 14 passed (15)
+      Tests  1 failed | 187 passed (188)
+   Start at  22:10:04
+   Duration  7.94s (transform 1.33s, setup 0ms, import 2.69s, tests 23.16s, environment 2.04s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error command failed
+npm error command sh -c vitest run
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+
+ Test Files  6 passed (6)
+      Tests  95 passed (95)
+   Start at  22:10:12
+   Duration  65.22s (transform 280ms, setup 0ms, import 723ms, tests 70.30s, environment 0ms)
+
+
+[exit=1]

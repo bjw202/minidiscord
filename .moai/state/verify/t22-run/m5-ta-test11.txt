@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed) 40230ms
+     × the three gates are separate: each mutation breaks a different set 17633ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected [ 'AC17 probes P_env' ] to include 'P_env'
+ ❯ test/transport-auth.test.ts:939:16
+    937|     expect(new Set(n2)).not.toEqual(new Set(n3))
+    938|     expect(new Set(n1)).not.toEqual(new Set(n3))
+    939|     expect(n1).toContain('P_env')          // N1 → ① 붕괴: 변조 봉투가 통과한다
+       |                ^
+    940|     expect(n2).toContain('P_proof')        // N2 → ② 붕괴: 위조 증명 뒤 auth …
+    941|     // N3 은 이 SPEC(SPEC-GWAUTH2)의 기준을 하나도 무너뜨리지 않는다 — ①·② 가 먼저 반환한다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 passed (30)
+   Start at  20:57:07
+   Duration  40.45s (transform 56ms, setup 0ms, import 144ms, tests 40.23s, environment 0ms)
+

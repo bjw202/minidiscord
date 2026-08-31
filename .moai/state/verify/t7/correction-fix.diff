@@ -1,0 +1,55 @@
+commit 18bcc2de734cb4c4867090a63d88a7b6bd9fd0d9
+Author: byunjungwon <byunjungwon@gmail.com>
+Date:   Thu Aug 27 23:54:17 2026 +0900
+
+    fix(SPEC-PERM-001): request_id 등록 형식 검사 + 봇 텍스트 줄바꿈 중화 — 안내문 위조·판정 불가 요청 차단 (card t7)
+    
+    🗿 MoAI
+
+diff --git a/server/src/permissions.ts b/server/src/permissions.ts
+index c3caaa8..f5c543c 100644
+--- a/server/src/permissions.ts
++++ b/server/src/permissions.ts
+@@ -6,6 +6,16 @@ import type { ConnInfo } from './gateway.js'
+ // 완화도 강화도 하지 않는다 — 카드 t5 UI 의 /\byes [a-km-z]{5}/ 파서가 이 형식에 결합한다 (plan.md §C)
+ export const PERMISSION_REPLY_RE = /^\s*(y|yes|n|no)\s+([a-km-z]{5})\s*$/i
+ 
++// 등록 형식 검사 — 봇→서버 등록 원본은 공식 형식(소문자 5자, l 제외)을 그대로 요구하므로 /i 를 붙이지 않는 것이 의도다.
++// 사람 답변 방향만 PERMISSION_REPLY_RE 의 /i 로 대문자화를 흡수한다. 등록 원본이 대문자면 keyOf 의 소문자화 때문에
++// 소문자 id 와 같은 키로 뭉개져 먼저 등록한 요청이 조용히 사라진다 (sync-audit T7-F-03). reply 정규식이 절대 못 맞추는
++// id(l 포함·길이≠5)의 등록 — 사람이 안내대로 쳐도 아무 일도 일어나지 않는 결함 — 도 여기서 함께 막는다 (T7-F-02).
++const PERMISSION_REQUEST_ID_RE = /^[a-km-z]{5}$/
++
++// 봇이 보낸 문자열의 줄바꿈을 눈에 보이는 표식으로 중화한다 — join('\n') 네 줄 구조(REQ-PERM-002) 안에서
++// 서버 문구처럼 보이는 가짜 안내 줄이 위조되는 것을 막는다 (sync-audit T7-F-01)
++const oneLine = (s: string) => String(s).replace(/\r\n?|\n/g, ' ⏎ ')
++
+ // @MX:ANCHOR: [AUTO] index.ts 배선과 routes-messages 가로채기가 소비하는 브로커 공개 계약 (REQ-PERM-004)
+ // @MX:REASON: createPermissionBroker/PermissionBroker 시그니처는 spec.md REQ-PERM-004 가 글자 그대로 고정한다
+ export interface PermissionBroker {
+@@ -32,13 +42,20 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
+ 
+   return {
+     onGatewayRequest(info, params) {
++      // 형식 검사가 등록보다 먼저다 — 어긋난 id 는 대기 항목을 만들지 않고 거절 안내 한 줄로 끝난다 (T7-F-02·03)
++      const requestId = String(params.request_id ?? '')
++      if (!PERMISSION_REQUEST_ID_RE.test(requestId)) {
++        // 거절 안내에 들어가는 id 도 줄바꿈 중화·길이 절단을 거친다 — 거절 문구 자체가 위조 경로가 되지 않도록 (T7-F-01)
++        postSystem(info.roomId, `⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않아 등록하지 않았습니다 ("${oneLine(requestId).slice(0, 24)}")`)
++        return
++      }
+       // 대기 등록이 system 저장보다 먼저다 — 저장이 실패해도 대기 항목은 남아야 터미널 승인 경로가 살아 있다 (plan.md §B)
+-      open.set(keyOf(info.roomId, params.request_id), info)
++      open.set(keyOf(info.roomId, requestId), info)
+       const body = [
+-        `🔒 봇이 도구 사용 승인을 요청합니다: ${params.tool_name}`,
+-        params.description,
+-        params.input_preview,
+-        `승인하려면 "yes ${params.request_id}", 거절하려면 "no ${params.request_id}" 라고 답해주세요.`,
++        `🔒 봇이 도구 사용 승인을 요청합니다: ${oneLine(params.tool_name)}`,
++        oneLine(params.description),
++        oneLine(params.input_preview),
++        `승인하려면 "yes ${requestId}", 거절하려면 "no ${requestId}" 라고 답해주세요.`,
+       ].join('\n')
+       postSystem(info.roomId, body)
+     },

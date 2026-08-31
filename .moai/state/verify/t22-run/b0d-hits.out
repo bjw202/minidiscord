@@ -1,0 +1,38 @@
+== c4 개수 서술 적중 ==
+.moai/specs/SPEC-GWAUTH-002/spec.md:29:기준 21건
+.moai/specs/SPEC-GWAUTH-002/spec.md:343:기준 15건
+.moai/specs/SPEC-GWAUTH-002/spec.md:554:열여덟
+.moai/specs/SPEC-GWAUTH-002/spec.md:596:기준 24건
+.moai/specs/SPEC-GWAUTH-002/plan.md:54:스물
+.moai/specs/SPEC-GWAUTH-002/plan.md:54:열여덟
+.moai/specs/SPEC-GWAUTH-002/plan.md:108:스물
+.moai/specs/SPEC-GWAUTH-002/plan.md:108:열여덟
+.moai/specs/SPEC-GWAUTH-002/plan.md:108:스물
+.moai/specs/SPEC-GWAUTH-002/acceptance.md:142:스물
+== c1 sendToBot 적중 ==
+.moai/specs/SPEC-GWAUTH-002/spec.md:203:sendToBot
+.moai/specs/SPEC-GWAUTH-002/spec.md:624:sendToBot
+.moai/specs/SPEC-GWAUTH-002/plan.md:40:sendToBot
+.moai/specs/SPEC-GWAUTH-002/plan.md:51:sendToBot
+.moai/specs/SPEC-GWAUTH-002/plan.md:105:sendToBot
+.moai/specs/SPEC-GWAUTH-002/plan.md:202:sendToBot
+.moai/specs/SPEC-GWAUTH-002/plan.md:206:sendToBot
+.moai/specs/SPEC-GWAUTH-002/plan.md:316:sendToBot
+.moai/specs/SPEC-GWAUTH-002/acceptance.md:899:sendToBot
+.moai/specs/SPEC-GWAUTH-002/design.md:24:sendToBot
+.moai/specs/SPEC-GWAUTH-002/research.md:33:sendToBot
+== c2 째 행 적중 ==
+.moai/specs/SPEC-GWAUTH-002/spec.md:292:째 행
+.moai/specs/SPEC-GWAUTH-002/spec.md:492:째 행
+.moai/specs/SPEC-GWAUTH-002/plan.md:40:째 행
+.moai/specs/SPEC-GWAUTH-002/plan.md:40:째 행
+.moai/specs/SPEC-GWAUTH-002/plan.md:52:째 행
+.moai/specs/SPEC-GWAUTH-002/plan.md:106:째 행
+.moai/specs/SPEC-GWAUTH-002/acceptance.md:414:째 행
+== c9 A~Y 적중 ==
+.moai/specs/SPEC-GWAUTH-002/plan.md:59:A~Y
+.moai/specs/SPEC-GWAUTH-002/plan.md:113:A~Y
+.moai/specs/SPEC-GWAUTH-002/acceptance.md:864:A~Y
+== c11 적중 줄 수 (라인 단위 비교용) ==
+54
+== DONE ==

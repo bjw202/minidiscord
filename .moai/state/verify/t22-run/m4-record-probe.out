@@ -1,0 +1,7 @@
+PASS A. 부착 자체가 성립했다(onConnection → 기록기)
+PASS B. receivedFrames 가 hello·auth 를 전선 순서대로 — ["hello","auth"]
+PASS C. sentFrames 가 challenge→env welcome 을 전선 순서대로
+PASS D. env welcome 의 seq 가 1이다
+PASS E. 원문과 파싱이 같은 길이로 병행된다
+PASS F. 원문에 봉투 문자열이 그대로 있다
+PROBE PASS — 6/6

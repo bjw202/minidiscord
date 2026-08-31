@@ -1,0 +1,73 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/transport-auth.test.ts (30 tests | 4 failed) 21827ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 104ms
+     × an envelope with a broken mac, and a frame with no envelope, are both dropped 16ms
+     × a replayed envelope is dropped because its sequence has already been used 15ms
+     × the three gates are separate: each mutation breaks a different set 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+ReferenceError: createSseHub is not defined
+ ❯ buildRealGateway test/transport-auth.test.ts:364:7
+    362|   app.db = db
+    363|   await app.register(cookie)
+    364|   app.decorate('hub', createSseHub())
+       |       ^
+    365|   mkdirSync(path.join(dir, 'up'), { recursive: true })
+    366|   const gateway = createGateway(app, { uploadsDir: path.join(dir, 'up'…
+ ❯ test/transport-auth.test.ts:658:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+TypeError: w.firstSocket is not a function
+ ❯ test/transport-auth.test.ts:760:20
+    758|     const w = await attachWireTo(stub)
+    759|     await sendRequest(w.client, REQ)   // 발신 집합 대조를 미리 채운다 — 판정 주입 관측의…
+    760|     const sock = w.firstSocket()!
+       |                    ^
+    761|
+    762|     // ① payload 한 글자 변경 (mac 은 원본 payload 로 계산됐다) ② mac 삭제 ③ 봉투 없는 원문…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+TypeError: w.firstSocket is not a function
+ ❯ test/transport-auth.test.ts:789:43
+    787|     // (welcome 이 seq 1 — 기준선 판정은 seq 2 다.)
+    788|     await sendRequest(w.client, REQ)
+    789|     const baselineFrame = stub.envFrame(w.firstSocket()!, 2, { type: '…
+       |                                           ^
+    790|     stub.pushEnvRaw(baselineFrame)
+    791|     await waitFor(() => w.verdicts.length === 1, '기준선 판정')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+ReferenceError: join is not defined
+ ❯ runSuite test/transport-auth.test.ts:822:108
+    820|     }
+    821|     const runSuite = async (): Promise<string[]> => {
+    822|       const out = spawn('npx', ['vitest', 'run', 'test/transport-auth.…
+       |                                                                                                            ^
+    823|       let buf = ''
+    824|       out.stdout.on('data', d => { buf += String(d) })
+ ❯ test/transport-auth.test.ts:835:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 26 passed (30)
+   Start at  18:31:01
+   Duration  22.03s (transform 51ms, setup 0ms, import 131ms, tests 21.83s, environment 0ms)
+

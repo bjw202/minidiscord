@@ -1,0 +1,4 @@
+fresh columns: ["bot_id","created_at","id","last_delivered_id","last_seen_at","revoked_at","room_id","server_confirm_key","verifier_pub"]
+v1-shaped DB rejection: bot_tokens 이 v1 스키마다 — v2 로의 이전 경로는 없다. 개발용 DB 파일을 지우고 새로 만들 것 (SPEC-GWAUTH-002 §D-3)
+issuance INSERT shape: OK, row keys: ["verifier_pub","server_confirm_key"]
+PROBE PASS

@@ -1,0 +1,5 @@
+URL>>>http://127.0.0.1:3000/bot
+EXITCODE>>>null
+STDOUT_LEN>>>0
+STDERR>>>"minidiscord-channel: 게이트웨이 주소를 거부했다 — http://127.0.0.1:3000/bot (비루프백 호스트에는 wss:// 를 쓴다)\n"
+STDERR_LINES>>>1

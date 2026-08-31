@@ -1,0 +1,99 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+
+ Test Files  15 passed (15)
+      Tests  188 passed (188)
+   Start at  22:55:45
+   Duration  7.90s (transform 973ms, setup 0ms, import 2.21s, tests 23.74s, environment 2.12s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/gateway-client.test.ts (17 tests | 1 failed) 238ms
+     × drops a malformed frame and keeps processing the next valid one 21ms
+ ❯ test/transport-auth.test.ts (30 tests | 2 failed) 65174ms
+     × the entry point refuses a plaintext remote and connects otherwise 504ms
+     × the entry point closes a rejected socket, says one line on stderr and nothing on stdout 1552ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:227:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the entry point refuses a plaintext remote and connects otherwise
+AssertionError: expected 'minidiscord-channel: challenge 를 거절한다…' to be '' // Object.is equality
+
+- Expected
++ Received
+
++ minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
++
+
+ ❯ test/transport-auth.test.ts:557:24
+    555|     const b = spawnChild([DIST], { MINIDISCORD_TOKEN: 't', MINIDISCORD…
+    556|     await waitFor(() => stubB.connections() === 1, '루프백 접속')
+    557|     expect(b.stdout()).toBe('')                 // 접속하는 갈래에서도 stdout 은…
+       |                        ^
+    558|
+    559|     // (c) 형제 기준 비회귀 — resolveUrl 은 순수 해석 함수로 남는다 (AC-CHANWIRE-011)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the entry point closes a rejected socket, says one line on stderr and nothing on stdout
+AssertionError: expected 'minidiscord-channel: challenge 를 거절한다…' to be '' // Object.is equality
+
+- Expected
++ Received
+
++ minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
++ minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
++
+
+ ❯ test/transport-auth.test.ts:897:28
+    895|     const conns = stub.connections()
+    896|     expect(conns).toBeGreaterThanOrEqual(2)       // 닫혔고 다시 붙었다 — 재접속 …
+    897|     expect(child.stdout()).toBe('')               // stdout 은 MCP 전송 통…
+       |                            ^
+    898|     expect(child.stderr().split('\n').filter(Boolean).length).toBe(con…
+    899|     expect(child.proc.exitCode).toBeNull()        // 거절로 프로세스가 끝나지 않았다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 4 passed (6)
+      Tests  3 failed | 92 passed (95)
+   Start at  22:55:53
+   Duration  65.42s (transform 324ms, setup 0ms, import 915ms, tests 70.44s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error command failed
+npm error command sh -c vitest run
+
+[exit=1]

@@ -1,0 +1,141 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+
+ Test Files  15 passed (15)
+      Tests  188 passed (188)
+   Start at  20:47:13
+   Duration  7.80s (transform 1.14s, setup 0ms, import 2.22s, tests 22.95s, environment 1.84s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/index-wiring.test.ts (14 tests | 5 failed) 26264ms
+     × fetch_history forwards since_id and limit verbatim 5006ms
+     × history renders as one structured JSON document 5002ms
+     × empty history renders the same JSON shape with a null cursor 5003ms
+     × a single poisoned message stays a single element and carries no live envelope sequence 5003ms
+     × derives the cursor from ids only, never from body text, and nulls it when empty 5003ms
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed) 34256ms
+     × the three gates are separate: each mutation breaks a different set 11740ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:234:3
+    232|
+    233|   // AC-CHANWIRE-006 — fetch_history 파라미터가 게이트웨이까지 그대로 간다
+    234|   it('fetch_history forwards since_id and limit verbatim', async () =>…
+       |   ^
+    235|     const { stub, obs } = await connected()
+    236|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:247:3
+    245|   // AC-CHANWIRE-007 — 이력은 구조화 JSON 문서 하나로 렌더링된다
+    246|   // (v0.4.0 개정, 카드 t10 — SPEC-CHANINJECT-001 §3.2. 줄 형식 대신 JSON.parse…
+    247|   it('history renders as one structured JSON document', async () => {
+       |   ^
+    248|     const { stub, obs } = await connected()
+    249|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:264:3
+    262|   // AC-CHANWIRE-008 — 빈 이력도 같은 모양의 JSON 이다
+    263|   // (v0.4.0 개정, 카드 t10 — '(기록 없음)' 문구는 결과 타입을 갈리므로 버려졌다)
+    264|   it('empty history renders the same JSON shape with a null cursor', a…
+       |   ^
+    265|     const { stub, obs } = await connected()
+    266|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:275:3
+    273|   // AC-CHANINJECT-004 (v0.3.0 재정의, sync 감사 F-01) — 오염된 본문 한 건이 이력 원소 …
+    274|   // 그 안의 봉투 시퀀스가 모델에 닿지 않는다. 두 방어를 서로 다른 단언으로 잰다 — (a) 구조(F-03), (b)·…
+    275|   it('a single poisoned message stays a single element and carries no …
+       |   ^
+    276|     const { stub, obs } = await connected()
+    277|     // 프로브 P3 의 줄 오염 + 프로브 P-A 의 봉투 오염을 한 고정값에 담는다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:324:3
+    322|
+    323|   // AC-CHANINJECT-005 — 커서는 배열 밖에서 나오고, 본문이 정하지 못한다 (AC-CHANINJECT-00…
+    324|   it('derives the cursor from ids only, never from body text, and null…
+       |   ^
+    325|     const { stub, obs } = await connected()
+    326|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+Error: O 앵커가 소스에 없다
+ ❯ Object.O test/transport-auth.test.ts:822:56
+    820|         const cut = s.indexOf("if (msg.type === 'challenge') {")
+    821|         const chain = s.indexOf('else if (!established) {')
+    822|         if (cut < 0 || chain < 0 || chain < cut) throw new Error('O 앵커…
+       |                                                        ^
+    823|         const blocks = s.slice(cut, chain)   // challenge 블록 + env 블록
+    824|         const close = s.indexOf('\n      }\n', chain) + '\n      }\n'.…
+ ❯ test/transport-auth.test.ts:932:36
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  2 failed | 4 passed (6)
+      Tests  6 failed | 89 passed (95)
+   Start at  20:47:21
+   Duration  34.48s (transform 312ms, setup 0ms, import 852ms, tests 64.57s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error command failed
+npm error command sh -c vitest run

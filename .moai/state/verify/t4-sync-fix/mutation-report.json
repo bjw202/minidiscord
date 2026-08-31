@@ -1,0 +1,42 @@
+[
+  {
+    "mutation": "M-F05 revert try/catch",
+    "exit": 1,
+    "failed": [
+      "gateway client drops a malformed frame and keeps processing the next valid one"
+    ],
+    "reverted_src_diff_after": "channel/src/gateway-client.ts | 5 ++++-\n channel/src/index.ts          | 6 ++++--\n 2 files changed, 8 insertions(+), 3 deletions(-)"
+  },
+  {
+    "mutation": "M-F06 revert rejection swallow",
+    "exit": 1,
+    "failed": [
+      "channel wiring a chat message with no MCP peer raises no unhandled rejection"
+    ],
+    "reverted_src_diff_after": "channel/src/gateway-client.ts | 5 ++++-\n channel/src/index.ts          | 6 ++++--\n 2 files changed, 8 insertions(+), 3 deletions(-)"
+  },
+  {
+    "mutation": "M-CAP delete experimental['claude/channel']",
+    "exit": 1,
+    "failed": [
+      "channel server declares both channel experimental capabilities in the initialize response"
+    ],
+    "reverted_src_diff_after": "channel/src/gateway-client.ts | 5 ++++-\n channel/src/index.ts          | 6 ++++--\n 2 files changed, 8 insertions(+), 3 deletions(-)"
+  },
+  {
+    "mutation": "M-INSTR delete INSTRUCTIONS block",
+    "exit": 1,
+    "failed": [
+      "channel server carries the load-bearing instruction literals in the initialize response"
+    ],
+    "reverted_src_diff_after": "channel/src/gateway-client.ts | 5 ++++-\n channel/src/index.ts          | 6 ++++--\n 2 files changed, 8 insertions(+), 3 deletions(-)"
+  },
+  {
+    "mutation": "M-PERM delete experimental['claude/channel/permission']",
+    "exit": 1,
+    "failed": [
+      "channel server declares both channel experimental capabilities in the initialize response"
+    ],
+    "reverted_src_diff_after": "channel/src/gateway-client.ts | 5 ++++-\n channel/src/index.ts          | 6 ++++--\n 2 files changed, 8 insertions(+), 3 deletions(-)"
+  }
+]

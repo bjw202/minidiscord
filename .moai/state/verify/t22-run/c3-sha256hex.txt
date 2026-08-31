@@ -1,0 +1,19 @@
+server/test/messages.test.ts:15:import { sha256Hex } from '../src/routes-bots.js'
+server/test/messages.test.ts:59:    .run(roomId, botId, sha256Hex(randomBytes(32).toString('hex')))
+server/test/web-permission-contract.test.ts:20:import { registerBotRoutes, sha256Hex } from '../src/routes-bots.js'
+server/test/web-permission-contract.test.ts:77:  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+server/test/room-members.test.ts:21:import { registerBotRoutes, sha256Hex } from '../src/routes-bots.js'
+server/test/room-members.test.ts:157:  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+server/test/rooms-bots.test.ts:208:    const { sha256Hex } = await import('../src/routes-bots.js')
+server/test/rooms-bots.test.ts:214:    expect(row.token_hash).toBe(sha256Hex(body.token))
+server/test/gateway.test.ts:13:import { sha256Hex } from '../src/routes-bots.js'
+server/test/gateway.test.ts:58:  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+server/test/gateway.test.ts:128:// SPEC-GWAUTH-001 기준의 독립 증명 계산. 구현이 쓰는 코드(sha256Hex)를 부르지 않고
+server/test/gateway.test.ts:177:    db.prepare("UPDATE bot_tokens SET revoked_at=datetime('now') WHERE token_hash=?").run(sha256Hex(revoked))
+server/test/permissions.test.ts:19:import { sha256Hex } from '../src/routes-bots.js'
+server/test/permissions.test.ts:75:  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, botId, sha256Hex(token))
+server/src/gateway.ts:7:import { sha256Hex } from './routes-bots.js'
+server/src/gateway.ts:91:    const keyHex = sha256Hex(String(token ?? ''))
+server/src/routes-bots.ts:11:export function sha256Hex(s: string): string {
+server/src/routes-bots.ts:47:  // 초대 발급 — 평문 토큰은 이 응답에 한 번만 실리고 bot_tokens 에는 sha256Hex 해시만 저장한다.
+server/src/routes-bots.ts:64:    db.prepare('INSERT INTO bot_tokens (room_id, bot_id, token_hash) VALUES (?, ?, ?)').run(roomId, bot.id, sha256Hex(token))

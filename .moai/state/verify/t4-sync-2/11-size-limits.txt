@@ -1,0 +1,2 @@
+channel/src/channel-server.ts:27:  return s.replace(/<\/?channel/gi, m => `&lt;${m.slice(1)}`)
+channel/src/index.ts:81:      const cursor = messages.length > 0 ? Math.max(...messages.map(m => m.id)) : null

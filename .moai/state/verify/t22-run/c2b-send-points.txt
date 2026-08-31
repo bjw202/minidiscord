@@ -1,0 +1,8 @@
+109:    send(ws, welcome)
+123:    send(ws, {
+144:  function send(ws: WebSocket, payload: object): void {
+194:    sendToConn(info, {
+201:  function sendToConn(info: ConnInfo, payload: object): void {
+202:    for (const [ws, c] of conns) if (c.roomId === info.roomId && c.botId === info.botId) send(ws, payload)
+213:        send(ws, {
+231:      for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { send(ws, payload); return true }

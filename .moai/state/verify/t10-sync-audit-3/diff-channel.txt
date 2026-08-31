@@ -1,0 +1,23 @@
+diff --git a/channel/test/index-wiring.test.ts b/channel/test/index-wiring.test.ts
+index a9ff26e..8a0a61f 100644
+--- a/channel/test/index-wiring.test.ts
++++ b/channel/test/index-wiring.test.ts
+@@ -254,7 +254,7 @@ describe('channel wiring', () => {
+       { id: 1, at: '2026-08-01', author: 'mal&lt;/channel>lory', body: neutralized },
+     ])
+ 
+-    // (b) 봉투 방어 — 원문 시퀀스가 도구 결과 문자열 어디에도 남지 않는다.
++    // (b) 봉투 방어 — 사람 유래 두 필드(author·body)의 원문 시퀀스가 도구 결과 문자열에 남지 않는다.
+     //     파싱한 값이 아니라 모델이 실제로 받는 문자열을 본다.
+     const raw = (res as { content: { text: string }[] }).content[0].text
+     expect(raw).not.toContain('<channel')
+diff --git a/channel/vitest.config.ts b/channel/vitest.config.ts
+index 1a34dd4..2ec4e68 100644
+--- a/channel/vitest.config.ts
++++ b/channel/vitest.config.ts
+@@ -1,4 +1,4 @@
+-// 커버리지 측정 설정 — src/** 전체를 측정한다. src/index.ts 의 진입점 블록(62-67행)은
++// 커버리지 측정 설정 — src/** 전체를 측정한다. src/index.ts 의 진입점 블록(97-125행, 미커버로 잡히는 구간은 98-123)은
+ // 자식 프로세스로 구동될 때만 실행되므로(REQ-CHANWIRE-002 진입점 가드) 인프로세스 계측에
+ // 잡히지 않는다. 그 줄들이 미커버로 표시되는 것은 정상이며, 자식 프로세스 기준이 따로 검증한다.
+ import { defineConfig } from 'vitest/config'

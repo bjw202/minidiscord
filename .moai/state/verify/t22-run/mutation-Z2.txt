@@ -1,0 +1,216 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/web-permission-contract.test.ts (5 tests | 5 failed) 484ms
+   × dumps the real broker bodies shared with skeleton B 158ms
+     × AC-001 delivers an approve verdict to the bot with the exact request_id 85ms
+     × AC-002 delivers a deny verdict 78ms
+     × AC-003 extracts the real request_id even when the preview contains lookalike runs 65ms
+     × AC-004 shows an invite command whose token actually authenticates 97ms
+ ❯ test/permissions.test.ts (24 tests | 9 failed) 1496ms
+     × delivers an allow verdict to the connected bot 84ms
+     × delivers a deny verdict as deny, not as allow 81ms
+     × accepts a verdict once and lets a repeat fall through as chat 50ms
+     × never resolves a request from a different room 50ms
+     × refuses an unauthenticated verdict and leaves the request pending 52ms
+     × falls through non-matching text and unknown ids without touching the pending request 49ms
+     × marks an undelivered verdict differently from a delivered one 48ms
+     × accepts all four verdict words, normalizes case, and rejects ids containing l 49ms
+     × same request_id in two rooms keeps both requests resolvable 48ms
+ ❯ test/room-members.test.ts (21 tests | 3 failed) 2071ms
+     × never lets a non-member approve, and leaves the request for a member to answer 90ms
+     × the broker itself refuses a non-member verdict, independent of the route gate 85ms
+     × leaves the bot gateway path untouched by room membership 84ms
+ ❯ test/gateway.test.ts (31 tests | 27 failed) 6243ms
+     × welcomes each token as its own (room, bot) and only on /bot 109ms
+     × rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames 25ms
+     × replays only missed messages targeted at that bot and advances the cursor 26ms
+     × never redelivers a message after reconnect 16ms
+     × deliver reaches only targeted bots in that room and moves only their cursor 17ms
+     × deliver carries per-bot delivery and the message attachments 14ms
+     × stores bot_message, copies files into uploadsDir and publishes to the hub 19ms
+     × bot_message skips only the missing attachment 15ms
+     × bot_message refuses a local_path outside botFilesDir while still attaching one inside 16ms
+     × bot_message refuses a symlink inside botFilesDir that points outside it 22ms
+     × never publishes stored_path on the hub frame for a bot attachment 19ms
+     × bot_message attaches nothing at all when botFilesDir is unset 15ms
+     × bot_message refuses a sibling directory whose path merely prefixes botFilesDir 22ms
+     × status publishes bot_status for working and idle only 15ms
+     × isOnline follows the connection, per room and bot 22ms
+     × history_request returns the room messages in id order and echoes rid 16ms
+     × history_request with since_id returns only later messages 16ms
+     × history_request applies limit before since_id, speaker, since and until 17ms
+     × history_response carries id, author_name, body and created_at 13ms
+     × history_response goes only to the requesting bot 8ms
+     × closeRoom disconnects only that room 8ms
+     × relays permission_request to the handler and sendToBot reports delivery 16ms
+     × buildServer wires the gateway, archive hook and invite online flag 142ms
+     × the challenge proof is bound to both nonces, the room, the bot and the pub 12ms
+     × no frame in either direction carries the token, the private key or the confirm key 11ms
+     × a signature made for another handshake is refused 7ms
+     × the sequence starts at one per socket and rises by exactly one per frame 5007ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 44 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > welcomes each token as its own (room, bot) and only on /bot
+ FAIL  test/gateway.test.ts > gateway > rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames
+ FAIL  test/gateway.test.ts > gateway > replays only missed messages targeted at that bot and advances the cursor
+ FAIL  test/gateway.test.ts > gateway > never redelivers a message after reconnect
+ FAIL  test/gateway.test.ts > gateway > deliver reaches only targeted bots in that room and moves only their cursor
+ FAIL  test/gateway.test.ts > gateway > deliver carries per-bot delivery and the message attachments
+ FAIL  test/gateway.test.ts > gateway > stores bot_message, copies files into uploadsDir and publishes to the hub
+ FAIL  test/gateway.test.ts > gateway > bot_message skips only the missing attachment
+ FAIL  test/gateway.test.ts > gateway > bot_message refuses a local_path outside botFilesDir while still attaching one inside
+ FAIL  test/gateway.test.ts > gateway > bot_message refuses a symlink inside botFilesDir that points outside it
+ FAIL  test/gateway.test.ts > gateway > never publishes stored_path on the hub frame for a bot attachment
+ FAIL  test/gateway.test.ts > gateway > bot_message attaches nothing at all when botFilesDir is unset
+ FAIL  test/gateway.test.ts > gateway > bot_message refuses a sibling directory whose path merely prefixes botFilesDir
+ FAIL  test/gateway.test.ts > gateway > status publishes bot_status for working and idle only
+ FAIL  test/gateway.test.ts > gateway > isOnline follows the connection, per room and bot
+ FAIL  test/gateway.test.ts > gateway > history_request returns the room messages in id order and echoes rid
+ FAIL  test/gateway.test.ts > gateway > history_request with since_id returns only later messages
+ FAIL  test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until
+ FAIL  test/gateway.test.ts > gateway > history_response carries id, author_name, body and created_at
+ FAIL  test/gateway.test.ts > gateway > history_response goes only to the requesting bot
+ FAIL  test/gateway.test.ts > gateway > closeRoom disconnects only that room
+ FAIL  test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery
+ FAIL  test/gateway.test.ts > gateway > no frame in either direction carries the token, the private key or the confirm key
+Error: closed before welcome
+ ❯ WebSocket.<anonymous> test/gateway.test.ts:141:33
+    139|     })
+    140|     ws.on('error', reject)
+    141|     ws.on('close', () => reject(new Error('closed before welcome')))  …
+       |                                 ^
+    142|   })
+    143| }
+ ❯ WebSocket.emitClose ../node_modules/ws/lib/websocket.js:279:10
+ ❯ Socket.socketOnClose ../node_modules/ws/lib/websocket.js:1360:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag
+ FAIL  test/gateway.test.ts > gateway > the challenge proof is bound to both nonces, the room, the bot and the pub
+ FAIL  test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot
+ FAIL  test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow
+ FAIL  test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat
+ FAIL  test/permissions.test.ts > permission relay > never resolves a request from a different room
+ FAIL  test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending
+ FAIL  test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request
+ FAIL  test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one
+ FAIL  test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l
+ FAIL  test/permissions.test.ts > permission relay > same request_id in two rooms keeps both requests resolvable
+ FAIL  test/room-members.test.ts > room membership gates > never lets a non-member approve, and leaves the request for a member to answer
+ FAIL  test/room-members.test.ts > room membership gates > the broker itself refuses a non-member verdict, independent of the route gate
+ FAIL  test/room-members.test.ts > room membership gates > leaves the bot gateway path untouched by room membership
+ FAIL  test/web-permission-contract.test.ts > dumps the real broker bodies shared with skeleton B
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-001 delivers an approve verdict to the bot with the exact request_id
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-002 delivers a deny verdict
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-003 extracts the real request_id even when the preview contains lookalike runs
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-004 shows an invite command whose token actually authenticates
+Error: harness: welcome 전에 닫혔다
+ ❯ WebSocket.<anonymous> test/gateway-v2.ts:79:33
+     77|     })
+     78|     ws.on('error', (e: Error) => reject(e))
+     79|     ws.on('close', () => reject(new Error('harness: welcome 전에 닫혔다')))…
+       |                                 ^
+     80|   })
+     81| }
+ ❯ WebSocket.emitClose ../node_modules/ws/lib/websocket.js:279:10
+ ❯ Socket.socketOnClose ../node_modules/ws/lib/websocket.js:1360:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/44]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > a signature made for another handshake is refused
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/gateway.test.ts:1186:54
+    1184|     // 첫 접속 — 유효하게 확립하고 그 전사(auth 서명)를 기록한다
+    1185|     const first = await rawHandshake(port, token)
+    1186|     expect(first.frames.some(f => f.type === 'env')).toBe(true)
+       |                                                      ^
+    1187|     const sig1 = first.authSignature
+    1188|     console.error('[dbg010 b] sig1 ok')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/44]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > the sequence starts at one per socket and rises by exactly one per frame
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:1216:3
+    1214|
+    1215|   // AC-GWAUTH2-016 — 순번은 소켓마다 1 에서 시작해 프레임마다 정확히 1 증가한다
+    1216|   it('the sequence starts at one per socket and rises by exactly one p…
+       |   ^
+    1217|     const { app, port } = await build()
+    1218|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/44]⎯
+
+
+ Test Files  4 failed | 11 passed (15)
+      Tests  44 failed | 144 passed (188)
+   Start at  23:16:37
+   Duration  6.56s (transform 1.10s, setup 0ms, import 2.08s, tests 14.64s, environment 1.93s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error command failed
+npm error command sh -c vitest run
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/gateway-mutual-auth.test.ts (5 tests | 1 failed) 11632ms
+     × a real relay terminating tls on both sides cannot take over the bot session 10938ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a real relay terminating tls on both sides cannot take over the bot session
+Error: waitFor timeout: 직접 접속의 정상 경로
+ ❯ waitFor test/gateway-mutual-auth.test.ts:105:37
+    103|   const t0 = Date.now()
+    104|   while (!pred()) {
+    105|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    106|     await new Promise(r => setTimeout(r, 25))
+    107|   }
+ ❯ test/gateway-mutual-auth.test.ts:391:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 94 passed (95)
+   Start at  23:16:44
+   Duration  64.97s (transform 298ms, setup 0ms, import 787ms, tests 79.86s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error command failed
+npm error command sh -c vitest run
+
+[exit=1]

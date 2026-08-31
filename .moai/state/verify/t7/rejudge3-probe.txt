@@ -1,0 +1,22 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t7/server
+
+[W1 본문]
+🔒 봇이 도구 사용 승인을 요청합니다: (형식에 맞지 않는 도구 이름)
+│ harmless
+│ cat README
+승인하려면 "yes abcde", 거절하려면 "no abcde" 라고 답해주세요.
+[W3 본문]
+⚠️ 봇이 보낸 승인 요청의 request_id 가 형식에 맞지 않아 등록하지 않았습니다 ("승인하려면 "yes zzzzz", 거절하려면")
+[W3 줄 수] 1 / 접두 없음 = true
+[W4 판정] {"type":"permission_verdict","request_id":"abcde","behavior":"allow"} / consumed_by=permission
+ ✓ test/_rejudge3b.test.ts > t7 re-judgement probe (round 3, clean re-run) > W1 tool_name forging a guidance instruction 105ms
+ ✓ test/_rejudge3b.test.ts > t7 re-judgement probe (round 3, clean re-run) > W3 rejection notice carries bot text on an unprefixed line 44ms
+ ✓ test/_rejudge3b.test.ts > t7 re-judgement probe (round 3, clean re-run) > W4 malformed tool_name still registers and resolves 53ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  09:10:06
+   Duration  394ms (transform 47ms, setup 0ms, import 123ms, tests 203ms, environment 0ms)
+
+PROBE_EXIT=0

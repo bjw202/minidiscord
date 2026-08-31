@@ -1,0 +1,1097 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/room-members.test.ts (21 tests | 3 failed) 16757ms
+     × never lets a non-member approve, and leaves the request for a member to answer 5008ms
+     × the broker itself refuses a non-member verdict, independent of the route gate 5007ms
+     × leaves the bot gateway path untouched by room membership 5008ms
+ ❯ test/web-permission-contract.test.ts (5 tests | 5 failed) 25041ms
+   × dumps the real broker bodies shared with skeleton B 5015ms
+     × AC-001 delivers an approve verdict to the bot with the exact request_id 5006ms
+     × AC-002 delivers a deny verdict 5005ms
+     × AC-003 extracts the real request_id even when the preview contains lookalike runs 5006ms
+     × AC-004 shows an invite command whose token actually authenticates 5007ms
+ ❯ test/permissions.test.ts (24 tests | 9 failed) 45986ms
+     × delivers an allow verdict to the connected bot 5007ms
+     × delivers a deny verdict as deny, not as allow 5006ms
+     × accepts a verdict once and lets a repeat fall through as chat 5005ms
+     × never resolves a request from a different room 5007ms
+     × refuses an unauthenticated verdict and leaves the request pending 5007ms
+     × falls through non-matching text and unknown ids without touching the pending request 5006ms
+     × marks an undelivered verdict differently from a delivered one 5007ms
+     × accepts all four verdict words, normalizes case, and rejects ids containing l 5008ms
+     × same request_id in two rooms keeps both requests resolvable 5006ms
+stderr | test/gateway.test.ts > AC-GWAUTH2 server side > a signature made for another handshake is refused
+[dbg010 b] sig1 ok
+
+ ❯ test/gateway.test.ts (31 tests | 27 failed) 135786ms
+     × welcomes each token as its own (room, bot) and only on /bot 5015ms
+     × rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames 5007ms
+     × replays only missed messages targeted at that bot and advances the cursor 5008ms
+     × never redelivers a message after reconnect 5007ms
+     × deliver reaches only targeted bots in that room and moves only their cursor 5008ms
+     × deliver carries per-bot delivery and the message attachments 5008ms
+     × stores bot_message, copies files into uploadsDir and publishes to the hub 5006ms
+     × bot_message skips only the missing attachment 5007ms
+     × bot_message refuses a local_path outside botFilesDir while still attaching one inside 5006ms
+     × bot_message refuses a symlink inside botFilesDir that points outside it 5006ms
+     × never publishes stored_path on the hub frame for a bot attachment 5008ms
+     × bot_message attaches nothing at all when botFilesDir is unset 5007ms
+     × bot_message refuses a sibling directory whose path merely prefixes botFilesDir 5010ms
+     × status publishes bot_status for working and idle only 5008ms
+     × isOnline follows the connection, per room and bot 5006ms
+     × history_request returns the room messages in id order and echoes rid 5008ms
+     × history_request with since_id returns only later messages 5008ms
+     × history_request applies limit before since_id, speaker, since and until 5008ms
+     × history_response carries id, author_name, body and created_at 5007ms
+     × history_response goes only to the requesting bot 5008ms
+     × closeRoom disconnects only that room 5007ms
+     × relays permission_request to the handler and sendToBot reports delivery 5009ms
+     × buildServer wires the gateway, archive hook and invite online flag 5010ms
+     × the challenge proof is bound to both nonces, the room, the bot and the pub 5007ms
+     × no frame in either direction carries the token, the private key or the confirm key 5006ms
+     × a signature made for another handshake is refused 5009ms
+     × the sequence starts at one per socket and rises by exactly one per frame 5008ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 44 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > welcomes each token as its own (room, bot) and only on /bot
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:189:3
+    187| describe('gateway', () => {
+    188|   // AC-GW-001 — 토큰이 방과 봇을 결정하고, 경로는 /bot 뿐이다
+    189|   it('welcomes each token as its own (room, bot) and only on /bot', as…
+       |   ^
+    190|     const { app, port } = await build()
+    191|     const roomA = seedRoom('A'), roomB = seedRoom('B')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > rejects unknown, revoked and archived-room tokens, unauthenticated and malformed frames
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:223:3
+    221|
+    222|   // AC-GW-002 — 다섯 가지 거절 경로
+    223|   it('rejects unknown, revoked and archived-room tokens, unauthenticat…
+       |   ^
+    224|     const { app, gateway, port } = await build()
+    225|     const room = seedRoom(), archived = seedRoom('보관됨')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > replays only missed messages targeted at that bot and advances the cursor
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:268:3
+    266|
+    267|   // AC-GW-003 — 재전송은 그 봇 타깃의 커서 이후 것만
+    268|   it('replays only missed messages targeted at that bot and advances t…
+       |   ^
+    269|     const { app, port } = await build()
+    270|     const room = seedRoom()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > never redelivers a message after reconnect
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:297:3
+    295|
+    296|   // AC-GW-004 — 재접속해도 같은 메시지가 두 번 오지 않는다
+    297|   it('never redelivers a message after reconnect', async () => {
+       |   ^
+    298|     const { app, gateway, port } = await build()
+    299|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > deliver reaches only targeted bots in that room and moves only their cursor
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:324:3
+    322|
+    323|   // AC-GW-005 — deliver 는 타깃에게만 가고 커서도 타깃만 움직인다
+    324|   it('deliver reaches only targeted bots in that room and moves only t…
+       |   ^
+    325|     const { app, gateway, port } = await build()
+    326|     const roomA = seedRoom('A'), roomB = seedRoom('B')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > deliver carries per-bot delivery and the message attachments
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:352:3
+    350|
+    351|   // AC-GW-006 — delivery 는 봇마다 다르고, files 는 첨부와 일치한다
+    352|   it('deliver carries per-bot delivery and the message attachments', a…
+       |   ^
+    353|     const { app, gateway, port } = await build()
+    354|     const room = seedRoom()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > stores bot_message, copies files into uploadsDir and publishes to the hub
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:383:3
+    381|
+    382|   // AC-GW-007 — bot_message 저장·복사·발행
+    383|   it('stores bot_message, copies files into uploadsDir and publishes t…
+       |   ^
+    384|     const { app, published, port } = await build()
+    385|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > bot_message skips only the missing attachment
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:425:3
+    423|
+    424|   // AC-GW-008 — 없는 파일 하나만 건너뛴다
+    425|   it('bot_message skips only the missing attachment', async () => {
+       |   ^
+    426|     const { app, port } = await build()
+    427|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > bot_message refuses a local_path outside botFilesDir while still attaching one inside
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:449:3
+    447|
+    448|   // AC-GW-021 — 허용 뿌리 밖의 local_path 는 복사하지 않는다 (sync-audit F-01)
+    449|   it('bot_message refuses a local_path outside botFilesDir while still…
+       |   ^
+    450|     const { app, port } = await build()
+    451|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > bot_message refuses a symlink inside botFilesDir that points outside it
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:490:3
+    488|
+    489|   // AC-GW-023 — 허용 뿌리 안의 심볼릭 링크로도 밖을 끌어오지 못한다 (sync-reaudit N-02)
+    490|   it('bot_message refuses a symlink inside botFilesDir that points out…
+       |   ^
+    491|     const { app, port } = await build()
+    492|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > never publishes stored_path on the hub frame for a bot attachment
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:527:3
+    525|
+    526|   // AC-GW-024 — 허브 발행 프레임에 저장 경로가 실리지 않는다 (sync-reaudit N-01)
+    527|   it('never publishes stored_path on the hub frame for a bot attachmen…
+       |   ^
+    528|     const { app, published, port } = await build()
+    529|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > bot_message attaches nothing at all when botFilesDir is unset
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:553:3
+    551|
+    552|   // AC-GW-025 — botFilesDir 미설정이면 봇 첨부를 전부 거부한다 (sync-audit-3 N-08)
+    553|   it('bot_message attaches nothing at all when botFilesDir is unset', …
+       |   ^
+    554|     const { app, port } = await build({ botFiles: 'off' })
+    555|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > bot_message refuses a sibling directory whose path merely prefixes botFilesDir
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:574:3
+    572|
+    573|   // AC-GW-026 — 허용 뿌리와 이름이 겹치는 형제 디렉터리는 통과하지 못한다 (sync-audit-3 N-08)
+    574|   it('bot_message refuses a sibling directory whose path merely prefix…
+       |   ^
+    575|     const { app, port } = await build()
+    576|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > status publishes bot_status for working and idle only
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:609:3
+    607|
+    608|   // AC-GW-009 — status 는 두 값만 발행한다
+    609|   it('status publishes bot_status for working and idle only', async ()…
+       |   ^
+    610|     const { app, published, port } = await build()
+    611|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > isOnline follows the connection, per room and bot
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:633:3
+    631|
+    632|   // AC-GW-010 — isOnline 은 접속을 따라간다
+    633|   it('isOnline follows the connection, per room and bot', async () => {
+       |   ^
+    634|     const { app, gateway, port } = await build()
+    635|     const roomA = seedRoom('A'), roomB = seedRoom('B')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request returns the room messages in id order and echoes rid
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:655:3
+    653|
+    654|   // AC-GW-011 — 이력은 번호 오름차순이고 rid 를 되돌린다
+    655|   it('history_request returns the room messages in id order and echoes…
+       |   ^
+    656|     const { app, port } = await build()
+    657|     const room = seedRoom('A'), other = seedRoom('B')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request with since_id returns only later messages
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:682:3
+    680|
+    681|   // AC-GW-012 — since_id 는 커서 이하를 실제로 걸러 낸다
+    682|   it('history_request with since_id returns only later messages', asyn…
+       |   ^
+    683|     const { app, port } = await build()
+    684|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:713:3
+    711|
+    712|   // AC-GW-013 — limit 은 필터보다 먼저, 선택 필터 셋은 각각 걸러 낸다
+    713|   it('history_request applies limit before since_id, speaker, since an…
+       |   ^
+    714|     const { app, port } = await build()
+    715|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_response carries id, author_name, body and created_at
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:749:3
+    747|
+    748|   // AC-GW-014 — 이력의 네 필드와 작성자 이름 해석
+    749|   it('history_response carries id, author_name, body and created_at', …
+       |   ^
+    750|     const { app, port } = await build()
+    751|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_response goes only to the requesting bot
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:777:3
+    775|
+    776|   // AC-GW-015 — 이력 응답은 요청한 봇에게만 간다
+    777|   it('history_response goes only to the requesting bot', async () => {
+       |   ^
+    778|     const { app, port } = await build()
+    779|     const room = seedRoom()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > closeRoom disconnects only that room
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:795:3
+    793|
+    794|   // AC-GW-016 — closeRoom 은 그 방만 끊는다
+    795|   it('closeRoom disconnects only that room', async () => {
+       |   ^
+    796|     const { app, gateway, port } = await build()
+    797|     const roomA = seedRoom('A'), roomB = seedRoom('B')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:821:3
+    819|
+    820|   // AC-GW-017 — 권한 릴레이 창구
+    821|   it('relays permission_request to the handler and sendToBot reports d…
+       |   ^
+    822|     const { app, gateway, port } = await build()
+    823|     const room = seedRoom()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:856:3
+    854|
+    855|   // AC-GW-018 — 조립: buildServer 배선과 초대 목록의 online
+    856|   it('buildServer wires the gateway, archive hook and invite online fl…
+       |   ^
+    857|     process.env.MINIDISCORD_DATA_DIR = join(dir, 'srv')
+    858|     const { buildServer } = await import('../src/index.js')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > the challenge proof is bound to both nonces, the room, the bot and the pub
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:902:3
+    900|   // AC-GWAUTH-001 — 증명은 논스·방·봇에 묶이고 저장된 해시를 열쇠로 한다
+    901|   // AC-GWAUTH2-005 — challenge 증명은 두 논스·방·봇·pub·cb 에 묶인다 (v1 AC-GWAUT…
+    902|   it('the challenge proof is bound to both nonces, the room, the bot a…
+       |   ^
+    903|     const { app, port } = await build()
+    904|     const roomA = seedRoom('A'), roomB = seedRoom('B')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/44]⎯
+
+ FAIL  test/gateway.test.ts > gateway > no frame in either direction carries the token, the private key or the confirm key
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:979:3
+    977|   // v1 은 «받은» 프레임만 쟀다. v2 는 본문을 양방향으로 넓혀 그 주장을 참으로 만든다 — 문구를
+    978|   // 좁힌 것이 아니라 주장이 성립하게 되었다 (S-01 종결, :897 옛 주석의 흡수).
+    979|   it('no frame in either direction carries the token, the private key …
+       |   ^
+    980|     const { app, port, recorders } = await build()
+    981|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/44]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > a signature made for another handshake is refused
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:1179:3
+    1177|
+    1178|   // AC-GWAUTH2-010 — 다른 핸드셰이크의 서명은 거절되고, 그 접속의 전사로 만든 서명은 받아들여진다
+    1179|   it('a signature made for another handshake is refused', async () => {
+       |   ^
+    1180|     const { app, gateway, port } = await build()
+    1181|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/44]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > the sequence starts at one per socket and rises by exactly one per frame
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:1216:3
+    1214|
+    1215|   // AC-GWAUTH2-016 — 순번은 소켓마다 1 에서 시작해 프레임마다 정확히 1 증가한다
+    1216|   it('the sequence starts at one per socket and rises by exactly one p…
+       |   ^
+    1217|     const { app, port } = await build()
+    1218|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:191:3
+    189|   })
+    190|
+    191|   it('delivers an allow verdict to the connected bot', async () => {
+       |   ^
+    192|     const { app, broker, port, cookie } = await build()
+    193|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:201:3
+    199|   })
+    200|
+    201|   it('delivers a deny verdict as deny, not as allow', async () => {
+       |   ^
+    202|     const { app, broker, port, cookie } = await build()
+    203|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:224:3
+    222|   })
+    223|
+    224|   it('accepts a verdict once and lets a repeat fall through as chat', …
+       |   ^
+    225|     const { app, broker, port, cookie } = await build()
+    226|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > never resolves a request from a different room
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:241:3
+    239|   })
+    240|
+    241|   it('never resolves a request from a different room', async () => {
+       |   ^
+    242|     const { app, broker, port, cookie } = await build()
+    243|     const a = seedRoomAndBot('A', 'pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:258:3
+    256|   })
+    257|
+    258|   it('refuses an unauthenticated verdict and leaves the request pendin…
+       |   ^
+    259|     const { app, broker, port, cookie } = await build()
+    260|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:275:3
+    273|   })
+    274|
+    275|   it('falls through non-matching text and unknown ids without touching…
+       |   ^
+    276|     const { app, broker, port, cookie } = await build()
+    277|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:297:3
+    295|   })
+    296|
+    297|   it('marks an undelivered verdict differently from a delivered one', …
+       |   ^
+    298|     const { app, broker, port, cookie } = await build()
+    299|     const on = seedRoomAndBot('A', 'pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:319:3
+    317|   })
+    318|
+    319|   it('accepts all four verdict words, normalizes case, and rejects ids…
+       |   ^
+    320|     const { app, broker, port, cookie } = await build()
+    321|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/44]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > same request_id in two rooms keeps both requests resolvable
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/permissions.test.ts:341:3
+    339|
+    340|   // 두 방이 같은 request_id 를 동시에 걸어도 서로를 덮어쓰지 않고 각자 풀려야 한다 (t7 결함1)
+    341|   it('same request_id in two rooms keeps both requests resolvable', as…
+       |   ^
+    342|     const { app, broker, port, cookie } = await build()
+    343|     const a = seedRoomAndBot('A', 'pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/44]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > never lets a non-member approve, and leaves the request for a member to answer
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/room-members.test.ts:522:3
+    520|   // AC-ROOMAUTHZ-012 시나리오 1 — 비멤버의 yes 는 소비되지 않고, 대기 항목은 멤버의 몫으로 남는다.
+    521|   // 이것이 .moai/reports/t4/sync-audit.md §F-14 를 직접 재는 기준이다
+    522|   it('never lets a non-member approve, and leaves the request for a me…
+       |   ^
+    523|     const { app, broker, port, alice, mallory } = await build()
+    524|     const roomId = await createRoom(app, alice.cookie)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/44]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > the broker itself refuses a non-member verdict, independent of the route gate
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/room-members.test.ts:544:3
+    542|   // AC-ROOMAUTHZ-012 시나리오 2 — 브로커 자신도 비멤버를 막는다 (라우트 게이트와 독립인 백스톱).
+    543|   // 브로커를 직접 불러야 라우트 게이트만으로는 보이지 않는 검사의 유무가 갈린다
+    544|   it('the broker itself refuses a non-member verdict, independent of t…
+       |   ^
+    545|     const { broker, port, alice, mallory, app } = await build()
+    546|     const roomId = await createRoom(app, alice.cookie)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/44]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > leaves the bot gateway path untouched by room membership
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/room-members.test.ts:701:3
+    699|   // (RED 불요). M3 이전에 쓰면 게이트도 없어 아무것도 재지 못했으므로, M4 의 형제 하네스 교정과
+    700|   // 함께 심는다. 본문은 acceptance.md 의 시나리오 코드를 그대로 옮겼다
+    701|   it('leaves the bot gateway path untouched by room membership', async…
+       |   ^
+    702|     const { app, gateway, port, alice } = await build()
+    703|     const roomId = await createRoom(app, alice.cookie)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/44]⎯
+
+ FAIL  test/web-permission-contract.test.ts > dumps the real broker bodies shared with skeleton B
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:142:1
+    140| // 출력에서 왔다 — 손으로 발명하지 않고 브로커 실물을 옮겨 적었다. 서버 템플릿이 바뀌면
+    141| // 이 출력이 달라지므로 상수의 낡음을 여기서 눈으로 확인할 수 있다.
+    142| it('dumps the real broker bodies shared with skeleton B', async () => {
+       | ^
+    143|   const c = await build()
+    144|   const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/44]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-001 delivers an approve verdict to the bot with the exact request_id
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:181:3
+    179|
+    180| describe('AC-WEBRICH-001..004 permission & invite contract', () => {
+    181|   it('AC-001 delivers an approve verdict to the bot with the exact req…
+       |   ^
+    182|     const c = await build()
+    183|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/44]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-002 delivers a deny verdict
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:209:3
+    207|   })
+    208|
+    209|   it('AC-002 delivers a deny verdict', async () => {
+       |   ^
+    210|     const c = await build()
+    211|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/44]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-003 extracts the real request_id even when the preview contains lookalike runs
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:223:3
+    221|   })
+    222|
+    223|   it('AC-003 extracts the real request_id even when the preview contai…
+       |   ^
+    224|     const c = await build()
+    225|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/44]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-004 shows an invite command whose token actually authenticates
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:242:3
+    240|   })
+    241|
+    242|   it('AC-004 shows an invite command whose token actually authenticate…
+       |   ^
+    243|     const c = await build()
+    244|     const { roomId, botId } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/44]⎯
+
+
+ Test Files  4 failed | 11 passed (15)
+      Tests  44 failed | 144 passed (188)
+   Start at  23:08:59
+   Duration  136.11s (transform 997ms, setup 0ms, import 2.01s, tests 227.66s, environment 1.75s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error command failed
+npm error command sh -c vitest run
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/permission-relay.test.ts (14 tests | 1 failed) 5005ms
+     × wire relays a request out to the gateway and a verdict back to Claude Code 3095ms
+ ❯ test/gateway-mutual-auth.test.ts (5 tests | 1 failed) 9772ms
+     × a real relay terminating tls on both sides cannot take over the bot session 9070ms
+ ❯ test/index-wiring.test.ts (14 tests | 9 failed) 37846ms
+     × gateway message becomes exactly one session notification 3038ms
+     × cc message is delivered but raises no working status 3027ms
+     × a TO message reports working to the gateway 3024ms
+     × fetch_history forwards since_id and limit verbatim 5003ms
+     × history renders as one structured JSON document 5003ms
+     × empty history renders the same JSON shape with a null cursor 5002ms
+     × a single poisoned message stays a single element and carries no live envelope sequence 5003ms
+     × derives the cursor from ids only, never from body text, and nulls it when empty 5002ms
+     × a chat message with no MCP peer raises no unhandled rejection 3019ms
+ ❯ test/gateway-client.test.ts (17 tests | 9 failed) 45143ms
+     × passes the welcome frame through untouched, extra fields included 5004ms
+     × passes the message frame through untouched, files and delivery included 5002ms
+     × passes a deny verdict through as deny 5001ms
+     × routes by type only — an unknown frame reaches no callback 5001ms
+     × drops a malformed frame and keeps processing the next valid one 5002ms
+     × puts every history parameter on the frame top level, since_id included 5001ms
+     × matches responses by rid, not by arrival order 5001ms
+     × fails a history request immediately when not connected, and recovers after connecting 5003ms
+     × passes a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나) 5003ms
+ ❯ test/transport-auth.test.ts (30 tests | 7 failed) 45543ms
+     × after welcome, the same two frames reach the session exactly once each 3041ms
+     × a history_response before welcome resolves nothing; after welcome it resolves 4446ms
+     × a challenge from a stub that holds the confirm key establishes the session 448ms
+     × both nonces are regenerated per socket and a replayed challenge is refused 3016ms
+     × an envelope with a broken mac, and a frame with no envelope, are both dropped 3426ms
+     × a replayed envelope is dropped because its sequence has already been used 3021ms
+     × the three gates are separate: each mutation breaks a different set 9857ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 27 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes the welcome frame through untouched, extra fields included
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:156:3
+    154|   // (v2 계약, SPEC-GWAUTH-002 — welcome 은 봉투 안에 도착하고 클라이언트는 내부 프레임을 통째로
+    155|   //  넘긴다. 여분 필드가 살아남는 것이 이 기준의 본체다)
+    156|   it('passes the welcome frame through untouched, extra fields include…
+       |   ^
+    157|     const srv = startServer({ autoWelcome: false })   // 이 기준만 자기 welc…
+    158|     const got: any[] = []
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/27]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes the message frame through untouched, files and delivery included
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:167:3
+    165|
+    166|   // AC-CHANCLIENT-003 — message 를 손대지 않고 그대로 넘긴다
+    167|   it('passes the message frame through untouched, files and delivery i…
+       |   ^
+    168|     const srv = startServer()
+    169|     const got: any[] = []
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/27]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes a deny verdict through as deny
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:181:3
+    179|
+    180|   // AC-CHANCLIENT-004 — 판정을 판정으로 넘긴다
+    181|   it('passes a deny verdict through as deny', async () => {
+       |   ^
+    182|     const srv = startServer()
+    183|     const got: any[] = []
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/27]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > routes by type only — an unknown frame reaches no callback
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:191:3
+    189|
+    190|   // AC-CHANCLIENT-005 — 모르는 프레임은 어디로도 새지 않는다
+    191|   it('routes by type only — an unknown frame reaches no callback', asy…
+       |   ^
+    192|     const srv = startServer()
+    193|     const seen: string[] = []
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/27]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:220:3
+    218|   // 회귀: JSON 아닌 프레임 한 개가 프로세스를 끝내지 않는다 (감사 F-05)
+    219|   // 리스너 안의 throw 는 uncaughtException 으로 올라간다 — 재접속조차 없이 봇이 사라진다.
+    220|   it('drops a malformed frame and keeps processing the next valid one'…
+       |   ^
+    221|     const srv = startServer()
+    222|     const got: any[] = []
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/27]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > puts every history parameter on the frame top level, since_id included
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:258:3
+    256|
+    257|   // AC-CHANCLIENT-007 — 이력 요청 프레임이 다섯 파라미터를 그대로 싣는다
+    258|   it('puts every history parameter on the frame top level, since_id in…
+       |   ^
+    259|     const srv = startServer()
+    260|     const { client } = await connected(srv)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/27]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > matches responses by rid, not by arrival order
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:278:3
+    276|
+    277|   // AC-CHANCLIENT-008 — rid 로 맞추고, 도착 순서로 맞추지 않는다
+    278|   it('matches responses by rid, not by arrival order', async () => {
+       |   ^
+    279|     const srv = startServer()
+    280|     const { client } = await connected(srv)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/27]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:315:3
+    313|
+    314|   // AC-CHANCLIENT-010 — 연결이 없으면 즉시 실패하고 흔적을 남기지 않는다
+    315|   it('fails a history request immediately when not connected, and reco…
+       |   ^
+    316|     const srv = startServer()
+    317|     const client = createGatewayClient({ url: () => srv.url(), token: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/27]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나)
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:420:3
+    418|   // wire() 는 onWelcome 을 배선하지 않으므로 이 관측은 createGatewayClient 를 직접 쓰는
+    419|   // 이 하네스에서만 성립한다 — AC-CHANCLIENT-002 와 별개로 이 SPEC 이 들이는 필드의 관측이다.
+    420|   it('passes a welcome envelope through untouched, extra fields includ…
+       |   ^
+    421|     // AC-GWAUTH2-020 (나) — v1 AC-GWAUTH-015 의 이월 항목을 대체한다: v2 에서는 wel…
+    422|     // 봉투 «안» 에 도착하고, 클라이언트는 봉투에서 푼 내부 프레임을 통째로 그대로 넘긴다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/27]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a real relay terminating tls on both sides cannot take over the bot session
+Error: waitFor timeout: 직접 채널 알림 도착
+ ❯ waitFor test/gateway-mutual-auth.test.ts:105:37
+    103|   const t0 = Date.now()
+    104|   while (!pred()) {
+    105|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    106|     await new Promise(r => setTimeout(r, 25))
+    107|   }
+ ❯ test/gateway-mutual-auth.test.ts:396:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > gateway message becomes exactly one session notification
+Error: waitFor timeout: 알림 도착
+ ❯ waitFor test/index-wiring.test.ts:38:37
+     36|   const t0 = Date.now()
+     37|   while (!pred()) {
+     38|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     39|     await new Promise(r => setTimeout(r, 10))
+     40|   }
+ ❯ test/index-wiring.test.ts:175:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > cc message is delivered but raises no working status
+Error: waitFor timeout: 첫 알림
+ ❯ waitFor test/index-wiring.test.ts:38:37
+     36|   const t0 = Date.now()
+     37|   while (!pred()) {
+     38|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     39|     await new Promise(r => setTimeout(r, 10))
+     40|   }
+ ❯ test/index-wiring.test.ts:186:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a TO message reports working to the gateway
+Error: waitFor timeout: working 프레임
+ ❯ waitFor test/index-wiring.test.ts:38:37
+     36|   const t0 = Date.now()
+     37|   while (!pred()) {
+     38|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     39|     await new Promise(r => setTimeout(r, 10))
+     40|   }
+ ❯ test/index-wiring.test.ts:201:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:234:3
+    232|
+    233|   // AC-CHANWIRE-006 — fetch_history 파라미터가 게이트웨이까지 그대로 간다
+    234|   it('fetch_history forwards since_id and limit verbatim', async () =>…
+       |   ^
+    235|     const { stub, obs } = await connected()
+    236|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:247:3
+    245|   // AC-CHANWIRE-007 — 이력은 구조화 JSON 문서 하나로 렌더링된다
+    246|   // (v0.4.0 개정, 카드 t10 — SPEC-CHANINJECT-001 §3.2. 줄 형식 대신 JSON.parse…
+    247|   it('history renders as one structured JSON document', async () => {
+       |   ^
+    248|     const { stub, obs } = await connected()
+    249|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:261:3
+    259|   // AC-CHANWIRE-008 — 빈 이력도 같은 모양의 JSON 이다
+    260|   // (v0.4.0 개정, 카드 t10 — '(기록 없음)' 문구는 결과 타입을 갈리므로 버려졌다)
+    261|   it('empty history renders the same JSON shape with a null cursor', a…
+       |   ^
+    262|     const { stub, obs } = await connected()
+    263|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:272:3
+    270|   // AC-CHANINJECT-004 (v0.3.0 재정의, sync 감사 F-01) — 오염된 본문 한 건이 이력 원소 …
+    271|   // 그 안의 봉투 시퀀스가 모델에 닿지 않는다. 두 방어를 서로 다른 단언으로 잰다 — (a) 구조(F-03), (b)·…
+    272|   it('a single poisoned message stays a single element and carries no …
+       |   ^
+    273|     const { stub, obs } = await connected()
+    274|     // 프로브 P3 의 줄 오염 + 프로브 P-A 의 봉투 오염을 한 고정값에 담는다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:315:3
+    313|
+    314|   // AC-CHANINJECT-005 — 커서는 배열 밖에서 나오고, 본문이 정하지 못한다 (AC-CHANINJECT-00…
+    315|   it('derives the cursor from ids only, never from body text, and null…
+       |   ^
+    316|     const { stub, obs } = await connected()
+    317|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/27]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection
+Error: waitFor timeout: working 프레임
+ ❯ waitFor test/index-wiring.test.ts:38:37
+     36|   const t0 = Date.now()
+     37|   while (!pred()) {
+     38|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     39|     await new Promise(r => setTimeout(r, 10))
+     40|   }
+ ❯ test/index-wiring.test.ts:380:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/27]⎯
+
+ FAIL  test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code
+Error: waitFor timeout: 판정 알림 도착
+ ❯ waitFor test/permission-relay.test.ts:81:37
+     79|   const t0 = Date.now()
+     80|   while (!pred()) {
+     81|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     82|     await new Promise(r => setTimeout(r, 10))
+     83|   }
+ ❯ test/permission-relay.test.ts:315:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/27]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each
+Error: waitFor timeout: 두 알림 도착
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:408:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/27]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+Error: waitFor timeout: 이력 응답 해소
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:442:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/27]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a challenge from a stub that holds the confirm key establishes the session
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/transport-auth.test.ts:680:28
+    678|
+    679|     expect(stub.authSeen().length).toBe(1)         // 증명이 통과했으므로 서명이 나…
+    680|     expect(w.notes.length).toBe(1)                 // 사칭이 아니라 정상 채팅 경로…
+       |                            ^
+    681|     expect(w.verdicts.map(v => v.params)).toEqual([{ request_id: REQ.r…
+    682|     await waitFor(() => settled !== 'pending', '이력 해소')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/27]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+Error: waitFor timeout: 첫 소켓 기준선
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:716:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/27]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+Error: waitFor timeout: 양성 봉투 도착
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:778:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/27]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+Error: waitFor timeout: 기준선 판정
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:796:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/27]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected [ 'P_establish' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "P_establish",
++ ]
+
+ ❯ test/transport-auth.test.ts:864:18
+    862|
+    863|     const base = await runSuite(source)
+    864|     expect(base).toEqual([])                                     // 변이…
+       |                  ^
+    865|     const n1 = await runSuite(apply.N1(source))
+    866|     const n2 = await runSuite(apply.N2(source))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/27]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: history request 9b7b1317-819d-40b6-abd6-6380205f14db timed out after 10000ms
+ ❯ Timeout._onTimeout src/gateway-client.ts:249:16
+    247|       const timer = setTimeout(() => {
+    248|         pending.delete(rid)
+    249|         reject(new Error(`history request ${rid} timed out after ${HIS…
+       |                ^
+    250|       }, HISTORY_TIMEOUT_MS)
+    251|       pending.set(rid, { resolve, reject, timer })
+ ❯ listOnTimeout node:internal/timers:605:17
+ ❯ processTimers node:internal/timers:541:7
+
+This error originated in "test/gateway-client.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "fails a history request immediately when not connected, and recovers after connecting". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  5 failed | 1 passed (6)
+      Tests  27 failed | 68 passed (95)
+     Errors  1 error
+   Start at  23:11:15
+   Duration  45.82s (transform 338ms, setup 0ms, import 1.10s, tests 143.33s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error command failed
+npm error command sh -c vitest run
+
+[exit=1]

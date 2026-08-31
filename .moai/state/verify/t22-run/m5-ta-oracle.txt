@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed | 25 skipped) 1904ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 92ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+ReferenceError: createSseHub is not defined
+ ❯ buildRealGateway test/transport-auth.test.ts:364:7
+    362|   app.db = db
+    363|   await app.register(cookie)
+    364|   app.decorate('hub', createSseHub())
+       |       ^
+    365|   mkdirSync(path.path.join(dir, 'up'), { recursive: true })
+    366|   const gateway = createGateway(app, { uploadsDir: path.path.join(dir,…
+ ❯ test/transport-auth.test.ts:658:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed | 25 skipped (30)
+   Start at  18:48:37
+   Duration  2.07s (transform 54ms, setup 0ms, import 99ms, tests 1.90s, environment 0ms)
+

@@ -1,0 +1,582 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+
+ Test Files  15 passed (15)
+      Tests  188 passed (188)
+   Start at  22:49:18
+   Duration  8.01s (transform 1.04s, setup 0ms, import 2.32s, tests 24.21s, environment 2.30s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/permission-relay.test.ts (14 tests | 1 failed) 4992ms
+     × wire relays a request out to the gateway and a verdict back to Claude Code 3082ms
+ ❯ test/gateway-client.test.ts (17 tests | 10 failed) 5186ms
+     × passes the welcome frame through untouched, extra fields included 8ms
+     × passes the message frame through untouched, files and delivery included 7ms
+     × passes a deny verdict through as deny 6ms
+     × routes by type only — an unknown frame reaches no callback 7ms
+     × survives frames whose callback was not provided 7ms
+     × drops a malformed frame and keeps processing the next valid one 7ms
+     × puts every history parameter on the frame top level, since_id included 15ms
+     × matches responses by rid, not by arrival order 13ms
+     × fails a history request immediately when not connected, and recovers after connecting 5002ms
+     × passes a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나) 7ms
+ ❯ test/gateway-mutual-auth.test.ts (5 tests | 4 failed) 21073ms
+     × the real server and the real channel agree end to end, envelope included 5007ms
+     × a relaying man in the middle passes the handshake and still injects nothing 5003ms
+     × a history response from the real server arrives inside an envelope and resolves 5003ms
+     × on an unbound transport the same relay does take over, and the channel says so 5005ms
+ ❯ test/index-wiring.test.ts (14 tests | 9 failed) 37801ms
+     × gateway message becomes exactly one session notification 3029ms
+     × cc message is delivered but raises no working status 3024ms
+     × a TO message reports working to the gateway 3021ms
+     × fetch_history forwards since_id and limit verbatim 5002ms
+     × history renders as one structured JSON document 5005ms
+     × empty history renders the same JSON shape with a null cursor 5002ms
+     × a single poisoned message stays a single element and carries no live envelope sequence 5003ms
+     × derives the cursor from ids only, never from body text, and nulls it when empty 5002ms
+     × a chat message with no MCP peer raises no unhandled rejection 3015ms
+ ❯ test/transport-auth.test.ts (30 tests | 18 failed) 67007ms
+     × after welcome, the same two frames reach the session exactly once each 3032ms
+     × a history_response before welcome resolves nothing; after welcome it resolves 3427ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (hmac-pub) 3044ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce) 3040ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (sha256-pub) 3041ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (pub) 3043ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 3138ms
+     × a challenge from a stub that holds the confirm key establishes the session 3045ms
+     × both nonces are regenerated per socket and a replayed challenge is refused 3017ms
+     × a malformed or wrong-length proof is refused without throwing (wrong) 3039ms
+     × a malformed or wrong-length proof is refused without throwing (short) 3042ms
+     × a malformed or wrong-length proof is refused without throwing (omit) 3040ms
+     × a malformed or wrong-length proof is refused without throwing (other-room) 3037ms
+     × a malformed or wrong-length proof is refused without throwing (bad-nonce) 3042ms
+     × a malformed or wrong-length proof is refused without throwing (pipe-nonce) 3043ms
+     × an envelope with a broken mac, and a frame with no envelope, are both dropped 13ms
+     × a replayed envelope is dropped because its sequence has already been used 12ms
+     × the three gates are separate: each mutation breaks a different set 13877ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 42 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes the welcome frame through untouched, extra fields included
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:161:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes the message frame through untouched, files and delivery included
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:175:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes a deny verdict through as deny
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:185:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > routes by type only — an unknown frame reaches no callback
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:200:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > survives frames whose callback was not provided
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:212:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:227:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > puts every history parameter on the frame top level, since_id included
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:273:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > matches responses by rid, not by arrival order
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:290:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:315:3
+    313|
+    314|   // AC-CHANCLIENT-010 — 연결이 없으면 즉시 실패하고 흔적을 남기지 않는다
+    315|   it('fails a history request immediately when not connected, and reco…
+       |   ^
+    316|     const srv = startServer()
+    317|     const client = createGatewayClient({ url: () => srv.url(), token: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/42]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나)
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:427:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/42]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > the real server and the real channel agree end to end, envelope included
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:212:3
+    210| describe('gateway mutual auth', () => {
+    211|   // AC-GWAUTH2-020 (가) — 진짜 서버와 진짜 채널이 종단간에 합의한다.
+    212|   it('the real server and the real channel agree end to end, envelope …
+       |   ^
+    213|     const { db, gateway, port, close } = await buildRealServer()
+    214|     const roomId = seedRoom(db)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/42]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:231:3
+    229|
+    230|   // AC-GWAUTH2-013 — 중계형 중간자는 핸드셰이크를 통과시키고도 아무것도 주입하지 못한다.
+    231|   it('a relaying man in the middle passes the handshake and still inje…
+       |   ^
+    232|     const { db, gateway, port: realPort, close } = await buildRealServ…
+    233|     const roomId = seedRoom(db)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/42]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a history response from the real server arrives inside an envelope and resolves
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:271:3
+    269|
+    270|   // AC-GWAUTH2-023 — 진짜 서버의 history_response 가 봉투로 도착해 해소된다 (1회차 F-03…
+    271|   it('a history response from the real server arrives inside an envelo…
+       |   ^
+    272|     const { db, gateway, port, close, sentEnvs } = await buildRealServ…
+    273|     const roomId = seedRoom(db)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/42]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > on an unbound transport the same relay does take over, and the channel says so
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:404:3
+    402|
+    403|   // AC-GWAUTH2-024 — 경계 기준: 바인딩이 서지 않는 연결에서는 같은 중계자가 이긴다.
+    404|   it('on an unbound transport the same relay does take over, and the c…
+       |   ^
+    405|     const errSpyLines: string[] = []
+    406|     const origErr = console.error
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > gateway message becomes exactly one session notification
+Error: waitFor timeout: 알림 도착
+ ❯ waitFor test/index-wiring.test.ts:38:37
+     36|   const t0 = Date.now()
+     37|   while (!pred()) {
+     38|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     39|     await new Promise(r => setTimeout(r, 10))
+     40|   }
+ ❯ test/index-wiring.test.ts:175:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > cc message is delivered but raises no working status
+Error: waitFor timeout: 첫 알림
+ ❯ waitFor test/index-wiring.test.ts:38:37
+     36|   const t0 = Date.now()
+     37|   while (!pred()) {
+     38|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     39|     await new Promise(r => setTimeout(r, 10))
+     40|   }
+ ❯ test/index-wiring.test.ts:186:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a TO message reports working to the gateway
+Error: waitFor timeout: working 프레임
+ ❯ waitFor test/index-wiring.test.ts:38:37
+     36|   const t0 = Date.now()
+     37|   while (!pred()) {
+     38|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     39|     await new Promise(r => setTimeout(r, 10))
+     40|   }
+ ❯ test/index-wiring.test.ts:201:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:234:3
+    232|
+    233|   // AC-CHANWIRE-006 — fetch_history 파라미터가 게이트웨이까지 그대로 간다
+    234|   it('fetch_history forwards since_id and limit verbatim', async () =>…
+       |   ^
+    235|     const { stub, obs } = await connected()
+    236|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:247:3
+    245|   // AC-CHANWIRE-007 — 이력은 구조화 JSON 문서 하나로 렌더링된다
+    246|   // (v0.4.0 개정, 카드 t10 — SPEC-CHANINJECT-001 §3.2. 줄 형식 대신 JSON.parse…
+    247|   it('history renders as one structured JSON document', async () => {
+       |   ^
+    248|     const { stub, obs } = await connected()
+    249|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:261:3
+    259|   // AC-CHANWIRE-008 — 빈 이력도 같은 모양의 JSON 이다
+    260|   // (v0.4.0 개정, 카드 t10 — '(기록 없음)' 문구는 결과 타입을 갈리므로 버려졌다)
+    261|   it('empty history renders the same JSON shape with a null cursor', a…
+       |   ^
+    262|     const { stub, obs } = await connected()
+    263|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:272:3
+    270|   // AC-CHANINJECT-004 (v0.3.0 재정의, sync 감사 F-01) — 오염된 본문 한 건이 이력 원소 …
+    271|   // 그 안의 봉투 시퀀스가 모델에 닿지 않는다. 두 방어를 서로 다른 단언으로 잰다 — (a) 구조(F-03), (b)·…
+    272|   it('a single poisoned message stays a single element and carries no …
+       |   ^
+    273|     const { stub, obs } = await connected()
+    274|     // 프로브 P3 의 줄 오염 + 프로브 P-A 의 봉투 오염을 한 고정값에 담는다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:315:3
+    313|
+    314|   // AC-CHANINJECT-005 — 커서는 배열 밖에서 나오고, 본문이 정하지 못한다 (AC-CHANINJECT-00…
+    315|   it('derives the cursor from ids only, never from body text, and null…
+       |   ^
+    316|     const { stub, obs } = await connected()
+    317|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/42]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection
+Error: waitFor timeout: working 프레임
+ ❯ waitFor test/index-wiring.test.ts:38:37
+     36|   const t0 = Date.now()
+     37|   while (!pred()) {
+     38|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     39|     await new Promise(r => setTimeout(r, 10))
+     40|   }
+ ❯ test/index-wiring.test.ts:380:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/42]⎯
+
+ FAIL  test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code
+Error: waitFor timeout: 판정 알림 도착
+ ❯ waitFor test/permission-relay.test.ts:81:37
+     79|   const t0 = Date.now()
+     80|   while (!pred()) {
+     81|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+     82|     await new Promise(r => setTimeout(r, 10))
+     83|   }
+ ❯ test/permission-relay.test.ts:315:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each
+Error: waitFor timeout: 두 알림 도착
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:408:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+Error: waitFor timeout: 재접속 확립 (auth 발신)
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:438:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-pub)
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce)
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (sha256-pub)
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (pub)
+Error: waitFor timeout: challenge 판정
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ runForgedEcho test/transport-auth.test.ts:341:3
+ ❯ test/transport-auth.test.ts:647:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+Error: waitFor timeout: challenge 판정
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ runForgedEcho test/transport-auth.test.ts:341:3
+ ❯ test/transport-auth.test.ts:662:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a challenge from a stub that holds the confirm key establishes the session
+Error: waitFor timeout: challenge 판정
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ runForgedEcho test/transport-auth.test.ts:341:3
+ ❯ test/transport-auth.test.ts:677:28
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+Error: waitFor timeout: 첫 소켓 기준선
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:716:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+Error: waitFor timeout: challenge 판정
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ runForgedEcho test/transport-auth.test.ts:341:3
+ ❯ test/transport-auth.test.ts:745:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+TypeError: Cannot read properties of undefined (reading 'sessKey')
+ ❯ Object.envFrame test/transport-auth.test.ts:139:38
+    137|     const s = sessions.get(ws)!
+    138|     const payload = JSON.stringify(inner)
+    139|     let mac = createHmac('sha256', s.sessKey).update(`${seq}|${payload…
+       |                                      ^
+    140|     if (macBad) mac = (mac[0] === '0' ? '1' : '0') + mac.slice(1)
+    141|     return { type: 'env', seq, payload, mac }
+ ❯ test/transport-auth.test.ts:765:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+TypeError: Cannot read properties of undefined (reading 'sessKey')
+ ❯ Object.envFrame test/transport-auth.test.ts:139:38
+    137|     const s = sessions.get(ws)!
+    138|     const payload = JSON.stringify(inner)
+    139|     let mac = createHmac('sha256', s.sessKey).update(`${seq}|${payload…
+       |                                      ^
+    140|     if (macBad) mac = (mac[0] === '0' ? '1' : '0') + mac.slice(1)
+    141|     return { type: 'env', seq, payload, mac }
+ ❯ test/transport-auth.test.ts:794:32
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/42]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected [ 'P_establish' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "P_establish",
++ ]
+
+ ❯ test/transport-auth.test.ts:864:18
+    862|
+    863|     const base = await runSuite(source)
+    864|     expect(base).toEqual([])                                     // 변이…
+       |                  ^
+    865|     const n1 = await runSuite(apply.N1(source))
+    866|     const n2 = await runSuite(apply.N2(source))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/42]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+Error: 하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다
+ ❯ Object.sendInner test/gateway-client.test.ts:56:19
+     54|   const sendInner = (ws: WebSocket, inner: object): void => {
+     55|     const s = sessions.get(ws)
+     56|     if (!s) throw new Error('하네스: 확립되지 않은 소켓으로 sendInner 를 불렀다')
+       |                   ^
+     57|     const payload = JSON.stringify(inner)
+     58|     s.seq += 1
+ ❯ test/gateway-client.test.ts:324:45
+ ❯ WebSocket.<anonymous> test/gateway-client.test.ts:81:33
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage ../node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage ../node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData ../node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop ../node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write ../node_modules/ws/lib/receiver.js:117:10
+
+This error originated in "test/gateway-client.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "fails a history request immediately when not connected, and recovers after connecting". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  5 failed | 1 passed (6)
+      Tests  42 failed | 53 passed (95)
+     Errors  1 error
+   Start at  22:49:26
+   Duration  67.23s (transform 275ms, setup 0ms, import 867ms, tests 136.09s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error command failed
+npm error command sh -c vitest run
+
+[exit=1]

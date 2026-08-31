@@ -1,0 +1,4 @@
+documents the #번호 numbering and the since_id cursor in the tool description
+history lines carry the #id cursor prefix
+empty history renders the Korean placeholder
+isTransportAllowed decides by scheme and host only

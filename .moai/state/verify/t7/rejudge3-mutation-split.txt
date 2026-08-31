@@ -1,0 +1,35 @@
+# 재판정 3 분할 변이 (재판정 감사자 직접 실행, 트리 .claude/worktrees/t7, HEAD 271ba82)
+# 기준 blob 20288366597ce121f8d3a3490ccf6273313ea715 — 각 변이 전후로 git hash-object 로 사전/복원 상태를 대조했다
+# 주의: 08:07 전후 run 레인이 같은 파일에 동시 변이를 걸고 있었다는 중계를 받아, 그 창의 관측은 폐기하고 아래를 다시 실행했다
+
+## 변이 A — tool_name 검사 제거 (접두·중화 유지)
+```
+ ✓ test/permissions.test.ts > permission relay > a newline-free description mimicking the guidance line cannot forge a guidance line 44ms
+ ✓ test/permissions.test.ts > permission relay > bot text cannot inject the bot-content marker 41ms
+ × test/permissions.test.ts > permission relay > a tool_name carrying a forged guidance instruction never reaches the unprefixed line 43ms
+AssertionError: expected '🔒 봇이 도구 사용 승인을 요청합니다: Read 승인하려면 "ye…' not to contain '승인하려면'
+      Tests  1 failed | 22 passed (23)
+```
+복원: OK (blob 일치)
+
+## 변이 B — oneLine 표식 중화 제거 (접두·검사 유지)
+```
+ ✓ test/permissions.test.ts > permission relay > a newline-free description mimicking the guidance line cannot forge a guidance line 41ms
+ × test/permissions.test.ts > permission relay > bot text cannot inject the bot-content marker 43ms
+ ✓ test/permissions.test.ts > permission relay > a tool_name carrying a forged guidance instruction never reaches the unprefixed line 41ms
+AssertionError: expected 2 to be 1 // Object.is equality
+      Tests  1 failed | 22 passed (23)
+```
+복원: OK (blob 일치)
+
+## 변이 C — BOT_MARK 접두 제거 (검사·중화 유지)
+```
+ × test/permissions.test.ts > permission relay > a newline-free description mimicking the guidance line cannot forge a guidance line 45ms
+ × test/permissions.test.ts > permission relay > bot text cannot inject the bot-content marker 44ms
+ ✓ test/permissions.test.ts > permission relay > a tool_name carrying a forged guidance instruction never reaches the unprefixed line 43ms
+AssertionError: expected 2 to be 1 // Object.is equality
+AssertionError: expected +0 to be 2 // Object.is equality
+      Tests  2 failed | 21 passed (23)
+```
+복원: OK (blob 일치)
+

@@ -1,0 +1,16 @@
+server/src/config.ts:0
+server/src/auth.ts:5
+server/src/db.ts:2
+server/src/gateway.ts:3
+server/src/mention.ts:0
+server/src/room-members.ts:3
+server/src/index.ts:0
+server/src/permissions.ts:2
+server/src/routes-events.ts:2
+server/src/routes-bots.ts:6
+server/src/routes-rooms.ts:4
+server/src/routes-messages.ts:2
+channel/src/channel-server.ts:0
+server/src/sse.ts:2
+channel/src/gateway-client.ts:0
+channel/src/index.ts:1

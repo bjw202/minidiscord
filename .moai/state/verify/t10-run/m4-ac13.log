@@ -1,0 +1,27 @@
+# AC-CHANINJECT-013 재실행 (v0.3.0 재진입 M4) — 2026-08-28, worktree HEAD 78e58b3, 미커밋 작업 트리
+# spec_base_sha 는 원래 M1 단계 0 값 bbd21cd80e5d9b78baf2a00eee33bd386943fd28 을 그대로 쓴다
+# (plan.md §F M4 단계 7 — 범위 경계는 카드 전체에 대한 것이지 마일스톤 하나에 대한 것이 아니다).
+
+$ SPEC_BASE_SHA=bbd21cd80e5d9b78baf2a00eee33bd386943fd28; test -n "$SPEC_BASE_SHA"; echo "COND1_EXIT=$?"
+COND1_EXIT=0
+
+$ git diff --name-only bbd21cd80e5d9b78baf2a00eee33bd386943fd28 -- server web
+(빈 출력 — 조건 2 PASS)
+
+$ git diff --name-only bbd21cd80e5d9b78baf2a00eee33bd386943fd28 -- channel/src
+channel/src/channel-server.ts
+channel/src/index.ts
+(정확히 두 줄 — 조건 3 PASS. gateway-client.ts 미출현)
+
+$ git diff --name-only bbd21cd80e5d9b78baf2a00eee33bd386943fd28 -- channel/package.json package.json
+(빈 출력 — 조건 4 PASS, 새 의존성 없음)
+
+$ grep -n '계획 감사' .moai/specs/SPEC-CHANAUTH-001/progress.md | head -1
+13:| 계획 감사 | 1차 `.moai/reports/t9/plan-audit.md` — FAIL 0.55, 차단 7건 (대장 `plan-done-2.md`). 2차 `.moai/reports/t9/plan-audit-2.md` — FAIL 0.74, 차단 7건 + optional 3건 (대장 `plan-done-3.md`). 3차 `.moai/reports/t9/plan-audit-3.md` — **마지막 라운드, 마감 완료** (교정 대장 `plan-done-4.md`, 커밋 `7e4834b` «계획 감사 3회차 마감»). 계획 감사는 3회로 종료됐고 이후는 run·sync 단계다 |
+(«3차 판정 예정» 문언 없음, «마지막 라운드, 마감 완료» — 조건 5a PASS, F-B3 착지 유지)
+
+$ grep -n 'F-01 .*열림·t15 소유가 §E.2 에' .moai/specs/SPEC-CHANAUTH-001/progress.md
+660:| F-01 잔여 **셋** 열림·t15 소유가 §E.2 에 | PASS — §E.2 M1 잔여 위험 + 본 절 프로브 단락. **라벨 정정 (카드 `t10`, 감사 J2)**: v0.3.0 까지 이 행은 «절반» 이라 적어, 자기 출처인 `plan.md:165`(«잔여 **셋**» 으로 개정됨)를 더 이상 인용하지 못했다. **PASS 판정 자체는 옳고 근거도 더 강해졌으므로 판정은 바꾸지 않는다** — 고친 것은 한 낱말짜리 라벨뿐이다(`.moai/reports/t9/sync-audit-2.md` §6 J2) |
+(«셋» — «절반» 아님 — 조건 5b PASS, J2 착지 유지)
+
+## 판정: 다섯 조건 전부 PASS.

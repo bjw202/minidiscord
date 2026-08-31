@@ -1,0 +1,71 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/rooms-bots.test.ts (21 tests | 1 failed) 1253ms
+     × stores only the verifier and the confirm key of the issued token, never the token 47ms
+ ❯ test/gateway.test.ts (31 tests | 1 failed) 7374ms
+     × an invite stores only a verifier and a confirm key, never the token or its hash 60ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > an invite stores only a verifier and a confirm key, never the token or its hash
+AssertionError: expected [ 'id', 'room_id', 'bot_id', …(7) ] to not include 'token_hash'
+ ❯ test/gateway.test.ts:1083:22
+    1081|     // 컬럼 자체가 없다 — 행이 아니라 스키마로 잰다 (PRAGMA table_info).
+    1082|     const cols = (db.prepare('PRAGMA table_info(bot_tokens)').all() as…
+    1083|     expect(cols).not.toContain('token_hash')
+       |                      ^
+    1084|     expect(cols).toEqual(expect.arrayContaining(['verifier_pub', 'serv…
+    1085|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/rooms-bots.test.ts > invites > stores only the verifier and the confirm key of the issued token, never the token
+AssertionError: expected [ 'id', 'room_id', 'bot_id', …(7) ] to not include 'token_hash'
+ ❯ test/rooms-bots.test.ts:218:34
+    216|     expect(row.verifier_pub).toBeTruthy()
+    217|     expect(row.server_confirm_key).toBeTruthy()
+    218|     expect(Object.keys(row)).not.toContain('token_hash')
+       |                                  ^
+    219|     const dump = JSON.stringify(row)
+    220|     expect(dump).not.toContain(body.token)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 13 passed (15)
+      Tests  2 failed | 186 passed (188)
+   Start at  22:12:31
+   Duration  7.82s (transform 862ms, setup 0ms, import 1.99s, tests 23.06s, environment 1.85s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error command failed
+npm error command sh -c vitest run
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+
+ Test Files  6 passed (6)
+      Tests  95 passed (95)
+   Start at  22:12:39
+   Duration  65.09s (transform 253ms, setup 0ms, import 703ms, tests 70.08s, environment 0ms)
+
+
+[exit=1]

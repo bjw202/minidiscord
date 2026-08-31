@@ -1,0 +1,20 @@
+(node:26033) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/.moai/state/verify/t22-run/m6-dist/server/src/db.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS A. v1 hello{token} 닫힘·무응답 — frames=0
+PASS B. challenge 없는 auth 닫힘·무응답 — frames=0
+PASS C0. hello 전 등록 없음
+PASS D. challenge 키 집합 고정
+PASS E. challenge 증명=독립 재계산(cb=unbound)
+PASS F. challenge 후에도 등록 없음(등록 이동)
+PASS G. welcome 이 봉투 안이다(맨몸 welcome 0)
+PASS H. 봉투 키 집합 고정
+PASS I. seq 1 시작
+PASS J. mac 전건 유효(독립 재계산)
+PASS K. 등록은 auth 통과 후
+PASS L. 재전송이 봉투로(seq 2,3)
+PASS M. deliver 가 봉투로 도착
+PASS N. sendToBot true·봉투·seq 5
+PASS O. 틀린 서명 닫힘·미등록
+PROBE PASS — 15/15

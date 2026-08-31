@@ -1,0 +1,56 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/gateway-mutual-auth.test.ts (5 tests | 3 failed) 10178ms
+     × a relaying man in the middle passes the handshake and still injects nothing 5009ms
+     × a real relay terminating tls on both sides cannot take over the bot session 4ms
+     × on an unbound transport the same relay does take over, and the channel says so 5005ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:219:3
+    217|
+    218|   // AC-GWAUTH2-013 — 중계형 중간자는 핸드셰이크를 통과시키고도 아무것도 주입하지 못한다.
+    219|   it('a relaying man in the middle passes the handshake and still inje…
+       |   ^
+    220|     const { db, gateway, port: realPort, close } = await buildRealServ…
+    221|     const roomId = seedRoom(db)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a real relay terminating tls on both sides cannot take over the bot session
+TypeError: readFileSync is not a function
+ ❯ fixtureKeyPem test/gateway-mutual-auth.test.ts:50:10
+     48| const FIXTURE_CERT = fileURLToPath(new URL('../../server/test/fixtures…
+     49| function fixtureKeyPem(): string {
+     50|   return readFileSync(new URL('../../server/test/fixtures/tls-test-key…
+       |          ^
+     51| }
+     52| function fixtureCertPem(): string {
+ ❯ buildRealServer test/gateway-mutual-auth.test.ts:65:31
+ ❯ test/gateway-mutual-auth.test.ts:284:55
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > on an unbound transport the same relay does take over, and the channel says so
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:383:3
+    381|
+    382|   // AC-GWAUTH2-024 — 경계 기준: 바인딩이 서지 않는 연결에서는 같은 중계자가 이긴다.
+    383|   it('on an unbound transport the same relay does take over, and the c…
+       |   ^
+    384|     const errSpyLines: string[] = []
+    385|     const origErr = console.error
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 2 passed (5)
+   Start at  20:44:06
+   Duration  10.46s (transform 52ms, setup 0ms, import 216ms, tests 10.18s, environment 0ms)
+

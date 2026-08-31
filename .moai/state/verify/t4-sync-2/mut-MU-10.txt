@@ -1,0 +1,35 @@
+MUTATION MU-10 - F-11 inner stopped guard in retry()
+file: channel/src/gateway-client.ts
+old: '    if (stopped) return   '
+new: '    // guard removed by MU-10 '
+build_exit=0 test_exit=0
+FAILING TESTS (0):
+
+--- tail ---
+ ✓ test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection 241ms
+ ✓ test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each 440ms
+ ✓ test/permission-relay.test.ts > permission relay > relays a verdict only for an id it actually emitted, exactly once 364ms
+ ✓ test/index-wiring.test.ts > channel wiring > the built artifact speaks MCP; the token gates only the gateway 496ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict before transport connect throws nothing and leaves no unhandled rejection 157ms
+ ✓ test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves 436ms
+ ✓ test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code 84ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed 103ms
+ ✓ test/permission-relay.test.ts > permission relay > a verdict for an emitted id is relayed exactly once, verbatim 104ms
+ ✓ test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped 260ms
+ ✓ test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first 212ms
+ ✓ test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect 1424ms
+ ✓ test/transport-auth.test.ts > transport auth > gated frames leave no unhandled rejection and do not stop the client 822ms
+ ✓ test/transport-auth.test.ts > transport auth > a gated frame raises neither an unhandled rejection nor an uncaught exception 871ms
+ ✓ test/transport-auth.test.ts > transport auth > imports no filesystem module anywhere under channel/src 1ms
+ ✓ test/transport-auth.test.ts > transport auth > decides transport by scheme and host in every branch, loopback included 0ms
+ ✓ test/transport-auth.test.ts > transport auth > the entry point refuses a plaintext remote and connects otherwise 592ms
+ ✓ test/transport-auth.test.ts > transport auth > keeps bracketed IPv6 loopback working after the unreachable bare ::1 entry is dropped 0ms
+ ✓ test/transport-auth.test.ts > transport auth > refuses an unparseable address, stays alive, says nothing on stdout, and explains truthfully 498ms
+
+ Test Files  5 passed (5)
+      Tests  70 passed (70)
+   Start at  18:25:04
+   Duration  5.69s (transform 179ms, setup 0ms, import 503ms, tests 9.09s, environment 0ms)
+
+
+RESTORE: sha_match=True git_diff_clean=True rebuild_exit=0

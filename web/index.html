@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>minidiscord</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module">
+    import { initApp } from '/app.js'
+    initApp()
+  </script>
+</head>
+<body>
+  <!-- 인증 화면 — 로그인과 회원가입을 한 패널에 둔다 -->
+  <section id="auth-view">
+    <form id="login-form">
+      <h1>minidiscord</h1>
+      <label for="login-username">사용자 이름</label>
+      <input id="login-username" autocomplete="username">
+      <label for="login-password">비밀번호</label>
+      <input id="login-password" type="password" autocomplete="current-password">
+      <button type="submit">로그인</button>
+    </form>
+    <form id="register-form">
+      <h2>처음이신가요?</h2>
+      <label for="reg-username">사용자 이름</label>
+      <input id="reg-username" autocomplete="username">
+      <label for="reg-password">비밀번호 (8자 이상)</label>
+      <input id="reg-password" type="password" autocomplete="new-password">
+      <button type="submit">회원가입</button>
+    </form>
+    <!-- 서버가 준 오류 문구가 여기 뜬다 — 화면은 인증 뷰에 머문다 (REQ-WEBSHELL-008) -->
+    <p id="auth-error" hidden></p>
+  </section>
+
+  <!-- 메인 화면: 사이드바 + 채팅. 채팅 내용물는 형제 SPEC(SPEC-WEBCHAT-001) 소유다 -->
+  <div id="main-view" hidden>
+    <nav id="sidebar">
+      <div class="sidebar-head">
+        <h2>방</h2>
+        <button id="new-room-btn" type="button">+ 새 방</button>
+      </div>
+      <ul id="room-list"></ul>
+      <div id="archived-box">
+        <h2>보관된 방</h2>
+        <ul id="archived-list"></ul>
+      </div>
+      <div class="sidebar-head">
+        <h2>봇</h2>
+        <button id="new-bot-btn" type="button">+ 봇 등록</button>
+      </div>
+      <ul id="bot-list"></ul>
+      <button id="logout-btn" type="button">로그아웃</button>
+    </nav>
+    <!-- #chat 요소는 SPEC-WEBSHELL-001 소유(§4.8 계약 4). 안쪽 내용물은 SPEC-WEBCHAT-001 소유다.
+         #placeholder 는 제거했다 — 형제의 영구 기준은 그 존재를 단언하지 않는다. -->
+    <main id="chat">
+      <header id="room-header">
+        <h2 id="room-title"></h2>
+        <div id="room-bots"></div>
+        <!-- 봇 초대 모달의 결합은 SPEC-WEBRICH-001 몫이다 — 이 SPEC 은 자리만 둔다 (REQ-WEBCHAT-001) -->
+        <button id="invite-btn" type="button">초대</button>
+      </header>
+      <div id="messages"></div>
+      <footer id="composer">
+        <!-- 멘션 자동완성 드롭다운 — 토큰이 감지될 때만 보인다 (REQ-WEBCHAT-009) -->
+        <div id="autocomplete" hidden></div>
+        <textarea id="msg-input" rows="1" placeholder="메시지 보내기"></textarea>
+        <!-- 파일 첨부의 결합은 SPEC-WEBRICH-001 몫이다 — 이 SPEC 은 자리만 둔다 (REQ-WEBCHAT-001) -->
+        <input id="file-input" type="file" hidden>
+        <button id="send-btn" type="button">보내기</button>
+      </footer>
+    </main>
+  </div>
+
+  <!-- 이름 입력 다이얼로그 — 방 생성과 봇 등록이 공유한다. close 시점에 returnValue 를 읽는다 (plan.md §D 3번) -->
+  <dialog id="prompt-dialog">
+    <form id="prompt-form" method="dialog">
+      <label id="prompt-label" for="prompt-input">이름</label>
+      <input id="prompt-input">
+      <button type="submit" value="cancel" formnovalidate>취소</button>
+      <button id="prompt-ok" type="submit" value="ok">확인</button>
+    </form>
+  </dialog>
+
+  <!-- 봇 초대 다이얼로그 — SPEC-WEBRICH-001 소유. 새 id 는 invite-dialog·invite-command·invite-result·
+       copy-command 네 개뿐이고 문서 전체에서 유일하다 (§4.8 계약 4). 명령 문자열은 이 화면이 사는 유일한 집이다 (REQ-WEBRICH-013). -->
+  <dialog id="invite-dialog">
+    <h2>봇 초대</h2>
+    <ul class="invite-choices"></ul>
+    <div id="invite-result" hidden>
+      <p class="invite-notice">아래 명령을 지금 복사하세요 — 토큰은 다시 보여지지 않습니다.</p>
+      <pre id="invite-command"></pre>
+      <p class="invite-error" hidden></p>
+      <button id="copy-command" type="button">명령 복사</button>
+    </div>
+    <form method="dialog"><button type="submit">닫기</button></form>
+  </dialog>
+
+  <!-- 액션 오류 토스트 — 삼켜지는 오류가 없게 한다 (plan.md §D 4번) -->
+  <div id="error-toast" hidden></div>
+</body>
+</html>

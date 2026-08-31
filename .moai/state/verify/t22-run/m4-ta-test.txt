@@ -1,0 +1,199 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/transport-auth.test.ts > transport auth > hello carries a 64-hex nonce and exactly three fields
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > the nonce is regenerated per socket and a replayed proof is refused
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a forged welcome with no proof opens nothing: no chat, no verdict, no history
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a forged welcome with no proof opens nothing: no chat, no verdict, no history
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a forged welcome with no proof opens nothing: no chat, no verdict, no history
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a proof of the right length and the wrong value is refused
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a proof of the right length and the wrong value is refused
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a proof of the right length and the wrong value is refused
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a proof of the right length and the wrong value is refused
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a valid proof does not authenticate a different room_id
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a valid proof does not authenticate a different room_id
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a valid proof does not authenticate a different room_id
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a forged verdict neither reaches the session nor consumes the id the real verdict needs
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a forged verdict neither reaches the session nor consumes the id the real verdict needs
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a forged verdict neither reaches the session nor consumes the id the real verdict needs
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a forged verdict neither reaches the session nor consumes the id the real verdict needs
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a proof of the wrong length is refused without throwing
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a proof of the wrong length is refused without throwing
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a proof of the wrong length is refused without throwing
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a proof of the wrong length is refused without throwing
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+ ❯ test/transport-auth.test.ts (20 tests | 8 failed) 25670ms
+     × a history_response before welcome resolves nothing; after welcome it resolves 3448ms
+     × hello carries a 64-hex nonce and exactly three fields 22ms
+     × the nonce is regenerated per socket and a replayed proof is refused 15ms
+     × a forged welcome with no proof opens nothing: no chat, no verdict, no history 3020ms
+     × a proof of the right length and the wrong value is refused 3031ms
+     × a valid proof does not authenticate a different room_id 3020ms
+     × a forged verdict neither reaches the session nor consumes the id the real verdict needs 3021ms
+     × a proof of the wrong length is refused without throwing 3020ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+Error: waitFor timeout: 이력 응답 해소
+ ❯ waitFor test/transport-auth.test.ts:164:37
+    162|   const t0 = Date.now()
+    163|   while (!pred()) {
+    164|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    165|     await new Promise(r => setTimeout(r, 10))
+    166|   }
+ ❯ test/transport-auth.test.ts:304:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > hello carries a 64-hex nonce and exactly three fields
+AssertionError: expected [ 'client_nonce', 'pub', 'type' ] to deeply equal [ 'nonce', 'token', 'type' ]
+
+- Expected
++ Received
+
+  [
+-   "nonce",
+-   "token",
++   "client_nonce",
++   "pub",
+    "type",
+  ]
+
+ ❯ test/transport-auth.test.ts:493:39
+    491|     const { stub } = await attachWire({ welcome: true, proof: 'valid' …
+    492|     const hello = stub.sent.find(m => m.type === 'hello') as { nonce: …
+    493|     expect(Object.keys(hello).sort()).toEqual(['nonce', 'token', 'type…
+       |                                       ^
+    494|     expect(hello.nonce).toMatch(/^[0-9a-f]{64}$/)
+    495|     expect(hello.token).toBe('tok')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the nonce is regenerated per socket and a replayed proof is refused
+ReferenceError: proofOf is not defined
+ ❯ test/transport-auth.test.ts:504:20
+    502|     const w = await attachWireTo(stub)
+    503|     const nonce1 = stub.nonceSeen()
+    504|     const proof1 = proofOf('tok', nonce1, 1, 2)
+       |                    ^
+    505|
+    506|     // 양성 기준선 — 확립된 첫 소켓 위에서 채팅·판정이 각 1건씩 도착한다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a forged welcome with no proof opens nothing: no chat, no verdict, no history
+Error: waitFor timeout: 승인 요청 발신
+ ❯ waitFor test/transport-auth.test.ts:164:37
+    162|   const t0 = Date.now()
+    163|   while (!pred()) {
+    164|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    165|     await new Promise(r => setTimeout(r, 10))
+    166|   }
+ ❯ runForgedSequence test/transport-auth.test.ts:228:3
+ ❯ test/transport-auth.test.ts:535:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a proof of the right length and the wrong value is refused
+Error: waitFor timeout: 승인 요청 발신
+ ❯ waitFor test/transport-auth.test.ts:164:37
+    162|   const t0 = Date.now()
+    163|   while (!pred()) {
+    164|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    165|     await new Promise(r => setTimeout(r, 10))
+    166|   }
+ ❯ runForgedSequence test/transport-auth.test.ts:228:3
+ ❯ test/transport-auth.test.ts:562:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a valid proof does not authenticate a different room_id
+Error: waitFor timeout: 승인 요청 발신
+ ❯ waitFor test/transport-auth.test.ts:164:37
+    162|   const t0 = Date.now()
+    163|   while (!pred()) {
+    164|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    165|     await new Promise(r => setTimeout(r, 10))
+    166|   }
+ ❯ runForgedSequence test/transport-auth.test.ts:228:3
+ ❯ test/transport-auth.test.ts:574:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a forged verdict neither reaches the session nor consumes the id the real verdict needs
+Error: waitFor timeout: 승인 요청 발신
+ ❯ waitFor test/transport-auth.test.ts:164:37
+    162|   const t0 = Date.now()
+    163|   while (!pred()) {
+    164|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    165|     await new Promise(r => setTimeout(r, 10))
+    166|   }
+ ❯ test/transport-auth.test.ts:607:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a proof of the wrong length is refused without throwing
+Error: waitFor timeout: 승인 요청 발신
+ ❯ waitFor test/transport-auth.test.ts:164:37
+    162|   const t0 = Date.now()
+    163|   while (!pred()) {
+    164|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    165|     await new Promise(r => setTimeout(r, 10))
+    166|   }
+ ❯ runForgedSequence test/transport-auth.test.ts:228:3
+ ❯ test/transport-auth.test.ts:637:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 12 passed (20)
+   Start at  17:16:29
+   Duration  25.87s (transform 35ms, setup 0ms, import 130ms, tests 25.67s, environment 0ms)
+

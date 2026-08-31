@@ -1,0 +1,154 @@
+
+> test
+> vitest run web-shell.test.ts
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t5/server
+
+ ❯ test/web-shell.test.ts (12 tests | 8 failed) 248ms
+     × exposes at least the surface the sibling SPECs bind to 7ms
+     × serializes, sends credentials, and surfaces the server error text 3ms
+     × shows the auth view on a protected 401 but not on an auth 401 3ms
+     × enters the main view on login and shows the server message on failure 2ms
+     × renders active and archived rooms differently 2ms
+     × creates and archives rooms, reloads the list, and surfaces failures 2ms
+     × renders bots and registers a new one 2ms
+     × logs out, clears the state, and returns to the auth view 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-006 export surface > exposes at least the surface the sibling SPECs bind to
+AssertionError: 필수 export 가 빠졌다: expected [ '$', 'api', 'archiveRoom', …(15) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "$",
++   "api",
++   "archiveRoom",
++   "createBot",
++   "createRoom",
++   "initApp",
++   "loadBots",
++   "loadRooms",
++   "login",
++   "logout",
++   "openRoom",
++   "promptText",
++   "register",
++   "renderBots",
++   "renderRooms",
++   "showAuth",
++   "showMain",
++   "state",
++ ]
+
+ ❯ test/web-shell.test.ts:171:40
+    169|     // 1) 필수 이름이 하나도 빠지지 않았다. 빠진 것이 있으면 그 이름이 실패 메시지에 드러난다.
+    170|     const missing = REQUIRED_EXPORTS.filter(n => !actual.includes(n))
+    171|     expect(missing, '필수 export 가 빠졌다').toEqual([])
+       |                                        ^
+    172|     // 2) state 는 객체이고 이 SPEC 이 소유하는 세 필드가 규정된 초기값을 갖는다.
+    173|     //    형제가 더한 필드에는 침묵한다 — toEqual 로 객체 전체를 못 박지 않는다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-007 api() request shape > serializes, sends credentials, and surfaces the server error text
+TypeError: api is not a function
+ ❯ test/web-shell.test.ts:194:27
+    192|     })
+    193|
+    194|     const created = await api('/api/rooms', { method: 'POST', body: { …
+       |                           ^
+    195|     expect(created).toEqual({ id: 1, name: '프로젝트A' })
+    196|     const sent = calls[0]
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-008 401 two-way split > shows the auth view on a protected 401 but not on an auth 401
+TypeError: showMain is not a function
+ ❯ test/web-shell.test.ts:221:5
+    219|     })
+    220|
+    221|     showMain()
+       |     ^
+    222|     expect(document.getElementById('main-view')!.hidden).toBe(false)
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-009 login flow > enters the main view on login and shows the server message on failure
+TypeError: app.login is not a function
+ ❯ test/web-shell.test.ts:245:15
+    243|       'GET /api/bots': { status: 200, body: [] },
+    244|     })
+    245|     await app.login('alice', 'pw123456')
+       |               ^
+    246|     expect(document.getElementById('main-view')!.hidden).toBe(false)
+    247|     expect(document.getElementById('auth-view')!.hidden).toBe(true)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-010 room list render > renders active and archived rooms differently
+TypeError: Cannot set properties of undefined (setting 'rooms')
+ ❯ test/web-shell.test.ts:264:15
+    262|   it('renders active and archived rooms differently', async () => {
+    263|     const app = await loadApp()
+    264|     app.state.rooms = {
+       |               ^
+    265|       active: [
+    266|         { id: 1, name: '프로젝트A', status: 'active', created_at: 'x', arc…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-011 room create/archive > creates and archives rooms, reloads the list, and surfaces failures
+TypeError: app.createRoom is not a function
+ ❯ test/web-shell.test.ts:302:15
+    300|     })
+    301|
+    302|     await app.createRoom('프로젝트A')
+       |               ^
+    303|     expect(calls[0].path).toBe('/api/rooms')
+    304|     expect(calls[0].opts.method).toBe('POST')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-012 bots > renders bots and registers a new one
+TypeError: Cannot set properties of undefined (setting 'bots')
+ ❯ test/web-shell.test.ts:326:15
+    324|   it('renders bots and registers a new one', async () => {
+    325|     const app = await loadApp()
+    326|     app.state.bots = [{ id: 1, name: 'pm', description: '' }, { id: 2,…
+       |               ^
+    327|     app.renderBots()
+    328|     const items = document.getElementById('bot-list')!.children
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-013 logout > logs out, clears the state, and returns to the auth view
+TypeError: app.showMain is not a function
+ ❯ test/web-shell.test.ts:350:9
+    348|   it('logs out, clears the state, and returns to the auth view', async…
+    349|     const app = await loadApp()
+    350|     app.showMain()
+       |         ^
+    351|     app.state.rooms = { active: [{ id: 1, name: 'x', status: 'active',…
+    352|     app.state.bots = [{ id: 1, name: 'pm', description: '' }]
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 4 passed (12)
+   Start at  17:55:07
+   Duration  750ms (transform 67ms, setup 0ms, import 35ms, tests 248ms, environment 393ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t5/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t5/server
+npm error command failed
+npm error command sh -c vitest run web-shell.test.ts

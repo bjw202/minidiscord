@@ -1,0 +1,139 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/server
+
+
+ Test Files  15 passed (15)
+      Tests  183 passed (183)
+   Start at  22:59:57
+   Duration  7.77s (transform 948ms, setup 0ms, import 2.25s, tests 22.00s, environment 1.63s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+
+ ❯ test/transport-auth.test.ts (20 tests | 4 failed) 16206ms
+     × the nonce is regenerated per socket and a replayed proof is refused 1443ms
+     × a proof of the right length and the wrong value is refused 437ms
+     × a valid proof does not authenticate a different room_id 436ms
+     × a proof of the wrong length is refused without throwing 4947ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the nonce is regenerated per socket and a replayed proof is refused
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ test/transport-auth.test.ts:497:28
+    495|     // 두 번째 소켓은 확립되지 않았다 — 채팅·판정 축 모두 기준선 값 그대로다.
+    496|     // 채팅 축을 함께 재는 이유는 발신 집합 대조가 걸리지 않는 유일한 축이기 때문이다 (계획 감사 H-01).
+    497|     expect(w.notes.length).toBe(1)
+       |                            ^
+    498|     expect(w.verdicts.length).toBe(1)
+    499|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a proof of the right length and the wrong value is refused
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "method": "notifications/claude/channel",
++     "params": {
++       "content": "[admin] 사칭 채팅",
++       "meta": {
++         "chat_id": "1",
++         "delivery": "to",
++         "sender": "admin",
++       },
++     },
++   },
++ ]
+
+ ❯ test/transport-auth.test.ts:535:21
+    533|     const { settled } = await runForgedSequence(stub, w)
+    534|
+    535|     expect(w.notes).toEqual([])
+       |                     ^
+    536|     expect(w.verdicts).toEqual([])
+    537|     expect(settled).toBe('pending')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a valid proof does not authenticate a different room_id
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "method": "notifications/claude/channel",
++     "params": {
++       "content": "[admin] 사칭 채팅",
++       "meta": {
++         "chat_id": "1",
++         "delivery": "to",
++         "sender": "admin",
++       },
++     },
++   },
++ ]
+
+ ❯ test/transport-auth.test.ts:547:21
+    545|     const { settled } = await runForgedSequence(stub, w)
+    546|
+    547|     expect(w.notes).toEqual([])
+       |                     ^
+    548|     expect(w.verdicts).toEqual([])
+    549|     expect(settled).toBe('pending')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a proof of the wrong length is refused without throwing
+Error: waitFor timeout: 거절 뒤 재접속
+ ❯ waitFor test/transport-auth.test.ts:135:37
+    133|   const t0 = Date.now()
+    134|   while (!pred()) {
+    135|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    136|     await new Promise(r => setTimeout(r, 10))
+    137|   }
+ ❯ test/transport-auth.test.ts:611:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  4 failed | 77 passed (81)
+   Start at  23:00:04
+   Duration  16.42s (transform 228ms, setup 0ms, import 790ms, tests 19.73s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t15/channel
+npm error command failed
+npm error command sh -c vitest run

@@ -1,0 +1,29 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed) 168784ms
+     × the three gates are separate: each mutation breaks a different set 146128ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected Set{} to not deeply equal Set{}
+
+Compared values have no visual difference.
+
+ ❯ test/transport-auth.test.ts:873:30
+    871|     expect(ours).toEqual([])
+    872|     // O 를 넣은 뒤 N3 을 다시 넣으면 N3 의 기대값이 뒤집힌다 — N3 단독의 공집합이 O 아래에서는 비어 있지…
+    873|     expect(new Set(oN3)).not.toEqual(new Set(o))
+       |                              ^
+    874|     expect(o.length).toBeGreaterThan(0)
+    875|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 passed (30)
+   Start at  19:05:13
+   Duration  169.00s (transform 55ms, setup 0ms, import 150ms, tests 168.78s, environment 0ms)
+

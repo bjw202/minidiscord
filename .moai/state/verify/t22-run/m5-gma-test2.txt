@@ -1,0 +1,36 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/gateway-mutual-auth.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts [ test/gateway-mutual-auth.test.ts ]
+Error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mIdentifier `readFileSync` has already been declared
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m test/gateway-mutual-auth.test.ts:10:23 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m10 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0m[38;5;249mr[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249md[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249mB[0m[38;5;249my[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m,[0m[38;5;249m [0mreadFileSync[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mn[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249me[0m[38;5;249m:[0m[38;5;249mc[0m[38;5;249mr[0m[38;5;249my[0m[38;5;249mp[0m[38;5;249mt[0m[38;5;249mo[0m[38;5;249m'[0m
+ [38;5;240m   │[0m                       ──────┬─────  
+ [38;5;240m   │[0m                             ╰─────── `readFileSync` has already been declared here
+ [38;5;246m11 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0m[38;5;249mm[0m[38;5;249mk[0m[38;5;249md[0m[38;5;249mi[0m[38;5;249mr[0m[38;5;249mS[0m[38;5;249my[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mm[0m[38;5;249mk[0m[38;5;249md[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mS[0m[38;5;249my[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m,[0m[38;5;249m [0mreadFileSync[38;5;249m,[0m[38;5;249m [0m[38;5;249mr[0m[38;5;249mm[0m[38;5;249mS[0m[38;5;249my[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mw[0m[38;5;249mr[0m[38;5;249mi[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249mF[0m[38;5;249mi[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249mS[0m[38;5;249my[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mn[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249me[0m[38;5;249m:[0m[38;5;249mf[0m[38;5;249ms[0m[38;5;249m'[0m
+ [38;5;240m   │[0m                                  ──────┬─────  
+ [38;5;240m   │[0m                                        ╰─────── It can not be redeclared here
+[38;5;246m────╯[0m
+
+  Plugin: vite:oxc
+  File: /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel/test/gateway-mutual-auth.test.ts
+ ❯ transformWithOxc ../node_modules/vite/dist/node/chunks/node.js:4103:19
+ ❯ TransformPluginContext.transform ../node_modules/vite/dist/node/chunks/node.js:4174:26
+ ❯ EnvironmentPluginContainer.transform ../node_modules/vite/dist/node/chunks/node.js:30932:51
+ ❯ loadAndTransform ../node_modules/vite/dist/node/chunks/node.js:20671:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  20:43:16
+   Duration  88ms (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)
+

@@ -1,0 +1,68 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/transport-auth.test.ts (30 tests | 3 failed) 51026ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 138ms
+     × a replayed envelope is dropped because its sequence has already been used 3038ms
+     × the three gates are separate: each mutation breaks a different set 25814ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+TypeError: up.on is not a function
+ ❯ Object.pushChallenge test/transport-auth.test.ts:155:10
+    153|     if (state.challenge === 'oracle' && oraclePort !== null) {
+    154|       const up = new WebSocket(`ws://127.0.0.1:${oraclePort}/bot`)
+    155|       up.on('open', () => up.send(JSON.stringify({ type: 'hello', pub:…
+       |          ^
+    156|       up.on('message', d => {
+    157|         const m = JSON.parse(String(d))
+ ❯ runForgedEcho test/transport-auth.test.ts:340:8
+ ❯ test/transport-auth.test.ts:662:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+Error: waitFor timeout: ③ 정상 봉투 도착
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ test/transport-auth.test.ts:798:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected [ …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "transport auth a rogue that reads the hello cannot forge a challenge from what it read (oracle)",
++   "transport auth a replayed envelope is dropped because its sequence has already been used",
++ ]
+
+ ❯ test/transport-auth.test.ts:843:18
+    841|
+    842|     const base = await runSuite()
+    843|     expect(base).toEqual([])                                     // 변이…
+       |                  ^
+    844|     const n1 = await withMutation(['N1'])
+    845|     const n2 = await withMutation(['N2'])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 27 passed (30)
+   Start at  18:49:16
+   Duration  51.20s (transform 49ms, setup 0ms, import 104ms, tests 51.03s, environment 0ms)
+

@@ -1,0 +1,64 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/index-wiring.test.ts (14 tests | 3 failed) 16234ms
+     × history renders as one structured JSON document 5007ms
+     × a single poisoned message stays a single element and carries no live envelope sequence 5001ms
+     × derives the cursor from ids only, never from body text, and nulls it when empty 5004ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:247:3
+    245|   // AC-CHANWIRE-007 — 이력은 구조화 JSON 문서 하나로 렌더링된다
+    246|   // (v0.4.0 개정, 카드 t10 — SPEC-CHANINJECT-001 §3.2. 줄 형식 대신 JSON.parse…
+    247|   it('history renders as one structured JSON document', async () => {
+       |   ^
+    248|     const { stub, obs } = await connected()
+    249|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:275:3
+    273|   // AC-CHANINJECT-004 (v0.3.0 재정의, sync 감사 F-01) — 오염된 본문 한 건이 이력 원소 …
+    274|   // 그 안의 봉투 시퀀스가 모델에 닿지 않는다. 두 방어를 서로 다른 단언으로 잰다 — (a) 구조(F-03), (b)·…
+    275|   it('a single poisoned message stays a single element and carries no …
+       |   ^
+    276|     const { stub, obs } = await connected()
+    277|     // 프로브 P3 의 줄 오염 + 프로브 P-A 의 봉투 오염을 한 고정값에 담는다.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/index-wiring.test.ts:324:3
+    322|
+    323|   // AC-CHANINJECT-005 — 커서는 배열 밖에서 나오고, 본문이 정하지 못한다 (AC-CHANINJECT-00…
+    324|   it('derives the cursor from ids only, never from body text, and null…
+       |   ^
+    325|     const { stub, obs } = await connected()
+    326|     stub.onFrame((ws, m) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  3 failed | 28 passed (31)
+   Start at  20:49:15
+   Duration  16.45s (transform 66ms, setup 0ms, import 193ms, tests 16.46s, environment 0ms)
+

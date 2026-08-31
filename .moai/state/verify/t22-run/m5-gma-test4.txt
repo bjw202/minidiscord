@@ -1,0 +1,55 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/gateway-mutual-auth.test.ts (5 tests | 3 failed) 15235ms
+     × a relaying man in the middle passes the handshake and still injects nothing 5009ms
+     × a real relay terminating tls on both sides cannot take over the bot session 5047ms
+     × on an unbound transport the same relay does take over, and the channel says so 5004ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:219:3
+    217|
+    218|   // AC-GWAUTH2-013 — 중계형 중간자는 핸드셰이크를 통과시키고도 아무것도 주입하지 못한다.
+    219|   it('a relaying man in the middle passes the handshake and still inje…
+       |   ^
+    220|     const { db, gateway, port: realPort, close } = await buildRealServ…
+    221|     const roomId = seedRoom(db)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > a real relay terminating tls on both sides cannot take over the bot session
+Error: waitFor timeout: 중계 hello
+ ❯ waitFor test/gateway-mutual-auth.test.ts:105:37
+    103|   const t0 = Date.now()
+    104|   while (!pred()) {
+    105|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    106|     await new Promise(r => setTimeout(r, 25))
+    107|   }
+ ❯ test/gateway-mutual-auth.test.ts:348:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/gateway-mutual-auth.test.ts > gateway mutual auth > on an unbound transport the same relay does take over, and the channel says so
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-mutual-auth.test.ts:383:3
+    381|
+    382|   // AC-GWAUTH2-024 — 경계 기준: 바인딩이 서지 않는 연결에서는 같은 중계자가 이긴다.
+    383|   it('on an unbound transport the same relay does take over, and the c…
+       |   ^
+    384|     const errSpyLines: string[] = []
+    385|     const origErr = console.error
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 2 passed (5)
+   Start at  20:44:36
+   Duration  15.49s (transform 50ms, setup 0ms, import 186ms, tests 15.23s, environment 0ms)
+

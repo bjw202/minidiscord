@@ -1,0 +1,33 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed | 29 skipped) 17437ms
+     × the three gates are separate: each mutation breaks a different set 17436ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/transport-auth.test.ts:881:48
+    879|     // O 를 넣으면 ③ 뒤로 옮겨진 challenge 가 확립 전에 먹혀 P_proof·P_establish 가 무너지…
+    880|     // O 를 넣은 뒤 N3 을 다시 넣으면 ③ 이 열려 블록이 도달해 그 무너뜨림이 사라진다 — 기대값 반전
+    881|     expect(o.some(n => n.includes('P_proof'))).toBe(true)
+       |                                                ^
+    882|     expect(o.some(n => n.includes('P_establish'))).toBe(true)
+    883|     expect(new Set(oN3)).not.toEqual(new Set(o))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 29 skipped (30)
+   Start at  21:06:09
+   Duration  17.67s (transform 46ms, setup 0ms, import 161ms, tests 17.44s, environment 0ms)
+

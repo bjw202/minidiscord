@@ -1,0 +1,40 @@
+
+> test
+> vitest run web-shell.test.ts
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t5/server
+
+ ❯ test/web-shell.test.ts (2 tests | 2 failed) 3ms
+     × serves the web directory from the server root 2ms
+     × does not shadow the API routes with static serving 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-001 static serving > serves the web directory from the server root
+ FAIL  test/web-shell.test.ts > AC-WEBSHELL-002 API not shadowed > does not shadow the API routes with static serving
+Error: ENOENT: no such file or directory, open '/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t5/web/index.html'
+ ❯ loadDom test/web-shell.test.ts:17:16
+     15| // innerHTML 로 삽입된 <script> 는 실행되지 않으므로 부작용이 없다 — 부트스트랩은 테스트가 직접 부른다.
+     16| function loadDom(): Document {
+     17|   const html = readFileSync(join(webDir, 'index.html'), 'utf8')
+       |                ^
+     18|   const parsed = new DOMParser().parseFromString(html, 'text/html')
+     19|   document.documentElement.lang = parsed.documentElement.lang
+ ❯ test/web-shell.test.ts:41:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  17:49:17
+   Duration  496ms (transform 20ms, setup 0ms, import 27ms, tests 3ms, environment 396ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t5/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t5/server
+npm error command failed
+npm error command sh -c vitest run web-shell.test.ts

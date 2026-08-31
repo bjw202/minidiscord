@@ -1,0 +1,149 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (sha256-pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/transport-auth.test.ts (30 tests | 14 failed) 41486ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (hmac-pub) 3050ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce) 3047ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (sha256-pub) 3051ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (pub) 3046ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 134ms
+     × a malformed or wrong-length proof is refused without throwing (wrong) 3052ms
+     × a malformed or wrong-length proof is refused without throwing (short) 3046ms
+     × a malformed or wrong-length proof is refused without throwing (omit) 3049ms
+     × a malformed or wrong-length proof is refused without throwing (other-room) 3055ms
+     × a malformed or wrong-length proof is refused without throwing (bad-nonce) 3051ms
+     × a malformed or wrong-length proof is refused without throwing (pipe-nonce) 3046ms
+     × an envelope with a broken mac, and a frame with no envelope, are both dropped 13ms
+     × a replayed envelope is dropped because its sequence has already been used 13ms
+     × the three gates are separate: each mutation breaks a different set 2ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 14 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-pub)
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce)
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (sha256-pub)
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (pub)
+Error: waitFor timeout: challenge 판정
+ ❯ waitFor test/transport-auth.test.ts:260:37
+    258|   const t0 = Date.now()
+    259|   while (!pred()) {
+    260|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    261|     await new Promise(r => setTimeout(r, 10))
+    262|   }
+ ❯ runForgedEcho test/transport-auth.test.ts:337:3
+ ❯ test/transport-auth.test.ts:642:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+ReferenceError: createSseHub is not defined
+ ❯ buildRealGateway test/transport-auth.test.ts:360:7
+    358|   app.db = db
+    359|   await app.register(cookie)
+    360|   app.decorate('hub', createSseHub())
+       |       ^
+    361|   mkdirSync(path.join(dir, 'up'), { recursive: true })
+    362|   const gateway = createGateway(app, { uploadsDir: path.join(dir, 'up'…
+ ❯ test/transport-auth.test.ts:654:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+Error: waitFor timeout: challenge 판정
+ ❯ waitFor test/transport-auth.test.ts:260:37
+    258|   const t0 = Date.now()
+    259|   while (!pred()) {
+    260|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    261|     await new Promise(r => setTimeout(r, 10))
+    262|   }
+ ❯ runForgedEcho test/transport-auth.test.ts:337:3
+ ❯ test/transport-auth.test.ts:740:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+TypeError: w.firstSocket is not a function
+ ❯ test/transport-auth.test.ts:756:20
+    754|     const w = await attachWireTo(stub)
+    755|     await sendRequest(w.client, REQ)   // 발신 집합 대조를 미리 채운다 — 판정 주입 관측의…
+    756|     const sock = w.firstSocket()!
+       |                    ^
+    757|
+    758|     // ① payload 한 글자 변경 (mac 은 원본 payload 로 계산됐다) ② mac 삭제 ③ 봉투 없는 원문…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+TypeError: w.firstSocket is not a function
+ ❯ test/transport-auth.test.ts:785:43
+    783|     // (welcome 이 seq 1 — 기준선 판정은 seq 2 다.)
+    784|     await sendRequest(w.client, REQ)
+    785|     const baselineFrame = stub.envFrame(w.firstSocket()!, 2, { type: '…
+       |                                           ^
+    786|     stub.pushEnvRaw(baselineFrame)
+    787|     await waitFor(() => w.verdicts.length === 1, '기준선 판정')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+ReferenceError: join is not defined
+ ❯ runSuite test/transport-auth.test.ts:818:108
+    816|     }
+    817|     const runSuite = async (): Promise<string[]> => {
+    818|       const out = spawn('npx', ['vitest', 'run', 'test/transport-auth.…
+       |                                                                                                            ^
+    819|       let buf = ''
+    820|       out.stdout.on('data', d => { buf += String(d) })
+ ❯ test/transport-auth.test.ts:831:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/14]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  14 failed | 16 passed (30)
+   Start at  18:29:47
+   Duration  41.71s (transform 59ms, setup 0ms, import 154ms, tests 41.49s, environment 0ms)
+

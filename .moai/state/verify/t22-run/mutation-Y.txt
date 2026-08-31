@@ -1,0 +1,93 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+
+ Test Files  15 passed (15)
+      Tests  188 passed (188)
+   Start at  23:14:12
+   Duration  7.83s (transform 943ms, setup 0ms, import 2.10s, tests 22.95s, environment 1.81s)
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 3 failed) 69603ms
+     × a malformed or wrong-length proof is refused without throwing (omit) 3042ms
+     × a malformed or wrong-length proof is refused without throwing (bad-nonce) 3047ms
+     × a malformed or wrong-length proof is refused without throwing (pipe-nonce) 3038ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+Error: waitFor timeout: challenge 판정
+ ❯ waitFor test/transport-auth.test.ts:264:37
+    262|   const t0 = Date.now()
+    263|   while (!pred()) {
+    264|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    265|     await new Promise(r => setTimeout(r, 10))
+    266|   }
+ ❯ runForgedEcho test/transport-auth.test.ts:341:3
+ ❯ test/transport-auth.test.ts:745:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: Cannot read properties of undefined (reading 'length')
+ ❯ WebSocket.<anonymous> src/gateway-client.ts:154:40
+    152|         // 길이 확인이 상수 시간 대조보다 먼저다 — timingSafeEqual 은 길이가 다르면 던진다 (REQ-…
+    153|         // 대조는 timingSafeEqual 로만 한다 — === 는 plan.md §G 가 금지한다 (기준이 잡지…
+    154|         const macOk = msg.server_proof.length === expected.length &&
+       |                                        ^
+    155|           timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(ms…
+    156|         if (!macOk) return rejectChallenge(ws)
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage ../node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage ../node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData ../node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop ../node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write ../node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "test/transport-auth.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "no auth signature leaves the channel before the server has proved itself". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  3 failed | 92 passed (95)
+     Errors  1 error
+   Start at  23:14:20
+   Duration  69.81s (transform 314ms, setup 0ms, import 757ms, tests 74.88s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+npm error command failed
+npm error command sh -c vitest run
+
+[exit=1]

@@ -1,0 +1,43 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/gateway-client.test.ts (17 tests | 2 failed) 5227ms
+     × fails a history request immediately when not connected, and recovers after connecting 5006ms
+     × passes a proof-bearing welcome through untouched, proof field included 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:315:3
+    313|
+    314|   // AC-CHANCLIENT-010 — 연결이 없으면 즉시 실패하고 흔적을 남기지 않는다
+    315|   it('fails a history request immediately when not connected, and reco…
+       |   ^
+    316|     const srv = startServer()
+    317|     const client = createGatewayClient({ url: () => srv.url(), token: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > passes a proof-bearing welcome through untouched, proof field included
+ReferenceError: proofOf is not defined
+ ❯ test/gateway-client.test.ts:426:105
+    424|     // 이 하네스는 rogueGateway 가 아니므로 논스를 srv.messages 에서 읽는다 (nonceSeen 접…
+    425|     const helloNonce = srv.messages.find(m => m.type === 'hello').nonce
+    426|     const frame = { type: 'welcome', room_id: 1, bot_id: 2, bot_name: …
+       |                                                                                                         ^
+    427|     srv.sockets[0].send(JSON.stringify(frame))
+    428|     await waitFor(() => got.length === 1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 15 passed (17)
+   Start at  20:37:28
+   Duration  5.34s (transform 24ms, setup 0ms, import 43ms, tests 5.23s, environment 0ms)
+

@@ -1,0 +1,50 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 2 failed) 45254ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 157ms
+     × the three gates are separate: each mutation breaks a different set 22945ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+TypeError: up.on is not a function
+ ❯ Object.pushChallenge test/transport-auth.test.ts:155:10
+    153|     if (state.challenge === 'oracle' && oraclePort !== null) {
+    154|       const up = new WebSocket(`ws://127.0.0.1:${oraclePort}/bot`)
+    155|       up.on('open', () => up.send(JSON.stringify({ type: 'hello', pub:…
+       |          ^
+    156|       up.on('message', d => {
+    157|         const m = JSON.parse(String(d))
+ ❯ runForgedEcho test/transport-auth.test.ts:340:8
+ ❯ test/transport-auth.test.ts:662:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "transport auth a rogue that reads the hello cannot forge a challenge from what it read (oracle)",
++ ]
+
+ ❯ test/transport-auth.test.ts:847:18
+    845|
+    846|     const base = await runSuite()
+    847|     expect(base).toEqual([])                                     // 변이…
+       |                  ^
+    848|     const n1 = await withMutation(['N1'])
+    849|     const n2 = await withMutation(['N2'])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 28 passed (30)
+   Start at  19:01:08
+   Duration  45.48s (transform 58ms, setup 0ms, import 152ms, tests 45.25s, environment 0ms)
+

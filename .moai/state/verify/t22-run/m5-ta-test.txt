@@ -1,0 +1,192 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+ ❯ test/transport-auth.test.ts (30 tests | 16 failed) 51501ms
+     × after welcome, the same two frames reach the session exactly once each 3039ms
+     × a history_response before welcome resolves nothing; after welcome it resolves 3431ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 71ms
+     × a challenge from a stub that holds the confirm key establishes the session 441ms
+     × no auth signature leaves the channel before the server has proved itself 835ms
+     × both nonces are regenerated per socket and a replayed challenge is refused 3016ms
+     × a malformed or wrong-length proof is refused without throwing (wrong) 4951ms
+     × a malformed or wrong-length proof is refused without throwing (short) 4942ms
+     × a malformed or wrong-length proof is refused without throwing (omit) 4948ms
+     × a malformed or wrong-length proof is refused without throwing (other-room) 4950ms
+     × a malformed or wrong-length proof is refused without throwing (bad-nonce) 4953ms
+     × a malformed or wrong-length proof is refused without throwing (pipe-nonce) 4950ms
+     × an envelope with a broken mac, and a frame with no envelope, are both dropped 15ms
+     × a replayed envelope is dropped because its sequence has already been used 13ms
+     × the three gates are separate: each mutation breaks a different set 2ms
+     × the entry point closes a rejected socket, says one line on stderr and nothing on stdout 4512ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each
+Error: waitFor timeout: 두 알림 도착
+ ❯ waitFor test/transport-auth.test.ts:244:37
+    242|   const t0 = Date.now()
+    243|   while (!pred()) {
+    244|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    245|     await new Promise(r => setTimeout(r, 10))
+    246|   }
+ ❯ test/transport-auth.test.ts:387:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+Error: waitFor timeout: 이력 응답 해소
+ ❯ waitFor test/transport-auth.test.ts:244:37
+    242|   const t0 = Date.now()
+    243|   while (!pred()) {
+    244|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    245|     await new Promise(r => setTimeout(r, 10))
+    246|   }
+ ❯ test/transport-auth.test.ts:419:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+ReferenceError: join is not defined
+ ❯ buildRealGateway test/transport-auth.test.ts:339:15
+    337|   const { openDb } = await import('../../server/src/db.js')
+    338|   const { createGateway } = await import('../../server/src/gateway.js')
+    339|   const dir = mkdtempSync(join(tmpdir(), 't22-oracle-'))
+       |               ^
+    340|   const db = openDb(join(dir, 't.db'))
+    341|   const app = Fastify()
+ ❯ test/transport-auth.test.ts:636:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a challenge from a stub that holds the confirm key establishes the session
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/transport-auth.test.ts:657:28
+    655|
+    656|     expect(stub.authSeen().length).toBe(1)         // 증명이 통과했으므로 서명이 나…
+    657|     expect(w.notes.length).toBe(1)                 // 사칭이 아니라 정상 채팅 경로…
+       |                            ^
+    658|     expect(w.verdicts.map(v => v.params)).toEqual([{ request_id: REQ.r…
+    659|     await waitFor(() => settled !== 'pending', '이력 해소')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > no auth signature leaves the channel before the server has proved itself
+AssertionError: expected [ { type: 'auth', …(1) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "signature": "0490dc558f46026bb9752f5ba3c64d140bf804cab105970c9945d0f130a1115f23cebd262b2c1f12c47bdbb05f9005652d1f42767efc5666f93b492b81c7a009",
++     "type": "auth",
++   },
++ ]
+
+ ❯ test/transport-auth.test.ts:675:29
+    673|
+    674|     expect(wA.verdicts).toEqual([])
+    675|     expect(omit.authSeen()).toEqual([])
+       |                             ^
+    676|     expect([...new Set(omit.sent.map(m => m.type))]).toEqual(['hello',…
+    677|     expect(silent.authSeen()).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+Error: waitFor timeout: 첫 소켓 기준선
+ ❯ waitFor test/transport-auth.test.ts:244:37
+    242|   const t0 = Date.now()
+    243|   while (!pred()) {
+    244|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    245|     await new Promise(r => setTimeout(r, 10))
+    246|   }
+ ❯ test/transport-auth.test.ts:692:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+Error: waitFor timeout: 거절 뒤 재접속
+ ❯ waitFor test/transport-auth.test.ts:244:37
+    242|   const t0 = Date.now()
+    243|   while (!pred()) {
+    244|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    245|     await new Promise(r => setTimeout(r, 10))
+    246|   }
+ ❯ test/transport-auth.test.ts:723:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+TypeError: w.firstSocket is not a function
+ ❯ test/transport-auth.test.ts:737:20
+    735|     const w = await attachWireTo(stub)
+    736|     await sendRequest(w.client, REQ)   // 발신 집합 대조를 미리 채운다 — 판정 주입 관측의…
+    737|     const sock = w.firstSocket()!
+       |                    ^
+    738|
+    739|     // ① payload 한 글자 변경 (mac 은 원본 payload 로 계산됐다) ② mac 삭제 ③ 봉투 없는 원문…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+TypeError: w.firstSocket is not a function
+ ❯ test/transport-auth.test.ts:766:43
+    764|     // (welcome 이 seq 1 — 기준선 판정은 seq 2 다.)
+    765|     await sendRequest(w.client, REQ)
+    766|     const baselineFrame = stub.envFrame(w.firstSocket()!, 2, { type: '…
+       |                                           ^
+    767|     stub.pushEnvRaw(baselineFrame)
+    768|     await waitFor(() => w.verdicts.length === 1, '기준선 판정')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+ReferenceError: join is not defined
+ ❯ runSuite test/transport-auth.test.ts:799:108
+    797|     }
+    798|     const runSuite = async (): Promise<string[]> => {
+    799|       const out = spawn('npx', ['vitest', 'run', 'test/transport-auth.…
+       |                                                                                                            ^
+    800|       let buf = ''
+    801|       out.stdout.on('data', d => { buf += String(d) })
+ ❯ test/transport-auth.test.ts:812:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the entry point closes a rejected socket, says one line on stderr and nothing on stdout
+Error: waitFor timeout: 거절 뒤 재접속
+ ❯ waitFor test/transport-auth.test.ts:244:37
+    242|   const t0 = Date.now()
+    243|   while (!pred()) {
+    244|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    245|     await new Promise(r => setTimeout(r, 10))
+    246|   }
+ ❯ test/transport-auth.test.ts:846:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/16]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  16 failed | 14 passed (30)
+   Start at  18:19:44
+   Duration  51.72s (transform 53ms, setup 0ms, import 153ms, tests 51.50s, environment 0ms)
+

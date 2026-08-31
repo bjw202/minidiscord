@@ -1,0 +1,79 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+
+ ❯ test/web-permission-contract.test.ts (5 tests | 1 failed) 497ms
+     × AC-004 shows an invite command whose token actually authenticates 63ms
+ ❯ test/gateway.test.ts (31 tests | 2 failed) 7328ms
+     × buildServer wires the gateway, archive hook and invite online flag 91ms
+     × an invite stores only a verifier and a confirm key, never the token or its hash 69ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > buildServer wires the gateway, archive hook and invite online flag
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-004 shows an invite command whose token actually authenticates
+Error: harness: welcome 전에 닫혔다
+ ❯ WebSocket.<anonymous> test/gateway-v2.ts:79:33
+     77|     })
+     78|     ws.on('error', (e: Error) => reject(e))
+     79|     ws.on('close', () => reject(new Error('harness: welcome 전에 닫혔다')))…
+       |                                 ^
+     80|   })
+     81| }
+ ❯ WebSocket.emitClose ../node_modules/ws/lib/websocket.js:279:10
+ ❯ Socket.socketOnClose ../node_modules/ws/lib/websocket.js:1360:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/gateway.test.ts > AC-GWAUTH2 server side > an invite stores only a verifier and a confirm key, never the token or its hash
+AssertionError: expected 'd1757ec88b2609e393f122d27b8047e7e9e7c…' to be '7dfa5414f449434ad34ea50da22031b509f6c…' // Object.is equality
+
+Expected: "7dfa5414f449434ad34ea50da22031b509f6ce97aeed461719a639ed8387c563"
+Received: "d1757ec88b2609e393f122d27b8047e7e9e7ce98af64e93ea5bfad538648d6bc"
+
+ ❯ test/gateway.test.ts:1087:30
+    1085|
+    1086|     const row = db.prepare('SELECT * FROM bot_tokens WHERE room_id=? A…
+    1087|     expect(row.verifier_pub).toBe(pubOf(body.token))
+       |                              ^
+    1088|     expect(row.server_confirm_key).toBe(ksrvHexOf(body.token))
+    1089|     // 평문 토큰도 v1 해시도 없다 — 부재에는 포함 검사가 정확하다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  2 failed | 13 passed (15)
+      Tests  3 failed | 185 passed (188)
+   Start at  22:11:18
+   Duration  7.78s (transform 948ms, setup 0ms, import 1.98s, tests 23.06s, environment 1.83s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/server
+npm error command failed
+npm error command sh -c vitest run
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+
+ Test Files  6 passed (6)
+      Tests  95 passed (95)
+   Start at  22:11:26
+   Duration  65.10s (transform 272ms, setup 0ms, import 948ms, tests 70.16s, environment 0ms)
+
+
+[exit=1]

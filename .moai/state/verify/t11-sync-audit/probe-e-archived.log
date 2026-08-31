@@ -1,0 +1,7 @@
+방 1 보관 완료: archived
+SAME   POST /api/rooms/{}/messages  비멤버=404 없는방=404 | 멤버(보관방)=409 {"error":"보관된 방에는 메시지를 보낼 수 없습니다"}
+SAME   GET /api/rooms/{}/messages  비멤버=404 없는방=404 | 멤버(보관방)=200 {"messages":[]}
+SAME   POST /api/rooms/{}/members  비멤버=404 없는방=404 | 멤버(보관방)=409 {"error":"보관된 방에는 초대할 수 없습니다"}
+SAME   POST /api/rooms/{}/invites  비멤버=404 없는방=404 | 멤버(보관방)=409 {"error":"보관된 방에는 초대할 수 없습니다"}
+SAME   GET /api/rooms/{}/invites  비멤버=404 없는방=404 | 멤버(보관방)=200 []
+SAME   DELETE /api/rooms/{}/invites/1  비멤버=404 없는방=404 | 멤버(보관방)=200 {"ok":true}

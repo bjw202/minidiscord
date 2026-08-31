@@ -1,0 +1,194 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t22/channel
+
+stderr | test/transport-auth.test.ts > transport auth > a challenge from a stub that holds the confirm key establishes the session
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > no auth signature leaves the channel before the server has proved itself
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/transport-auth.test.ts (30 tests | 14 failed) 47313ms
+     × a history_response before welcome resolves nothing; after welcome it resolves 3434ms
+     × a rogue that reads the hello cannot forge a challenge from what it read (oracle) 64ms
+     × a challenge from a stub that holds the confirm key establishes the session 444ms
+     × no auth signature leaves the channel before the server has proved itself 833ms
+     × a malformed or wrong-length proof is refused without throwing (wrong) 4947ms
+     × a malformed or wrong-length proof is refused without throwing (short) 4947ms
+     × a malformed or wrong-length proof is refused without throwing (omit) 4942ms
+     × a malformed or wrong-length proof is refused without throwing (other-room) 4951ms
+     × a malformed or wrong-length proof is refused without throwing (bad-nonce) 4946ms
+     × a malformed or wrong-length proof is refused without throwing (pipe-nonce) 4949ms
+     × an envelope with a broken mac, and a frame with no envelope, are both dropped 14ms
+     × a replayed envelope is dropped because its sequence has already been used 15ms
+     × the three gates are separate: each mutation breaks a different set 1ms
+     × the entry point closes a rejected socket, says one line on stderr and nothing on stdout 4518ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 14 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+Error: waitFor timeout: 이력 응답 해소
+ ❯ waitFor test/transport-auth.test.ts:250:37
+    248|   const t0 = Date.now()
+    249|   while (!pred()) {
+    250|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    251|     await new Promise(r => setTimeout(r, 10))
+    252|   }
+ ❯ test/transport-auth.test.ts:425:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (oracle)
+ReferenceError: join is not defined
+ ❯ buildRealGateway test/transport-auth.test.ts:346:14
+    344|   const { createGateway } = await import('../../server/src/gateway.js')
+    345|   const dir = mkdtempSync(path.join(tmpdir(), 't22-oracle-'))
+    346|   const db = openDb(join(dir, 't.db'))
+       |              ^
+    347|   const app = Fastify()
+    348|   app.db = db
+ ❯ test/transport-auth.test.ts:642:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a challenge from a stub that holds the confirm key establishes the session
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/transport-auth.test.ts:663:28
+    661|
+    662|     expect(stub.authSeen().length).toBe(1)         // 증명이 통과했으므로 서명이 나…
+    663|     expect(w.notes.length).toBe(1)                 // 사칭이 아니라 정상 채팅 경로…
+       |                            ^
+    664|     expect(w.verdicts.map(v => v.params)).toEqual([{ request_id: REQ.r…
+    665|     await waitFor(() => settled !== 'pending', '이력 해소')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > no auth signature leaves the channel before the server has proved itself
+AssertionError: expected [ { type: 'auth', …(1) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "signature": "2491d72cc607200e24899014a2bc9bf9b4b8ff3cf6de32cb499c313e2dd13dcf15597d4d4c45330d1912c5107168aca26fe89523b97f29eef4cf48cb544e7505",
++     "type": "auth",
++   },
++ ]
+
+ ❯ test/transport-auth.test.ts:681:29
+    679|
+    680|     expect(wA.verdicts).toEqual([])
+    681|     expect(omit.authSeen()).toEqual([])
+       |                             ^
+    682|     expect([...new Set(omit.sent.map(m => m.type))]).toEqual(['hello',…
+    683|     expect(silent.authSeen()).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+Error: waitFor timeout: 거절 뒤 재접속
+ ❯ waitFor test/transport-auth.test.ts:250:37
+    248|   const t0 = Date.now()
+    249|   while (!pred()) {
+    250|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    251|     await new Promise(r => setTimeout(r, 10))
+    252|   }
+ ❯ test/transport-auth.test.ts:729:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+TypeError: w.firstSocket is not a function
+ ❯ test/transport-auth.test.ts:743:20
+    741|     const w = await attachWireTo(stub)
+    742|     await sendRequest(w.client, REQ)   // 발신 집합 대조를 미리 채운다 — 판정 주입 관측의…
+    743|     const sock = w.firstSocket()!
+       |                    ^
+    744|
+    745|     // ① payload 한 글자 변경 (mac 은 원본 payload 로 계산됐다) ② mac 삭제 ③ 봉투 없는 원문…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+TypeError: w.firstSocket is not a function
+ ❯ test/transport-auth.test.ts:772:43
+    770|     // (welcome 이 seq 1 — 기준선 판정은 seq 2 다.)
+    771|     await sendRequest(w.client, REQ)
+    772|     const baselineFrame = stub.envFrame(w.firstSocket()!, 2, { type: '…
+       |                                           ^
+    773|     stub.pushEnvRaw(baselineFrame)
+    774|     await waitFor(() => w.verdicts.length === 1, '기준선 판정')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the three gates are separate: each mutation breaks a different set
+ReferenceError: join is not defined
+ ❯ runSuite test/transport-auth.test.ts:805:108
+    803|     }
+    804|     const runSuite = async (): Promise<string[]> => {
+    805|       const out = spawn('npx', ['vitest', 'run', 'test/transport-auth.…
+       |                                                                                                            ^
+    806|       let buf = ''
+    807|       out.stdout.on('data', d => { buf += String(d) })
+ ❯ test/transport-auth.test.ts:818:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/14]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the entry point closes a rejected socket, says one line on stderr and nothing on stdout
+Error: waitFor timeout: 거절 뒤 재접속
+ ❯ waitFor test/transport-auth.test.ts:250:37
+    248|   const t0 = Date.now()
+    249|   while (!pred()) {
+    250|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    251|     await new Promise(r => setTimeout(r, 10))
+    252|   }
+ ❯ test/transport-auth.test.ts:852:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/14]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  14 failed | 16 passed (30)
+   Start at  18:22:03
+   Duration  47.55s (transform 54ms, setup 0ms, import 160ms, tests 47.31s, environment 0ms)
+
