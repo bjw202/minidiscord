@@ -1,4 +1,4 @@
-// scripts/e2e.mts — SPEC-E2E-001 종단 간 시나리오 러너 (Tier M · 카드 t6 · M2 시나리오 본체)
+// scripts/e2e.mts — SPEC-E2E-001 종단 간 시나리오 러너 (Tier M · 카드 t6 · M3 재시작 영속성)
 //
 // [D1(a) 공시 — 워크스페이스 경계를 가로지르는 import] 이 스크립트는
 // ../server/test/gateway-v2.ts 의 connectV2·innerOf 를 상대 경로로 가져다 쓴다. 그 하네스는
@@ -10,10 +10,12 @@
 //
 // M1 골격 — 포트 확보 → 임시 데이터 디렉터리(+봇 첨부 뿌리) → 서버 spawn → 시한 있는 /api/health 폴링 →
 // 정상·단언 실패·예외 세 경로 전부의 정리.
-// M2 본체 — REQ-E2E-007 의 ①~⑬ 을 runScenarios 가 순서대로 수행한다. ⑭ 재시작·⑮ 보관 거부는 M3.
-// 진행 표지 [n/15] 는 그 단계의 단언이 전부 성공한 뒤에만 찍는다(REQ-E2E-007 [HARD] — step 참고).
+// M2 본체 — REQ-E2E-007 의 ①~⑬ 을 runScenarios 가 순서대로 수행한다.
+// M3 — ⑭ 서버 재시작 영속성(kill 후 같은 데이터 디렉터리로 재기동, 세 동일성 대조)·
+// ⑮ 방 보관 후 접속 거부로 15 단계를 채운다. 진행 표지 [n/15] 는 그 단계의 단언이 전부
+// 성공한 뒤에만 찍는다(REQ-E2E-007 [HARD] — step 참고).
 
-// @MX:TODO: [AUTO] M3 — ⑭ 서버 재시작 영속성·⑮ 방 보관 후 접속 거부를 runScenarios 뒤에 덧붙인다 (plan.md §F M3)
+// @MX:TODO: [AUTO] M4 — 루트 package.json 에 "e2e" 스크립트 배선 (plan.md §F M4, test 값 불변)
 // @MX:NOTE: [AUTO] ../server/test/gateway-v2.ts 상대 import 는 D1(a) 재사용 — 하네스가 구현을 부르지 않아 독립성 축 유지 (plan.md §D-2)
 
 import { spawn, type ChildProcess } from 'node:child_process'
@@ -129,20 +131,25 @@ export function step(n: number): void {
   console.log(`[${n}/15]`)
 }
 
+/** 서버 프로세스 그룹을 거둔다 — SIGTERM → 3초 유예 → SIGKILL.
+ *  최종 정리(cleanup)와 ⑭ 재시작이 함께 쓴다. */
+async function stopServer(child: ChildProcess): Promise<void> {
+  if (!child.pid) return
+  const dead = new Promise<void>(resolve => child.once('exit', () => resolve()))
+  try { process.kill(-child.pid, 'SIGTERM') } catch { /* 이미 죽었다 */ }
+  await Promise.race([dead, new Promise<void>(resolve => setTimeout(resolve, 3_000))])
+  if (child.exitCode === null && child.signalCode === null) {
+    try { process.kill(-child.pid, 'SIGKILL') } catch { /* 이미 죽었다 */ }
+    await dead
+  }
+}
+
 /** 정리 — 정상·단언 실패·예외 세 경로 전부에서 finally 로 호출된다(plan.md §D-4).
  *  서버 프로세스 그룹을 먼저 거두고, 다 죽은 뒤 임시 데이터 디렉터리를 지운다.
  *  bot-files 하위 경로도 dataDir 재귀 삭제로 함께 거둔다. 아무것도 만들어지기 전에
  *  실패하면(child·dataDir null) 아무것도 하지 않는다. */
 async function cleanup(child: ChildProcess | null, dataDir: string | null): Promise<void> {
-  if (child?.pid) {
-    const dead = new Promise<void>(resolve => child.once('exit', () => resolve()))
-    try { process.kill(-child.pid, 'SIGTERM') } catch { /* 이미 죽었다 */ }
-    await Promise.race([dead, new Promise<void>(resolve => setTimeout(resolve, 3_000))])
-    if (child.exitCode === null && child.signalCode === null) {
-      try { process.kill(-child.pid, 'SIGKILL') } catch { /* 이미 죽었다 */ }
-      await dead
-    }
-  }
+  if (child) await stopServer(child)
   if (dataDir) rmSync(dataDir, { recursive: true, force: true })
 }
 
@@ -223,9 +230,23 @@ function closeWs(ws: any, label: string): Promise<void> {
   })
 }
 
-/** M2 본체 — REQ-E2E-007 의 ①~⑬. 각 단계: 단언 전부 → step(n). 실패는 곧 exit 1.
+/** 소켓이 닫히기를 기다린다 — 닫는 주체는 서버(보관 훅)여야 하므로 클라이언트에서 close 를 부르지 않는다.
+ *  ⑮ 전용 — 보관 훅의 closeRoom 이 그 방 접속을 끊는 관측이 곧 단계의 본론이다(gateway.ts:339-341). */
+function expectServerClose(ws: any, label: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (ws.readyState === WS.CLOSED) return resolve()
+    const timer = setTimeout(() => {
+      console.error(`[fail] ${label} — 서버가 소켓을 닫지 않았다`)
+      reject(new E2eError(EXIT_FAILED))
+    }, FRAME_TIMEOUT_MS)
+    ws.once('close', () => { clearTimeout(timer); resolve() })
+  })
+}
+
+/** M2 본체 — REQ-E2E-007 의 ①~⑬, M3 이 ⑭ 재시작·⑮ 보관 거부를 덧붙인다.
+ *  각 단계: 단언 전부 → step(n). 실패는 곧 exit 1.
  *  URL·페이로드는 server/src/routes-*.ts 와 gateway.ts 의 실제 형태를 따른다(추측 없음). */
-async function runScenarios(port: number, botFilesDir: string): Promise<void> {
+async function runScenarios(port: number, dataDir: string, botFilesDir: string, proc: { child: ChildProcess | null }): Promise<void> {
   const USER = { username: 'e2e-user', password: 'e2e-password-123' }
   const BOT_NAME = 'E2E-Bot'
 
@@ -382,12 +403,58 @@ async function runScenarios(port: number, botFilesDir: string): Promise<void> {
   assert(re2.welcome.missed_after_id === missedId, 'step13 ⑬ 재전송 루프가 커서를 올리지 않았다 — 재전송이 일어나지 않았다')
   await closeWs(re2.ws, 'step13 ⑬ 재접속 2 닫기')
   step(13)
+
+  // ⑭ 서버 재시작 영속성 (REQ-E2E-008·010) — 재시작 전에 동일성 표적을 기록한다:
+  // 메시지 id·본문(⑬), 첨부 id·바이트(⑧⑨), 봇 토큰(④). 커서(⑬ 재접속 2 가 올린 값)도 함께 기록한다.
+  const recMsgId = missedId
+  const recMsgBody = missedBody
+  const recAttId = attId
+  const recBytes = botFileBytes
+  const recToken = token
+  const recCursor = missedId
+  // 재기동 포트 설계 — 기본은 새 빈 포트를 다시 잡는다. 죽은 리스너의 포트를 곧바로 재바인드하는 것은
+  // 다른 프로세스가 그 포트를 가로채는 작은 경주를 다시 사는 것이고, 영속성의 실체는 포트가 아니라
+  // 데이터 디렉터리다(REQ-E2E-008 은 같은 데이터 디렉터리를 요구하지 같은 포트를 요구하지 않는다).
+  // E2E_FORCE_PORT 가 걸려 있으면 그 값을 양쪽 기동이 그대로 쓴다 — 강제 포트의 의미가 유지된다.
+  const second = await acquirePort()
+  await stopServer(proc.child!)
+  proc.child = spawnServer(second.forServer, dataDir, botFilesDir)
+  await waitForBoot(proc.child, second.forProbe)
+  // 대조 1 — 메시지 id·본문: 목록에서 id 로 찾아 본문이 그대로인다. 세션 쿠키도 이 조회로 함께 검증된다
+  // (sessions 표가 DB 에 남아 있으므로 재시작 전 로그인 쿠키가 살아 있어야 200 이 나온다)
+  const list14 = await api(second.forProbe, 'GET', `/api/rooms/${roomId}/messages`, { cookie })
+  assert(list14.status === 200, 'step14 ⑭ 재시작 후 방 목록 조회가 200 이 아니다 — 세션도 살아 있어야 한다')
+  const found14 = (list14.body?.messages ?? []).find((m: any) => m.id === recMsgId)
+  assert(found14 && found14.body === recMsgBody, 'step14 ⑭ 재시작 후 메시지 id·본문이 동일하지 않다')
+  // 대조 2 — 첨부 id·바이트
+  const dl14 = await fetch(`http://127.0.0.1:${second.forProbe}/api/attachments/${recAttId}`, { headers: { cookie } })
+  assert(dl14.status === 200, 'step14 ⑭ 재시작 후 첨부 내려받기가 200 이 아니다')
+  const bytes14 = Buffer.from(await dl14.arrayBuffer())
+  assert(Buffer.compare(bytes14, recBytes) === 0, 'step14 ⑭ 재시작 후 첨부 바이트가 동일하지 않다')
+  // 대조 3 — 같은 토큰으로 v2 재접속 → 봉투 welcome. 세션은 메모리에서 비지만 커서는 DB 에 남는다 —
+  // welcome 의 missed_after_id 가 재시작 전 값(⑬) 그대로인 것까지 함께 잰다
+  const conn3 = await connectV2(second.forProbe, recToken).catch(e => fail(`step14 ⑭ 재시작 후 v2 재접속 실패: ${e?.message ?? e}`))
+  assert(conn3.welcome.room_id === roomId && conn3.welcome.bot_id === botId, 'step14 ⑭ 재접속 welcome 의 room·bot 이 다르다')
+  assert(conn3.welcome.missed_after_id === recCursor, 'step14 ⑭ 재접속 welcome 의 커서가 재시작 전 값이 아니다')
+  step(14)
+
+  // ⑮ 방 보관 후 접속 거부 — 보관 훅이 그 방 접속을 끊고(routes-rooms.ts:88 onArchive → gateway.closeRoom),
+  // 보관된 방은 hello 조회(r.status='active' 조건, gateway.ts:160)에서 걸려 새 접속은 welcome 전에 닫힌다
+  const arch = await api(second.forProbe, 'POST', `/api/rooms/${roomId}/archive`, { cookie })
+  assert(arch.status === 200, 'step15 ⑮ 방 보관이 200 이 아니다')
+  await expectServerClose(conn3.ws, 'step15 ⑮ 보관 후 기존 접속 닫힘')
+  let freshRejected = false
+  await connectV2(second.forProbe, recToken).then(() => { freshRejected = false }).catch(() => { freshRejected = true })
+  assert(freshRejected, 'step15 ⑮ 보관된 방에 새 접속이 거절되지 않았다')
+  step(15)
 }
 
 /** M1: 포트 → mkdtemp(+봇 첨부 뿌리) → spawn → 시한 있는 health 대기.
- *  M2: 그 뒤 runScenarios 로 ①~⑬ 를 수행하고 통과 줄을 남긴다. */
+ *  M2: 그 뒤 runScenarios 로 ①~⑬ 를 수행.
+ *  M3: ⑭ 에서 runScenarios 가 서버를 kill 후 같은 데이터 디렉터리로 재기동한다(proc.child 교체) —
+ *  최종 정리는 그 현재 서버를 거둔다. */
 export async function main(): Promise<number> {
-  let child: ChildProcess | null = null
+  const proc: { child: ChildProcess | null } = { child: null }
   let dataDir: string | null = null
   try {
     await checkDependencies()
@@ -396,13 +463,13 @@ export async function main(): Promise<number> {
     // 봇 첨부 뿌리 — dataDir 안의 하위 경로. 정리는 dataDir 재귀 삭제가 함께 거둔다(cleanup).
     const botFilesDir = path.join(dataDir, 'bot-files')
     mkdirSync(botFilesDir, { recursive: true })
-    child = spawnServer(forServer, dataDir, botFilesDir)
-    await waitForBoot(child, forProbe)
-    await runScenarios(forProbe, botFilesDir)
-    console.log('E2E PASS — 13 단계 전부 통과 (⑭⑮ 은 M3)')
+    proc.child = spawnServer(forServer, dataDir, botFilesDir)
+    await waitForBoot(proc.child, forProbe)
+    await runScenarios(forProbe, dataDir, botFilesDir, proc)
+    console.log('E2E PASS — 15 단계 전부 통과')
     return 0
   } finally {
-    await cleanup(child, dataDir)
+    await cleanup(proc.child, dataDir)
   }
 }
 

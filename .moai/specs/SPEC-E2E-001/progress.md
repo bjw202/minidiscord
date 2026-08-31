@@ -118,6 +118,25 @@ _다음: 3회차 델타 감사(N-01~N-04 범위) → Kickoff 승인 → run 진�
 - AC-E2E-002 ㉠ 은 auth 서명 검증 층(gateway.ts:191)을 재지 않는다 — 기준 본문이 공시한 대로 그 층은 SPEC-GWAUTH-002 소유.
 - **Residual-risk**: 초록은 무부하 상태의 이 기기 값(프레임 시한 10초·폴링 150ms 여유의 부하 내성 미시험). 스폰 제안 수용 — **gateway.ts:216-224 재전송 루프 삭제 변이를 M6 변이표 필수 행 후보로 기록**(예상: ⑬ 의 (c) 가 거짓이 되어 빨개짐).
 
+### M3 — 재시작 영속성 ⑭⑮ + 인프로세스 회귀 짝
+
+산출물 둘: `scripts/e2e.mts` 489행(⑭⑮ 충전) · `server/test/restart-persistence.test.ts` 137행 신규(회귀 짝, 2시험). ⑭ 재시작: 재시작 전 기록(메시지 id·본문, 첨부 id·바이트, 토큰, 커서) → kill → **같은 데이터 디렉터리**로 재기동 → 세 동일성 대조(`GET /api/rooms/:id/messages` 에서 id 로 본문 대조 · `GET /api/attachments/:id` 바이트 `Buffer.compare` · 같은 토큰 `connectV2` welcome — 커서는 DB·세션은 메모리라 `missed_after_id` 의 차이까지 관측) → step(14). ⑮ 방 보관: `POST /api/rooms/:id/archive` → **서버가 닫는 것**을 대기(closeRoom 훅 — gateway.ts:339-341) → 새 `connectV2` 거절 관측 → step(15). **설계 결정(스폰, 레인 승인)**: 재기동 포트는 매 기동 새 빈 포트 — 죽은 포트 즉시 재사용은 가로채기 경주이고 영속성의 실체는 포트가 아니라 데이터 디렉터리이기 때문(코드 주석에도 기록). 회귀 짝의 `[HARD]` 배경 실측: better-sqlite3 13.x 이중 close 는 no-throw(측정 `second-close=no-throw`), `index.ts:61` onClose 훅이 db 를 닫는 형태라 명시 닫기는 벨트·서스펜더 — 근거 주석 포함.
+
+| 검사 | 명령(축자) | 관측 | 누가 재현했나 |
+|---|---|---|---|
+| AC-E2E-008 + 전체 15단계 | `npx tsx scripts/e2e.mts > e2e-m3.log; echo "exit=$?"` | `exit=0` · 두 번의 기동(재시작 흔적) · `[14/15]`·`[15/15]` · «E2E PASS — 15 단계 전부 통과» | 스폰 2회 + **레인 직접 재현 1회** |
+| 표지 순서 | `grep -o '^\[[0-9]\+/15\]' \| tr -d '\n'` | `[1/15]…[15/15]` 15개 정확 일치 | 스폰 + **레인 직접 재현** |
+| AC-E2E-009 ① | `test -f server/test/restart-persistence.test.ts; echo "exit=$?"` | `exit=0` | 스폰 |
+| AC-E2E-009 ② | `npx vitest run --root server restart-persistence` | `Test Files 1 passed` · `Tests 2 passed (2)` · `exit=0` | 스폰 (npm test 전체 재관측에서도 190 에 포함) |
+| AC-E2E-009 ③ | `grep -c "app.db.close()" restart-persistence.test.ts` | `2` (closeForRestart + afterEach) | 스폰 + **레인 직접 재현** |
+| AC-E2E-010 재단언 | 위 vitest 의 두 번째 시험 | «재시작 이후 무관한 메시지를 더 써도 같은 세 동일성이 다시 성립한다 (AC-E2E-010)» 통과 — 재시작 → 새 메시지 1건 → 세 동일성 재단언 | 스폰 |
+| `npm test` 전체 | `npm test > <verify>; echo "exit=$?"` | **285 passed (190+95), exit 0** — 기준선 283 + 회귀 짝 2 | 스폰 2회 + **레인 1회** |
+
+- **우연 실패 관측 이력 (지우지 않고 보존)**: 스폰의 첫 전체 실행에서 channel `transport-auth.test.ts` «both nonces are regenerated per socket and a replayed challenge is refused» **1건 실패 관측**(`.moai/state/verify/t6-run/npm-test-m3.log` — 레인이 직접 판독해 확인). 같은 파일 단독 재실행 30/30 통과 + 이후 전체 실행 2회(스폰·레인) 전부 초록 — **flaky 성향**. 변경 접점 없는 채널 영역(카드 t25 경계)이며 **CI 배선(카드 t27)이 이 파일의 flaky 성향을 알아야 한다**.
+- 측정 환경 귀속: @ `860c063`(M2 커밋) — 직접 실행 형태(`npm run e2e` 배선은 M4 대기).
+- **Gaps**: ① 배선 형태 미측정(M4 에서 동일 기준 재측정) ② ⑭ 는 SIGTERM 재시작만 재었다 — 정리 함수의 SIGKILL 경로(비정상 종료 직후 WAL 복구)는 재시작 흐름에서 미측정 ③ ⑭ 동일성 표적은 1메시지·1첨부·1토큰(REQ-E2E-008 요구 셋은 충족, 전 유형 영속은 미재) ④ AC-E2E-010 재단언 케이스는 plan 배정대로 회귀 짝에만 있고 스크립트에는 없음.
+- **Residual-risk**: `E2E_FORCE_PORT` 사용 시 재기동이 같은 포트를 쓰게 되는데, 재바인드 실패는 exit 9(안전 방향). 타이밍 여유는 무부하 기준 — 부하 재시험 없음.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
