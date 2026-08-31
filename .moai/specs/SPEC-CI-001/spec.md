@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-001
 title: "CI 테스트 배선 — push·pull_request 에서 npm ci → channel 빌드 → npm test 를 자동 실행"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-31
 updated: 2026-08-31
@@ -21,6 +21,7 @@ related_specs: [SPEC-GWAUTH-002]
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.2.0 | 2026-08-31 | **리드 판독이 찾은 이월 누락 둘을 닫는 개정.** ① **OD-3 신설** — 카드 `t22` 가 F6 으로 이 카드에 넘긴 `pretest` 항목(`.moai/reports/t22/sync-audit.md:207` · `sync-done.md:70`)이 0.1.0 에 **한 자도 없었다**(`grep -rn "pretest"` 적중 0). F6 은 카드가 가정한 것과 **다른 형태의 처방**이다 — 카드 형태는 CI 만, F6 형태는 CI 와 모든 깨끗한 체크아웃을 함께 고친다. `plan.md` §D 에 선택지 셋과 각 귀결, 그리고 **(b)/(c) 가 AC-CI-002·AC-CI-007 을 함께 움직인다**는 파급을 적었다. **결정하지 않았다.** ② **형제 제약 공시** — `SPEC-E2E-001`(미병합 브랜치)의 AC-E2E-011 이 OD-3 과 만나는 지점을 어느 방향으로도 과장하지 않고 적었다: 측정 ①이 루트 `package.json` 만 보므로 **문언 위반은 아니고**, 다만 `pretest` 는 `scripts.test` 리터럴을 두면서 `npm test` 동작을 바꾸므로 **취지에는 압력을 준다** — 그 간극의 판단은 리드 몫. 병합 순서 주의도 함께 적었다. ③ AC-CI-009 를 `결정됨:` **3줄**을 세도록 고쳤다. ④ `./data` 를 **`server/` 작업 디렉터리 기준 `server/data`** 로 한정하고 `t6` 감사의 경고(`sync-audit.md:197-199`)를 인용했다. ⑤ 인용 경로가 병합 후에도 풀리도록 `.moai/state/verify/t27-plan/` 을 추적에 넣었다(`.gitignore:7-9` 의 `!/.moai/state/` 예외가 이를 의도한다). **요구사항 10 · 수용 기준 9 — 변동 없음**(미결 항목을 늘렸을 뿐 요소를 만들지도 지우지도 않았다). | manager-spec |
 | 0.1.0 | 2026-08-31 | 최초 작성 (칸반 카드 `t27` = 큐 재구성 N4). 카드 `t24`(N1)로 원격 저장소가 생기면서 CI 가 설 자리가 처음으로 존재하게 됐다. 이 SPEC 은 **테스트 워크플로 하나**를 세워 카드마다 사람이 `npm test` 를 돌리던 비용을 걷어낸다. 범위는 카드가 적은 세 명령(`npm ci` → `npm run build -w channel` → `npm test`)이며, 커버리지 임계·다중 러너·다중 Node 버전은 배제한다(§5). **빌드 선행 요구는 기억이 아니라 실측이다** — 빌드 없이 돌리면 채널 6건이 실패한다(§2.2). 요구사항 10건 · 수용 기준 9건. | manager-spec |
 
 ---
@@ -90,7 +91,9 @@ channel: Test Files  6 passed (6)  · Tests  95 passed  (95)
 
 ### 2.5 테스트가 만드는 상태
 
-`server/src/config.ts:8` 이 `process.env.MINIDISCORD_DATA_DIR ?? './data'` 를 읽는다. 스위트를 돌리면 `server/data` 가 생긴다. `.gitignore` 가 `data/` · `dist/` · `coverage/` · `node_modules/` 를 이미 무시하므로, 실행 뒤에도 트리는 깨끗했다(`git status --short` 에 세션 상태 파일만 남음).
+`server/src/config.ts:8` 이 `process.env.MINIDISCORD_DATA_DIR ?? './data'` 를 읽는다. 이 `'./data'` 는 **`server/` 작업 디렉터리 기준**이므로 스위트를 돌리면 생기는 디렉터리는 **`server/data`** 이며 **저장소 루트의 `./data` 가 아니다.**
+
+> [HARD] 카드 `t6` 의 감사가 이 자리를 명시적으로 경고했다 — «`t27` 이 이 문장을 읽고 루트 `./data` 를 찾으면 헛짚는다»(`.claude/worktrees/t6/.moai/reports/t6/sync-audit.md:197-199`). 그 감사의 관측은 전 스위트 + e2e 완주 뒤 루트 `data` **부재**, `server/data` **존재**(`git status --short --ignored` → `!! server/data/`)였다. `.gitignore` 가 `data/` · `dist/` · `coverage/` · `node_modules/` 를 이미 무시하므로, 실행 뒤에도 트리는 깨끗했다(`git status --short` 에 세션 상태 파일만 남음).
 
 ### 2.6 알려진 흔들림 — 재현되지 않았고, 비율은 **미측정**
 
@@ -140,6 +143,7 @@ channel: Test Files  6 passed (6)  · Tests  95 passed  (95)
 
 - **OD-1 — `npm run typecheck` 를 워크플로에 넣는가?** 두 워크스페이스 모두 로컬에서 초록으로 실측됐다(§2.3). 그러나 카드의 문언은 세 명령뿐이다.
 - **OD-2 — 고정한 Node 버전을 `.nvmrc` 또는 `engines` 로도 커밋하는가?** 현재 저장소에는 둘 다 없어(§2.3) 로컬과 CI 가 조용히 갈라질 수 있다.
+- **OD-3 — `channel/package.json` 에 `pretest` 를 넣어 `npm test` 자체를 자족하게 만드는가?** 카드 `t22` 가 F6 으로 이 카드에 넘긴 항목이다(`.moai/reports/t22/sync-audit.md:207` · `sync-done.md:70`). 카드가 가정한 형태(**워크플로**가 빌드를 앞세운다)는 **CI 만** 고치고, F6 의 형태(`pretest`)는 **CI 와 모든 깨끗한 체크아웃을 함께** 고친다 — §2.2 가 재현한 거짓 실패 6건은 사람과 에이전트가 새 나무를 열 때마다 겪는 바로 그 증상이다. 형제 카드 `SPEC-E2E-001` 의 AC-E2E-011 과의 관계까지 `plan.md` §D 에 적었다.
 
 ---
 

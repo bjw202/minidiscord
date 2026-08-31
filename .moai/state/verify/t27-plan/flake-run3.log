@@ -1,0 +1,13 @@
+
+> @minidiscord/channel@0.1.0 test
+> vitest run test/transport-auth.test.ts
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/channel
+
+
+ Test Files  1 passed (1)
+      Tests  30 passed (30)
+   Start at  16:20:52
+   Duration  64.66s (transform 49ms, setup 0ms, import 104ms, tests 64.50s, environment 0ms)
+

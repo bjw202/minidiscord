@@ -1,0 +1,25 @@
+
+> @minidiscord/channel@0.1.0 test
+> vitest run test/transport-auth.test.ts --repeats=9
+
+file:///Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:406
+          throw new CACError(`Unknown option \`${name.length > 1 ? `--${name}` : `-${name}`}\``);
+                ^
+
+CACError: Unknown option `--repeats`
+    at Command.checkUnknownOptions (file:///Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:406:17)
+    at CAC.runMatchedCommand (file:///Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:606:13)
+    at CAC.parse (file:///Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:547:12)
+    at file:///Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/node_modules/vitest/dist/cli.js:11:13
+    at ModuleJob.run (node:internal/modules/esm/module_job:413:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:660:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.12.0
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/channel
+npm error command failed
+npm error command sh -c vitest run test/transport-auth.test.ts --repeats=9
