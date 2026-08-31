@@ -1,21 +1,23 @@
-// scripts/e2e.mts — SPEC-E2E-001 종단 간 시나리오 러너 (Tier M · 카드 t6 · M1 골격)
+// scripts/e2e.mts — SPEC-E2E-001 종단 간 시나리오 러너 (Tier M · 카드 t6 · M2 시나리오 본체)
 //
-// [D1(a) 공시 — 워크스페이스 경계를 가로지르는 import] M2 부터 이 스크립트는
+// [D1(a) 공시 — 워크스페이스 경계를 가로지르는 import] 이 스크립트는
 // ../server/test/gateway-v2.ts 의 connectV2·innerOf 를 상대 경로로 가져다 쓴다. 그 하네스는
 // 구현(server/src)의 함수를 부르지 않고 열쇠를 스스로 유도한다(gateway-v2.ts:1-5 주석) —
-// 재사용이 인증 독립성 축을 깨지 않는다.
+// 재사용이 인증 독립성 축을 깨지 않는다. 그 파일은 서버 스위트 전체가 공유하므로 이 카드는
+// 절대 편집하지 않는다(plan.md §F M2).
 // 반대 방향은 금지다(plan.md §D-1): 이 스크립트는 server/src/** 를 import 하지 않는다.
-// 서버는 실제 프로세스로 spawn 하고, 이 스크립트는 HTTP(/api/health)와 WebSocket 전선으로만 말을 건다.
+// 서버는 실제 프로세스로 spawn 하고, 이 스크립트는 HTTP와 WebSocket 전선으로만 말을 건다.
 //
-// M1 골격 — 포트 확보 → 임시 데이터 디렉터리 → 서버 spawn → 시한 있는 /api/health 폴링 →
-// 정상·단언 실패·예외 세 경로 전부의 정리. 시나리오 단계 ①~⑮ 은 M2 가 채운다.
+// M1 골격 — 포트 확보 → 임시 데이터 디렉터리(+봇 첨부 뿌리) → 서버 spawn → 시한 있는 /api/health 폴링 →
+// 정상·단언 실패·예외 세 경로 전부의 정리.
+// M2 본체 — REQ-E2E-007 의 ①~⑬ 을 runScenarios 가 순서대로 수행한다. ⑭ 재시작·⑮ 보관 거부는 M3.
+// 진행 표지 [n/15] 는 그 단계의 단언이 전부 성공한 뒤에만 찍는다(REQ-E2E-007 [HARD] — step 참고).
 
-// @MX:TODO: [AUTO] M2 — REQ-E2E-007 의 ①~⑮ 단계를 main 의 시나리오 자리에 채운다. step(n) 호출은 단언 성공 뒤에만
+// @MX:TODO: [AUTO] M3 — ⑭ 서버 재시작 영속성·⑮ 방 보관 후 접속 거부를 runScenarios 뒤에 덧붙인다 (plan.md §F M3)
 // @MX:NOTE: [AUTO] ../server/test/gateway-v2.ts 상대 import 는 D1(a) 재사용 — 하네스가 구현을 부르지 않아 독립성 축 유지 (plan.md §D-2)
 
 import { spawn, type ChildProcess } from 'node:child_process'
-import { createRequire } from 'node:module'
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -26,6 +28,7 @@ const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 
 const BOOT_TIMEOUT_MS = 30_000   // /api/health 시한 — 무한 대기 금지 (REQ-E2E-006)
 const POLL_INTERVAL_MS = 200
+const FRAME_TIMEOUT_MS = 10_000  // 프레임·조건 대기의 기본 시한 — 무한 대기는 실패를 숨긴다
 
 // 종료 코드 규약: 9 는 기동 시한 전용(REQ-E2E-006). 그 외 실패는 9 를 쓰지 않는다 —
 // 두 경로가 코드를 나눠 갖지 않으면 AC-E2E-006 이 공허해진다(plan.md §C).
@@ -38,11 +41,18 @@ class E2eError extends Error {
 }
 
 /** 의존성 부재 경로: 한 줄 안내 + exit 1 (스택 트레이스 없음, 9 가 아니다).
- *  `ws` 는 M2 하네스(gateway-v2.ts)와 spawn 된 서버가 함께 쓰는 클라이언트 의존성이다 —
- *  npm install 전 상태에서 이 검사가 서버 기동 실패(exit 9)보다 먼저 걸린다. */
-export function checkDependencies(): void {
+ *  `ws` 는 v2 하네스(gateway-v2.ts)와 spawn 된 서버가 함께 쓰는 클라이언트 의존성이다.
+ *  [M2 실측] 이 두 의존성을 정적 import 하면 npm install 전 상태에서 모듈 적재 단계가
+ *  검사보다 먼저 ERR_MODULE_NOT_FOUND 스택으로 죽는다 — 한 줄 계약(plan.md §C)을 지키려면
+ *  로딩 자체가 검사 뒤에 와야 하므로 ws·하네스는 아래 홀더에 늦게 채운다. */
+let WS: any   // ws 기본 export — 소켓 생성자와 readyState 상수
+let connectV2: (port: number, token: string) => Promise<{ ws: any; welcome: any }>
+let innerOf: (ws: object, raw: any) => any | null
+
+export async function checkDependencies(): Promise<void> {
   try {
-    createRequire(import.meta.url).resolve('ws/package.json')
+    ;({ default: WS } = await import('ws'))
+    ;({ connectV2, innerOf } = await import('../server/test/gateway-v2.ts'))
   } catch {
     console.error('의존성이 해소되지 않습니다 — 먼저 `npm install` 을 돌리세요.')
     throw new E2eError(EXIT_FAILED)
@@ -72,8 +82,7 @@ async function acquirePort(): Promise<{ forServer: string; forProbe: number }> {
  *  환경변수 셋은 server/src/config.ts 가 실제로 읽는 것들이다 —
  *  MINIDISCORD_PORT(config.ts:3) · MINIDISCORD_HOST(config.ts:6) · MINIDISCORD_DATA_DIR(config.ts:8) ·
  *  MINIDISCORD_BOT_FILES_DIR(config.ts:13 — 미설정이면 봇 첨부를 전부 거부하는 fail-closed).
- *  E2E 시나리오 ⑧첨부 저장·⑨내려받기가 이 서버 환경을 그대로 쓰므로 주입이 필수다.
- *  미주입 시 기동 경고 «MINIDISCORD_BOT_FILES_DIR 이 없어…» 가 M1 초록 실행에서 관측됐다(레인 재현). */
+ *  시나리오 ⑧첨부 저장·⑨내려받기가 이 서버 환경을 그대로 쓰므로 주입이 필수다. */
 function spawnServer(portForServer: string, dataDir: string, botFilesDir: string): ChildProcess {
   return spawn('npx', ['tsx', 'server/src/index.ts'], {
     cwd: PROJECT_ROOT,
@@ -122,7 +131,8 @@ export function step(n: number): void {
 
 /** 정리 — 정상·단언 실패·예외 세 경로 전부에서 finally 로 호출된다(plan.md §D-4).
  *  서버 프로세스 그룹을 먼저 거두고, 다 죽은 뒤 임시 데이터 디렉터리를 지운다.
- *  아무것도 만들어지기 전에 실패하면(child·dataDir null) 아무것도 하지 않는다. */
+ *  bot-files 하위 경로도 dataDir 재귀 삭제로 함께 거둔다. 아무것도 만들어지기 전에
+ *  실패하면(child·dataDir null) 아무것도 하지 않는다. */
 async function cleanup(child: ChildProcess | null, dataDir: string | null): Promise<void> {
   if (child?.pid) {
     const dead = new Promise<void>(resolve => child.once('exit', () => resolve()))
@@ -136,13 +146,251 @@ async function cleanup(child: ChildProcess | null, dataDir: string | null): Prom
   if (dataDir) rmSync(dataDir, { recursive: true, force: true })
 }
 
-/** M1: 포트 → mkdtemp → spawn → 시한 있는 health 대기 → 정리 → exit 0.
- *  M2 가 main 의 이 자리에 ①~⑮ 시나리오를 넣는다(각 단계 끝에서 step(n)). */
+// ── M2 시나리오 공용 조작 (REQ-E2E-007 ①~⑬) ──────────────────────────────────
+
+/** 한 줄 실패 — 표지는 단언 성공 뒤에만 찍히므로, 마지막 표지가 곧 실패 위치의 증거다 */
+function fail(label: string): never {
+  console.error(`[fail] ${label}`)
+  throw new E2eError(EXIT_FAILED)
+}
+
+function assert(cond: unknown, label: string): asserts cond {
+  if (!cond) fail(label)
+}
+
+/** multipart 폼 하나 — 메시지 라우트는 req.parts() multipart 만 받는다 (routes-messages.ts:50) */
+function messageForm(body: string): FormData {
+  const fd = new FormData()
+  fd.append('body', body)
+  return fd
+}
+
+/** JSON/폼 HTTP 호출 — 상태 코드·본문·원응답(쿠키 헤더용)을 돌려준다 */
+async function api(port: number, method: string, path: string, init: { cookie?: string; json?: unknown; form?: FormData } = {}): Promise<{ status: number; body: any; res: Response }> {
+  const headers: Record<string, string> = {}
+  if (init.cookie) headers.cookie = init.cookie
+  let body: FormData | string | undefined
+  if (init.form) body = init.form
+  else if (init.json !== undefined) { headers['content-type'] = 'application/json'; body = JSON.stringify(init.json) }
+  const res = await fetch(`http://127.0.0.1:${port}${path}`, { method, headers, body })
+  return { status: res.status, body: await res.json().catch(() => null), res }
+}
+
+/** 확립 소켓의 다음 봉투를 기다린다 — innerOf 가 mac 일치·seq 단조를 검증한 뒤의
+ *  안쪽 프레임만 본다(REQ-E2E-003). 시한 안에 오지 않으면 한 줄 실패로 끝난다. */
+function nextInner(ws: any, label: string, predicate: (inner: any) => boolean, timeoutMs = FRAME_TIMEOUT_MS): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      ws.off('message', listener)
+      console.error(`[fail] ${label} — 시한 ${timeoutMs}ms 안에 해당 프레임이 오지 않았다`)
+      reject(new E2eError(EXIT_FAILED))
+    }, timeoutMs)
+    const listener = (data: unknown) => {
+      let env: any
+      try { env = JSON.parse(String(data)) } catch { return }
+      const inner = innerOf(ws, env)
+      if (inner === null || !predicate(inner)) return
+      clearTimeout(timer)
+      ws.off('message', listener)
+      resolve(inner)
+    }
+    ws.on('message', listener)
+  })
+}
+
+/** 조건이 참이 될 때까지 HTTP 를 짧게 재묻는다 — 고정 sleep 로 상태를 가정하지 않는다 */
+async function pollUntil<T>(label: string, probe: () => Promise<T | null>, timeoutMs = FRAME_TIMEOUT_MS): Promise<T> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const found = await probe()
+    if (found !== null) return found
+    await new Promise(resolve => setTimeout(resolve, 150))
+  }
+  console.error(`[fail] ${label} — 시한 ${timeoutMs}ms 안에 조건이 참이 되지 않았다`)
+  throw new E2eError(EXIT_FAILED)
+}
+
+/** 소켓을 닫고 닫힘까지 기다린다 — 다음 접속이 같은 (방, 봇) 자리를 이어받기 전에 정리된다 */
+function closeWs(ws: any, label: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (ws.readyState === WS.CLOSED) return resolve()
+    const timer = setTimeout(() => {
+      console.error(`[fail] ${label} — 소켓이 시한 안에 닫히지 않았다`)
+      reject(new E2eError(EXIT_FAILED))
+    }, FRAME_TIMEOUT_MS)
+    ws.once('close', () => { clearTimeout(timer); resolve() })
+    ws.close()
+  })
+}
+
+/** M2 본체 — REQ-E2E-007 의 ①~⑬. 각 단계: 단언 전부 → step(n). 실패는 곧 exit 1.
+ *  URL·페이로드는 server/src/routes-*.ts 와 gateway.ts 의 실제 형태를 따른다(추측 없음). */
+async function runScenarios(port: number, botFilesDir: string): Promise<void> {
+  const USER = { username: 'e2e-user', password: 'e2e-password-123' }
+  const BOT_NAME = 'E2E-Bot'
+
+  // ① 가입·로그인 — 로그인은 md_session 쿠키로 세션을 준다 (auth.ts:56-59)
+  assert((await api(port, 'POST', '/api/auth/register', { json: USER })).status === 201, 'step1 ① 가입이 201 이 아니다')
+  const login = await api(port, 'POST', '/api/auth/login', { json: USER })
+  assert(login.status === 200, 'step1 ① 로그인이 200 이 아니다')
+  const cookie = (login.res.headers.getSetCookie?.() ?? [])
+    .map(c => c.split(';')[0])
+    .find(c => c.startsWith('md_session='))
+  assert(cookie, 'step1 ① 로그인 응답에 md_session 쿠키가 없다')
+  step(1)
+
+  // ② 방 생성 — 생성자는 곧 구성원이다 (routes-rooms.ts:34-38 한 트랜잭션)
+  const room = await api(port, 'POST', '/api/rooms', { cookie, json: { name: 'e2e-room' } })
+  assert(room.status === 201 && typeof room.body?.id === 'number' && room.body?.status === 'active', 'step2 ② 방 생성 응답이 201·active 가 아니다')
+  const roomId = room.body.id as number
+  step(2)
+
+  // ③ 봇 등록 (routes-bots.ts:57-67)
+  const bot = await api(port, 'POST', '/api/bots', { cookie, json: { name: BOT_NAME, description: 'e2e scenario bot' } })
+  assert(bot.status === 201 && typeof bot.body?.id === 'number', 'step3 ③ 봇 등록이 201 이 아니다')
+  const botId = bot.body.id as number
+  step(3)
+
+  // ④ 봇 초대 — 평문 토큰은 이 응답에 한 번만 실린다 (routes-bots.ts:88-91, 64자 hex)
+  const inv = await api(port, 'POST', `/api/rooms/${roomId}/invites`, { cookie, json: { bot_id: botId } })
+  assert(inv.status === 201 && /^[0-9a-f]{64}$/.test(inv.body?.token ?? ''), 'step4 ④ 초대 응답의 토큰이 64자 hex 가 아니다')
+  const token = inv.body.token as string
+  step(4)
+
+  // ⑤ v2 접속 — connectV2 가 challenge 대조·auth 서명·봉투 welcome 검증을 통과해야 해소된다
+  const conn = await connectV2(port, token).catch(e => fail(`step5 ⑤ v2 접속 실패: ${e?.message ?? e}`))
+  assert(conn.welcome.room_id === roomId && conn.welcome.bot_id === botId && typeof conn.welcome.missed_after_id === 'number',
+    'step5 ⑤ welcome 의 room·bot·커서가 기대와 다르다')
+  step(5)
+
+  // ⑥ v1 hello{token} 음성 대조군 — dropConn 은 send 없이 닫는다 (gateway.ts:118-122·153-156)
+  let v1Frames = 0
+  const v1 = new WS(`ws://127.0.0.1:${port}/bot`)
+  v1.on('message', () => { v1Frames++ })
+  v1.on('error', () => { /* 비정상 종료도 닫힘으로 귀결된다 — 본론은 수신 프레임 수다 */ })
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      console.error('[fail] step6 ⑥ v1 소켓이 시한 안에 닫히지 않았다')
+      reject(new E2eError(EXIT_FAILED))
+    }, FRAME_TIMEOUT_MS)
+    v1.on('open', () => v1.send(JSON.stringify({ type: 'hello', token })))
+    v1.on('close', () => { clearTimeout(timer); resolve() })
+  })
+  assert(v1Frames === 0, 'step6 ⑥ v1 소켓이 닫히기 전에 프레임을 받았다')
+  step(6)
+
+  // ⑦ @TO 라우팅 — 멘션 문법은 @TO(봇이름) 이다 (mention.ts:2). deliver 가 커서를 msg.id 로 올린다 (gateway.ts:324-337)
+  const pending7 = nextInner(conn.ws, 'step7 ⑦ @TO 전달 프레임', i => i.type === 'message' && i.delivery === 'to')
+  const body7 = `@TO(${BOT_NAME}) e2e 라우팅 점검`
+  const sent7 = await api(port, 'POST', `/api/rooms/${roomId}/messages`, { cookie, form: messageForm(body7) })
+  assert(sent7.status === 200 && typeof sent7.body?.message?.id === 'number', 'step7 ⑦ 멘션 메시지 저장이 200 이 아니다')
+  const msg7id = sent7.body.message.id as number
+  const frame7 = await pending7
+  assert(frame7.id === msg7id && frame7.body === body7 && frame7.author_name === USER.username, 'step7 ⑦ 전달 프레임이 저장된 메시지와 다르다')
+  step(7)
+
+  // ⑧ 봇 답변 + 첨부 저장 — 봇 파일은 주입한 botFilesDir 안에 만들어 local_path 로 건넨다 (gateway.ts:281-282 뿌리 검사)
+  const botFile = path.join(botFilesDir, 'e2e-answer.txt')
+  const botFileBytes = Buffer.from('e2e attachment payload — step8 ⑧ 봇 첨부')
+  writeFileSync(botFile, botFileBytes)
+  conn.ws.send(JSON.stringify({
+    type: 'bot_message',
+    body: 'E2E-Bot 답변입니다',
+    files: [{ local_path: botFile, name: 'e2e-answer.txt' }],
+  }))
+  const botMsg = await pollUntil('step8 ⑧ 봇 메시지가 방 목록에 저장되지 않았다', async () => {
+    const list = await api(port, 'GET', `/api/rooms/${roomId}/messages`, { cookie })
+    if (list.status !== 200) return null
+    return list.body?.messages?.find((m: any) => m.author_type === 'bot' && m.body === 'E2E-Bot 답변입니다') ?? null
+  })
+  assert(Array.isArray(botMsg.attachments) && botMsg.attachments.length === 1 && typeof botMsg.attachments[0]?.id === 'number',
+    'step8 ⑧ 봇 첨부가 기록되지 않았다')
+  const botMsgId = botMsg.id as number
+  const attId = botMsg.attachments[0].id as number
+  step(8)
+
+  // ⑨ 첨부 내려받기 — 바이트 동일성으로 잰다 (REQ-E2E-010 의 형태)
+  const dl = await fetch(`http://127.0.0.1:${port}/api/attachments/${attId}`, { headers: { cookie } })
+  assert(dl.status === 200, 'step9 ⑨ 첨부 내려받기가 200 이 아니다')
+  const bytes = Buffer.from(await dl.arrayBuffer())
+  assert(Buffer.compare(bytes, botFileBytes) === 0, 'step9 ⑨ 내려받은 바이트가 봇이 올린 원본과 다르다')
+  step(9)
+
+  // ⑩ 멘션 없는 메시지 저장 — 타깃 행이 생기지 않는 일반 전송
+  const body10 = '멘션 없는 보통 메시지'
+  const sent10 = await api(port, 'POST', `/api/rooms/${roomId}/messages`, { cookie, form: messageForm(body10) })
+  assert(sent10.status === 200 && sent10.body?.message?.author_type === 'user' && sent10.body?.message?.body === body10
+    && Array.isArray(sent10.body?.message?.attachments) && sent10.body.message.attachments.length === 0,
+    'step10 ⑩ 멘션 없는 메시지의 저장 형태가 기대와 다르다')
+  const msg10id = sent10.body.message.id as number
+  step(10)
+
+  // ⑪ history_request — 전체 조회와 since_id 커서 조회 (gateway.ts:303-315). 세 메시지의 동일성으로 잰다
+  const h1pending = nextInner(conn.ws, 'step11 ⑪ history_response(전체)', i => i.type === 'history_response' && i.rid === 'e2e-h1')
+  conn.ws.send(JSON.stringify({ type: 'history_request', rid: 'e2e-h1', limit: 100 }))
+  const h1 = await h1pending
+  const allIds = [msg7id, botMsgId, msg10id]
+  assert(Array.isArray(h1.messages) && h1.messages.length === allIds.length
+    && allIds.every((id: number) => h1.messages.some((m: any) => m.id === id)),
+    'step11 ⑪ 전체 조회 결과가 저장된 세 메시지와 다르다')
+  const h2pending = nextInner(conn.ws, 'step11 ⑪ history_response(커서)', i => i.type === 'history_response' && i.rid === 'e2e-h2')
+  conn.ws.send(JSON.stringify({ type: 'history_request', rid: 'e2e-h2', limit: 100, since_id: msg7id }))
+  const h2 = await h2pending
+  assert(Array.isArray(h2.messages) && h2.messages.every((m: any) => m.id > msg7id)
+    && h2.messages.some((m: any) => m.id === msg10id) && !h2.messages.some((m: any) => m.id === msg7id),
+    'step11 ⑪ since_id 커서 조회가 ⑦ 이후만 담지 않았다')
+  step(11)
+
+  // ⑫ 권한 릴레이 — 봇 요청(request_id 5자 [a-km-z]) → 사람이 "yes <id>" 를 방에 답하면
+  // 메시지 라우트의 가로채기가 소비하고(routes-messages.ts:66) 판정이 봇으로 되돌아온다 (permissions.ts:86-107)
+  const verdictPending = nextInner(conn.ws, 'step12 ⑫ permission_verdict', i => i.type === 'permission_verdict' && i.request_id === 'abcde')
+  conn.ws.send(JSON.stringify({
+    type: 'permission_request',
+    request_id: 'abcde',
+    tool_name: 'write_file',
+    description: 'e2e 권한 릴레이 점검',
+    input_preview: '{"path":"e2e.txt"}',
+  }))
+  const reply = await api(port, 'POST', `/api/rooms/${roomId}/messages`, { cookie, form: messageForm('yes abcde') })
+  assert(reply.status === 200 && reply.body?.consumed_by === 'permission', 'step12 ⑫ yes 답이 권한 소비로 처리되지 않았다')
+  const verdict = await verdictPending
+  assert(verdict.behavior === 'allow', 'step12 ⑫ 판정이 allow 가 아니다')
+  step(12)
+
+  // ⑬ 재접속 시 놓친 메시지 재전송 — 소켓을 닫아 오프라인을 만들고 메시지를 하나 흘려보낸다.
+  // 접속이 없으면 deliver 가 커서를 못 올린다(gateway.ts:324-337) — 그래서 커서는 ⑦ 값에 머문다.
+  // 재전송 프레임은 welcome 과 같은 쓰기로 붙어 와서 welcome 처리 드레인 안에 소비될 수 있어
+  // 리스너를 다는 시점에 이미 지나갈 수 있다. 그래서 잡는 곳을 둘로 나눈다:
+  // (a) 재접속 1 — welcome 커서가 ⑦ 값인 것 + 이력 조회로 흘려보낸 메시지의 실체를 잡고,
+  // (b) 재접속 2 — 커서가 missedId 로 올라간 것을 잡는다. 커서 갱신은 재전송 루프가 잡은
+  // 것이 있을 때만 일어난다(gateway.ts:216-224) — 즉 커서 상승이 곧 재전송 실행의 증거다.
+  await closeWs(conn.ws, 'step13 ⑬ 본 소켓 닫기')
+  const missedBody = `@TO(${BOT_NAME}) 자리 비운 사이 메시지`
+  const sentM = await api(port, 'POST', `/api/rooms/${roomId}/messages`, { cookie, form: messageForm(missedBody) })
+  assert(sentM.status === 200 && typeof sentM.body?.message?.id === 'number', 'step13 ⑬ 오프라인 메시지 저장이 200 이 아니다')
+  const missedId = sentM.body.message.id as number
+  assert(missedId > msg7id, 'step13 ⑬ 오프라인 메시지 id 가 ⑦ 이후가 아니다')
+  const re1 = await connectV2(port, token).catch(e => fail(`step13 ⑬ 재접속 실패: ${e?.message ?? e}`))
+  assert(re1.welcome.missed_after_id === msg7id, 'step13 ⑬ 재접속 welcome 의 커서가 ⑦ 이후가 아니다')
+  const hMp = nextInner(re1.ws, 'step13 ⑬ 재접속 후 history_response', i => i.type === 'history_response' && i.rid === 'e2e-missed')
+  re1.ws.send(JSON.stringify({ type: 'history_request', rid: 'e2e-missed', limit: 100 }))
+  const hM = await hMp
+  assert(Array.isArray(hM.messages) && hM.messages.some((m: any) => m.id === missedId && m.body === missedBody),
+    'step13 ⑬ 흘려보낸 메시지가 재접속 후 이력에 없다')
+  await closeWs(re1.ws, 'step13 ⑬ 재접속 1 닫기')
+  const re2 = await connectV2(port, token).catch(e => fail(`step13 ⑬ 재접속 2 실패: ${e?.message ?? e}`))
+  assert(re2.welcome.missed_after_id === missedId, 'step13 ⑬ 재전송 루프가 커서를 올리지 않았다 — 재전송이 일어나지 않았다')
+  await closeWs(re2.ws, 'step13 ⑬ 재접속 2 닫기')
+  step(13)
+}
+
+/** M1: 포트 → mkdtemp(+봇 첨부 뿌리) → spawn → 시한 있는 health 대기.
+ *  M2: 그 뒤 runScenarios 로 ①~⑬ 를 수행하고 통과 줄을 남긴다. */
 export async function main(): Promise<number> {
   let child: ChildProcess | null = null
   let dataDir: string | null = null
   try {
-    checkDependencies()
+    await checkDependencies()
     const { forServer, forProbe } = await acquirePort()
     dataDir = mkdtempSync(path.join(tmpdir(), 'minidiscord-e2e-'))
     // 봇 첨부 뿌리 — dataDir 안의 하위 경로. 정리는 dataDir 재귀 삭제가 함께 거둔다(cleanup).
@@ -150,13 +398,15 @@ export async function main(): Promise<number> {
     mkdirSync(botFilesDir, { recursive: true })
     child = spawnServer(forServer, dataDir, botFilesDir)
     await waitForBoot(child, forProbe)
+    await runScenarios(forProbe, botFilesDir)
+    console.log('E2E PASS — 13 단계 전부 통과 (⑭⑮ 은 M3)')
     return 0
   } finally {
     await cleanup(child, dataDir)
   }
 }
 
-// 직접 실행(npx tsx scripts/e2e.mts)일 때만 main 을 돌린다 — M2 의 tsx -e 검증이 import 만으로
+// 직접 실행(npx tsx scripts/e2e.mts)일 때만 main 을 돌린다 — 측정이 import 만으로
 // main 을 건드리지 않게 하려는 가드다. process.exit 대신 exitCode 로 끝내 pipe 유출을 막는다.
 const isDirectRun =
   process.argv[1] !== undefined &&
