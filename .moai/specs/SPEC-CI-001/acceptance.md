@@ -226,6 +226,10 @@ gh pr close "$PR" --repo bjw202/minidiscord
 - **Then** 파괴 SHA 의 결론이 `failure` 이고, 되돌림 뒤 head SHA 의 결론이 다시 `success` 다.
 
 ```bash
+set -euo pipefail   # [HARD] 어느 단계가 실패하면 멈춘다 — 감사 R3-2 와 같은 규율.
+                    # 이 절차는 실패 테스트를 커밋하므로, 중간 실패를 삼키면
+                    # 「무엇이 원격에 올라갔는지」가 불확실해진다.
+
 mkdir -p .moai/state/verify/t27-run
 
 # 1) 파괴: 반드시 실패하는 임시 테스트 파일 하나를 만든다 (기존 파일 무수정).
@@ -298,6 +302,10 @@ git commit -m "docs(SPEC-CI-001): M4 AC-CI-006 변별 증거 (card t27)"
 - **Then** 파괴 SHA 의 결론이 `failure` 이며, 그 실행 로그에 채널 워크스페이스 실패 **6건**과 세 파일 이름(`gateway-mutual-auth` · `index-wiring` · `transport-auth`)이 보인다. 되돌림 뒤 결론은 다시 `success` 다.
 
 ```bash
+set -euo pipefail   # [HARD] 단언이 붉어지면 여기서 멈춘다 — 감사 R3-2
+                    # (없으면 AssertionError 뒤에도 git add/commit/push 가 그대로 이어져
+                    #  과삭제된 워크플로가 원격에 올라간다. 감사관이 block exit=0 으로 재현했다.)
+
 # 1) 파괴: 워크플로에서 빌드 단계를 제거한다. 편집을 명령으로 표현한다 —
 #    PyYAML 로 읽어 해당 step 을 지우면 들여쓰기 실수 없이 재현 가능하다.
 python3 - <<'PY'
@@ -339,7 +347,10 @@ print('removed exactly:', removed[0])
 print('survivors:', survivors)
 print('MUTATION EXACT')
 PY
-grep -c 'npm run build -w channel' .github/workflows/ci.yml   # → 0 (제거 확인)
+# [HARD] `grep -c` 는 적중 0 일 때 종료 코드 1 을 낸다 — set -e 아래에서 그대로 쓰면
+# 「제거 확인」 줄이 성공했는데도 블록이 여기서 죽는다(이 나무에서 재현 확인).
+# 그래서 부정 검색으로 뒤집어 의도를 그대로 유지하면서 종료 코드를 바로잡는다.
+! grep -q 'npm run build -w channel' .github/workflows/ci.yml   # 적중 0 이어야 통과
 
 git add .github/workflows/ci.yml                     # 경로 명시. -a 금지
 git commit -m "scratch: CI 변별 — channel 빌드 단계 제거 (병합 금지)"
@@ -457,42 +468,96 @@ PY
 
 ---
 
-### AC-CI-011 — 결정 파급표의 완전성이 기계로 확인된다
+### AC-CI-011 — 선언·마커·자리 목록 세 출처가 정합하고, §D-2 파급표가 살아 있다
 
-- **Given** `plan.md` §D-2.1 이 결정별 종속 자리 수를 선언하고, 각 종속 자리에 `[OD-DEP:N]` 마커가 심겨 있고,
+- **Given** `plan.md` §D-2 파급표가 「그 밖의 자리」 열을 담고, §D-2.1 이 결정별 종속 자리 수를 선언하며 그 자리를 열거하고, 각 종속 자리에 `[OD-DEP:N]` 마커가 심겨 있고,
 - **When** 아래 명령을 실행하면,
 - **Then** 출력의 마지막 줄이 `FALLOUT TABLE COMPLETE` 다.
 
 ```bash
 python3 - <<'PY'
-import re, pathlib
-base = pathlib.Path('.moai/specs/SPEC-CI-001')
+import re, pathlib, sys
 
-# 출처 ①: plan.md §D-2.1 의 선언
-decl_src = (base / 'plan.md').read_text()
-m = re.search(r'<!--\s*OD-DEP-EXPECT:\s*(.*?)-->', decl_src)
+BASE = pathlib.Path('.moai/specs/SPEC-CI-001')
+FILES = ('spec.md', 'plan.md', 'acceptance.md', 'progress.md')   # R3-7: progress.md 포함
+
+def doc_lines(text):
+    """코드펜스 안의 줄을 제외한 (인덱스, 줄) 목록 — R3-6: AC-CI-009 와 같은 규율."""
+    out, inside = [], False
+    for i, l in enumerate(text.splitlines()):
+        if l.lstrip().startswith('```'):
+            inside = not inside
+            continue
+        if not inside:
+            out.append((i, l))
+    return out
+
+plan = (BASE / 'plan.md').read_text()
+
+# ① 선언
+m = re.search(r'<!--\s*OD-DEP-EXPECT:\s*(.*?)-->', plan)
 assert m, 'OD-DEP-EXPECT 선언이 없다'
 declared = {int(k): int(v) for k, v in re.findall(r'OD-(\d)=(\d+)', m.group(1))}
 
-# 출처 ②: 세 문서에 실제로 심긴 마커 (선언과 독립인 두 번째 출처)
+# ② 마커 (펜스 밖만)
 actual = {}
-for fn in ('spec.md', 'plan.md', 'acceptance.md'):
-    for n in re.findall(r'\[OD-DEP:(\d)\]', (base / fn).read_text()):
-        actual[int(n)] = actual.get(int(n), 0) + 1
+for fn in FILES:
+    for _, l in doc_lines((BASE / fn).read_text()):
+        for n in re.findall(r'\[OD-DEP:(\d)\]', l):
+            actual[int(n)] = actual.get(int(n), 0) + 1
+
+# ③ §D-2.1 「자리 목록」 표 — 셀을 ' · '(공백 포함) 로 갈라 자리 수를 센다.
+#    공백 없는 '·' 는 이름 안에 쓰인다(REQ-CI-004·005) — 구분자와 충돌하지 않게 띄어쓰기로 가른다.
+listed = {}
+for _, l in doc_lines(plan):
+    mm = re.match(r'^\|\s*OD-(\d)\s*\|\s*\*\*(\d+)\*\*\s*\|(.+?)\|\s*$', l)
+    if mm:
+        od, sites = int(mm.group(1)), mm.group(3)
+        listed[od] = len([s for s in sites.split(' · ') if s.strip()])
+
+# §D-2 파급표가 살아 있는가 (epsilon: 표 삭제 / zeta: 셀 비움)
+d2 = re.search(r'^## D-2\..*?^### D-2\.1', plan, re.M | re.S)
+assert d2, '§D-2 파급표 절이 없다'
+rows = [l for l in d2.group(0).splitlines() if l.startswith('|')]
+assert any('그 밖의 자리' in r for r in rows), '§D-2 에 「그 밖의 자리」 열이 없다'
+bc = [r for r in rows if re.search(r'\|\s*\(([bc])\)', r)]
+assert len(bc) == 5, ('(b)/(c) 행이 다섯이어야 한다', len(bc))
+for r in bc:
+    last = r.rstrip('|').rsplit('|', 1)[-1].strip()
+    assert last and '§' in last, ('(b)/(c) 행의 「그 밖의 자리」 셀이 비었다', r[:60])
 
 print('declared:', dict(sorted(declared.items())))
-print('actual  :', dict(sorted(actual.items())))
-assert declared == actual, ('선언과 마커가 어긋난다', declared, actual)
+print('markers :', dict(sorted(actual.items())))
+print('listed  :', dict(sorted(listed.items())))
+print('§D-2 (b)/(c) rows with non-empty 그 밖의 자리:', len(bc))
+
 assert set(declared) == {1, 2, 3}, ('OD 는 셋이어야 한다', sorted(declared))
+assert declared == actual, ('선언 != 마커', declared, actual)
+assert declared == listed, ('선언 != 자리 목록', declared, listed)
 print('FALLOUT TABLE COMPLETE')
 PY
 ```
 
-- 검증 대상: `plan.md` §D-2 결정 파급표 · §D-2.1 선언.
-- **[HARD] 왜 이 기준이 있는가** (감사 R2-4). v0.3.0 의 파급표는 세 자리를 빠뜨렸고 **그중 둘은 이미 거짓이었는데 아무 명령도 잡지 못했다.** 표 자신이 `plan.md` 에서 「한 층만 고치면 나머지가 조용히 거짓이 되고, 그 거짓은 아무 명령도 잡지 못한다」고 경고하는 바로 그 상태에 표 자신이 빠져 있었다 — **완전성이 주장인 표는 자기가 경고하는 결함의 한 겹 위 사례다.**
-- **두 출처가 독립이어야 대조가 성립한다.** 마커는 종속 자리 **자신**에, 선언은 `plan.md` 의 **다른 절**에 있다. 한쪽만 고치면 어긋남이 드러난다.
-- **반증 가능성**: 마커 하나를 지우면 `actual` 이 줄어 `AssertionError`. 선언만 늘려도 마찬가지. 새 종속 자리에 마커를 심고 선언을 안 고쳐도 마찬가지.
-- **한계 공시**: 마커도 선언도 없는 **완전히 누락된** 종속은 이 기준이 잡지 못한다(`plan.md` §D-2.1 에 같은 공시). 이 기준은 **기록과 문서의 불일치**를 잡는 장치이지 미지의 종속을 발견하는 장치가 아니다.
+- 검증 대상: `plan.md` §D-2 파급표(존재·「그 밖의 자리」 열·(b)/(c) 행의 셀) · §D-2.1 선언과 자리 목록 · 네 문서의 마커.
+- **[HARD] 왜 이 기준이 있는가** (감사 R2-4). v0.3.0 의 파급표는 세 자리를 빠뜨렸고 **그중 둘은 이미 거짓이었는데 아무 명령도 잡지 못했다.** 표 자신이 「한 층만 고치면 나머지가 조용히 거짓이 되고, 그 거짓은 아무 명령도 잡지 못한다」고 경고하는 바로 그 상태에 표 자신이 빠져 있었다.
+- **[HARD] v0.4.0 의 이 기준은 자기 이름보다 좁았다 — 명령을 넓혀 이름에 맞췄다** (감사 R3-1). v0.4.0 은 제목이 「**결정 파급표의 완전성**」이고 검증 대상이 「§D-2 파급표」였는데, **명령은 §D-2 표를 한 줄도 읽지 않았다.** 그래서 표를 통째로 지워도(`epsilon`), 「그 밖의 자리」 셀을 전부 비워도(`zeta`), 비종속 자리에 마커를 심고 선언을 함께 올려도(`alpha`) 초록이었다. **D1 → R2-4 → R3-1 로 같은 부류의 세 번째 등장**이며, `acceptance.md` 첫머리가 이 문서의 첫 줄에서 경계한다고 선언한 바로 그 형태다.
+  - **이름을 좁히는 대신 명령을 넓혔다.** 제목을 「선언과 마커의 정합」으로 낮추는 선택지도 있었으나, 그러면 **R2-4 의 실질이 다시 열린다** — 표의 완전성이 아무 명령의 대상도 아닌 상태로 돌아간다. 이 기준은 R2-4 를 닫으려고 존재하므로, 이름을 지키고 명령이 따라가게 했다.
+  - **출처가 둘에서 셋으로 늘었다**: ① 선언(`OD-DEP-EXPECT`) ② 마커(종속 자리 자신) ③ **자리 목록(§D-2.1 표 셀)**. 셋이 서로 다른 자리에 있으므로, 하나만 고치면 어긋남이 드러난다. 여기에 **§D-2 표 자신의 생존 검사**(절 존재 · 「그 밖의 자리」 열 · (b)/(c) 다섯 행의 셀이 비지 않음)가 더해진다.
+- **수정 후 세 공격을 다시 걸어 실측했다** (원문: `.moai/state/verify/t27-plan/probe011.py`):
+
+```
+epsilon (표 삭제)           exit=1  CAUGHT   AssertionError: §D-2 파급표 절이 없다
+zeta (셀 비움)              exit=1  CAUGHT   AssertionError: ('(b)/(c) 행의 「그 밖의 자리」 셀이 비었다', …)
+alpha (미끼+선언상향)          exit=1  CAUGHT   AssertionError: ('선언 != 자리 목록', {1: 6, …}, {1: 5, …})
+```
+
+  `alpha` 가 이제 잡히는 이유: 마커와 선언을 함께 올려도 **자리 목록이 그대로**라 셋째 출처와 어긋난다. 세 곳을 모두 조작해야 통과하며, 그때는 사람이 읽어도 보이는 편집이 된다.
+- **반증 가능성**: 마커 하나를 지우면 `AssertionError`(감사관이 `delta` 로 확인). 선언만 올려도, 자리 목록만 고쳐도, 표를 지워도, 셀을 비워도 붉어진다.
+- **[HARD] 한계 공시 — 세 가지를 모두 적는다** (v0.4.0 은 첫째 하나만 적었다):
+  1. **마커도 선언도 자리 목록에도 없는 종속**은 잡지 못한다. 이 장치는 「기록 사이의 불일치」를 잡을 뿐 **미지의 종속을 발견하지 않는다.**
+  2. **의미의 정확성은 재지 않는다.** 마커가 *올바른* 자리에 있는지, 자리 목록의 서술이 실제 그 자리를 가리키는지는 텍스트로 판정할 수 없다. 세 출처를 **모두 일관되게 조작한** 편집은 통과한다 — 다만 그 편집은 더 이상 우연한 사고가 아니다.
+  3. **표 셀의 *내용*이 옳은지는 재지 않는다.** 검사는 셀이 비지 않고 `§` 참조를 담는지까지만 본다. 잘못된 자리를 가리키는 셀은 통과한다.
+- **[HARD] 마커 카운터는 코드펜스를 건너뛰고 `progress.md` 도 스캔한다** (감사 R3-6·R3-7). v0.4.0 은 AC-CI-009 만 펜스 토글을 얻고 이 기준은 못 얻었으며(한 자리를 고치고 형제를 빠뜨린 형태), 스캔 대상도 세 파일뿐이라 `progress.md` 의 종속 자리가 생기면 불가시였다. 둘 다 이 개정에서 맞췄다.
 
 ---
 
