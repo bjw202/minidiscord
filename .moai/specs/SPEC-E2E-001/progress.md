@@ -137,6 +137,22 @@ _다음: 3회차 델타 감사(N-01~N-04 범위) → Kickoff 승인 → run 진�
 - **Gaps**: ① 배선 형태 미측정(M4 에서 동일 기준 재측정) ② ⑭ 는 SIGTERM 재시작만 재었다 — 정리 함수의 SIGKILL 경로(비정상 종료 직후 WAL 복구)는 재시작 흐름에서 미측정 ③ ⑭ 동일성 표적은 1메시지·1첨부·1토큰(REQ-E2E-008 요구 셋은 충족, 전 유형 영속은 미재) ④ AC-E2E-010 재단언 케이스는 plan 배정대로 회귀 짝에만 있고 스크립트에는 없음.
 - **Residual-risk**: `E2E_FORCE_PORT` 사용 시 재기동이 같은 포트를 쓰게 되는데, 재바인드 실패는 exit 9(안전 방향). 타이밍 여유는 무부하 기준 — 부하 재시험 없음.
 
+### M4 — 배선
+
+산출물: `package.json` **순수 삽입 +1행** — `"e2e": "npx tsx scripts/e2e.mts"` 를 scripts 블록 앞쪽에. **편집 경로 실측 이력(스폰 공시)**: 첫 편집은 e2e 줄을 test **뒤**에 넣었다 — test 줄 끝 쉼표가 diff 에 `- "test": …` / `+ "test": …,` 를 만들어 AC-E2E-011 ① 이 `1` 로 빨개지는 것을 **실측**했고, e2e 줄을 블록 앞쪽에 두는 순수 삽입으로 고쳐 두 형태 모두 `0` 을 확인. npm 스크립트 나열 순서는 동작에 무관. **M2/M3 이월 — 배선 형태 재측정 전건 관측**: AC-E2E-001 `npm run e2e` → `exit=0` + `[1/15]…[15/15]` + «E2E PASS — 15 단계 전부 통과» · AC-E2E-005 배선 형태 해시 전후 동일(`./data` 부재 유지) · AC-E2E-006 배선 형태(점유 포트 64846 → `EADDRINUSE` → `[boot-timeout]` 1회 + `exit=9`, P-06 폴링 형태 유지, 점유자 `kill` 회수).
+
+| 검사 | 명령(축자) | 관측 | 누가 재현했나 |
+|---|---|---|---|
+| AC-E2E-011 ① | `git diff 2a19d7d..HEAD -- package.json \| grep '^-' \| grep -c '"test"'` | 커밋 전 워킹트리 형태 `0` — **커밋 뒤 재관측은 커밋 직후 레인 수행(아래 행)** | 스폰 + 레인 |
+| AC-E2E-011 ② | `node -e "console.log(require('./package.json').scripts.e2e)"` | `npx tsx scripts/e2e.mts` (비어 있지 않음) | 스폰 + **레인 직접 재현** |
+| AC-E2E-011 ③ | `git rev-parse --verify 2a19d7d` | `exit=0` | 스폰 + **레인 직접 재현** |
+| diff 실물 | `git diff 2a19d7d -- package.json` | `+ "e2e": …` 한 줄만 — `test` 값 `npm test --workspaces --if-present` 무변경 | **레인 직접 판독** |
+| 배선 AC-E2E-001·005·006 | `npm run e2e` 형태 3건 | 전부 초록 (스폰 각 1회 — 세부 위 표 밖) | 스폰 |
+
+- 측정 환경 귀속: @ `cdf55c0`(M3 커밋).
+- **Gaps**: ① 커밋 뒤 형태의 AC-E2E-011 ① 은 레인 커밋 직후 재관측으로 최종 판정(순수 삽입이므로 0 예측 — 관측은 §E.3 직전 수행) ② AC-E2E-012~016(README)은 M5 몫 ③ 이번 마일스톤에서 `npm test` 전체 재실행 없음 — test 값 무변경은 diff 로 잠김(M3 의 285 가 최신 스위트 값).
+- **Residual-risk**: `npx tsx` 형태는 npm 실행마다 npx 해소를 거친다 — 오프라인 신규 클론의 tsx 부재 시 npx 가 설치 시도로 빠질 수 있다는 D4 계열 공시는 유효(스크립트 자체의 의존성 한 줄 가드는 별도 실측됨). 배선 형태 3건은 각 1회 관측.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
