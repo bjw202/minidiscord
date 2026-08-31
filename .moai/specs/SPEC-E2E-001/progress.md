@@ -66,7 +66,7 @@ _다음: 3회차 델타 감사(N-01~N-04 범위) → Kickoff 승인 → run 진�
 - 리드 회신 (2026-08-31): «D1·D2·D3 확인 — 셋 모두 잠정대로 확정. 뒤집을 것 없음. 3회차 감사 PASS 0.911 이 그 선택을 받은 트리에서 나왔다 — 재판정 근거 없음»
 - ① D1 = 재사용 (`scripts/e2e.mts` + `npx tsx`, `server/test/gateway-v2.ts` 의 `connectV2`/`innerOf` import, 셋째 사본 금지)
 - ② D2 = 별도 `npm run e2e`, 루트 `scripts.test` 값 불변 (CI 배선은 t27)
-- ③ D3 = 문서로만·실행 안 함, «수동 검증 수행» 주장 금지 유지
+- ③ D3 = 문서로만·실행 안 함 — 수동 체크리스트의 실행 주장 금지 유지 (AC-E2E-016 ①)
 - D5 = t26 이월·과도기 공시 — §E.1 확정 기록 유지 (재판정 없음)
 
 **§C 착수 전 확인 (run 레인 직접 실행 출력)**
@@ -175,9 +175,42 @@ _다음: 3회차 델타 감사(N-01~N-04 범위) → Kickoff 승인 → run 진�
 - **Gaps**: ① AC-E2E-016(금지어 검사)과 변이표는 M6 몫 ② 트리거 세 줄의 «절 안 배치» 는 014 의 awk 범위로만 검증됐고 사람이 읽는 위치 적절성은 문언 판단 영역(리드가 diff 승인으로 닫음).
 - **Residual-risk**: 트리거 줄 추가로 README 의 t23 언급이 3→4 — t23 관련 후속 카드가 이 증가를 알아야 한다. 과도기 어긋남(트리거 ㉠ «사내망 전용» vs 3·190행 «내 PC»)은 공시된 t26 이월 — 이 카드의 미결이 아니다.
 
+### M6 — 변이표(10건)·AC-E2E-016·DoD 종결
+
+변이 10건을 **하나씩 독립**으로 실행(최소 8 초과) — 변이 전 `git hash-object` 기록 → 적용 → 측정 → 되돌림 → 재대조, 전 변이 종료 후 status 스냅샷이 변이 전과 글자 그대로 동일(오염 0). **살아남은 변이 0건** — 지운 코드마다 기준이 잡았다. 로그 원문: `.moai/state/verify/t6-run/mut-*.log`.
+
+| # | 지운 것 | 측정 | 빨개진 시험·기준 | 예상과 일치? | 레인 재현 |
+|---|---|---|---|---|---|
+| A **[필수]** | `index.ts` `openDb(config.dbPath)`→`':memory:'` | 서버 스위트 전체 | **restart-persistence 2건만** (190 중 188 통과) — **좁은 변이, 회귀 짝의 존재 이유가 그대로 증명됨** | 일치 | **레인 직접 재현**: H1 `042439b4` → 변이 → `Tests 2 failed (2)` → 복원 → H2 동일 — 오염 0 |
+| B | `gateway.ts:216-224` 재전송 루프 삭제 | `npm run e2e` | ⑬ 커서 단언 — `[1/15]…[12/15]` 후 `[fail] step13` | 일치(예측 [14/15] 대신 ⑌13 안 — 커서 증거가 ⑬ 재접속2 에 있어 관측값 우선) | `mut-B-e2e.log` 판독 |
+| C | cleanup 의 stopServer 제거 | e2e 정상 경로 | AC-E2E-004 — 프로세스 잔존 + **러너 자체 미종료**(detached 자식이 루프 홀드) | 일치(예상보다 강하게) | — |
+| D | `MINIDISCORD_DATA_DIR` 주입 제거 | `./data` 해시 전후 | AC-E2E-005 — 사후 `./data` 생성·해시 변화 | 일치 | — |
+| E | 시한 폴링 제거(`while true`) | 점유 포트 + 45초 유한 관측 | AC-E2E-006 — 표지 0건·exit 없음 | 일치 | — |
+| F | step(1)/step(2) 자리 교환 | e2e | AC-E2E-007 — step 가드가 역순 거절, 표지 0건 | 일치 | — |
+| G | `test` 값에 e2e 접미 | 기준선 diff | AC-E2E-011 ① — `1` | 일치 | — |
+| H | README 트리거 t12 줄 삭제 | awk+t12 | AC-E2E-014 ㉡ — `0` | 일치 | — |
+| I | `config.ts` 주석 수정 | diff 이름 | AC-E2E-013 ① — `1` | 일치 | — |
+| J | innerOf→원문 JSON.parse (**현재 세대 489행 사본**) | 사본 실행 뒤 삭제 | AC-E2E-003 — `[6/15]` 뒤 step7 실패 (**M2 이월분 — 현재 세대 재측정으로 닫힘**) | 일치 | `mut-J-e2e.log` 판독 |
+
+- **AC-E2E-016 전건**: ① 은 스폰 실행에서 **적중 1건** — `progress.md:69`(레인 소유 결정 요약 행)의 «수동 검증 수행» 문언이 기계 필터에 걸린 것으로, 결정 기록이지 수행 주장이 아니었다. **레인 처분: 문언 조정** — «수동 체크리스트의 실행 주장 금지 유지» 로 교체(면제 표지 미사용 — ①-b 상한 7 보존) → **① 재실행 `exit=1`(적중 0)** · ①-b `7`(상한 이내) · ①-c README 0·scripts 0 · ② `exit=1` · ③ **해당 없음 명시**(체크리스트 미게재 — ①② 는 그래도 실행).
+- **범위 확인(기준선 있음)**: `git diff --name-only 2a19d7d..HEAD` → 18파일 전부 허용 집합(`scripts/e2e.mts`·`server/test/restart-persistence.test.ts`·`package.json`·`README.md`·`.moai/specs/SPEC-E2E-001/*` 4 · `.moai/reports/t6/*` 7 · plan-auditor 메모리 2 는 plan 커밋 산출·run 변경 0) — **`server/src/**` 0건** ✓
+- **DoD 6 재훑기 — 값과 명제**: 값 축 — `BASE`·`:173`·`sha256sum`·`124`·`생산 배치`·`/13]` 측정 줄·SPEC 디렉터리에서 **전부 0**; «내 PC» 는 측정 줄에 2건이나 둘 다 울타리 기준 자신의 명령문(② 카운트·③ v0.3.2 정정형) — 낡은 값 0건. 명제 축 — «어긋나지 않» 1(§1.2 이력 각주)·«종결 정의\|종결 조건» 3(HISTORY 0.3.0행·§1.2 제목·«실 세션은 종결 조건이 아니다») — 서로 정합, v0.3.1 문서값과 동일.
+- **DoD 7**: `grep '^- 측정' acceptance.md \| grep -c 'BASE'` → **0** (측정 줄 34).
+- **마지막 초록**: `npm run e2e` → 15표지·`exit=0`(`m6-final-e2e.log`) · `npm test` → **285 passed (190+95)**, `exit=0`(`m6-final-npmtest.log` — transport-auth 우연 재발 없음).
+- **Gaps**: ① 변이 C 로만 관측된 성질 — «stopServer 생략 시 러너는 PASS 출력 후에도 끝나지 않는다» — 원본 코드엔 문제 없음(kill 항상 실행), `child.unref()` 는 후속 카드 후보로만 기록(변이 중 수칙 위반이 되므로 고치지 않음) ② `./data` 를 만드는 buildServer 시험 7종(health·permissions·web-*)은 **이 카드 이전의 기존 행동** — AC-E2E-005 의 재는 대상(E2E 스크립트)이 아니며 t27 이 알아둘 사실.
+- **Residual-risk**: 변이 10건은 각 1회 관측 — 타이밍 의존 빨강(E 의 유한 관측 등)의 부하 내성 미시험. transport-auth flaky 는 원인 제거가 아니라 미재발.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- 워크트리 `.claude/worktrees/t6` · 브랜치 `WT-e2e-persist-readme` · 기준 `2a19d7d`
+- **커밋 궤적 (run 단계 전부)**: `dc7343c` M1 골격 → `860c063` M2 시나리오 ①~⑬ → `cdf55c0` M3 재시작 영속성·회귀 짝 → `cb3c665` M4 배선 → `346a077` SPEC 정정(AC-E2E-013 측정 ③, v0.3.2·리드 승인·manager-spec 재위임) → `74eaef7` M5 README. 전부 pre-commit 게이트 통과, 마일스톤별 커밋(card t6 명시).
+- **AC-E2E-001~016 : 16/16 최종 PASS** — 각 기준의 관측은 §E.2 (명령+출력·측정자 귀속 포함). AC-E2E-016 ① 은 레인 소유 문언의 기계 필터 적중 1건을 문언 조정으로 처분 뒤 재실행 통과.
+- **스위트**: 기준선 **283**(188+95) → 최종 **285**(190+95 — restart-persistence 회귀 짝 +2), `npm test` exit 0. transport-auth flaky **2회 관측**(M3 스위트·M6 커밋 게이트 — 게이트가 한 번 실제로 막았다; 증거 보존) — 관측 사이와 단독 재실행은 전부 초록, t27 참조.
+- **DoD 1~7 전건 충족**: ① AC 전건+§E.2 관측 ✓ ② 변이표 10건(≥8)·필수 openDb 변이 포함·«빨개진 시험 목록» = **좁은 변이로 증명** ✓ ③ npm test 285 ✓ ④ 기준선 diff 허용 집합·**server/src 0건** ✓ ⑤ 모든 수치가 명령+출력 동반(재지 않은 수 0) ✓ ⑥ 값+명제 재훑기 분류표(낡은 값 0·명제 정합) ✓ ⑦ 측정 줄 `BASE` 0 ✓
+- **plan-done §9.2 미검증 인계 5건 처분**: ① `openDb` 변이 정밀도 → **M6 변이 A 로 닫힘**(신규 재시작 시험만 빨강 — 좁은 변이) ② tsx 교차 워크스페이스 해소 → **M1 §C 실측 + 늦은 적재 복원**(의존성 부재 계약 유지) ③ N-05 포트 점유 블록 → **M1 E2 P-06 형태 실측** ④ v1 음성 대조군 close 거동 → **M2 ⑥ 실측**(수신 0건 후 close) ⑤ **P-06 → M1 에서 종결**(sleep 1 → 준비 신호 폴링, /tmp → verify 경로).
+- **«실행 불가» 사유 정정 (리드 인계 ③)**: plan-done 이 세 라운드를 «node_modules 부재로 실행 불가» 로 기록한 것은 **거짓 진단이었다** — 실제는 channel/dist·node_modules 부재였고(바이너리는 상위 체크아웃 해소), `npm install` 뒤 이 나무에서 전 산출물이 실행됨. 미검증의 진짜 사유는 **«대상 미작성»**이었고, `scripts/e2e.mts` 작성 즉시 그 자리에서 측정됐다.
+- `status: in-progress` 유지 — `implemented → completed` 전이는 sync 커밋의 소유다.
+- **완료 신호**: `.moai/reports/t6/run-done.md` — «초록 종료·우위 금지». 리드가 판독 후 sync 디스패치.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
