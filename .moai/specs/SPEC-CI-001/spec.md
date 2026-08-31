@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-001
 title: "CI 테스트 배선 — push·pull_request 에서 npm ci → channel 빌드 → npm test 를 자동 실행"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-31
 updated: 2026-08-31
@@ -21,6 +21,8 @@ related_specs: [SPEC-GWAUTH-002]
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.3.0 | 2026-08-31 | **1회차 계획 감사 FAIL 0.761 을 닫는 개정** (`.moai/reports/t27/plan-audit.md`. 차원: Clarity 0.80 · Completeness 0.85 · **Testability 0.62** · Traceability 0.82. **0.761 은 이 수정 이전 트리(`f0124e6`)의 값이며 재채점이 따르지 않는다.**) 차단 7건을 닫는다. ① **D1** — AC-CI-009 가 **아무 결정도 닫지 않고 통과**했다. `sed '/^## D\./,/^## E\./p'` 범위가 `#### 형제 카드 제약` 하위절까지 삼켜, 감사관이 그 하위절에 무관한 `결정됨:` 3줄을 심자 셋 다 `(대기)` 인 채로 기준이 `3` 을 냈다. 「이 세 줄이 유일한 판정 자리」라는 산문은 **아무 명령도 강제하지 않는 의도 선언**이었다. 판정을 `### OD-N` 헤딩 **각각**에 앵커해 셋으로 쪼개고, 각 범위에서 `결정됨:` 이 정확히 1줄이며 값이 `(a)/(b)/(c)` 중 하나임을 함께 단언하도록 다시 썼다. 형제 제약 하위절은 §D **밖**(§D-1)으로 옮겨 오탐 경로를 물리적으로 없앴다. **적대적 재탐침으로 새 형태가 미끼에 넘어가지 않음을 실행으로 확인했다**(§0-1). ② **D2** — AC-CI-006·007 의 파괴 단계가 명령이 아니라 **주석**이라 적힌 대로면 실행되지 않았고(`git add` 가 없는 파일을 가리킴 / `git commit -am` 이 담을 것 없음), 더 나쁘게는 `-a` 가 **`progress.md` 의 진짜 증거까지 파괴 커밋에 쓸어담아 `git revert` 가 그것을 되돌릴** 참이었다. 두 절차를 heredoc·경로 명시 `git add`·`-a` 금지의 실행 가능한 명령열로 다시 쓰고, **증거 기록이 되돌림 밖에 착지하도록** 순서를 못 박았다. ③ **D3·D4** — OD-3 (b) 는 워크플로에서 빌드 단계를 없애므로 **REQ-CI-004·005 를 거짓으로 만드는데** 파급 목록에 요구 계층이 없었고, `channel/package.json` 수정이 §5 배제와 **정면 충돌**하는데 그 충돌이 적혀 있지 않았다(같은 성질의 OD-2 (c) 충돌은 스스로 공시했다 — 내부 모순). 요구 교체 문언(REQ-CI-004′·005′)을 미리 적고, §5 배제를 **「루트 `package.json`」으로 좁혔으며**, 파급표를 요구·기준·배제·DoD 네 층 × 세 결정으로 완성했다. ④ **D5** — REQ-CI-003(`pull_request`)에 **행위 기준이 없어** `paths: ['no-such/**']` 로 무력화된 워크플로가 통과했다. AC-CI-010(PR head SHA 원격 관측)을 신설하고 AC-CI-001 에 **필터 무력화 부재** 단언을 더했다. ⑤ **D6** — OD-2 (b) 는 `node-version` **키를 없애는데** 공시는 「값이 바뀐다」뿐이라 `str(None).startswith('24')` 로 깨졌다. AC-CI-004 를 **두 형태 모두 수용**하도록 고쳤다. ⑥ **D7** — 「exit 0」 넷이 **오류 블록의 부재**에만 기대고 있었다(이 프로젝트가 금지하는 형태). 리드가 네 명령을 재실행해 로그에 `exit=` 를 남겼고, 모든 인용을 그 줄에 귀속시켰다. ⑦ **O2** — 워크플로 파일명을 **고정 기본값 `.github/workflows/ci.yml`** 로 못 박았다(네 번째 미결로 승격하지 않는다 — 파일명은 리드의 주의를 쓸 결정이 아니다). ⑧ 비차단 O3·O4·O5·O6·O7·O8·O11 반영. **Tier 재도출: M 유지** — 근거와, v0.2.0 이 든 근거의 정정은 아래 별도 행에 적는다. **요구 10 → 12**(REQ-CI-010 의 ①②③ 을 셋으로 분해 — O5), **수용 기준 9 → 10**(AC-CI-010 신설 — D5). | manager-spec |
+| — | 2026-08-31 | **Tier 근거의 정정 (v0.2.0 의 오류를 명시적으로 기록한다).** v0.1.0~0.2.0 은 Tier M 의 근거로 「LOC·파일 수는 S 이지만 **Tier S 의 AC 상한이 8건**이라 9건이 들어가지 않는다」를 들었다. 리드가 이 규칙의 실재를 문제 삼았고, 나는 SSOT 를 직접 다시 읽었다 — **`.claude/rules/moai/workflow/spec-workflow.md:146-152` 의 「REQ/AC budget」 표가 실재하며 S = 8/8 이다.** 감사 보고서도 같은 자리를 인용한다(`plan-audit.md:22`). 즉 **v0.2.0 이 인용한 규칙은 존재하며, 그 부분은 오류가 아니었다.** 다만 근거의 **불완전함**은 실재했다: 그 표만 들고 `spec-workflow.md:154` 의 「LOC 임계는 강제가 아니라 지침」을 함께 인용하지 않아, 왜 두 축이 충돌할 때 REQ/AC 축이 이기는지를 적지 않았다. 완전한 도출은 `plan.md` §0 에 적는다. | manager-spec |
 | 0.2.0 | 2026-08-31 | **리드 판독이 찾은 이월 누락 둘을 닫는 개정.** ① **OD-3 신설** — 카드 `t22` 가 F6 으로 이 카드에 넘긴 `pretest` 항목(`.moai/reports/t22/sync-audit.md:207` · `sync-done.md:70`)이 0.1.0 에 **한 자도 없었다**(`grep -rn "pretest"` 적중 0). F6 은 카드가 가정한 것과 **다른 형태의 처방**이다 — 카드 형태는 CI 만, F6 형태는 CI 와 모든 깨끗한 체크아웃을 함께 고친다. `plan.md` §D 에 선택지 셋과 각 귀결, 그리고 **(b)/(c) 가 AC-CI-002·AC-CI-007 을 함께 움직인다**는 파급을 적었다. **결정하지 않았다.** ② **형제 제약 공시** — `SPEC-E2E-001`(미병합 브랜치)의 AC-E2E-011 이 OD-3 과 만나는 지점을 어느 방향으로도 과장하지 않고 적었다: 측정 ①이 루트 `package.json` 만 보므로 **문언 위반은 아니고**, 다만 `pretest` 는 `scripts.test` 리터럴을 두면서 `npm test` 동작을 바꾸므로 **취지에는 압력을 준다** — 그 간극의 판단은 리드 몫. 병합 순서 주의도 함께 적었다. ③ AC-CI-009 를 `결정됨:` **3줄**을 세도록 고쳤다. ④ `./data` 를 **`server/` 작업 디렉터리 기준 `server/data`** 로 한정하고 `t6` 감사의 경고(`sync-audit.md:197-199`)를 인용했다. ⑤ 인용 경로가 병합 후에도 풀리도록 `.moai/state/verify/t27-plan/` 을 추적에 넣었다(`.gitignore:7-9` 의 `!/.moai/state/` 예외가 이를 의도한다). **요구사항 10 · 수용 기준 9 — 변동 없음**(미결 항목을 늘렸을 뿐 요소를 만들지도 지우지도 않았다). | manager-spec |
 | 0.1.0 | 2026-08-31 | 최초 작성 (칸반 카드 `t27` = 큐 재구성 N4). 카드 `t24`(N1)로 원격 저장소가 생기면서 CI 가 설 자리가 처음으로 존재하게 됐다. 이 SPEC 은 **테스트 워크플로 하나**를 세워 카드마다 사람이 `npm test` 를 돌리던 비용을 걷어낸다. 범위는 카드가 적은 세 명령(`npm ci` → `npm run build -w channel` → `npm test`)이며, 커버리지 임계·다중 러너·다중 Node 버전은 배제한다(§5). **빌드 선행 요구는 기억이 아니라 실측이다** — 빌드 없이 돌리면 채널 6건이 실패한다(§2.2). 요구사항 10건 · 수용 기준 9건. | manager-spec |
 
@@ -49,13 +51,20 @@ push 와 pull_request 마다 **저장소 스스로** 전체 스위트를 돌리�
 
 ## 2. 측정한 사실 (이 나무에서 직접 실행한 것)
 
-원문 로그는 `.moai/state/verify/t27-plan/` 아래에 있다. 아래 값은 전부 그 실행의 관측이며 추정이 아니다.
+원문 로그는 `.moai/state/verify/t27-plan/` 아래에 있고, 그 디렉터리의 `README.md` 가 파일별 명령과 관측을 표로 적는다.
+
+> **[HARD] 종료 코드의 귀속** (감사 D7 정정). v0.2.0 은 네 명령(`npm ci` · `build` · `typecheck` ×2)에 대해 「exit 0」을 주장하면서 로그에는 종료 코드가 **없었다** — 근거가 `npm error` 블록의 **부재**뿐이었고, 그것은 이 프로젝트가 명시적으로 금지하는 형태다(「부재는 통과의 증거가 아니다」). 리드가 네 명령을 다시 돌려 각 로그의 **마지막 줄에 `exit=<코드>` 를 남겼고**, 전체 스위트도 이 나무에서 재실행했다. 아래 「exit 0」 주장은 전부 **그 `exit=` 줄**에 귀속되며, 오류 블록의 부재에 기대지 않는다.
+>
+> ```
+> $ tail -n 1 npm-ci.log build.log typecheck-server.log typecheck-channel.log test-with-build.log
+> exit=0   exit=0   exit=0   exit=0   exit=0
+> ```
 
 ### 2.1 저장소 형태
 
 - npm workspaces 루트다. 루트 `package.json` 의 `workspaces` 는 `["server", "channel"]`.
 - 루트 스크립트는 `test: npm test --workspaces --if-present` 하나뿐이다.
-- 루트에 `package-lock.json` 이 있다 → **`npm ci` 가 유효**하다. `npm ci` 는 깨끗한 나무에서 exit 0 (`npm-ci.log`).
+- 루트에 `package-lock.json` 이 있다 → **`npm ci` 가 유효**하다. `npm ci` 는 깨끗한 나무에서 exit 0 (`npm-ci.log` 마지막 줄 `exit=0`).
 
 ### 2.2 빌드 선행은 요구가 아니라 관측이다 [HARD]
 
@@ -69,7 +78,7 @@ npm error code 1
 
 실패 6건은 전부 channel 워크스페이스이며, 파일은 `gateway-mutual-auth.test.ts` · `index-wiring.test.ts` · `transport-auth.test.ts` 셋이다. 원인은 이 기준들이 **빌드 산출물 `channel/dist` 를 실행**하는데 그 디렉터리가 `.gitignore` 대상이라 깨끗한 체크아웃에 존재하지 않는다는 것이다.
 
-`npm run build -w channel`(exit 0, `build.log`)을 **먼저** 돌리면 — `test-with-build.log`:
+`npm run build -w channel`(`build.log` 마지막 줄 `exit=0`)을 **먼저** 돌리면 — `test-with-build.log`(마지막 줄 `exit=0`):
 
 ```
 server : Test Files 15 passed (15) · Tests 188 passed (188)
@@ -83,7 +92,7 @@ channel: Test Files  6 passed (6)  · Tests  95 passed  (95)
 
 - 로컬 실측: node **v24.12.0**, npm **11.6.2**.
 - `.nvmrc` **없음**, 어떤 `package.json` 에도 `engines` 필드 **없음** → CI 가 고르는 Node 버전을 강제하는 저장소 내 근거가 현재 **존재하지 않는다**(§4 OD-2 가 이것을 다룬다).
-- `npm run typecheck -w server` exit 0, `npm run typecheck -w channel` exit 0 (`typecheck-server.log` · `typecheck-channel.log`) — 둘 다 초록이지만 카드 범위 밖이다(§4 OD-1).
+- `npm run typecheck -w server` exit 0, `npm run typecheck -w channel` exit 0 (`typecheck-server.log` · `typecheck-channel.log`, 각 마지막 줄 `exit=0`) — 둘 다 초록이지만 카드 범위 밖이다(§4 OD-1).
 
 ### 2.4 네이티브 의존성
 
@@ -99,7 +108,11 @@ channel: Test Files  6 passed (6)  · Tests  95 passed  (95)
 
 카드 `t6` 의 인계 기록(`.claude/worktrees/t6/.moai/reports/t6/run-done.md` §5-4)이 `channel/test/transport-auth.test.ts` 의 «both nonces are regenerated per socket and a replayed challenge is refused»(719행, timeout 20000)가 **과거 두 번 실패**했다고 적는다.
 
-이 나무에서 **네 번 더** 돌렸다(전체 스위트 1회 + 단독 3회, `flake-run1..3.log`) — **전부 초록**. 그러므로:
+이 나무에서 **네 번 더** 돌렸다(단독 3회 `flake-run1..3.log` + 전체 스위트 1회 `test-with-build.log`) — **전부 초록**. 표본은 그 넷이 전부다.
+
+> **`flake-repeat.log` 은 측정이 아니다** (감사 O8). 같은 디렉터리에 `flake-repeat.log` 가 있으나, 이는 `--repeats=9` 로 반복 실행을 시도했다가 **vitest 가 그 플래그를 몰라 실행되지 못한 기록**이다(`CACError: Unknown option --repeats`). **어떤 수치의 근거로도 인용해서는 안 된다.** 반복 측정을 시도했다가 도구 옵션 부재로 접었다는 사실만 남긴다 — 이 문단이 그 기록이다. 상세: `.moai/state/verify/t27-plan/README.md`.
+
+그러므로:
 
 > [HARD] 이 흔들림은 **고쳐졌다고 주장하지 않으며, 실패율이 정량화되지도 않았다.** 재현 실패는 부재의 증거가 아니다. 이 SPEC 이 재시도를 금지하는 이유(§3 REQ-CI-006)가 여기에 있다 — 재시도를 넣으면 이 항목은 영원히 측정되지 않는다.
 
@@ -121,25 +134,40 @@ channel: Test Files  6 passed (6)  · Tests  95 passed  (95)
 
 **REQ-CI-005** (Ubiquitous) — CI 작업은 `npm run build -w channel` 단계를 `npm test` 단계보다 **앞에** 두어야 한다. 순서가 뒤집히거나 빌드 단계가 없으면 채널 기준 6건이 실패한다(§2.2).
 
+> **[HARD] 이 두 요구는 OD-3 의 결정에 종속된다** (감사 D3). 위 문언은 **OD-3 (a)** — 워크플로가 빌드를 앞세우는 형태 — 를 전제한다. **OD-3 이 (b) 로 결정되면 워크플로에 빌드 단계가 없어지므로 두 요구는 구현이 위반한 채로 모든 수용 기준이 통과하는 상태를 만든다.** 그래서 (b) 채택 시 두 요구를 아래 문언으로 **교체**한다 — 주체를 워크플로에서 `npm test` 로 옮기는 것이다.
+>
+> - REQ-CI-004′ (b 채택 시): CI 작업은 `npm ci` → `npm test` 를 이 순서로 실행해야 하며, `npm test` 는 채널 빌드를 **스스로** 선행해야 한다.
+> - REQ-CI-005′ (b 채택 시): `channel` 워크스페이스는 `pretest` 훅으로 `npm test` 이전에 빌드를 수행해야 한다.
+>
+> **(c)** 를 고르면 위 원문 두 요구가 **그대로 유효**하고 REQ-CI-005′ 이 추가된다(빌드가 두 자리에서 일어남). 결정 전에는 원문이 유효하다. 파급 전체 목록은 `plan.md` §D 결정 파급표에 있다.
+
 ### 3.3 판정의 무결성
 
 **REQ-CI-006** (Unwanted) — CI 워크플로는 실패한 단계를 **재시도해서는 안 되며**, 실패를 억제하는 어떤 장치(`continue-on-error`, 재시도 액션, 실패 무시 플래그)도 두어서는 안 된다. 붉은 실행은 붉은 채로 남아야 한다.
 
-**REQ-CI-007** (Event-detected) — **When** 어느 단계든 0 이 아닌 종료 코드를 반환하면, CI 작업의 결론(conclusion)은 `failure` 여야 한다.
+**REQ-CI-007** (Event-driven) — **When** 어느 단계든 0 이 아닌 종료 코드를 반환하면, CI 작업의 결론(conclusion)은 `failure` 여야 한다.
 
 ### 3.4 실행 환경과 위생
 
-**REQ-CI-008** (Ubiquitous) — CI 작업은 단일 러너 `ubuntu-latest` 와 단일 Node 메이저 버전 위에서 실행되어야 하며, 그 Node 버전은 워크플로 파일에 명시적으로 고정되어야 한다.
+**REQ-CI-008** (Ubiquitous) — CI 작업은 단일 러너 `ubuntu-latest` 와 단일 Node 메이저 버전 위에서 실행되어야 하며, 그 Node 버전은 워크플로 파일 안에서 **하나의 출처로** 고정되어야 한다(`node-version` 리터럴 또는 `node-version-file` 이 가리키는 파일 중 하나).
 
 **REQ-CI-009** (Where) — **Where** `actions/setup-node` 가 npm 캐시를 지원하는 한, CI 작업은 `package-lock.json` 을 키로 하는 npm 캐시를 사용해야 한다.
 
-**REQ-CI-010** (Ubiquitous) — CI 워크플로는 ① `permissions` 를 `contents: read` 로 명시하고, ② ref 단위 `concurrency` 그룹에 `cancel-in-progress: true` 를 두고, ③ 작업에 `timeout-minutes` 를 명시해야 한다. 형식은 이미 있는 `label-sync.yml`(권한을 명시적으로 고정하는 방식)을 따른다.
+**REQ-CI-010** (Ubiquitous) — CI 워크플로는 `permissions` 를 `contents: read` 로 명시해야 한다. 형식은 이미 있는 `label-sync.yml`(권한을 명시적으로 고정하는 방식)을 따른다.
+
+**REQ-CI-011** (Ubiquitous) — CI 워크플로는 ref 단위 `concurrency` 그룹을 두고 `cancel-in-progress: true` 로 설정해야 한다.
+
+**REQ-CI-012** (Ubiquitous) — CI 작업은 `timeout-minutes` 를 명시해야 한다.
+
+> **왜 셋으로 나눴나** (감사 O5): v0.2.0 에서 이 셋은 REQ-CI-010 한 건의 ①②③ 이었다. 그러면 셋 중 하나만 어겨도 **어느 요구가 깨졌는지 지목되지 않는다.** 요구 하나가 위반 하나를 가리키도록 분해했다. 요구 수는 10 → 12 로 늘었으나 요소를 새로 만든 것이 아니라 **하나를 셋으로 쪼갠 것**이다(Tier M 상한 16 이내).
 
 ---
 
 ## 4. 리드 결정 대기 (이 SPEC 은 스스로 정하지 않는다)
 
-두 항목은 **의도적으로 미결**이며, 리드가 결정하기 전에는 run 단계로 넘어가서는 안 된다. 상세와 각 선택지의 귀결은 `plan.md` §D 에 적었다.
+세 항목은 **의도적으로 미결**이며, 리드가 결정하기 전에는 run 단계로 넘어가서는 안 된다. 상세와 각 선택지의 귀결, 그리고 **각 결정이 어느 요구·기준·배제 항목을 함께 움직이는지**는 `plan.md` §D 의 **결정 파급표**에 세 결정 전부에 대해 적었다.
+
+> **[HARD] 파급표는 요구 계층까지 덮는다** (감사 D3·D4·D6). v0.2.0 은 OD-3 의 파급으로 수용 기준 둘(AC-CI-002·007)만 열거했고, 그 결과 **구현이 REQ-CI-004·005 를 위반한 채 모든 기준을 통과하는** 상태를 허용했다. 또 OD-2 (b) 의 파급을 「값이 바뀐다」로만 적었는데 실제로는 **키가 사라진다**. 파급표는 이제 요구·기준·배제·DoD 네 층을 세 결정 모두에 대해 덮는다.
 
 - **OD-1 — `npm run typecheck` 를 워크플로에 넣는가?** 두 워크스페이스 모두 로컬에서 초록으로 실측됐다(§2.3). 그러나 카드의 문언은 세 명령뿐이다.
 - **OD-2 — 고정한 Node 버전을 `.nvmrc` 또는 `engines` 로도 커밋하는가?** 현재 저장소에는 둘 다 없어(§2.3) 로컬과 CI 가 조용히 갈라질 수 있다.
@@ -173,8 +201,17 @@ channel: Test Files  6 passed (6)  · Tests  95 passed  (95)
 
 ### Out of Scope — 워크플로 파일 이외의 변경
 
-- 테스트 코드, 소스 코드, `package.json` 스크립트의 수정. 이 카드는 기존 명령을 **호출**할 뿐 바꾸지 않는다.
+- 테스트 코드와 소스 코드의 수정. 이 카드는 기존 명령을 **호출**할 뿐 바꾸지 않는다.
+- **루트 `package.json` 스크립트**의 수정.
 - `label-sync.yml` 의 수정.
+
+> **[HARD] 이 배제 항목은 OD-3 과 충돌한다 — 그 충돌을 여기 적는다** (감사 D4). v0.2.0 의 문언은 「`package.json` 스크립트의 수정」이었고, 이는 OD-3 (b)/(c) — `channel/package.json` 에 `pretest` 추가 — 를 **정면으로 배제한다.** 같은 문서의 OD-2 (c) 는 같은 성질의 충돌을 `plan.md` 에서 스스로 공시했는데 OD-3 은 그러지 않았다 — 내부 모순이었고, 누락된 쪽이 채택 가능성이 더 높은 선택지였다.
+>
+> 위 문언을 **「루트 `package.json`」으로 좁혔다.** 그 결과 배제와 선택지의 관계는 이렇게 정리된다:
+>
+> - **OD-3 (a)**: 어떤 `package.json` 도 건드리지 않는다 — 배제 그대로 유효.
+> - **OD-3 (b)/(c)**: `channel/package.json` 만 건드린다 — 좁힌 배제에 걸리지 않는다. **결정이 (b)/(c) 로 내려지는 순간에만 이 좁힘이 발효한다고 읽지 말 것** — 좁힘은 이미 적용됐고, 결정 전에도 이 문언이 유효하다. 그래야 DoD 3 의 「범위 이탈」 판정과 이 절이 **서로 다른 답을 내지 않는다.**
+> - **OD-2 (c)**(루트 `package.json` 에 `engines` 추가)는 좁힌 뒤에도 여전히 배제에 걸린다 — 그 충돌은 `plan.md` §D 가 이미 적었고, 이 좁힘이 그것을 풀어 주지 않는다.
 
 ---
 
@@ -182,8 +219,12 @@ channel: Test Files  6 passed (6)  · Tests  95 passed  (95)
 
 이 SPEC 은 다음 셋이 **관측될 때** 종결된다.
 
-1. 워크플로 파일이 존재하고, GitHub 이 그것을 파싱해 등록했으며, 두 트리거를 선언한다.
-2. **원격에서 실제로 돌아간 실행**이 이 브랜치의 head SHA 에서 결론 `success` 를 기록했다.
+1. 워크플로 파일이 **로컬 파싱에 성공**하고, 두 트리거를 선언하며, 어느 트리거도 필터로 무력화돼 있지 않다.
+2. **원격에서 실제로 돌아간 실행**이 관측됐다 — push 쪽(이 브랜치 head SHA)과 **pull_request 쪽(PR head SHA)** 각각에서 결론 `success`.
 3. **그 게이트가 붉어질 수 있음이 실행으로 보였다** — 고의로 깨뜨린 커밋에서 결론이 `failure` 였고, 되돌려졌다.
 
+> **1번의 문언을 좁혔다** (감사 O6). v0.2.0 은 「GitHub 이 그것을 파싱해 **등록했으며**」라고 적었는데, 이를 재는 AC-CI-001 은 **로컬 PyYAML 파싱**만 한다 — GitHub 이 거부하는 스키마 오류(예: 잘못된 `uses:` 형태)는 로컬 파싱을 통과한다. `actionlint` 가 이 환경에 없어(§2.3) 로컬에서 등록 가능성을 재는 수단이 없다. **등록의 실제 증거는 2번의 원격 실행**이므로, 1번은 자기 기준이 실제로 재는 것까지만 말하도록 좁혔다. 문언이 기준보다 넓으면 그 초과분은 아무도 재지 않는다.
+
 셋째가 이 SPEC 의 핵심이다. 「워크플로가 초록이다」는 **아무것도 실행하지 않는 워크플로도 만족시킨다.** 판정은 붉어질 능력의 관측을 포함해야 한다. 측정 명령은 `acceptance.md` 가 각 기준마다 적는다.
+
+> **2번에 pull_request 를 명시한 이유** (감사 D5). v0.2.0 은 원격 관측을 push 쪽에만 걸었다. 그러면 `pull_request: {paths: ['no-such/**']}` 같은 워크플로가 「트리거 선언」 검사를 통과하면서 **PR 에서는 한 번도 실행되지 않는다** — 이 SPEC 이 스스로 금지한 「초록이면 통과」 형태가 기준 집합 안에서 재현된 것이었다. 카드 문언이 「push **와** pull_request」이므로 이는 카드가 진짜로 소유한 범위였다.

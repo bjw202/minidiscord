@@ -2,3 +2,4 @@
 > typecheck
 > tsc --noEmit
 
+exit=0
