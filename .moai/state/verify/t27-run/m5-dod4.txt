@@ -1,0 +1,147 @@
+# M5 / DoD 4 — 변경 파일 집합 검사 (SPEC-CI-001, card t27)
+# 측정 시점: M5 커밋 직전 — 커밋된 상태(main...HEAD) + M5 예정 스테이지 집합의 합집합으로 판정한다.
+# date: 2026-08-31T13:33:26Z (UTC)
+
+$ git rev-parse main origin/main
+2a19d7dbdcaa75e8cc0b50e1db720e0d745d9ad6
+2a19d7dbdcaa75e8cc0b50e1db720e0d745d9ad6
+
+$ git diff --stat main...HEAD   (main == origin/main == 2a19d7d 확인 후)
+ .github/workflows/ci.yml                          |  29 +
+ .moai/reports/t27/plan-audit-2.md                 | 397 +++++++++++++
+ .moai/reports/t27/plan-audit-3.md                 | 313 +++++++++++
+ .moai/reports/t27/plan-audit.md                   | 331 +++++++++++
+ .moai/reports/t27/plan-done.md                    | 136 +++++
+ .moai/specs/SPEC-CI-001/acceptance.md             | 651 ++++++++++++++++++++++
+ .moai/specs/SPEC-CI-001/plan.md                   | 483 ++++++++++++++++
+ .moai/specs/SPEC-CI-001/progress.md               | 284 ++++++++++
+ .moai/specs/SPEC-CI-001/spec.md                   | 249 +++++++++
+ .moai/state/verify/t27-plan/README.md             |  39 ++
+ .moai/state/verify/t27-plan/ac011.py              |  70 +++
+ .moai/state/verify/t27-plan/build.log             |   5 +
+ .moai/state/verify/t27-plan/flake-repeat.log      |  25 +
+ .moai/state/verify/t27-plan/flake-run1.log        |  13 +
+ .moai/state/verify/t27-plan/flake-run2.log        |  13 +
+ .moai/state/verify/t27-plan/flake-run3.log        |  13 +
+ .moai/state/verify/t27-plan/moai-gate-probe.log   |  70 +++
+ .moai/state/verify/t27-plan/moai-gate.log         |   1 +
+ .moai/state/verify/t27-plan/npm-ci.log            |   8 +
+ .moai/state/verify/t27-plan/probe011.py           |  45 ++
+ .moai/state/verify/t27-plan/sweep.py              | 105 ++++
+ .moai/state/verify/t27-plan/test-no-build.log     | 139 +++++
+ .moai/state/verify/t27-plan/test-with-build.log   |  31 ++
+ .moai/state/verify/t27-plan/typecheck-channel.log |   5 +
+ .moai/state/verify/t27-plan/typecheck-server.log  |   5 +
+ .moai/state/verify/t27-run/ac006-bad.txt          |   1 +
+ .moai/state/verify/t27-run/ac006-good.txt         |   1 +
+ .moai/state/verify/t27-run/ac006-sha.txt          |   2 +
+ .moai/state/verify/t27-run/ac007-bad.txt          |  66 +++
+ .moai/state/verify/t27-run/ac007-gate.txt         |   1 +
+ .moai/state/verify/t27-run/ac007-good.txt         |   1 +
+ .moai/state/verify/t27-run/ac007-mutation.txt     |   4 +
+ .moai/state/verify/t27-run/ac007-sha.txt          |   2 +
+ .moai/state/verify/t27-run/ac009-entry-gate.log   |   4 +
+ .moai/state/verify/t27-run/baseline-build.log     |   4 +
+ .moai/state/verify/t27-run/baseline-test.log      |  30 +
+ .moai/state/verify/t27-run/m2-ac001.log           |   4 +
+ .moai/state/verify/t27-run/m2-ac002.log           |   3 +
+ .moai/state/verify/t27-run/m2-ac003.log           |   2 +
+ .moai/state/verify/t27-run/m2-ac004.log           |   3 +
+ .moai/state/verify/t27-run/m2-ac012.log           |   3 +
+ .moai/state/verify/t27-run/m2-npm-ci.log          |   8 +
+ .moai/state/verify/t27-run/m2-selfsufficiency.log |  35 ++
+ .moai/state/verify/t27-run/m2-typecheck.log       |  10 +
+ .moai/state/verify/t27-run/m3-ac005-log-tail.log  |  30 +
+ .moai/state/verify/t27-run/m3-ac005.log           |  62 +++
+ .moai/state/verify/t27-run/m3-ac010.log           |  65 +++
+ .moai/state/verify/t27-run/src/ac001.py           |  18 +
+ .moai/state/verify/t27-run/src/ac002.py           |  27 +
+ .moai/state/verify/t27-run/src/ac003.py           |   8 +
+ .moai/state/verify/t27-run/src/ac004.py           |  28 +
+ .moai/state/verify/t27-run/src/ac012.py           |  19 +
+ .nvmrc                                            |   1 +
+ channel/package.json                              |   1 +
+ 54 files changed, 3903 insertions(+)
+
+$ git diff --name-only main...HEAD
+.github/workflows/ci.yml
+.moai/reports/t27/plan-audit-2.md
+.moai/reports/t27/plan-audit-3.md
+.moai/reports/t27/plan-audit.md
+.moai/reports/t27/plan-done.md
+.moai/specs/SPEC-CI-001/acceptance.md
+.moai/specs/SPEC-CI-001/plan.md
+.moai/specs/SPEC-CI-001/progress.md
+.moai/specs/SPEC-CI-001/spec.md
+.moai/state/verify/t27-plan/README.md
+.moai/state/verify/t27-plan/ac011.py
+.moai/state/verify/t27-plan/build.log
+.moai/state/verify/t27-plan/flake-repeat.log
+.moai/state/verify/t27-plan/flake-run1.log
+.moai/state/verify/t27-plan/flake-run2.log
+.moai/state/verify/t27-plan/flake-run3.log
+.moai/state/verify/t27-plan/moai-gate-probe.log
+.moai/state/verify/t27-plan/moai-gate.log
+.moai/state/verify/t27-plan/npm-ci.log
+.moai/state/verify/t27-plan/probe011.py
+.moai/state/verify/t27-plan/sweep.py
+.moai/state/verify/t27-plan/test-no-build.log
+.moai/state/verify/t27-plan/test-with-build.log
+.moai/state/verify/t27-plan/typecheck-channel.log
+.moai/state/verify/t27-plan/typecheck-server.log
+.moai/state/verify/t27-run/ac006-bad.txt
+.moai/state/verify/t27-run/ac006-good.txt
+.moai/state/verify/t27-run/ac006-sha.txt
+.moai/state/verify/t27-run/ac007-bad.txt
+.moai/state/verify/t27-run/ac007-gate.txt
+.moai/state/verify/t27-run/ac007-good.txt
+.moai/state/verify/t27-run/ac007-mutation.txt
+.moai/state/verify/t27-run/ac007-sha.txt
+.moai/state/verify/t27-run/ac009-entry-gate.log
+.moai/state/verify/t27-run/baseline-build.log
+.moai/state/verify/t27-run/baseline-test.log
+.moai/state/verify/t27-run/m2-ac001.log
+.moai/state/verify/t27-run/m2-ac002.log
+.moai/state/verify/t27-run/m2-ac003.log
+.moai/state/verify/t27-run/m2-ac004.log
+.moai/state/verify/t27-run/m2-ac012.log
+.moai/state/verify/t27-run/m2-npm-ci.log
+.moai/state/verify/t27-run/m2-selfsufficiency.log
+.moai/state/verify/t27-run/m2-typecheck.log
+.moai/state/verify/t27-run/m3-ac005-log-tail.log
+.moai/state/verify/t27-run/m3-ac005.log
+.moai/state/verify/t27-run/m3-ac010.log
+.moai/state/verify/t27-run/src/ac001.py
+.moai/state/verify/t27-run/src/ac002.py
+.moai/state/verify/t27-run/src/ac003.py
+.moai/state/verify/t27-run/src/ac004.py
+.moai/state/verify/t27-run/src/ac012.py
+.nvmrc
+channel/package.json
+
+# M5 예정 스테이지 집합 (git status --short 중 스테이지 대상 경로):
+ M .moai/specs/SPEC-CI-001/progress.md
+?? .moai/state/verify/t27-run/m5-ac008.log
+?? .moai/state/verify/t27-run/m5-ac009.log
+?? .moai/state/verify/t27-run/m5-ac011.log
+?? .moai/state/verify/t27-run/m5-dod4.txt
+
+$ 커밋 예정 파일 전수 (git status --porcelain 위 3경로, 추적+신규 포함):
+.moai/state/verify/t27-run/m5-ac008.log
+.moai/state/verify/t27-run/m5-ac009.log
+.moai/state/verify/t27-run/m5-ac011.log
+.moai/state/verify/t27-run/m5-dod4.txt
+.moai/specs/SPEC-CI-001/progress.md
+
+$ 합집합 중 .moai/ 밖 파일 (허용: .github/workflows/ci.yml, .nvmrc, channel/package.json — 이 셋만 나와야 한다):
+.github/workflows/ci.yml
+.nvmrc
+channel/package.json
+
+$ 합집합 중 .moai/ 밖 파일 개수:
+       3
+
+$ 합집합 중 .moai/ 밖 파일이 정확히 허용 셋과 일치하는지 (diff 가 비어야 통과):
+SET EXACT — 범위 이탈 없음
+
+# 비고: .moai/reports/t27/run-done.md 는 이 검사 이후에 작성되며 .moai/ 아래 문서·증거로 허용 집합에 속한다 — 이 검사의 판정 대상(.moai/ 밖 집합)에 영향이 없다.

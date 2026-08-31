@@ -1,0 +1,59 @@
+# M5 / AC-CI-008 re-run (SPEC-CI-001, card t27) — acceptance.md §D 세 명령 그대로
+# worktree: /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27
+# branch: WT-ci-test-wiring  pre-M5 HEAD: 014ed37
+# date: 2026-08-31T13:25:15Z (UTC)
+
+$ rm -rf channel/dist
+exit=0
+
+$ npm test
+
+> test
+> npm test --workspaces --if-present
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/server
+
+
+ Test Files  15 passed (15)
+      Tests  188 passed (188)
+   Start at  22:25:16
+   Duration  7.72s (transform 947ms, setup 0ms, import 1.98s, tests 22.58s, environment 1.72s)
+
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27/channel
+
+
+ Test Files  6 passed (6)
+      Tests  95 passed (95)
+   Start at  22:25:24
+   Duration  64.66s (transform 284ms, setup 0ms, import 832ms, tests 69.71s, environment 0ms)
+
+exit=0
+
+$ git status --porcelain
+?? .moai/logs/prepush-bypass.log
+?? .moai/logs/trace-44047cb1-51b2-4d7c-95bd-ba24361f36d3.jsonl
+?? .moai/logs/trace-8e506da8-db0e-49e9-bc49-89636ef17ea1.jsonl
+?? .moai/logs/trace-da9c2d22-6289-489c-bc67-c565061e81c7.jsonl
+?? .moai/reports/session-8e506da8-db0e-49e9-bc49-89636ef17ea1.md
+?? .moai/state/config-cache.json
+?? .moai/state/context-usage.json
+?? .moai/state/github/
+?? .moai/state/verify/t27-run/m5-ac008.log
+exit=0
+
+$ git status --porcelain | grep -E "server/data|channel/dist|coverage" | wc -l
+       0

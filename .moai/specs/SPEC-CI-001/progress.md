@@ -266,9 +266,202 @@ success
 
 기대(`failure` + 채널 6건 → 되돌림 → `success`) 성립. 로컬 절반(`.moai/state/verify/t27-plan/test-no-build.log` — `Tests 6 failed | 89 passed (95)`, exit 1)과 원격 절반이 서로를 대체하지 않고 함께 성립한다. 파괴 커밋과 그 revert 는 이 브랜치에만 살고 병합 대상은 revert 이후 head 다.
 
+### AC-CI-001 — 파일이 존재하고, 파싱되고, 두 트리거를 선언한다 (M2, 2026-08-31)
+
+`acceptance.md` §A AC-CI-001 의 python3 명령을 그대로 실행했다. 나무 `.claude/worktrees/t27` · M2 저작 커밋 `eb68257` 트리 상태. 원문 파일: `.moai/state/verify/t27-run/m2-ac001.log`.
+
+```
+triggers: ['pull_request', 'push']
+push filter-free: {}
+pull_request filter-free: {}
+TRIGGERS OK
+```
+
+종료 코드 0. 기대(마지막 줄 `TRIGGERS OK`, 두 트리거 모두 `paths`/`branches` 필터 부재) 성립.
+
+### AC-CI-002 — 파이프라인이 선언된 순서로 존재하고, 빌드 단계는 워크플로에 없으며, `npm test` 가 자족한다 (M2, 2026-08-31)
+
+`acceptance.md` §A AC-CI-002 의 python3 명령을 그대로 실행했다. 같은 나무·트리 상태. 원문 파일: `.moai/state/verify/t27-run/m2-ac002.log`.
+
+```
+indices: 2 3 4 5
+channel pretest: tsc
+PIPELINE OK
+```
+
+종료 코드 0. 네 인덱스 `npm ci`(2) < typecheck server(3) < typecheck channel(4) < `npm test`(5) 의 강한 순서, 워크플로 빌드 단계 적중 0, `channel` `pretest` 존재 — 세 단언 모두 성립.
+
+### AC-CI-003 — 재시도·실패 억제 장치가 하나도 없다 (M2, 2026-08-31)
+
+`acceptance.md` §A AC-CI-003 의 python3 명령을 그대로 실행했다. 같은 나무·트리 상태. 원문 파일: `.moai/state/verify/t27-run/m2-ac003.log`.
+
+```
+hits: []
+NO SUPPRESSION
+```
+
+종료 코드 0. 금지 어휘(`continue-on-error` · `nick-fields/retry` · `retry-on` · `|| true` · `set +e`) 적중 0 — REQ-CI-006 의 정적 절반 성립(DoD 5).
+
+### AC-CI-004 — 실행 환경·권한·동시성·시간 제한이 명시적으로 고정돼 있다 (M2, 2026-08-31)
+
+`acceptance.md` §A AC-CI-004 의 python3 명령을 그대로 실행했다. 같은 나무·트리 상태. 원문 파일: `.moai/state/verify/t27-run/m2-ac004.log`.
+
+```
+node pin: .nvmrc -> 24
+runs-on/timeout/permissions/concurrency/node/cache 모두 고정됨
+HYGIENE OK
+```
+
+종료 코드 0. runs-on/timeout/permissions/concurrency/node/cache 전부 고정, `node-version` 키 부재 + `node-version-file: .nvmrc`(OD-2 (b) 의 좁힌 단언) 성립.
+
+### AC-CI-012 — typecheck 가 두 워크스페이스를 모두 덮고, 어느 쪽도 억제되지 않는다 (M2, 2026-08-31)
+
+`acceptance.md` §A AC-CI-012 의 python3 명령을 그대로 실행했다. 같은 나무·트리 상태. 원문 파일: `.moai/state/verify/t27-run/m2-ac012.log`.
+
+```
+server step: npm run typecheck -w server
+channel step: npm run typecheck -w channel
+TYPECHECK COVERAGE OK
+```
+
+종료 코드 0. 두 워크스페이스의 typecheck 단계가 각각 정확히 하나, `if:`/`continue-on-error` 부재 — REQ-CI-013 성립.
+
+### AC-CI-005 — 이 브랜치 head SHA 에서 결론이 `success` 다 (원격 push 관측 · M3, 2026-08-31)
+
+`acceptance.md` §B AC-CI-005 명령을 그대로 실행했다. push 된 SHA 는 `eb682571d953e5a7679cbfe848f838e3b6076b77`(M2 커밋 `eb68257`). 절차 전체 원문: `.moai/state/verify/t27-run/m3-ac005.log`.
+
+관측 명령 출력(폴링 1~4 회의 출력은 비었고 그때마다 **미관측**으로 기록했다; 5 회째 출력):
+
+```
+success
+```
+
+run 식별 원문:
+
+```
+{"conclusion":"success","createdAt":"2026-08-31T12:39:57Z","databaseId":33392889584,"event":"push","headSha":"eb682571d953e5a7679cbfe848f838e3b6076b77","status":"completed"}
+```
+
+run id `33392889584` · event `push` · headSha 가 push 된 SHA 와 일치. 보조 근거(`gh run view 33392889584 --log`): 서버 188 통과 + 채널 95 통과 = **283** (`m3-ac005.log`, 전체 로그 꼬리 `m3-ac005-log-tail.log`). 빈 출력을 통과로 세지 않았다.
+
+### AC-CI-010 — pull_request 트리거에서도 실행이 관측된다 (원격 PR 관측 · M3, 2026-08-31)
+
+`acceptance.md` §B AC-CI-010 절차를 그대로 실행했다. 원문 파일: `.moai/state/verify/t27-run/m3-ac010.log`.
+
+1. draft PR 생성 → `https://github.com/bjw202/minidiscord/pull/1` (head SHA `eb682571…` — push 관측과 같은 SHA 이므로 두 트리거의 실행은 `event` 필드로만 갈린다. 그래서 필터가 하중을 진다).
+2. 관측(`event=="pull_request"` 필터; 폴링 1~4 회 빈 출력은 미관측 기록, 5 회째):
+
+```
+success
+```
+
+run 식별 원문(같은 SHA 의 두 실행 — event 가 다르다):
+
+```
+{"conclusion":"success","createdAt":"2026-08-31T12:43:59Z","databaseId":33393227672,"event":"pull_request","status":"completed"}
+{"conclusion":"success","createdAt":"2026-08-31T12:39:57Z","databaseId":33392889584,"event":"push","status":"completed"}
+```
+
+3. 정리: PR #1 을 닫았고 병합하지 않았다 — `gh pr view 1 --json state,mergedAt,mergeCommit,isDraft` →
+
+```
+{"isDraft":true,"mergeCommit":null,"mergedAt":null,"state":"CLOSED"}
+```
+
+**공시된 두 표기 편차**(gh 버전 차이; 원문 로그에 기록): 문서의 인자 없는 `gh pr view --repo …` 형태는 이 gh 에서 명시적 인자를 요구해 PR 번호를 create 출력 URL 에서 취했고, 문서의 `--json state,merged` 의 `merged` 필드가 이 gh 에 없어 같은 사실을 담는 `state,mergedAt,mergeCommit` 으로 대체했다. 둘 다 절차의 의미(관측·비병합 확인)를 바꾸지 않는다.
+
+### AC-CI-008 — 스위트 실행이 작업 트리를 더럽히지 않는다 (위생 재실행 · M5, 2026-08-31)
+
+`acceptance.md` §D AC-CI-008 의 세 명령을 이 나무에서 그대로 재실행했다. 나무 `.claude/worktrees/t27` · 브랜치 `WT-ci-test-wiring` · 재실행 시점 head `014ed37`. 원문 파일: `.moai/state/verify/t27-run/m5-ac008.log`.
+
+- `$ rm -rf channel/dist` → exit=0
+- `$ npm test` → **exit=0** — pretest 빌드 선행, 서버 15파일 188 통과 + 채널 6파일 95 통과(합계 283)
+- `$ git status --porcelain` → exit=0, 출력 원문:
+
+```
+?? .moai/logs/prepush-bypass.log
+?? .moai/logs/trace-44047cb1-51b2-4d7c-95bd-ba24361f36d3.jsonl
+?? .moai/logs/trace-8e506da8-db0e-49e9-bc49-89636ef17ea1.jsonl
+?? .moai/logs/trace-da9c2d22-6289-489c-bc67-c565061e81c7.jsonl
+?? .moai/reports/session-8e506da8-db0e-49e9-bc49-89636ef17ea1.md
+?? .moai/state/config-cache.json
+?? .moai/state/context-usage.json
+?? .moai/state/github/
+?? .moai/state/verify/t27-run/m5-ac008.log
+```
+
+- 기계 판정: `git status --porcelain | grep -E "server/data|channel/dist|coverage" | wc -l` → `0`
+
+`server/data` · `channel/dist` · `coverage` 가 한 줄도 없다 — 기대 성립. 위 9줄은 전부 세션 산출물(.moai 로그·상태 캐시)과 이 재실행의 증거 파일 자신으로, 기준이 이름 붙인 세 경로와 무관하다.
+
+### AC-CI-009 — 열려 있는 리드 결정이 run 진입 전에 닫혔다 (재실행 · M5, 2026-08-31)
+
+`acceptance.md` §D AC-CI-009 의 python3 명령을 이 나무에서 그대로 재실행했다. 재실행 시점 head `014ed37`. 원문 파일: `.moai/state/verify/t27-run/m5-ac009.log` (run 진입 직전의 첫 실행은 `ac009-entry-gate.log`).
+
+```
+### OD-1 — `npm run typecheck` 를 워크플로에 넣 -> (b) — 리드 결정. 두 워크스페이스가 지금 초록으로 실측됐으므로(위 관측) 즉시 붉어지지 않고, 타입 회귀를 사람이 아니라 CI 가 잡게 된다. 카드 범위를 스스로 넓히는 대가는 요구 1건·기준 1건의 증가이며, `spec.md` §3.4 REQ-CI-013 과 `acceptance.md` AC-CI-012 로 지불했다. 단계 위치는 `npm ci` → typecheck → `npm test` — `tsc --noEmit` 은 `dist` 를 필요로 하지 않으므로 `pretest` 빌드보다 앞에 서도 안전하고, 타입 오류가 있을 때 스위트를 돌리기 전에 멈춘다(fail fast).
+### OD-2 — 고정한 Node 버전을 저장소에도 커밋하는가? -> (b) — 리드 결정. `.nvmrc` 를 추가하고 워크플로가 `node-version-file: .nvmrc` 로 그것을 가리킨다. 로컬 도구(nvm/fnm)와 CI 가 **같은 파일 하나**를 읽으므로 REQ-CI-008 의 「하나의 출처」가 저장소 안의 실체로 내려앉는다. (c) 는 루트 `package.json` 을 건드려 §5 배제와 여전히 충돌하므로 배제됐고, (a) 는 로컬·CI 의 조용한 갈라짐을 알려 주는 것이 아무것도 없다. 대가는 파일 1개 추가(`.nvmrc`, 내용은 고정 메이저 `24`).
+### OD-3 — `channel/package.json` 에 `pre -> (b) — 리드 결정. `channel/package.json` 에 `"pretest": "tsc"` 를 넣어 `npm test` 한 명령이 자족하게 만든다. 고쳐지는 범위가 **CI 만**이 아니라 **모든 깨끗한 체크아웃**이며, §2.2 가 재현한 거짓 실패 6건은 사람과 에이전트가 새 나무를 열 때마다 겪는 증상이다(프로젝트 기억 `fresh-worktree-needs-channel-build` 가 반복 발생으로 기록). 워크플로에서 빌드 단계는 **삭제**되고 REQ-CI-004·005 는 **REQ-CI-004′·005′ 로 교체**된다. (c)(둘 다)를 고르지 않은 이유: 빌드가 두 번 도는 중복이 CI 시간을 늘리는 반면, 워크플로가 `pretest` 존재에 의존하지 않는다는 이점은 AC-CI-007 의 변별이 이미 잰다. 형제 카드 제약(§D-1)은 **문언 위반이 아니며**, 취지에 주는 압력은 리드가 읽고 수용했다.
+CLOSED 3
+```
+
+종료 코드 0. 세 결정 전부 닫힘 — 기대 `CLOSED 3` 성립(DoD 6 전반).
+
+### AC-CI-011 — 선언·마커·자리 목록 세 출처가 정합하고, §D-2 파급표가 살아 있다 (재실행 · M5, 2026-08-31)
+
+`acceptance.md` §D AC-CI-011 의 python3 명령을 이 나무에서 그대로 재실행했다. 재실행 시점 head `014ed37`, 측정 대상은 M5 문서 편집(§E.2 전체 기록·§E.3 신호)이 반영된 작업 나무의 네 문서 상태다 — 커밋이 담는 내용과 동일하다. 원문 파일: `.moai/state/verify/t27-run/m5-ac011.log`.
+
+```
+declared: {1: 5, 2: 5, 3: 7}
+markers : {1: 5, 2: 5, 3: 7}
+listed  : {1: 5, 2: 5, 3: 7}
+§D-2 (b)/(c) rows with non-empty 그 밖의 자리: 5
+FALLOUT TABLE COMPLETE
+```
+
+종료 코드 0. 선언·마커·자리 목록 세 출처가 정합하고 §D-2 표가 살아 있다 — 기대 성립(DoD 6 후반). 본 절 삽입 뒤 최종 문서 상태에서 같은 명령을 한 번 더 돌려 같은 출력을 확인했고 그 실행이 같은 로그 파일 뒤에 이어져 있다(본 절이 `[OD-DEP:*]` 마커를 새로 심지 않음을 포함한 재확인).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- 카드 `t27` (N4 — CI 테스트 배선). 나무 `.claude/worktrees/t27` · 브랜치 `WT-ci-test-wiring`.
+- **종료 head**: 본 신호가 담기는 M5 커밋이다 (커밋 이전 head `014ed37`; 커밋 자신은 자신의 해시를 알 수 없으므로 이 자리는 커밋 이후 `git log` 로 확정된다). push 후 `origin/WT-ci-test-wiring` 과 동기.
+- run 진입 게이트(직접 실행): AC-CI-009 `CLOSED 3` (`ac009-entry-gate.log`) · baseline build+test exit 0·283 통과 (`baseline-build.log`·`baseline-test.log`).
+
+**12/12 수용 기준 판정표** — 증거 경로는 모두 `.moai/state/verify/t27-run/` 아래다.
+
+| 기준 | 판정 | 증거 |
+|---|---|---|
+| AC-CI-001 | PASS | `m2-ac001.log` |
+| AC-CI-002 | PASS | `m2-ac002.log` |
+| AC-CI-003 | PASS | `m2-ac003.log` |
+| AC-CI-004 | PASS | `m2-ac004.log` |
+| AC-CI-005 | PASS | `m3-ac005.log` (run 33392889584 · event push) |
+| AC-CI-006 | PASS | `ac006-sha.txt`·`ac006-bad.txt`·`ac006-good.txt` |
+| AC-CI-007 | PASS | `ac007-sha.txt`·`ac007-mutation.txt`·`ac007-gate.txt`·`ac007-bad.txt`·`ac007-good.txt` |
+| AC-CI-008 | PASS | `m5-ac008.log` (M5 재실행) |
+| AC-CI-009 | PASS | `m5-ac009.log` (M5 재실행) + `ac009-entry-gate.log` |
+| AC-CI-010 | PASS | `m3-ac010.log` (run 33393227672 · event pull_request · PR #1 닫힘·비병합) |
+| AC-CI-011 | PASS | `m5-ac011.log` (M5 재실행) |
+| AC-CI-012 | PASS | `m2-ac012.log` |
+
+**커밋 궤적**: `eb68257`(M2 — ci.yml 저작·.nvmrc·channel pretest) → `b6ec899`/`89cc137`(AC-CI-006 파괴+revert) → `e321368`(AC-CI-006 증거) → `cd7e983`/`e296163`(AC-CI-007 파괴+revert) → `014ed37`(AC-CI-007 증거) → **M5 커밋**(§E.2 전체 원문 기록·§E.3·run-done 보고). 파괴 커밋과 그 revert 넷은 병합 금지이며 **리드의 통합 대상은 revert 이후 head** 다.
+
+**게이트 우회 회계 (공시)**: AC-CI-006 의 파괴 커밋 한 곳에서만 `SKIP_MOAI_PRECOMMIT=1` 을 사용했고 사유를 커밋 메시지 본문에 적었다(§E.2 AC-CI-006 절 — 붉음이 측정 대상 자체). AC-CI-007 은 **우회를 쓰지 않았다** — 우회 없이 시도한 커밋이 게이트를 통과했고 그 관측이 `ac007-gate.txt`(`gate=passed (우회 없음)`)에 남는다. 그 밖의 어떤 커밋도 우회를 쓰지 않았다.
+
+**DoD 상태**:
+1. 열두 기준 전부 통과 + §E.2 원문 기록 — **성립** (위 표 + §E.2 전체).
+2. 파괴 커밋 되돌림 + success 재관측 + 증거 커밋이 revert 뒤 — **성립** (`e321368` 은 `89cc137` 뒤, `014ed37` 은 `e296163` 뒤 — `git log` 순서로 확인).
+3. draft PR 닫힘·비병합 — **성립** (`m3-ac010.log` — PR #1 `state=CLOSED`·`mergedAt=null`).
+4. 변경 파일 집합이 확정 집합과 일치 — **성립** (`m5-dod4.txt` — `main...HEAD` diff(=2a19d7d) + M5 스테이지 집합의 합집합 검사, 허용 집합 외 0파일).
+5. 재시도 장치 부재 — **성립** (AC-CI-003 `NO SUPPRESSION`, `m2-ac003.log`).
+6. `CLOSED 3` + `FALLOUT TABLE COMPLETE` — **성립** (`m5-ac009.log`·`m5-ac011.log`).
+
+**Gaps (미검증)**: 열두 기준의 명령 출력은 전부 원문으로 관측·기록됐고 남은 미관측 항목은 없다. 단, AC-CI-011 의 최종 실행은 **커밋 전 작업 나무의 문서 상태**(= 이 커밋이 담는 내용과 동일)를 재는 것이며, 커밋 이후 트리에 대한 별도 재실행은 하지 않았다.
+
+**Residual-risk (잔여 위험)**:
+- `spec.md` §2.6 의 흔들림 실패율은 이 카드가 측정하지 않았다(배제 공시 유지) — 향후 CI 실패가 흔들림인지 판단할 데이터가 없다.
+- AC-CI-006·007 의 파괴 커밋과 그 revert 넷이 브랜치 이력에 남는 것은 설계대로다 — 통합 시 스쿼시 여부 판단은 리드의 몫이다.
+- `ac007-bad.txt` 에 ANSI 색상 이스케이프가 원문 보존을 위해 그대로 남아 있다 — 이 파일을 grep 에 쓸 때는 이스케이프가 매칭을 가릴 수 있음을 알 것.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
