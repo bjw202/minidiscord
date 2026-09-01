@@ -201,12 +201,65 @@ baseline:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+```yaml
+run_lane: "kanban card t25 · /moai run SPEC-BOTSTAB-001 · 반자율(마일스톤 단위, 블로커 보고)"
+executed_at: 2026-09-01
+tree: "base 7c9958b (WT-bot-stability) — run 작업 전부 미커밋(리드 판독·승인 후 커밋, t8/t10 순서)"
+suite_final:
+  command: "npx vitest run --root channel --reporter=dot"
+  observed: "121 passed / 7 files (exit 0)"
+  attribution: "2026-09-01 17:33 run 레인 직접 실행 — 이 트리, 미커밋 run 작업 위"
+  baseline_arithmetic: "95(계획 기준선) → 98(M1) → 107(M2) → 116(M3) → 119(M4) → 120(M4a) → 121(K 보강) — 각 단계 run 레인 직접 재관측"
+typecheck: "tsc --noEmit exit 0 (마일스톤별 재관측)"
+src_shasum_at_close:
+  gateway-client.ts: "1cb171887b3f69b624a0c06698f9eaa7fc58ec77 — 계획 단계 값과 동일(M1 무변경 계약)"
+  channel-server.ts: "1cfd24b2702b3a01e9b5398f7da73205527e3538"
+  index.ts: "a9d44572869fcfc1e24d4b54dec6be2d8e0afb06"
+  truncate.ts: "ebbfd01d8137eac25657716d5a61fcf97a29263b (신설)"
+milestones:
+  M1: "가드 ② 기준 신설 3건(AC-001·003·012)+제목 한 자리 교정 — 손 변이 A·B 포착(RED), shasum 복원. 95→98"
+  M2: "channel/src/truncate.ts 신설(OD 상수 5·시길 탈출·코드포인트 절단·파생 ㉡ 정규식 수출)+테스트 9건(INV-1/2/3 포함). 98→107"
+  M3: "알림 통로 배선(이름·본문·첨부 갈라서, 중화 뒤)+테스트 9건. 107→116"
+  M4: "이력 통로 두 단계 절단+cursor=실린 원소 id 최댓값 — TDD(RED 48,079B→GREEN)+테스트 3건. 116→119"
+  M4a: "훑기 생출력 33블록 전원 상수 적중 단언(신규 23·보유 10)+AC-013(생 훑기 파싱·일곱째 파일)+PLACEMENT=OK. 119→120"
+  M5: "변이표 17행 전건 실측(일치 16·불일치 1=G 예측 오배정)+K 배선 목격 보강 후 재측정 일치+형제 두 수(빨개지는 것 0·무효화 33/33). 120→121"
+mutation_measurements: ".moai/state/verify/t25-run/m5-mutation-observations.md (통합표) · mutation-{A..N2}.md (행별 전문) · m5-raw/ (원본)"
+flake_handover: "transport-auth nonces 논스 테스트 2회 출현·자가소멸 — .moai/state/verify/t25-run/flake-observations.md"
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-09-01
+spec_id: SPEC-BOTSTAB-001
+evidence:
+  suite: "121 passed / 7 files — run 레인 직접 실행(2026-09-01 17:33, 이 트리, exit 0)"
+  mutation_table: ".moai/state/verify/t25-run/m5-mutation-observations.md — 17행 전건 관측, 빈 행 0, 일치 16 / 불일치 1(G)"
+  sibling_two_counts: "빨개지는 것 0건(클린 스위트 관측) · 무효화되는 것 33/33블록(AC-013 PASS + 훑기 재실행 33블록)"
+  placement_probe: "PLACEMENT=OK (self-reference-probe.mjs, exit 0 — run 레인 직접 재실행)"
+  regex_coupling: "[HARD] ㉡ 결합 기준 PASS — 파생 정규식(truncate.ts 수출)이 수출 상수 전부에 적중"
+  scope_boundaries: "gateway-client.ts diff 0 · server/ 변경 0 · neutralizeEnvelope 무변경 · SPEC-CHANINJECT-001/* 무변경 — git diff --stat + shasum"
+  sync_handoff: "plan.md §M 의무 — sync 디스패치 경유(plan-done §4b). 판정 입력: .moai/state/verify/t25-run/{sibling-sweep-run.md, m4a-evidence.md §E2 착지표 33행}"
+pending_lead_decisions:
+  - "커밋 승인(승인 전 미커밋 유지 — t8/t10 순서)"
+  - "G 행 예측 오배정·acceptance.md 관측 열 채움·spec.md §3.3 재도출 — SPEC 본문 소유권(manager-spec 회부)"
+  - "K 의 index.ts 이력 자리 순서 목격 부재 — 신규 발견, 후속 카드 판정용 관측 데이터 동봉"
+uncommitted_note: "run-done.md 포함 전부 미커밋 — 리드 판독·승인 후 커밋(t8 선례: run-done 은 sync 인계 때 흡수)"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- Logged by: run lane (card t25 · /moai run SPEC-BOTSTAB-001), before the first run-phase Agent() spawn. Kickoff 승인 2026-09-01 (리드 경유 운영자) — 반자율 모드: 마일스톤 단위 진행, 중대 판단(설계 변경·범위 이탈)은 블로커 보고.
+- Input parameters: tier=M · scope≈5-7 files (channel/test 신설·갱신 + channel/src 2곳 배선) · domains=1 (channel 워크스페이스) · file language=TypeScript · concurrency benefit=LOW (coding-heavy) · agent-teams prereqs=N/A
+- Mode evaluation:
+  - direct — not selected: 다중 마일스톤 구현이지 단일 변경이 아니다
+  - serial — SELECTED: 코딩 중심 작업 (Anthropic coding-task parallelism caveat) + 마일스톤 의존 사슬(M2 상수 → M3/M4 배선 → M4a 단언은 상수를 읽음) + 쓰기 가능 에이전트 동시 실행 금지
+  - fanout — not selected: 연구 중심이 아니고 사슬이 의존 순서를 가진다
+  - sweep — not selected: 파일 수가 기계 일괄 변환 문턱(≈30)에 크게 못 미치고 변환이 균일하지 않다
+- Decision: serial
+- Justification: 카드 실질은 코딩 작업이고 마일스톤 사이에 상수·배선·단언의 의존이 있다. 하나의 쓰기 가능 구현 에이전트를 마일스톤 단위로 순차 스폰하는 것이 쓰기 경쟁 금지와 캐시·조율 경제 모두에 맞는 유일한 선택이다.

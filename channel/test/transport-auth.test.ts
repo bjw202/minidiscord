@@ -12,6 +12,9 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 // isTransportAllowed 는 M2 가 새로 내보내는 판정 함수, resolveUrl 은 그 비회귀를 재는 형제 계약이다.
 import { wire, isTransportAllowed, resolveUrl } from '../src/index.js'
+// SPEC-BOTSTAB-001 M4a — 상한 상수는 truncate 모듈에서 읽는다 (§F — 테스트에 상한 숫자를 복제하지 않는다).
+// M3 가 상한을 건 뒤 content 등식은 «상한 이하» 에서만 성립하므로, 각 등식 옆에 파생 경계를 나란히 둔다.
+import { MAX_BODY_BYTES, MAX_NAME_BYTES } from '../src/truncate.js'
 
 const cleanups: (() => Promise<void> | void)[] = []
 afterEach(async () => { for (const c of cleanups.splice(0).reverse()) await c() })
@@ -423,6 +426,11 @@ describe('transport auth', () => {
     expect(verdicts.map(v => v.params)).toEqual([{ request_id: 'abcde', behavior: 'allow' }])
     expect(notes.length).toBe(1)
     expect(notes[0].params.content).toBe('[alice] 안녕')
+    // SPEC-BOTSTAB-001 M4a — content 등식은 «상한 이하» 에서만 참이다 (형제 증인 자리,
+    // spec.md §3.3 — SPEC-CHANINJECT-001 acceptance.md:33 이 이름을 적어 둔 곳). 경계를 나란히 단언한다.
+    expect(Buffer.byteLength(notes[0].params.content, 'utf8')).toBeLessThanOrEqual(
+      MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+    )
   })
 
   // AC-CHANAUTH-003 — 세션 확립 전 이력 응답은 대기를 해소하지 않는다
@@ -789,6 +797,10 @@ describe('transport auth', () => {
     stub.push({ type: 'message', id: 4, author_name: 'alice', delivery: 'to', body: '정상 봉투' })
     await waitFor(() => w.notes.length === 1, '양성 봉투 도착')
     expect(w.notes[0].params.content).toContain('정상 봉투')
+    // SPEC-BOTSTAB-001 M4a — 수복 관측의 content 등식도 «상한 이하» 조건부다 — 경계를 나란히 단언한다.
+    expect(Buffer.byteLength(w.notes[0].params.content, 'utf8')).toBeLessThanOrEqual(
+      MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+    )
   })
 
   // AC-GWAUTH2-015 — 재생된 봉투는 순번이 이미 쓰였기 때문에 버려진다

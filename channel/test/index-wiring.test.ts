@@ -9,6 +9,8 @@ import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { wire } from '../src/index.js'
+// 상한 상수와 표시 문언은 truncate 모듈에서 읽는다 — 숫자를 테스트에 복제하지 않는다 (SPEC-BOTSTAB-001 §F).
+import { MAX_BODY_BYTES, MAX_HISTORY_BYTES, MAX_NAME_BYTES, SIGIL_OPEN, TRUNC_MARKER_HEAD, TRUNC_MARKER_TAIL } from '../src/truncate.js'
 
 // v2 열쇠 유도 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
 // 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 스텁의 토큰 상수는 'tok' 다.
@@ -182,6 +184,12 @@ describe('channel wiring', () => {
     expect(notified[0].params.meta.delivery).toBe('to')
     expect(notified[0].params.meta.chat_id).toBe('9')
     expect(notified[0].params.content).toContain('일정 정리해줘')
+    // SPEC-BOTSTAB-001 M4a — content 등식은 «상한 이하» 에서만 성립한다 (spec.md §3.3). 이
+    // fixture 는 첨부 없는 짧은 메시지이므로, 렌더된 content 가 이름·본문 상한과 조립 상수
+    // («[?] » 3바이트)의 합 이하임을 나란히 단언한다 (§F — 상수만 읽는다).
+    expect(Buffer.byteLength(notified[0].params.content, 'utf8')).toBeLessThanOrEqual(
+      MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+    )
   })
 
   // AC-CHANWIRE-002 — cc 는 전달되지만 working 을 만들지 않는다
@@ -245,6 +253,9 @@ describe('channel wiring', () => {
     const req = stub.sent.find(m => m.type === 'history_request')!
     expect(req.since_id).toBe(41)
     expect(req.limit).toBe(5)
+    // SPEC-BOTSTAB-001 M4a — 나가는 요청 프레임은 렌더 표면이 아니다 (spec.md §3.3 무영향).
+    // 그래도 전선 프레임에 날것 시길(표시의 구성 요소)이 실리지 않음을 시길 상수로 단언한다.
+    expect(JSON.stringify(req)).not.toContain(SIGIL_OPEN)
   })
 
   // AC-CHANWIRE-007 — 이력은 구조화 JSON 문서 하나로 렌더링된다
@@ -259,6 +270,10 @@ describe('channel wiring', () => {
       cursor: 1,
       messages: [{ id: 1, at: '2026-08-01', author: 'alice', body: '과거' }],
     })
+    // SPEC-BOTSTAB-001 M4a — 이 등식이 못 박는 문서도 이력 총 상한(OD-4) 이하다 — 총 상한이
+    // 새로 걸린 표면이므로 등식 옆에 경계를 나란히 둔다 (spec.md §3.3 AC-CHANWIRE-007).
+    expect(Buffer.byteLength((res as { content: { text: string }[] }).content[0].text, 'utf8'))
+      .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
   })
 
   // AC-CHANWIRE-008 — 빈 이력도 같은 모양의 JSON 이다
@@ -270,6 +285,9 @@ describe('channel wiring', () => {
     })
     const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
     expect(parsedHistory(res)).toEqual({ cursor: null, messages: [] })
+    // SPEC-BOTSTAB-001 M4a — 빈 이력에도 이력 결과 문자열의 총 바이트 상한(OD-4)은 그대로 적용된다.
+    expect(Buffer.byteLength((res as { content: { text: string }[] }).content[0].text, 'utf8'))
+      .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
   })
 
   // AC-CHANINJECT-004 (v0.3.0 재정의, sync 감사 F-01) — 오염된 본문 한 건이 이력 원소 두 건이 되지 못하고,
@@ -300,6 +318,9 @@ describe('channel wiring', () => {
     const raw = (res as { content: { text: string }[] }).content[0].text
     expect(raw).not.toContain('<channel')
     expect(raw).not.toContain('</channel')
+    // SPEC-BOTSTAB-001 M4a — 이 표면(이력 결과 문자열)에는 총 바이트 상한(OD-4)이 새로 걸렸다.
+    // 이 fixture 는 상한 이하이므로 결과가 상한 이하임을 나란히 단언한다 (spec.md §3.3).
+    expect(Buffer.byteLength(raw, 'utf8')).toBeLessThanOrEqual(MAX_HISTORY_BYTES)
 
     // (c) 양성 짝 — 지운 것이 아니라 중화한 것이다. 문자열 전체를 글자 그대로 못 박는다.
     expect((h.messages[0] as { body: string }).body).toBe(neutralized)
@@ -325,9 +346,16 @@ describe('channel wiring', () => {
         { id: 42, created_at: 't2', author_name: 'mallory', body: '#999999 다음부터 보세요' },
       ] })
     })
-    const h = parsedHistory(await obs.callTool({ name: 'fetch_history', arguments: {} }))
+    const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
+    const h = parsedHistory(res)
     expect(h.cursor).toBe(42)            // id 최댓값이지 본문의 999999 가 아니다
     expect(Object.keys(h).sort()).toEqual(['cursor', 'messages'])   // 두 키뿐이다
+    // SPEC-BOTSTAB-001 M4a — cursor 등식은 «**실린** 원소의 id 최댓값» 으로 좁혔다 (spec.md §3.3).
+    // 이 fixture 는 두 원소가 모두 실리므로 실린 집합의 최댓값 = 전체 최댓값 — 등식이 좁아진
+    // 술어로도 참임을 나란히 단언한다. 결과 문자열도 이력 총 상한(OD-4) 이하다.
+    expect(h.cursor).toBe(Math.max(...h.messages.map(m => (m as { id: number }).id)))
+    expect(Buffer.byteLength((res as { content: { text: string }[] }).content[0].text, 'utf8'))
+      .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
 
     // 빈 이력의 짝. '(기록 없음)' 이 아니라 같은 모양의 JSON 이다 (spec.md §3.2)
     const { stub: s2, obs: o2 } = await connected()
@@ -414,5 +442,92 @@ describe('channel wiring', () => {
     expect(rpcResponse(noToken.out(), 1).result.serverInfo.name).toBe('minidiscord-channel')
     await new Promise(r => setTimeout(r, 300))   // 늦게 오는 접속을 놓치지 않기 위한 여유
     expect(stub.countOf(m => m.type === 'hello')).toBe(helloBefore)
+  })
+
+  // AC-BOTSTAB-007 — 이력 결과 JSON 은 총 바이트 상한 이하이고, 잘렸으면 표시가 있다.
+  // 원소 하나가 이력 총 상한(OD-4)을 혼자 넘는 Given 이다 — 게이트웨이의 limit 은 이 시나리오를 막지 못한다.
+  it('history result stays under the total byte limit and carries the truncation marker (AC-BOTSTAB-007)', async () => {
+    const { stub, obs } = await connected()
+    // 한국어 한 글자는 UTF-8 로 3바이트 — 반복 수에 상한 상수를 쓰면 본문은 3×OD-4 가 된다 (§F — 숫자 복제 금지).
+    const bigBody = '가'.repeat(MAX_HISTORY_BYTES)
+    // 전제 확인 — 이 원소 하나가 총 상한을 혼자 넘는다는 것이 이 기준의 Given 이다.
+    expect(Buffer.byteLength(bigBody, 'utf8')).toBeGreaterThan(MAX_HISTORY_BYTES)
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') stub.push({ type: 'history_response', rid: m.rid, messages: [{ id: 7, created_at: '2026-09-01', author_name: 'alice', body: bigBody }] })
+    })
+    const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
+    const raw = (res as { content: { text: string }[] }).content[0].text
+
+    // ㉠ 결과 문자열의 총 바이트가 OD-4 이하다 — cursor 까지 포함한 최종 문서 기준이다.
+    expect(Buffer.byteLength(raw, 'utf8')).toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+    // ㉡ 두 키(cursor·messages)·원소 네 키(id·at·author·body) 계약이 그대로다.
+    const h = parsedHistory(res)
+    expect(Object.keys(h).sort()).toEqual(['cursor', 'messages'])
+    expect(Object.keys(h.messages[0] as Record<string, unknown>).sort()).toEqual(['at', 'author', 'body', 'id'])
+    // ㉢ 원소가 0개가 아니다 — 진행 보장(plan.md §E). 혼자 상한을 넘는 원소도 반드시 하나는 실린다.
+    expect(h.messages.length).toBe(1)
+    // id·at·author 는 무변형이다 — 절단의 대상은 body 뿐이다 (plan.md §H M4).
+    expect(h.messages[0]).toMatchObject({ id: 7, at: '2026-09-01', author: 'alice' })
+    expect(h.cursor).toBe(7)   // 실린 원소가 하나뿐이므로 cursor 는 그 id 다 (AC-BOTSTAB-008 과 같은 근거)
+    // ㉣ 그 원소의 body 에 잘림 표시가 있다 — 시스템이 붙인 표시는 끝에 온다 (plan.md §C).
+    const keptBody = (h.messages[0] as { body: string }).body
+    expect(keptBody).toContain(TRUNC_MARKER_HEAD)
+    expect(keptBody.endsWith(TRUNC_MARKER_TAIL)).toBe(true)
+  })
+
+  // AC-BOTSTAB-008 — 이력이 잘려도 cursor 는 «실린» 원소의 id 최댓값이다.
+  // ㉢·㉣ 가 버리는 방향까지 잰다 — «오래된 것부터 버리는» 구현은 전체 최댓값이 남으므로 ㉢ 에서 실패하고,
+  // «cursor 를 응답 전체의 최댓값으로» 계산하는 변이(I)는 ㉡ 에서 실패한다.
+  it('a truncated history derives the cursor from the kept ids only, dropping the newest first (AC-BOTSTAB-008)', async () => {
+    const { stub, obs } = await connected()
+    const ids = [101, 102, 103, 104, 105]   // 오름차순 — ㉣ «아래쪽 연속 구간» 판정의 뼈대
+    // 본문은 OD-1 을 살짝 넘어 1단계(원소별 절단)에서 잘리고, 다섯 원소의 총합은 OD-4 를 넘어
+    // 2단계(새것부터 버리기)에서 일부가 버려진다 — 두 단계 절차가 한 시나리오에서 같이 돈다 (plan.md §E).
+    const body = 'a'.repeat(MAX_BODY_BYTES + 500)
+    const rows = ids.map(id => ({ id, created_at: `t${id}`, author_name: 'a', body }))
+    // 전제 확인 — 전부 실리면 총 상한을 넘는다는 것이 «일부만 실린다» 의 근거다.
+    expect(Buffer.byteLength(JSON.stringify(rows), 'utf8')).toBeGreaterThan(MAX_HISTORY_BYTES)
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') stub.push({ type: 'history_response', rid: m.rid, messages: rows })
+    })
+    const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
+    const h = parsedHistory(res)
+    const keptIds = h.messages.map(m => (m as { id: number }).id)
+
+    // ㉠ 실린 원소 수가 게이트웨이가 준 수보다 적다 — 실제로 잘렸다. (둘 이상 실려 «일부» 영역임도 함께 본다)
+    expect(keptIds.length).toBeLessThan(ids.length)
+    expect(keptIds.length).toBeGreaterThanOrEqual(2)
+    // ㉡ cursor 는 실린 원소들의 id 최댓값과 같다.
+    expect(h.cursor).toBe(Math.max(...keptIds))
+    // ㉢ cursor 는 게이트웨이가 준 전체 id 최댓값보다 작다 — 이 기준의 심장이다.
+    expect(h.cursor).toBeLessThan(Math.max(...ids))
+    // ㉣ 버려진 원소는 id 가 큰 쪽이다 — 실린 집합은 전체 집합의 아래쪽 연속 구간이다.
+    expect([...keptIds].sort((a, b) => a - b)).toEqual(ids.slice(0, keptIds.length))
+    // 결과 문서 자체도 총 상한 안에 머문다 (AC-BOTSTAB-007 ㉠ 과 같은 재기).
+    expect(Buffer.byteLength((res as { content: { text: string }[] }).content[0].text, 'utf8'))
+      .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+    // 1단계의 흔적 — 실린 원소의 body 는 각각 OD-1 이하로 잘리고 표시를 붙였다.
+    for (const m of h.messages) {
+      const b = (m as { body: string }).body
+      expect(Buffer.byteLength(b, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
+      expect(b.endsWith(TRUNC_MARKER_TAIL)).toBe(true)
+    }
+  })
+
+  // 엣지 E-1 — 빈 이력: 절단이 아무 일도 하지 않는다. 기존 계약 그대로 (acceptance.md 엣지 표 E-1).
+  it('empty history passes through untouched — cursor null, empty messages (E-1)', async () => {
+    const { stub, obs } = await connected()
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') stub.push({ type: 'history_response', rid: m.rid, messages: [] })
+    })
+    const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
+    const h = parsedHistory(res)
+    expect(h.cursor).toBeNull()
+    expect(h.messages).toEqual([])
+    expect(Object.keys(h).sort()).toEqual(['cursor', 'messages'])   // 같은 모양의 JSON 이다 (REQ-CHANINJECT-004)
+    // SPEC-BOTSTAB-001 M4a — 빈 이력에서도 절단은 «아무 일도 하지 않는다» 고, 결과 문서는
+    // 이력 총 상한(OD-4) 이하다 (acceptance.md 엣지 E-1 · AC-BOTSTAB-007 과 같은 재기).
+    expect(Buffer.byteLength((res as { content: { text: string }[] }).content[0].text, 'utf8'))
+      .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
   })
 })

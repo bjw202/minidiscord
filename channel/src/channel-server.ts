@@ -2,6 +2,14 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
+import {
+  MAX_ATTACHMENTS,
+  MAX_BODY_BYTES,
+  MAX_NAME_BYTES,
+  MAX_PATH_BYTES,
+  formatMarker,
+  truncateToBudget,
+} from './truncate.js'
 
 export const INSTRUCTIONS = [
   '이 세션은 minidiscord 채팅방에 봇으로 참여 중입니다.',
@@ -58,6 +66,32 @@ const PermissionRequestNotification = z.object({
     input_preview: z.string(),
   }),
 })
+
+// 첨부 안내를 조립한다 — 원소 수(OD-2)와 원소당 길이(OD-3) 두 상한을 «갈라서» 건다 (SPEC-BOTSTAB-001
+// AC-BOTSTAB-006). 하나로 합치면 짧은 경로가 많은 입력과 긴 경로 하나만 있는 입력 중 한쪽이 반드시
+// 빠져 나간다. 인자로 받은 경로는 이미 중화 뒤다 — 절단은 중화 뒤에 온다 (plan.md §B).
+// @MX:NOTE: [AUTO] 두 상한은 독립으로 선다 — 수 초과분은 버려 표시로 고하고, 각 경로는 경로 상한으로 절단한다
+// @MX:SPEC: SPEC-BOTSTAB-001
+function buildAttachmentNote(files: ChatMessage['files']): string {
+  if (!files || files.length === 0) return ''
+  const paths = files.map(f => neutralizeEnvelope(f.local_path))
+  const dropped = paths.slice(MAX_ATTACHMENTS)
+  const kept = paths.slice(0, MAX_ATTACHMENTS)
+  // 수 초과분은 버리고 그 바이트를 표시로 고한다 — 표시의 N 은 «실제로 잰 생략 바이트 수» 다 (§C-4).
+  // dropped 가 비어 있지 않으면 kept 는 항상 가득하다(MAX_ATTACHMENTS ≥ 1) — 버려진 목록의
+  // 앞 구분자 «, » 까지가 실제로 없어진 바이트다.
+  const droppedNote = dropped.length
+    ? formatMarker(Buffer.byteLength(`, ${dropped.join(', ')}`, 'utf8'))
+    : ''
+  // 수 초과 표시 자리를 마지막 조각의 예산에서 비켜 둔다 — truncateToBudget 이 자기 표시를 예산
+  // 안에 두듯(§C-4), 안내 조각 전체도 «원소 수 × 경로 상한 + 조립 바이트» 안에 머문다. 이 예약이
+  // 있어야 AC-BOTSTAB-004 ㉠ 의 파생 총상한이 fixture 가 아니라 일반적으로 성립한다.
+  const lastBudget = MAX_PATH_BYTES - Buffer.byteLength(droppedNote, 'utf8')
+  const frags = kept.map((p, i) =>
+    truncateToBudget(p, i === kept.length - 1 ? lastBudget : MAX_PATH_BYTES),
+  )
+  return `\n(첨부 파일 경로: ${frags.join(', ')}${droppedNote})`
+}
 
 export function createChannelServer(deps: ChannelDeps): ChannelHandle {
   // 발신 집합 — 채널이 내보낸 request_id 문자열들의 상한 있는 목록. 무상태 원칙 개정이
@@ -130,10 +164,16 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
     // content 에 실리는 사람 유래 조각 세 곳 — 본문·이름·첨부 경로 — 을 모두 중화한다 (REQ-CHANINJECT-001).
     // 본문만 중화하면 이름 필드에 심은 </channel> 우회가 남는다. meta 세 값(chat_id·delivery·sender)은
     // 봉투 속성의 유일한 정직한 출처이므로 중화하지 않고 원문 그대로 실는다 (REQ-CHANINJECT-002).
-    const fileNote = msg.files?.length
-      ? `\n(첨부 파일 경로: ${msg.files.map(f => neutralizeEnvelope(f.local_path)).join(', ')})`
-      : ''
-    const content = `[${neutralizeEnvelope(msg.author_name)}] ${neutralizeEnvelope(msg.body)}${fileNote}`
+    //
+    // 절단은 중화 «뒤»에 온다 (SPEC-BOTSTAB-001 plan.md §B) — 중화는 <channel 8바이트를 &lt;channel
+    // 11바이트로 늘리므로, 먼저 자르면 그 뒤의 중화가 상한을 다시 깬다. truncateToBudget 은 시길
+    // 탈출(§C-4)도 함께 하므로 사람 유래 조각의 날것 시길은 이 배선 한 번으로 0 이 된다 —
+    // 이름 조각도 예외가 아니다 (E-11). 이름에는 원래 길이 제한이 없어, 이름을 덮지 않으면
+    // content 전체를 재는 상한이 짧은 fixture 덕에만 초록이 된다 (계획 감사 A-02, AC-BOTSTAB-004 ㉣).
+    const nameFrag = truncateToBudget(neutralizeEnvelope(msg.author_name), MAX_NAME_BYTES)
+    const bodyFrag = truncateToBudget(neutralizeEnvelope(msg.body), MAX_BODY_BYTES)
+    const fileNote = buildAttachmentNote(msg.files)
+    const content = `[${nameFrag}] ${bodyFrag}${fileNote}`
     await mcp.notification({
       method: 'notifications/claude/channel',
       params: {

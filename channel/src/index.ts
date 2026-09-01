@@ -4,6 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { pathToFileURL } from 'node:url'
 import { createChannelServer, neutralizeEnvelope, type ChannelHandle, type ChatMessage } from './channel-server.js'
 import { createGatewayClient, type GatewayClient } from './gateway-client.js'
+import { MAX_BODY_BYTES, MAX_HISTORY_BYTES, truncateToBudget } from './truncate.js'
 
 export interface WireOpts {
   url: string
@@ -78,16 +79,33 @@ export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClien
     fetchHistory: async params => {
       const res = await gw.requestHistory(params)
       const messages: { id: number; author_name: string; body: string; created_at: string }[] = res.messages ?? []
-      const cursor = messages.length > 0 ? Math.max(...messages.map(m => m.id)) : null
-      return JSON.stringify({
-        cursor,
-        messages: messages.map(m => ({
-          id: m.id,
-          at: m.created_at,
-          author: neutralizeEnvelope(m.author_name),
-          body: neutralizeEnvelope(m.body),
-        })),
-      })
+      // 최종 문서를 하나의 함수로 빚는다 — 2단계의 총바이트 판정과 반환값이 같은 모양을 쓰도록.
+      // cursor 도 이 문자열의 일부다 — 그래서 총바이트 판정에 cursor 가 함께 잰다 (AC-BOTSTAB-007 ㉠ 의 대상).
+      const doc = (list: { id: number }[]) =>
+        JSON.stringify({ cursor: list.length > 0 ? Math.max(...list.map(m => m.id)) : null, messages: list })
+      // 1단계 — 원소별 본문 절단 (REQ-BOTSTAB-007 1단계, plan.md §E). 절단은 중화 뒤에 온다 (plan.md §B).
+      // truncateToBudget 은 시길 탈출을 절단보다 먼저 하므로(§C-4) 사람 유래 날것 시길도 여기서 0 이 된다.
+      // id·at·author 는 무변형이다 — id 는 커서의 유일한 출처이고(REQ-CHANINJECT-005), 저 위의 중화 주석이
+      // author 중화의 근거를 진다. 이 절차와 버리는 방향은 이 클로저 안에만 산다 (plan.md §I).
+      const kept = messages.map(m => ({
+        id: m.id,
+        at: m.created_at,
+        author: neutralizeEnvelope(m.author_name),
+        body: truncateToBudget(neutralizeEnvelope(m.body), MAX_BODY_BYTES),
+      }))
+      // 2단계 — 새것부터 버리기 (REQ-BOTSTAB-007 2단계, plan.md §E). 오래된 것부터 버리면 cursor 가
+      // 버려진 원소를 «이미 지나간 것» 으로 선언하고 그 메시지들은 다음 요청부터 조용히 영구히 사라진다 —
+      // SPEC-CHANINJECT-001 F-03 의 커서 오염이다. 새것부터 버리면 버려진 메시지는 다음 요청에서 다시 온다.
+      // @MX:NOTE: [AUTO] 버리는 방향(큰 id 먼저)과 cursor 의 계산원(실린 집합)은 이 SPEC 의 두 계약이다 — 방향을 뒤집거나 전체 최댓값으로 돌리면 커서 오염이 돌아온다
+      // @MX:SPEC: SPEC-BOTSTAB-001
+      while (kept.length > 0 && Buffer.byteLength(doc(kept), 'utf8') > MAX_HISTORY_BYTES) {
+        let newest = 0
+        for (let i = 1; i < kept.length; i++) if (kept[i].id > kept[newest].id) newest = i
+        kept.splice(newest, 1)
+      }
+      // INV-2(acceptance.md) 가 «원소 하나 + 봉투 + 표시 ≤ OD-4» 를 보증하므로 위 루프는 0개로 닿지 않는다 —
+      // 그래서 cursor null 은 입력이 빈 배열일 때만 나온다 (엣지 E-1).
+      return doc(kept)
     },
   })
   return { channel, gw }

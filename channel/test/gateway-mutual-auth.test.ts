@@ -20,6 +20,9 @@ import { createGateway } from '../../server/src/gateway.js'
 import { registerAuthRoutes } from '../../server/src/auth.js'
 import { deriveBotKeys } from '../../server/src/routes-bots.js'
 import { wire } from '../src/index.js'
+// SPEC-BOTSTAB-001 M4a — 상한 상수는 truncate 모듈에서 읽는다 (§F — 테스트에 상한 숫자를 복제하지 않는다).
+// M3 가 상한을 건 뒤 content 등식은 «상한 이하» 에서만 성립하므로, 각 등식 옆에 파생 경계를 나란히 둔다.
+import { MAX_BODY_BYTES, MAX_NAME_BYTES } from '../src/truncate.js'
 
 // 열어 둔 자원의 일괄 정리 목록.
 const cleanups: (() => Promise<void> | void)[] = []
@@ -224,6 +227,10 @@ describe('gateway mutual auth', () => {
     await waitFor(() => notes.length === 1, '세션 알림 도착')
 
     expect(notes[0].params.content).toBe('[alice] 왕복 본문')
+    // SPEC-BOTSTAB-001 M4a — content 등식은 «상한 이하» 에서만 참이다 (spec.md §3.3) — 경계를 나란히 단언한다.
+    expect(Buffer.byteLength(notes[0].params.content, 'utf8')).toBeLessThanOrEqual(
+      MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+    )
     gw.stop(); void close
   })
 
@@ -263,6 +270,10 @@ describe('gateway mutual auth', () => {
     await new Promise(r => setTimeout(r, 400))
 
     expect(notes.map(n => n.params.content)).toEqual(['[alice] 진짜 본문'])   // 2번은 살고 4번-①은 죽었다
+    // SPEC-BOTSTAB-001 M4a — content 배열 등식도 «상한 이하» 에서만 참이다 — 경계를 나란히 단언한다.
+    expect(Buffer.byteLength(notes[0].params.content, 'utf8')).toBeLessThanOrEqual(
+      MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+    )
     expect(relay.readIds()).toEqual(['mid-01'])   // 중간자가 진짜로 id 를 읽었다
     gw.stop(); void close; void relay
   })
@@ -426,6 +437,10 @@ describe('gateway mutual auth', () => {
       expect(relay.serverBinding()).toBe('unbound')
       expect(gateway.isOnline(roomId, botId)).toBe(true)   // ★ 중계자의 소켓이 봇으로 등록됐다 — 상대가 이겼다
       expect(notes[0].params.content).toBe('[alice] 중계 세션 본문')   // 세션이 실제로 살아 있다
+      // SPEC-BOTSTAB-001 M4a — content 등식은 «상한 이하» 에서만 참이다 — 경계를 나란히 단언한다.
+      expect(Buffer.byteLength(notes[0].params.content, 'utf8')).toBeLessThanOrEqual(
+        MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+      )
       // R4 해석: 공시는 «확립 1회당 1줄» — 이 시험의 확립이 1회므로 정확히 1줄이다 (§E.2.13 귀속)
       expect(errSpyLines.filter(l => /중계|바인딩|unbound/.test(l)).length).toBe(1)
       gw.stop(); void close
