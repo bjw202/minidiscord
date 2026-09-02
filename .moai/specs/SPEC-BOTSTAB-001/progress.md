@@ -254,7 +254,7 @@ uncommitted_note: "run-done.md 포함 전부 미커밋 — 리드 판독·승인
 sync_status: audit-ready
 sync_complete_at: 2026-09-02
 spec_id: SPEC-BOTSTAB-001
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: c544a5c
 evidence:
   sibling_assertion_check: "plan.md §M 의무 이행 — 명령 `node .moai/state/verify/t25-plan/sibling-sweep.mjs` exit 0, 생출력 **34블록**. 34/34 착지, 미착지 **0건**, 종합 판정 통과. 정본: .moai/reports/t25/sync-sibling-assertion-check.md (§M-3 네 항목 전부 수록). 원본 출력: .moai/state/verify/t25-sync/{sweep-plain.txt, sweep.json}"
   sweep_snapshot_reconciliation: "§M-1 «출력이 스냅숏과 이기면 출력이 이긴다» 적용 — spec.md §3.3 스냅숏 21 vs 생출력 34, 판정은 34 기준. 차분 13 = M3·M4 신설 12 + AC-BOTSTAB-010 배선 목격 1(channel-server.test.ts:547). m4a-evidence §E2 의 33행은 K 보강 이전 캡처이며 34번째 행을 이 판정이 채웠다"
