@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
@@ -251,6 +251,27 @@ describe('messages', () => {
     const dl = await app.inject({ method: 'GET', url: `/api/attachments/${bad}`, headers: { cookie } })
     expect(dl.statusCode).toBe(404)
     expect(dl.body).not.toContain('비밀입니다')
+  })
+
+  // t3 sync-audit N-07 — 행은 남고 디스크 파일만 사라진 첨부: ENOENT 500 본문이 저장 경로를 노출하지 않는다
+  it('serves 404 without leaking stored_path when the backing file has disappeared', async () => {
+    const { app, cookie } = await build()
+    const { roomId } = seed()
+    const src = join(dir, 'vanished.txt')
+    writeFileSync(src, '사라질 내용')
+
+    const res = await postMessage(app, cookie, roomId, '첨부 올림', src)
+    expect(res.statusCode).toBe(200)
+
+    const att = db.prepare('SELECT * FROM attachments').get() as { id: number; stored_path: string }
+    unlinkSync(att.stored_path) // 운영 사건 재연 — 행은 그대로 두고 파일만 지운다
+
+    const dl = await app.inject({ method: 'GET', url: `/api/attachments/${att.id}`, headers: { cookie } })
+    expect(dl.statusCode).toBe(404)
+    // Fastify 기본 500 봉투가 저장 경로를 실어 보내는 자리를 그대로 재는 대조 —
+    // 경로 문자열과 ENOENT 오류 유형이 모두 응답 본문에 없어야 한다
+    expect(dl.body).not.toContain(att.stored_path)
+    expect(dl.body).not.toContain('ENOENT')
   })
 
   it('publishes to the sse hub and delivers to the gateway exactly once', async () => {

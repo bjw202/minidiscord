@@ -21,7 +21,7 @@
 | AC-CORE-009 | REQ-CORE-011 | `grep -c "export function openDb" server/src/db.ts` | `1` |
 | AC-CORE-010 | REQ-CORE-014 | 아래 AC-CORE-010 본문 참조 | `wal` |
 | AC-CORE-011 | REQ-CORE-012 | 아래 AC-CORE-011 본문 참조 | 인덱스 2개 존재 |
-| AC-CORE-012 | REQ-CORE-015 | `ls server/src` | 정확히 `config.ts`, `db.ts`, `index.ts` 세 파일만 |
+| AC-CORE-012 | REQ-CORE-015 | `git ls-tree --name-only a97d36c server/src/` | 이 SPEC 구현 시점 커밋 `a97d36c` 기준 — 정확히 `config.ts`, `db.ts`, `index.ts` 세 파일만 |
 | AC-CORE-013 | REQ-CORE-002 | `node -e "const p=require('./server/package.json');console.log(p.type,Object.keys(p.scripts).sort().join(','))"` | `module dev,test,typecheck` |
 | AC-CORE-014 | RED→GREEN 전이 | 아래 AC-CORE-014 본문 참조 | 구현 전 실패, 구현 후 통과 |
 | AC-CORE-015 | REQ-CORE-010 | 아래 AC-CORE-015 본문 참조 | 직접 실행 시 `{"ok":true}` 관측, 가져오기만 할 때 종료 출력 `0`, 기본 호스트 `127.0.0.1` 과 `MINIDISCORD_HOST` 재정의가 모두 관측됨 |
@@ -121,9 +121,11 @@ npx -w server tsx -e "import {openDb} from './server/src/db.js'; const d=openDb(
 
 ### AC-CORE-012 — 범위 경계 유지
 
-**Given** 이 SPEC의 구현이 끝났다.
-**When** `ls server/src` 를 실행한다.
-**Then** 출력이 정확히 `config.ts`, `db.ts`, `index.ts` 세 항목이다. `auth.ts`, `routes-*.ts`, `mention.ts`, `sse.ts`, `gateway.ts`, `permissions.ts` 중 어느 것도 존재하지 않는다.
+**Given** 이 SPEC의 구현이 끝난 시점 트리(커밋 `a97d36c`)가 있다.
+**When** `git ls-tree --name-only a97d36c server/src/` 를 실행한다.
+**Then** 출력이 정확히 `config.ts`, `db.ts`, `index.ts` 세 항목이다.
+
+이 기준은 시점 한정이다(t3 sync-audit-3 N-09 — card t8 개정). 이 SPEC 이후 형제 SPEC이 `auth.ts`, `routes-*.ts`, `mention.ts`, `sse.ts`, `gateway.ts`, `permissions.ts` 등을 server/src 에 추가한 것은 정상 범위 확장이며, 현재 트리의 파일 수는 이 기준의 대상이 아니다. REQ-CORE-015 가 잣는 것은 이 SPEC의 `buildServer` 가 등록하는 경로다.
 
 ### AC-CORE-013 — 서버 패키지 스크립트
 

@@ -1,5 +1,5 @@
 // 메시지 API — multipart 전송, 멘션 → 전달 대상 매핑, SSE·게이트웨이 팬아웃, 목록 커서, 첨부 다운로드 (Task 9)
-import { createReadStream, createWriteStream, mkdirSync, statSync } from 'node:fs'
+import { createReadStream, createWriteStream, existsSync, mkdirSync, statSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { pipeline } from 'node:stream/promises'
 import { basename, extname, join, resolve, sep } from 'node:path'
@@ -156,6 +156,11 @@ export function registerMessageRoutes(app: FastifyInstance): void {
     // 읽기 시점 봉인 — 절대 경로로 풀어 업로드 디렉터리 아래가 아니면 파일을 열지 않고 404 (REQ-MSG-009).
     // REQ-MSG-007 의 쓰기 봉인과 서로의 백스톱이다 — 어느 한쪽이 뚫려도 다른 쪽이 남는다
     if (!resolve(att.stored_path).startsWith(resolve(req.server.uploadsDir) + sep)) {
+      return reply.code(404).send({ message: '파일을 찾을 수 없습니다' })
+    }
+    // N-07 — 행은 남고 디스크 파일이 사라진 경우: createReadStream 의 ENOENT 가 Fastify 기본
+    // 500 봉투로 나가면 stored_path 가 본문에 실린다. 스트림을 넘기기 전에 존재를 확인해 404 로 떨군다
+    if (!existsSync(att.stored_path)) {
       return reply.code(404).send({ message: '파일을 찾을 수 없습니다' })
     }
     reply.header('content-type', att.mime)
