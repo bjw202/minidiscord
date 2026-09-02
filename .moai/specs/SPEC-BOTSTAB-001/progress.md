@@ -250,7 +250,25 @@ uncommitted_note: "run-done.md 포함 전부 미커밋 — 리드 판독·승인
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-02
+spec_id: SPEC-BOTSTAB-001
+sync_commit_sha: pending-backfill-sync
+evidence:
+  sibling_assertion_check: "plan.md §M 의무 이행 — 명령 `node .moai/state/verify/t25-plan/sibling-sweep.mjs` exit 0, 생출력 **34블록**. 34/34 착지, 미착지 **0건**, 종합 판정 통과. 정본: .moai/reports/t25/sync-sibling-assertion-check.md (§M-3 네 항목 전부 수록). 원본 출력: .moai/state/verify/t25-sync/{sweep-plain.txt, sweep.json}"
+  sweep_snapshot_reconciliation: "§M-1 «출력이 스냅숏과 이기면 출력이 이긴다» 적용 — spec.md §3.3 스냅숏 21 vs 생출력 34, 판정은 34 기준. 차분 13 = M3·M4 신설 12 + AC-BOTSTAB-010 배선 목격 1(channel-server.test.ts:547). m4a-evidence §E2 의 33행은 K 보강 이전 캡처이며 34번째 행을 이 판정이 채웠다"
+  suite: "121 passed / 7 files (exit 0) — `npx vitest run --root channel --reporter=dot`, sync 레인 **직접 실행** (2026-09-02 09:27, 이 트리). 원본 .moai/state/verify/t25-sync/suite.txt"
+  typecheck: "`npm run typecheck -w channel` (tsc --noEmit) exit 0 — sync 레인 직접 실행. 원본 .moai/state/verify/t25-sync/typecheck.txt"
+  sibling_amendment: "AM-1·AM-2 집행 완료 — SPEC-CHANINJECT-001/spec.md 단일 파일(+9/-4). AM-1 §4.2 비파괴 단락(금지를 중화 단계로 한정) · AM-2 REQ-CHANINJECT-002 일반 문언(시길 없음 + 상한 이하로 조건화) · 각 자리에 개정 각주 · HISTORY 0.3.4 행 · frontmatter version/updated. **소유권 경로: 본문은 manager-spec 소유이므로 sync 레인이 manager-spec 에 재위임해 집행**(spec-frontmatter-schema.md § Forbidden ownership crossings 가 정한 경로). 그 SPEC 은 이미 status: in-progress · amendment_of 보유라 완료→개정 전이 불필요"
+  docs: "CHANGELOG.md [Unreleased] 최상단에 카드 t25 항목 신설(중복 검사 `grep -c SPEC-BOTSTAB-001 CHANGELOG.md` = 0 선행) · README.md fetch_history 서술 정정 — 절단·표시·새것부터 버리기·커서 계산원을 더했다(개정 전 서술은 중화만 적어 이번 변경으로 낡았다)"
+  scope_boundaries: "sync 단계 변경은 문서·SPEC 뿐 — `git diff --stat` 에 channel/src·channel/test 부재. run 커밋 이후 코드 변경 0"
+  run_done_absorbed: "run-done.md(미커밋 상태로 인계받음)를 이 sync 커밋에 흡수 — t8 선례"
+pending_lead_decisions:
+  - "형제 개정이 낡게 만든 8자리(미편집·보고만) — AM 범위가 «두 자리뿐» 이라 손대지 않았다. 후속 카드 여부는 리드 판정. 목록: spec.md:123·:292, acceptance.md:116·:118·:287·:308·:724·:734, plan.md:115"
+  - "AM-1 각주의 줄 인용 `:313` 을 헤딩 앵커로 바꿔 적용(«문안 그대로» 에서 벗어난 유일한 자리) — 개정 자신이 줄을 밀어 그 인용이 즉시 거짓이 되기 때문. 바이트 단위 동일이 요구였다면 리드 판정 필요"
+  - "§M 이 사지 못하는 넷(단언이 옳게 재는가 · 기존 단언 삭제 · 훑기 실행 여부 자체 · 연속 관측)은 이 판정으로 닫히지 않는다 — plan.md §M 표 그대로, t28 이 일부를 소유"
+```
 
 ## §F Phase 4 Mode Selection
 

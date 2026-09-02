@@ -2,9 +2,9 @@
 id: SPEC-BOTSTAB-001
 title: "봇 동작 안정성 — 재접속 순서의 미측정 가드 · 모델 컨텍스트로 나가는 렌더 바이트 상한"
 version: "0.7.2"
-status: in-progress
+status: completed
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-02
 author: manager-spec
 priority: P1
 phase: "v0.4.0 target"

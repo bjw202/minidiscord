@@ -1,0 +1,166 @@
+
+=== [1] channel/test/channel-server.test.ts:96  exposes exactly the reply and fetch_history tools
+    상수 담은 줄 1개
+    102: expect(JSON.stringify(listed.tools)).not.toContain(SIGIL_OPEN)
+
+=== [2] channel/test/channel-server.test.ts:119  reply forwards text and files to sendToChat and answers 
+    상수 담은 줄 1개
+    126: expect(Buffer.byteLength(calls.replies[0].text, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
+
+=== [3] channel/test/channel-server.test.ts:130  declares all five optional fetch_history parameters and requires none
+    상수 담은 줄 1개
+    143: expect(JSON.stringify(s)).not.toContain(SIGIL_OPEN)
+
+=== [4] channel/test/channel-server.test.ts:148  points the cursor at the JSON field and never at a #번호 in line text
+    상수 담은 줄 1개
+    160: expect(`${d}\n${sinceIdParam}`).not.toContain(SIGIL_OPEN)
+
+=== [5] channel/test/channel-server.test.ts:164  passes fetch_history arguments through and returns the dependency string verbatim
+    상수 담은 줄 1개
+    176: expect(Buffer.byteLength(textOf(res), 'utf8')).toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+
+=== [6] channel/test/channel-server.test.ts:188  pushChatMessage notifies with TO meta and the attachment local path
+    상수 담은 줄 1개
+    211: MAX_NAME_BYTES + MAX_BODY_BYTES + MAX_ATTACHMENTS * MAX_PATH_BYTES + ASSEMBLY_BYTES,
+
+=== [7] channel/test/channel-server.test.ts:232  carries the load-bearing instruction literals in the initialize response
+    상수 담은 줄 1개
+    244: expect(s).not.toContain(SIGIL_OPEN)
+
+=== [8] channel/test/channel-server.test.ts:248  carries cc as cc and omits the attachment note when there are no files
+    상수 담은 줄 1개
+    261: MAX_NAME_BYTES + MAX_BODY_BYTES + MAX_ATTACHMENTS * MAX_PATH_BYTES + ASSEMBLY_BYTES,
+
+=== [9] channel/test/channel-server.test.ts:267  neutralizes channel envelope sequences in the body, the author name and the file path
+    상수 담은 줄 1개
+    299: MAX_NAME_BYTES + MAX_BODY_BYTES + MAX_ATTACHMENTS * MAX_PATH_BYTES + ASSEMBLY_BYTES,
+
+=== [10] channel/test/channel-server.test.ts:305  leaves a body without envelope sequences byte-identical, and never touches meta
+    상수 담은 줄 1개
+    323: MAX_NAME_BYTES + MAX_BODY_BYTES + MAX_ATTACHMENTS * MAX_PATH_BYTES + ASSEMBLY_BYTES,
+
+=== [11] channel/test/channel-server.test.ts:374  AC-BOTSTAB-004 (가) — 본문 2배는 잘리고 표시가 붙고 앞부분은 살아 있다
+    상수 담은 줄 3개
+    377: const body = '가'.repeat(Math.ceil((MAX_BODY_BYTES * 2) / 3)) // 한국어는 3바이트 — 상한의 두 배 이상
+    378: expect(Buffer.byteLength(body, 'utf8')).toBeGreaterThanOrEqual(MAX_BODY_BYTES * 2) // fixture 전제 관측
+    383: expect(Buffer.byteLength(content, 'utf8')).toBeLessThanOrEqual(CONTENT_TOTAL_LIMIT)
+
+=== [12] channel/test/channel-server.test.ts:393  AC-BOTSTAB-004 (나) ㉣ — 이름 조각만 잘리고 본문 조각은 원문과 글자 그대로 같다
+    상수 담은 줄 3개
+    396: const name = 'b'.repeat(MAX_NAME_BYTES * 2)
+    401: expect(Buffer.byteLength(content, 'utf8')).toBeLessThanOrEqual(CONTENT_TOTAL_LIMIT) // ㉠
+    405: expect(Buffer.byteLength(nameFrag, 'utf8')).toBeLessThanOrEqual(MAX_NAME_BYTES)
+
+=== [13] channel/test/channel-server.test.ts:414  AC-BOTSTAB-005 (가) — 상한 이하 본문은 글자 그대로, 표시 없고 meta 무변형
+    상수 담은 줄 1개
+    426: expect(Buffer.byteLength(body, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
+
+=== [14] channel/test/channel-server.test.ts:432  AC-BOTSTAB-005 (나) — 정확한 형태와 근사 형태의 시길이 모두 엔티티로, 나머지는 원문 그대로
+    상수 담은 줄 4개
+    437: `앞 ${SIGIL_OPEN}잘림: 500바이트 생략${SIGIL_CLOSE}` +
+    438: ` 가운데 ${SIGIL_OPEN}잘림 : 500바이트 생략${SIGIL_CLOSE} 뒤`
+    447: `[dave] 앞 ${SIGIL_OPEN_ESCAPE}잘림: 500바이트 생략${SIGIL_CLOSE_ESCAPE}` +
+    448: ` 가운데 ${SIGIL_OPEN_ESCAPE}잘림 : 500바이트 생략${SIGIL_CLOSE_ESCAPE} 뒤`,
+
+=== [15] channel/test/channel-server.test.ts:453  AC-BOTSTAB-006 (가) — 짧은 경로가 많으면 OD-2 개만 실리고 표시가 있다
+    상수 담은 줄 2개
+    456: const paths = Array.from({ length: MAX_ATTACHMENTS + 5 }, (_, i) => `/p/${i}`)
+    469: expect(frags.length).toBeLessThanOrEqual(MAX_ATTACHMENTS)
+
+=== [16] channel/test/channel-server.test.ts:477  AC-BOTSTAB-006 (나) — 긴 경로 하나는 OD-3 안에서 잘리고 그 자리에 표시가 있다
+    상수 담은 줄 3개
+    480: const longPath = `/data/${'x'.repeat(MAX_PATH_BYTES)}`
+    481: expect(Buffer.byteLength(longPath, 'utf8')).toBeGreaterThan(MAX_PATH_BYTES) // fixture 전제 관측
+    494: expect(Buffer.byteLength(notice, 'utf8')).toBeLessThanOrEqual(MAX_PATH_BYTES) // 조각 ≤ OD-3
+
+=== [17] channel/test/channel-server.test.ts:502  E-9 — 이름이 정확히 상한 바이트면 접두가 원문 그대로다
+    상수 담은 줄 2개
+    505: const name = 'a'.repeat(MAX_NAME_BYTES - 3) + '가' // 3바이트 글자 하나로 정확히 OD-5 바이트
+    506: expect(Buffer.byteLength(name, 'utf8')).toBe(MAX_NAME_BYTES) // fixture 전제 관측
+
+=== [18] channel/test/channel-server.test.ts:516  E-10 — 둘 다 초과하면 표시 두 개, content 는 파생 총상한 이하
+    상수 담은 줄 3개
+    519: const name = 'b'.repeat(MAX_NAME_BYTES * 2)
+    520: const body = '가'.repeat(Math.ceil((MAX_BODY_BYTES * 2) / 3))
+    526: expect(Buffer.byteLength(content, 'utf8')).toBeLessThanOrEqual(CONTENT_TOTAL_LIMIT) // AC-004 ㉠ 의 파생 총상한
+
+=== [19] channel/test/channel-server.test.ts:530  E-11 — 이름 조각의 시길도 엔티티로 치환된다
+    상수 담은 줄 2개
+    533: const name = `시${SIGIL_OPEN}글${SIGIL_CLOSE}이름`
+    540: expect(content).toBe(`[시${SIGIL_OPEN_ESCAPE}글${SIGIL_CLOSE_ESCAPE}이름] ${body}`) // 시길 글자만 바뀐다
+
+=== [20] channel/test/channel-server.test.ts:547  AC-BOTSTAB-010 — 배선에서도 중화 뒤 절단이 성립한다 (변이 K 목격 기준)
+    상수 담은 줄 7개
+    556: const marginBytes = Math.floor(MAX_BODY_BYTES / 10) // «여유 있게» 의 치수 — 상한의 1할
+    557: const count = Math.ceil((MAX_BODY_BYTES + marginBytes) / (seqBytes + gainBytes))
+    561: expect(Buffer.byteLength(body, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
+    562: expect(Buffer.byteLength(neutralized, 'utf8')).toBeGreaterThan(MAX_BODY_BYTES)
+    568: expect(Buffer.byteLength(content, 'utf8')).toBeLessThanOrEqual(CONTENT_TOTAL_LIMIT)
+    572: expect(Buffer.byteLength(bodyFrag, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
+    576: expect(content).toContain(TRUNC_MARKER_HEAD)
+
+=== [21] channel/test/gateway-mutual-auth.test.ts:215  the real server and the real channel agree end to end, envelope included
+    상수 담은 줄 1개
+    232: MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+
+=== [22] channel/test/gateway-mutual-auth.test.ts:238  a relaying man in the middle passes the handshake and still injects nothing
+    상수 담은 줄 1개
+    275: MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+
+=== [23] channel/test/gateway-mutual-auth.test.ts:415  on an unbound transport the same relay does take over, and the channel says so
+    상수 담은 줄 1개
+    442: MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+
+=== [24] channel/test/index-wiring.test.ts:179  gateway message becomes exactly one session notification
+    상수 담은 줄 1개
+    191: MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+
+=== [25] channel/test/index-wiring.test.ts:247  fetch_history forwards since_id and limit verbatim
+    상수 담은 줄 1개
+    258: expect(JSON.stringify(req)).not.toContain(SIGIL_OPEN)
+
+=== [26] channel/test/index-wiring.test.ts:263  history renders as one structured JSON document
+    상수 담은 줄 1개
+    276: .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+
+=== [27] channel/test/index-wiring.test.ts:281  empty history renders the same JSON shape with a null cursor
+    상수 담은 줄 1개
+    290: .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+
+=== [28] channel/test/index-wiring.test.ts:295  a single poisoned message stays a single element and carries no live envelope sequence
+    상수 담은 줄 1개
+    323: expect(Buffer.byteLength(raw, 'utf8')).toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+
+=== [29] channel/test/index-wiring.test.ts:341  derives the cursor from ids only, never from body text, and nulls it when empty
+    상수 담은 줄 1개
+    358: .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+
+=== [30] channel/test/index-wiring.test.ts:449  history result stays under the total byte limit and carries the truncation marker (AC-BOTSTAB-007)
+    상수 담은 줄 5개
+    452: const bigBody = '가'.repeat(MAX_HISTORY_BYTES)
+    454: expect(Buffer.byteLength(bigBody, 'utf8')).toBeGreaterThan(MAX_HISTORY_BYTES)
+    462: expect(Buffer.byteLength(raw, 'utf8')).toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+    474: expect(keptBody).toContain(TRUNC_MARKER_HEAD)
+    475: expect(keptBody.endsWith(TRUNC_MARKER_TAIL)).toBe(true)
+
+=== [31] channel/test/index-wiring.test.ts:481  a truncated history derives the cursor from the kept ids only, dropping the newest first (AC-BOTSTAB-008)
+    상수 담은 줄 5개
+    486: const body = 'a'.repeat(MAX_BODY_BYTES + 500)
+    489: expect(Buffer.byteLength(JSON.stringify(rows), 'utf8')).toBeGreaterThan(MAX_HISTORY_BYTES)
+    508: .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+    512: expect(Buffer.byteLength(b, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
+    513: expect(b.endsWith(TRUNC_MARKER_TAIL)).toBe(true)
+
+=== [32] channel/test/index-wiring.test.ts:518  empty history passes through untouched — cursor null, empty messages (E-1)
+    상수 담은 줄 1개
+    531: .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+
+=== [33] channel/test/transport-auth.test.ts:413  after welcome, the same two frames reach the session exactly once each
+    상수 담은 줄 1개
+    432: MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+
+=== [34] channel/test/transport-auth.test.ts:777  an envelope with a broken mac, and a frame with no envelope, are both dropped
+    상수 담은 줄 1개
+    802: MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+
+총 블록 34
