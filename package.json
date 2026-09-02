@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": ["server", "channel"],
   "scripts": {
+    "e2e": "npx tsx scripts/e2e.mts",
     "test": "npm test --workspaces --if-present"
   }
 }
