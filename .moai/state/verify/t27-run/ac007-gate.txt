@@ -1,0 +1,1 @@
+gate=passed (우회 없음)

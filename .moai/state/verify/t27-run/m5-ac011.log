@@ -1,0 +1,20 @@
+# M5 / AC-CI-011 re-run (SPEC-CI-001, card t27) — acceptance.md §D 명령 그대로
+# worktree: /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t27  branch: WT-ci-test-wiring  pre-M5 HEAD: 014ed37
+# date: 2026-08-31T13:32:17Z (UTC) — 측정 대상: M5 문서 편집(§E.2 AC-CI-001~012 기록·§E.3 신호)이 반영된 작업 나무 상태
+
+$ python3 - <<PY  (acceptance.md §D AC-CI-011 명령 — 원문)
+declared: {1: 5, 2: 5, 3: 7}
+markers : {1: 5, 2: 5, 3: 7}
+listed  : {1: 5, 2: 5, 3: 7}
+§D-2 (b)/(c) rows with non-empty 그 밖의 자리: 5
+FALLOUT TABLE COMPLETE
+exit=0
+
+# ---- run B: 본 절(AC-CI-011) 삽입 뒤 최종 문서 상태 재확인 — 2026-08-31T13:32:50Z (UTC) ----
+$ python3 - <<PY  (동일 명령 재실행)
+declared: {1: 5, 2: 5, 3: 7}
+markers : {1: 5, 2: 5, 3: 7}
+listed  : {1: 5, 2: 5, 3: 7}
+§D-2 (b)/(c) rows with non-empty 그 밖의 자리: 5
+FALLOUT TABLE COMPLETE
+exit=0

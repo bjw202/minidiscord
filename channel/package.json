@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
+    "pretest": "tsc",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

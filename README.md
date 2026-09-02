@@ -9,6 +9,8 @@
 - Node.js 20 이상 (개발·검증은 v24에서 했습니다)
 - npm 9 이상
 
+저장소 뿌리의 `.nvmrc`가 Node 메이저 버전 `24`를 적어 두고 있습니다. nvm이나 fnm을 쓴다면 이 폴더에서 `nvm use`만 치면 그 버전으로 맞춰지고, CI도 같은 파일을 읽습니다 — 로컬과 CI의 Node 버전이 갈라지지 않도록 출처를 하나로 뒀어요.
+
 ## 시작하기
 
 ```bash
@@ -249,6 +251,10 @@ ID 형식(소문자 5글자, `l` 제외)에 맞지 않는 승인 요청은 대�
 | `npm test -w channel` | 채널 플러그인 테스트 실행 |
 | `npm run typecheck -w channel` | 채널 플러그인 타입 검사 |
 
+**이 검사들은 GitHub Actions에서도 자동으로 돕니다.** `push`와 `pull_request`마다 `npm ci` → 두 워크스페이스의 `typecheck` → `npm test` 순서로 실행됩니다(`.github/workflows/ci.yml`). 그래서 손으로 돌리는 것을 잊어도 붉은 CI가 알려 줍니다.
+
+**`npm test`는 이제 채널을 스스로 먼저 빌드합니다.** `channel`의 `pretest` 훅이 `tsc`를 돌리므로, 갓 받아온 체크아웃이나 새로 만든 워크트리에서도 `npm run build -w channel`을 앞서 돌릴 필요 없이 `npm test` 한 명령이면 됩니다. (`claude mcp add`로 채널을 등록하기 전에는 여전히 빌드가 필요합니다 — 위 "봇 초대 토큰"의 안내가 그대로 유효합니다.)
+
 ## 폴더 구조
 
 ```
@@ -311,4 +317,5 @@ minidiscord/
 - `.moai/specs/SPEC-WEBSHELL-001/` — 웹 화면 껍데기: 정적 서빙·로그인·방 목록·봇 목록
 - `.moai/specs/SPEC-WEBCHAT-001/` — 대화 화면: SSE 수신·렌더링·`@` 자동완성·봇 상태 칩
 - `.moai/specs/SPEC-WEBRICH-001/` — 첨부 표시·봇 초대 다이얼로그·권한 승인 버튼
+- `.moai/specs/SPEC-CI-001/` — CI 테스트 배선 (push·pull_request 자동 실행)
 - [CHANGELOG.md](./CHANGELOG.md) — 버전별 변경 내역

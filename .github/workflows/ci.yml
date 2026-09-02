@@ -1,0 +1,29 @@
+# SPEC-CI-001 — push·pull_request 마다 npm ci → typecheck → npm test 를 실행한다.
+# OD-1=(b) typecheck 두 단계 편입 · OD-2=(b) Node 버전은 .nvmrc 단일 출처 · OD-3=(b) 채널 빌드는 channel pretest 훅이 수행하므로 워크플로 빌드 단계는 없다.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w server
+      - run: npm run typecheck -w channel
+      - run: npm test

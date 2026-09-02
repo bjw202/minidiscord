@@ -1,0 +1,66 @@
+failure 33395356613
+test	Run npm test	2026-08-31T13:09:50.0492219Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2mafter welcome, the same two frames reach the session exactly once each
+test	Run npm test	2026-08-31T13:09:51.9092640Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma history_response before welcome resolves nothing; after welcome it resolves
+test	Run npm test	2026-08-31T13:09:51.9330405Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2msession establishment does not survive a reconnect
+test	Run npm test	2026-08-31T13:09:58.5197867Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma rogue that reads the hello cannot forge a challenge from what it read (hmac-pub)
+test	Run npm test	2026-08-31T13:09:58.9662554Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce)
+test	Run npm test	2026-08-31T13:09:59.4114849Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma rogue that reads the hello cannot forge a challenge from what it read (sha256-pub)
+test	Run npm test	2026-08-31T13:09:59.8560948Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma rogue that reads the hello cannot forge a challenge from what it read (pub)
+test	Run npm test	2026-08-31T13:10:00.9368943Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma challenge from a stub that holds the confirm key establishes the session
+test	Run npm test	2026-08-31T13:10:01.3517496Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2mno auth signature leaves the channel before the server has proved itself
+test	Run npm test	2026-08-31T13:10:02.1791998Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2mboth nonces are regenerated per socket and a replayed challenge is refused
+test	Run npm test	2026-08-31T13:10:03.2013662Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2mboth nonces are regenerated per socket and a replayed challenge is refused
+test	Run npm test	2026-08-31T13:10:03.6387640Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (wrong)
+test	Run npm test	2026-08-31T13:10:05.1329897Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (short)
+test	Run npm test	2026-08-31T13:10:06.6253947Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (omit)
+test	Run npm test	2026-08-31T13:10:08.1198959Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (other-room)
+test	Run npm test	2026-08-31T13:10:09.6163505Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (bad-nonce)
+test	Run npm test	2026-08-31T13:10:11.1115796Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (pipe-nonce)
+test	Run npm test	2026-08-31T13:10:12.5743534Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2man envelope with a broken mac, and a frame with no envelope, are both dropped
+test	Run npm test	2026-08-31T13:10:12.9996782Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma replayed envelope is dropped because its sequence has already been used
+test	Run npm test	2026-08-31T13:11:02.8366262Z  [31m❯[39m test/transport-auth.test.ts [2m([22m[2m30 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 73233[2mms[22m[39m
+test	Run npm test	2026-08-31T13:11:03.6136428Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mgateway message becomes exactly one session notification
+test	Run npm test	2026-08-31T13:11:03.6426766Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mcc message is delivered but raises no working status
+test	Run npm test	2026-08-31T13:11:03.8777793Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma TO message reports working to the gateway
+test	Run npm test	2026-08-31T13:11:03.9013349Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mreply tool sends a bot_message with mapped file paths
+test	Run npm test	2026-08-31T13:11:03.9369970Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2midle status follows the bot_message, not precedes it
+test	Run npm test	2026-08-31T13:11:03.9616523Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mfetch_history forwards since_id and limit verbatim
+test	Run npm test	2026-08-31T13:11:03.9761876Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mhistory renders as one structured JSON document
+test	Run npm test	2026-08-31T13:11:03.9882922Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mempty history renders the same JSON shape with a null cursor
+test	Run npm test	2026-08-31T13:11:04.0030106Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma single poisoned message stays a single element and carries no live envelope sequence
+test	Run npm test	2026-08-31T13:11:04.0159215Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma single poisoned message stays a single element and carries no live envelope sequence
+test	Run npm test	2026-08-31T13:11:04.0313263Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mderives the cursor from ids only, never from body text, and nulls it when empty
+test	Run npm test	2026-08-31T13:11:04.0441904Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mderives the cursor from ids only, never from body text, and nulls it when empty
+test	Run npm test	2026-08-31T13:11:04.1005973Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma chat message with no MCP peer raises no unhandled rejection
+test	Run npm test	2026-08-31T13:11:07.3448420Z  [31m❯[39m test/index-wiring.test.ts [2m([22m[2m14 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 3752[2mms[22m[39m
+test	Run npm test	2026-08-31T13:11:07.8199259Z [90mstderr[2m | test/gateway-mutual-auth.test.ts[2m > [22m[2mgateway mutual auth[2m > [22m[2mthe real server and the real channel agree end to end, envelope included
+test	Run npm test	2026-08-31T13:11:07.8741479Z [90mstderr[2m | test/gateway-mutual-auth.test.ts[2m > [22m[2mgateway mutual auth[2m > [22m[2ma relaying man in the middle passes the handshake and still injects nothing
+test	Run npm test	2026-08-31T13:11:08.3647143Z [90mstderr[2m | test/gateway-mutual-auth.test.ts[2m > [22m[2mgateway mutual auth[2m > [22m[2ma history response from the real server arrives inside an envelope and resolves
+test	Run npm test	2026-08-31T13:11:13.5071157Z  [31m❯[39m test/gateway-mutual-auth.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 5769[2mms[22m[39m
+test	Run npm test	2026-08-31T13:11:16.1900005Z [41m[1m FAIL [22m[49m test/gateway-mutual-auth.test.ts[2m > [22mgateway mutual auth[2m > [22ma real relay terminating tls on both sides cannot take over the bot session
+test	Run npm test	2026-08-31T13:11:16.1910069Z [36m [2m❯[22m waitFor test/gateway-mutual-auth.test.ts:[2m105:37[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2206871Z [90m [2m❯[22m test/gateway-mutual-auth.test.ts:[2m370:5[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2218599Z [41m[1m FAIL [22m[49m test/index-wiring.test.ts[2m > [22mchannel wiring[2m > [22mimporting the module opens no connection
+test	Run npm test	2026-08-31T13:11:16.2225277Z [36m [2m❯[22m test/index-wiring.test.ts:[2m350:30[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2237082Z [41m[1m FAIL [22m[49m test/index-wiring.test.ts[2m > [22mchannel wiring[2m > [22mthe built artifact speaks MCP; the token gates only the gateway
+test	Run npm test	2026-08-31T13:11:16.2240070Z [36m [2m❯[22m waitFor test/index-wiring.test.ts:[2m38:37[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2249183Z [90m [2m❯[22m test/index-wiring.test.ts:[2m401:5[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2253140Z [41m[1m FAIL [22m[49m test/transport-auth.test.ts[2m > [22mtransport auth[2m > [22mthe entry point refuses a plaintext remote and connects otherwise
+test	Run npm test	2026-08-31T13:11:16.2260225Z [36m [2m❯[22m test/transport-auth.test.ts:[2m562:59[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2495102Z [41m[1m FAIL [22m[49m test/transport-auth.test.ts[2m > [22mtransport auth[2m > [22mrefuses an unparseable address, stays alive, says nothing on stdout, and explains truthfully
+test	Run npm test	 ❯ waitFor test/gateway-mutual-auth.test.ts:105:37
+test	Run npm test	 ❯ test/gateway-mutual-auth.test.ts:370:5
+test	Run npm test	2026-08-31T13:11:16.2568175Z [36m [2m❯[22m waitFor test/transport-auth.test.ts:[2m276:37[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2572209Z [90m [2m❯[22m test/transport-auth.test.ts:[2m609:5[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2573718Z [41m[1m FAIL [22m[49m test/transport-auth.test.ts[2m > [22mtransport auth[2m > [22mthe entry point closes a rejected socket, says one line on stderr and nothing on stdout
+test	Run npm test	2026-08-31T13:11:16.2575787Z [36m [2m❯[22m waitFor test/transport-auth.test.ts:[2m276:37[22m[39m
+test	Run npm test	2026-08-31T13:11:16.2580212Z [90m [2m❯[22m test/transport-auth.test.ts:[2m904:5[22m[39m
+test	Run npm test	 ❯ test/index-wiring.test.ts:350:30
+test	Run npm test	 ❯ waitFor test/index-wiring.test.ts:38:37
+test	Run npm test	 ❯ test/index-wiring.test.ts:401:5
+test	Run npm test	 ❯ test/transport-auth.test.ts:562:59
+test	Run npm test	 ❯ waitFor test/transport-auth.test.ts:276:37
+test	Run npm test	 ❯ test/transport-auth.test.ts:609:5
+test	Run npm test	 ❯ waitFor test/transport-auth.test.ts:276:37
+test	Run npm test	 ❯ test/transport-auth.test.ts:904:5
+test	Run npm test	2026-08-31T13:11:16.2436076Z [2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m89 passed[39m[22m[90m (95)[39m

@@ -1,0 +1,4 @@
+triggers: ['pull_request', 'push']
+push filter-free: {}
+pull_request filter-free: {}
+TRIGGERS OK
