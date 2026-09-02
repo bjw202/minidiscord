@@ -370,6 +370,25 @@ describe('AC-WEBSHELL-013 logout', () => {
 // 그냥 던진다. submit 핸들러의 «register → login 경로에서 이미 문구를 채웠다» 주석은
 // 회원가입 실패에서 거짓이다 — login 은 아직 불리지 않았다. 레인 재현: 7자 비밀번호로
 // POST /api/auth/register → 서버는 400 본문을 냈고 화면은 무반응이었다.
+
+// style.css 에서 셀렉터의 규칙 블록 원문을 잡는다. 접두가 겹치는 셀렉터(#auth-view form 등)는
+// 셀렉터 다음에 여백+`{` 가 바로 오지 않으므로 여기서 걸러지고, 주석 속 문자열은 `{` 가
+// 뒤따르지 않아 무시된다. 중괄호는 깊이를 세어 짝을 맞춘다.
+function cssRuleBlock(css: string, selector: string): string {
+  let at = -1
+  for (let i = css.indexOf(selector); i !== -1; i = css.indexOf(selector, i + 1)) {
+    if (css.slice(i + selector.length).trimStart().startsWith('{')) { at = i; break }
+  }
+  expect(at, `style.css 에 ${selector} 규칙이 있어야 한다`).toBeGreaterThanOrEqual(0)
+  const brace = css.indexOf('{', at)
+  let depth = 0
+  for (let i = brace; i < css.length; i++) {
+    if (css[i] === '{') depth++
+    else if (css[i] === '}') { depth--; if (depth === 0) return css.slice(brace + 1, i) }
+  }
+  return ''
+}
+
 describe('register/auth-error repair (card t32 §D)', () => {
   it('surfaces the server message when registration itself fails (400)', async () => {
     const app = await loadApp()
@@ -405,5 +424,17 @@ describe('register/auth-error repair (card t32 §D)', () => {
     const regForm = document.getElementById('register-form')!
     expect(banner.compareDocumentPosition(loginForm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(banner.compareDocumentPosition(regForm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  // 결함 D-2 의 시각 절반 — 배너가 두 패널 «위» 줄을 차지해야 한다. jsdom 은 link 된
+  // stylesheet 의 규칙을 getComputedStyle 로 읽지 못하고 offsetTop 도 전부 0 이라
+  // 런타임 레이아웃 단언은 불가능하다. 그래서 기계적으로 가능한 최강의 대체로
+  // style.css 파일 자체를 읽어 해당 셀렉터의 규칙 블록에서 두 선언을 잰다
+  // (AC-WEBSHELL-001 이 web/ 파일을 readFileSync 로 잰 것과 같은 방식). DOM 순서 it 과
+  // 이 규칙 it 이 함께여야 «순서 + 규칙» 의 시각 의도가 고정된다.
+  it('keeps the banner full-width above the panels (style.css rules)', () => {
+    const css = readFileSync(join(webDir, 'style.css'), 'utf8')
+    expect(cssRuleBlock(css, '#auth-view')).toContain('flex-wrap: wrap')
+    expect(cssRuleBlock(css, '#auth-error')).toContain('width: 100%')
   })
 })

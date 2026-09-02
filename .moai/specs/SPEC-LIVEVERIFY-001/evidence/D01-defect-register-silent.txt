@@ -283,3 +283,78 @@ app.js·index.html 본문이 나간다 — 위 관측이 응답 시점의 디스
 - 정직 기록: 헤드리스 재관측(2회차 출력)이 쓰기를 동반해 probe-headless-1 이 재생성되어
   즉시 재정리(sessions 1행 + users 1행) — 재실행 스크립트는 DB 를 다시 쓴다.
   최종 전수 재조회 = 3행(운영자 것만), 프루브 잔재 0.
+
+=== §10 후속 수리 — D-2 시각 미달 마무리 (2026-09-02, 리드 «비차단 병행 수리» 지시) ===
+발견: D-1·D-2 수리(a44523c) 이후 운영자 스크린샷 실측에서 #auth-error 의 DOM 순서 it 은
+통과하지만 시각적으로는 «두 패널 위»가 아니라 flex row 의 첫 형제라 패널 왼쪽 가장자리에
+렌더링됐다(#auth-view 가 display:flex 이고 wrap 이 없어 세 형제가 한 줄에 나란함).
+  스크린샷: evidence/defect-2-1-409-visible-banner-left.png
+    — 동시에 D-1 수리 실동작의 첫 실측 증거이기도 하다: 409 «이미 있는 사용자 이름입니다»
+      문구가 이제 화면에 실제로 표시된다(수리 전에는 아예 무반응이었다 — §1).
+  스크린샷: evidence/defect-2-2-login-cropped.png
+
+CSS 수리 (web/style.css, 두 규칙에 선언 하나씩):
+  #auth-view — flex-wrap: wrap; (display: flex; 다음 — #room-bots 의 선언 순서 관습과 같다)
+  #auth-error — width: 100%; (margin 다음, color 앞)
+  배너가 첫 줄 전폭을 혼자 쓰고 폼 둘은 다음 줄에 나란히 온다. 다른 규칙·요소 무변경.
+
+git diff -- web/style.css 원문:
+
+diff --git a/web/style.css b/web/style.css
+index 1723654..c976069 100644
+--- a/web/style.css
++++ b/web/style.css
+@@ -41,6 +41,7 @@ input:focus { outline: 1px solid var(--md-accent); }
+ /* ── 인증 화면 — 가장 밝은 배경 위에 패널 카드 하나 ────── */
+ #auth-view {
+   display: flex;
++  flex-wrap: wrap;
+   align-items: center;
+   justify-content: center;
+   gap: var(--md-space-5);
+@@ -68,9 +69,11 @@ input:focus { outline: 1px solid var(--md-accent); }
+   color: var(--md-text-muted);
+ }
+
+-/* 서버가 준 오류 문구 — 붉은 상태색 (design DNA §1) */
++/* 서버가 준 오류 문구 — 붉은 상태색 (design DNA §1). 전폭(width: 100%)이라 #auth-view 의
++   flex-wrap 과 함께 첫 줄을 혼자 쓰고 두 패널은 다음 줄에 나란히 온다 (카드 t32 §D 결함 D-2) */
+ #auth-error {
+   margin: var(--md-space-2) 0 0;
++  width: 100%;
+   color: var(--md-status-error);
+ }
+
+테스트 보강 (server/test/web-shell.test.ts, 기존 describe 에 it 하나 추가 — DOM 순서 it 을
+그대로 유지해 «순서 + 규칙» 이 함께 시각 의도를 고정한다):
+  it('keeps the banner full-width above the panels (style.css rules)')
+  — cssRuleBlock(css, '#auth-view') 에 flex-wrap: wrap, cssRuleBlock(css, '#auth-error')
+    에 width: 100% 를 단언. 블록 추출은 대충 regex 통과가 아니라 «셀렉터 다음 여백+{»
+    지점을 찾아 중괄호 깊이를 세어 규칙 블록을 통째로 잡는 헬퍼로 한다 — 접두가 겹치는
+    셀렉터(#auth-view form·#auth-view h1 등)와 주석 속 문자열이 여기서 걸러진다.
+
+jsdom 한계와 대체 단언 근거: jsdom 은 link 된 stylesheet 의 규칙을 getComputedStyle 로
+읽지 못하고(offsetTop 도 전부 0) 런타임 레이아웃 단언이 불가능하다. 그래서 기계적으로
+가능한 최강의 대체로 style.css 파일 자체를 readFileSync 로 읽어 해당 셀렉터의 규칙
+블록에서 두 선언을 잰다 — AC-WEBSHELL-001 이 web/ 파일을 readFileSync 로 잰 것과 같은
+방식이다. 시각 결과의 최종 재는 것은 운영자 스크린샷(재촬영)이 담당한다.
+
+RED 원문 (CSS 수정 전, npx vitest run --root <t32/server> test/web-shell.test.ts):
+  FAIL … > keeps the banner full-width above the panels (style.css rules)
+  AssertionError: expected '\n  display: flex;\n  align-items: ce…' to contain 'flex-wrap: wrap'
+  Tests  1 failed | 15 passed (16)
+  — 실패 메시지에 cssRuleBlock 이 잡은 #auth-view 블록 원문이 그대로 보여
+    extractor 가 올바른 규칙을 잡는 것도 함께 확인된다.
+
+GREEN (CSS 수정 후 실측):
+  파일: npx vitest run --root <t32/server> test/web-shell.test.ts → exit 0, 16 passed (16)
+  server 전체: npm --prefix <t32/server> test (= vitest run) → exit 0,
+    16 files / 195 passed (195)
+  정적 서빙 프로브(buildServer+inject): GET /style.css status=200,
+    served css has flex-wrap in #auth-view block: true,
+    served css has width:100% in #auth-error block: true
+    — §6 의 «재시작 불요·새로고침이면 충분» 결론이 style.css 에도 그대로 적용됨을
+      응답 본문 실측으로 확인.
+
+귀속: 이 절의 RED·GREEN·프로브는 모두 이 워크트리(vitest 4.1.11) 실측. 스크린샷 2장은
+운영자 촬영본이다.

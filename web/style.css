@@ -41,6 +41,7 @@ input:focus { outline: 1px solid var(--md-accent); }
 /* ── 인증 화면 — 가장 밝은 배경 위에 패널 카드 하나 ────── */
 #auth-view {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: var(--md-space-5);
@@ -68,9 +69,11 @@ input:focus { outline: 1px solid var(--md-accent); }
   color: var(--md-text-muted);
 }
 
-/* 서버가 준 오류 문구 — 붉은 상태색 (design DNA §1) */
+/* 서버가 준 오류 문구 — 붉은 상태색 (design DNA §1). 전폭(width: 100%)이라 #auth-view 의
+   flex-wrap 과 함께 첫 줄을 혼자 쓰고 두 패널은 다음 줄에 나란히 온다 (카드 t32 §D 결함 D-2) */
 #auth-error {
   margin: var(--md-space-2) 0 0;
+  width: 100%;
   color: var(--md-status-error);
 }
 
