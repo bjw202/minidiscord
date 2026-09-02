@@ -1,0 +1,250 @@
+카드 t32 §D — 결함 D-1·D-2 (register 실패 무반응) 수리 증거
+SPEC-LIVEVERIFY-001 / 수리 집행: run 레인 수리 워커 / 2026-09-02
+기준 트리: .claude/worktrees/t32 (커밋 전 작업 트리 상태, 미커밋)
+
+──────────────────────────────────────────────────────────────────────
+§1 결함 보고 요약 (운영자 증상 + 레인 재현)
+──────────────────────────────────────────────────────────────────────
+
+증상: 운영자가 회원가입 패널에서 짧은 비밀번호로 가입을 시도했을 때 화면에
+아무 반응이 없었다. 서버는 400 과 오류 문구를 정상적으로 내보냈는데도
+브라우저 화면은 조용히 그대로였고, 오류 문구가 패널 바깥 오른쪽에 떠 있는
+스크린샷이 남아 있다.
+
+  스크린샷: evidence/defect-1-register-silent.png
+
+run 레인 curl 재현 (레인 실측 — 이 파일 쓰는 워커가 재실행한 것 아님):
+  - POST /api/auth/register (7자 비밀번호) → 400 {"error":"username과 8자 이상 password가 필요합니다"} — UI 무반응
+  - 백엔드 정상 확인: 신규 등록 201 / 중복 등록 409 / 로그인 200
+  - 진단 프로브: 'ttongchim' 으로 등록 재시도 → 201 (운영자의 원래 시도가
+    실제로는 아무것도 쓰지 못했다는 뜻 — 서버 결함이 아니라 UI 결함임을 뒷받침)
+
+──────────────────────────────────────────────────────────────────────
+§2 원인 (결함 두 개, 수리 전 파일 앵커)
+──────────────────────────────────────────────────────────────────────
+
+결함 D-1 — register 실패가 #auth-error 를 채우지 않음 (web-only)
+  web/app.js:135-139 (수리 전). register() 는 await api('/api/auth/register', …) 가
+  실패하면 아무 화면 처리 없이 그냥 되던진다. submit 핸들러(web/app.js:263)는
+  catch 로 삼키면서 «register → login 경로에서 이미 문구를 채웠다» 라는 주석을
+  근거로 뒀는데, 회원가입 단계 자체의 실패(400 너무 짧은 비밀번호, 409 중복 이름)에서는
+  login() 이 아직 불리지 않았으므로 그 가정이 거짓이다 — #auth-error 를 채우는 주체가
+  아무도 없어 화면이 무반응이 된다. login() (web/app.js:121-133)은 자기 실패를
+  #auth-error 에 채우는 확립된 패턴을 이미 갖고 있다.
+
+결함 D-2 — #auth-error 가 두 폼 다음 셋째 형제로 배치됨
+  web/index.html:32-33 (수리 전). #auth-error 가 login-form·register-form 다음,
+  즉 #auth-view 의 셋째 자식이라 auth-error 가 뜨면 패널들 오른쪽 바깥에 떴다
+  (스크린샷 참조). id·hidden 속성 자체는 정상이고 배치만 잘못됐다.
+
+──────────────────────────────────────────────────────────────────────
+§3 RED 원문 (수리 전 관측)
+──────────────────────────────────────────────────────────────────────
+
+테스트 3건 추가: server/test/web-shell.test.ts describe
+'register/auth-error repair (card t32 §D)' — 400 경로, 409 경로, DOM 배치.
+
+실행 명령: npx vitest run test/web-shell.test.ts
+실행 위치: .claude/worktrees/t32/server
+관측 결과: exit=1, 3 failed | 12 passed (15) — 기존 12건 전부 통과, 새 3건만 실패
+
+원문 (요지부, /tmp 로그 전문 중 Failed Tests 3 블록 전체):
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/web-shell.test.ts > register/auth-error repair (card t32 §D) > surfaces the server message when registration itself fails (400)
+AssertionError: 회원가입 실패가 화면에 보여야 한다: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/web-shell.test.ts:382:47
+    380|       .rejects.toThrow('username과 8자 이상 password가 필요합니다')
+    381|     const err = document.getElementById('auth-error')!
+    382|     expect(err.hidden, '회원가입 실패가 화면에 보여야 한다').toBe(false)
+       |                                               ^
+    383|     expect(err.textContent).toBe('username과 8자 이상 password가 필요합니다')
+    384|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/web-shell.test.ts > register/auth-error repair (card t32 §D) > surfaces the duplicate-name message when registration fails (409)
+AssertionError: 중복 이름 실패도 화면에 보여야 한다: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/web-shell.test.ts:394:48
+    392|       .rejects.toThrow('이미 있는 사용자 이름입니다')
+    393|     const err = document.getElementById('auth-error')!
+    394|     expect(err.hidden, '중복 이름 실패도 화면에 보여야 한다').toBe(false)
+       |                                                ^
+    395|     expect(err.textContent).toBe('이미 있는 사용자 이름입니다')
+    396|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/web-shell.test.ts > register/auth-error repair (card t32 §D) > keeps the auth-error banner ahead of both panels
+AssertionError: expected +0 to be truthy
+
+- Expected:
+true
+
++ Received:
+0
+
+ ❯ test/web-shell.test.ts:406:90
+    404|     const loginForm = document.getElementById('login-form')!
+    405|     const regForm = document.getElementById('register-form')!
+    406|     expect(banner.compareDocumentPosition(loginForm) & Node.DOCUMENT_P…
+       |                                                                                          ^
+    407|     expect(banner.compareDocumentPosition(regForm) & Node.DOCUMENT_POS…
+    408|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 12 passed (15)
+
+귀속: vitest 4.1.11, 이 워크트리(수리 전 작업 트리)에서의 실측. RED 의 세 실패는
+§2 의 두 결함과 정확히 대응한다 — [1/3]·[2/3] 이 D-1(#auth-error 가 채워지지 않아
+hidden 유지), [3/3] 이 D-2(배너가 두 폼보다 뒤라 FOLLOWING 비트 0).
+
+──────────────────────────────────────────────────────────────────────
+§4 수리 diff (web/app.js + web/index.html)
+──────────────────────────────────────────────────────────────────────
+
+git diff --stat (테스트 파일 포함 전체):
+  server/test/web-shell.test.ts | 43 +++++++++++++++++++++++++++++++++++++++++++
+  web/app.js                    | 11 ++++++++++-
+  web/index.html                |  4 ++--
+  3 files changed, 55 insertions(+), 3 deletions(-)
+
+git diff -- web/app.js web/index.html 원문:
+
+diff --git a/web/app.js b/web/app.js
+index 44f93e7..3d34c89 100644
+--- a/web/app.js
++++ b/web/app.js
+@@ -134,7 +134,16 @@ export async function login(username, password) {
+
+ // 회원가입 성공 → 같은 자격으로 이어서 로그인한다 (REQ-WEBSHELL-008).
+ export async function register(username, password) {
+-  await api('/api/auth/register', { method: 'POST', body: { username, password } })
++  // 회원가입 단계 자체의 실패(400·409)도 #auth-error 에 서버 문구로 표시한다 —
++  // 핸들러의 «login 이 이미 채웠다» 가정은 회원가입 실패에서 거짓이다 (카드 t32 §D 결함 D-1).
++  try {
++    await api('/api/auth/register', { method: 'POST', body: { username, password } })
++  } catch (err) {
++    const el = $('auth-error')
++    el.textContent = err instanceof Error ? err.message : String(err)
++    el.hidden = false
++    throw err
++  }
+   await login(username, password)
+ }
+
+diff --git a/web/index.html b/web/index.html
+index 462e44c..ccec9ad 100644
+--- a/web/index.html
++++ b/web/index.html
+@@ -13,6 +13,8 @@
+ <body>
+   <!-- 인증 화면 — 로그인과 회원가입을 한 패널에 둔다 -->
+   <section id="auth-view">
++    <!-- 서버가 준 오류 문구가 여기 뜬다 — 화면은 인증 뷰에 머문다 (REQ-WEBSHELL-008) -->
++    <p id="auth-error" hidden></p>
+     <form id="login-form">
+       <h1>minidiscord</h1>
+       <label for="login-username">사용자 이름</label>
+@@ -29,8 +31,6 @@
+       <input id="reg-password" type="password" autocomplete="new-password">
+       <button type="submit">회원가입</button>
+     </form>
+-    <!-- 서버가 준 오류 문구가 여기 뜬다 — 화면은 인증 뷰에 머문다 (REQ-WEBSHELL-008) -->
+-    <p id="auth-error" hidden></p>
+   </section>
+
+   <!-- 메인 화면: 사이드바 + 채팅. 채팅 내용물는 형제 SPEC(SPEC-WEBCHAT-001) 소유다 -->
+
+범위: register() 의 회원가입 단계 await 만 login() 의 확립된 try/catch 패턴으로 감싸고
+await login(username, password) 는 그대로 둔다(login 이 자기 실패를 이미 채운다).
+마크업은 요소 이동 하나뿐이고 id·hidden·기존 주석은 원문 그대로다. 네트워크 호출
+개수·순서 변경 없음(§4.8 계약 6 불변). server/src/** 는 만지지 않았다.
+
+──────────────────────────────────────────────────────────────────────
+§5 GREEN 원문 (수리 후 관측)
+──────────────────────────────────────────────────────────────────────
+
+(1) 파일 단위 — npx vitest run test/web-shell.test.ts (위치: t32/server), exit=0
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/server
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  17:58:03
+   Duration  769ms (transform 73ms, setup 0ms, import 31ms, tests 259ms, environment 415ms)
+
+새 3건 전부 통과 + 기존 AC-WEBSHELL-001~013 전건 회귀 없음
+(id 위생 AC-003·부트스트랩 AC-004·401 분기 AC-008·로그인 흐름 AC-009 포함).
+
+(2) server 전체 스위트 — npm test (t32/server 안, = vitest run), exit=0
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/server
+
+ Test Files  16 passed (16)
+      Tests  194 passed (194)
+   Start at  17:58:51
+   Duration  7.80s (transform 1.13s, setup 0ms, import 2.41s, tests 23.00s, environment 1.57s)
+
+귀속: 두 실행 모두 이 워크트리(수리 후 작업 트리) 실측. jsdom 파일은 서버 프로세스
+불필요(스텁 fetch), 나머지 node 테스트는 임시 디렉터리의 실제 sqlite 를 쓴다.
+
+──────────────────────────────────────────────────────────────────────
+§6 서버 재시작 필요성 — 불요, 브라우저 새로고침이면 충분
+──────────────────────────────────────────────────────────────────────
+
+정적 서빙 설정 (server/src/index.ts:65-68):
+  await app.register(fastifyStatic, {
+    root: process.env.MINIDISCORD_WEB_DIR ?? fileURLToPath(new URL('../../web', import.meta.url)),
+    prefix: '/',
+  })
+
+@fastify/static 을 root(=web/ 디렉터리)+prefix '/' 로만 걸었다 — 캐시 옵션·메모리
+프리로드는 없다. 즉 정적 응답은 요청이 올 때마다 디스크에서 그 파일을 읽어 만들어진다.
+
+관측 근거 (buildServer 로 인스턴스를 만들어 inject 로 정적 경로를 직접 물어봄):
+  GET /app.js status=200
+  served body contains the register fix: true
+  GET / status=200
+  auth-error precedes login-form in served html: true
+  etag header present: true
+
+해석: (a) 지금 떠 있는 서버 프로세스를 재시작하지 않아도 다음 정적 요청부터 수리된
+app.js·index.html 본문이 나간다 — 위 관측이 응답 시점의 디스크 읽기를 직접 보여준다.
+(b) 응답에 etag 가 붙으므로 브라우저의 보통 새로고침이 If-None-Match 재검사로
+바뀐 본문을 받아 온다. 강제 새로고침(Cmd+Shift+R)은 브라우저 모듈 캐시까지
+지워 주는 안전 조치로 권장하되, 재시작은 필요 없다.
+
+=== §7 프로브 잔재 정리 (리드 승인 2026-09-02 — 정확한 사용자 이름 일치만) ===
+배경: 레인의 curl 재현이 users 에 2행을 만들었다(probe-m1-defect · ttongchim 선점분).
+운영자 재시도를 위해 리드가 DELETE 를 승인(조건: 정확한 이름 일치·전수 재조회 첨부·본 § 기록).
+
+실행 기록 (node better-sqlite3, server/data/minidiscord.db):
+  1) DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE username IN ('probe-m1-defect','ttongchim'))
+     -> 1 행 (레인 재현의 login 200 이 남긴 프로브 세션; FK 제약으로 users DELETE 전 필수)
+  2) DELETE FROM users WHERE username = 'probe-m1-defect'  -> 1 행
+  3) DELETE FROM users WHERE username = 'ttongchim'        -> 1 행
+
+삭제 후 users 전수 재조회:
+  SELECT id, username, created_at FROM users ORDER BY id
+  -> [] (0 행)
+
+결론: users 잔재 0건. ttongchim 은 자유 상태 — 운영자가 원래 이름 그대로 재시도 가능(비밀번호 8자 이상).
+기록자: run 레인 (리드 승인 하 집행) — 2026-09-02

@@ -134,7 +134,16 @@ export async function login(username, password) {
 
 // 회원가입 성공 → 같은 자격으로 이어서 로그인한다 (REQ-WEBSHELL-008).
 export async function register(username, password) {
-  await api('/api/auth/register', { method: 'POST', body: { username, password } })
+  // 회원가입 단계 자체의 실패(400·409)도 #auth-error 에 서버 문구로 표시한다 —
+  // 핸들러의 «login 이 이미 채웠다» 가정은 회원가입 실패에서 거짓이다 (카드 t32 §D 결함 D-1).
+  try {
+    await api('/api/auth/register', { method: 'POST', body: { username, password } })
+  } catch (err) {
+    const el = $('auth-error')
+    el.textContent = err instanceof Error ? err.message : String(err)
+    el.hidden = false
+    throw err
+  }
   await login(username, password)
 }
 

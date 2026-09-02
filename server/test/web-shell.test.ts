@@ -364,3 +364,46 @@ describe('AC-WEBSHELL-013 logout', () => {
     expect(document.getElementById('main-view')!.hidden).toBe(true)
   })
 })
+
+// ── 카드 t32 §D — register 실패 무반응 결함 수리 (결함 D-1·D-2) ──────────
+// 결함 D-1: register() 는 회원가입 단계 자체의 실패(400·409)에서 #auth-error 를 채우지 않고
+// 그냥 던진다. submit 핸들러의 «register → login 경로에서 이미 문구를 채웠다» 주석은
+// 회원가입 실패에서 거짓이다 — login 은 아직 불리지 않았다. 레인 재현: 7자 비밀번호로
+// POST /api/auth/register → 서버는 400 본문을 냈고 화면은 무반응이었다.
+describe('register/auth-error repair (card t32 §D)', () => {
+  it('surfaces the server message when registration itself fails (400)', async () => {
+    const app = await loadApp()
+    stubFetch({
+      'POST /api/auth/register': { status: 400, body: { error: 'username과 8자 이상 password가 필요합니다' } },
+    })
+    await expect(app.register('ttongchim', 'short7'))
+      .rejects.toThrow('username과 8자 이상 password가 필요합니다')
+    const err = document.getElementById('auth-error')!
+    expect(err.hidden, '회원가입 실패가 화면에 보여야 한다').toBe(false)
+    expect(err.textContent).toBe('username과 8자 이상 password가 필요합니다')
+  })
+
+  it('surfaces the duplicate-name message when registration fails (409)', async () => {
+    const app = await loadApp()
+    stubFetch({
+      'POST /api/auth/register': { status: 409, body: { error: '이미 있는 사용자 이름입니다' } },
+    })
+    await expect(app.register('ttongchim', 'pw123456'))
+      .rejects.toThrow('이미 있는 사용자 이름입니다')
+    const err = document.getElementById('auth-error')!
+    expect(err.hidden, '중복 이름 실패도 화면에 보여야 한다').toBe(false)
+    expect(err.textContent).toBe('이미 있는 사용자 이름입니다')
+  })
+
+  // 결함 D-2: #auth-error 가 login-form·register-form 다음(셋째 형제)이라 오류 문구가
+  // 패널 바깥 오른쪽에 떴다 (스크린샷 evidence/defect-1-register-silent.png). 배너가
+  // #auth-view 의 첫 자식인 것을 DOM 위치로 잰다 — 어느 폼이 실패했든 공용 배너로 읽힌다.
+  it('keeps the auth-error banner ahead of both panels', () => {
+    loadDom()
+    const banner = document.getElementById('auth-error')!
+    const loginForm = document.getElementById('login-form')!
+    const regForm = document.getElementById('register-form')!
+    expect(banner.compareDocumentPosition(loginForm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(banner.compareDocumentPosition(regForm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
