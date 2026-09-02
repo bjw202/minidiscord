@@ -468,10 +468,101 @@ app.js 에도 동일 적용된다(같은 fastifyStatic 경로, §10 의 본문 �
 운영자 계정(quswjddnjs·jw-1 시도)은 무반응 판정의 당사자라 남겨 둔다 — «운영자 계정으로
 판정 — 유지, 삭제하지 않음(리드 확인)».
 
-§11 보충 (리드 문언 접수 — run 레인 append):
-- 잔존 용의자 확정: Chrome+Blink(운영자) 실패 vs headless Chromium 통과 vs Playwright
-  WebKit 통과. 잔존 용의는 운영자 프로필의 쿠키 설정·확장 프로그램이며, ITP 는 Playwright
-  빌드에 비활성이라 Safari 실기기는 여전히 후보 (리드 문언).
-- 프루브 정리 보충: probe-webkit-1·2 DELETE(sessions 2 + users 2) 후 users 전수 5행 중
-  quswjddnjs·jw-1 은 운영자 가입 테스트 계정으로 판정 — 유지, 삭제하지 않음(리드 확인).
-- WebKit 재현 출력: evidence/webkit-green-output.txt (probe-webkit-2 실행 — §11 본문 참조).
+=== §12 긴급 재검증 — 현재 코드 실브라우저 공백 해소·코드 무죄 확정 (2026-09-02, 리드 지시) ===
+발단: 운영자가 3001(주소창 3001 확인됨)에서도 무반응이었는데 서버에는 전건 성공이 착지
+(jw-5 등록 + 세션 3행) — «register 201 → login 200 → showMain 예외 → 핸들러 삼킴» 이
+유일하게 일치하는 코드 경로로 제기됐고, HEADLESS-GREEN·WebKit GREEN 이 전부 e43c60a
+이전 코드였다는 실브라우저 검증 공백이 확인됐다.
+
+재검증 실측 (e43c60a HEAD · 3001 · pageerror+console 전체 캡처 — evidence/e43c60a-recheck-output.txt):
+- [chromium] register 201 → login 200 → rooms 200 → bots 200 · md_session 저장 ·
+  main-view 진입 + «회원가입 완료» 토스트 관측(hidden:false·text 일치) · pageerror 0건 ·
+  콘솔은 초기화 예상 401 1건뿐
+- [webkit] 위와 완전히 동일한 PASS
+
+판정: «showMain 예외» 가설 헤드리스 두 엔진에서 재현 불가 — 새 코드는 실브라우저에서
+정상. 코드 무죄 확정. 남은 차이는 운영자 브라우저의 DOM 변형(확장 프로그램·번역 등) —
+운영자 스크린샷의 «패널 위 비정상 공백»(정상이면 중앙 정렬)과 부합. 운영자 안내는 확장
+무효화(시크릿 확장 미허용 상태·새 사용자 프로필·다른 브라우저·번역 끄기)로 전환.
+
+프루브 정리: probe-recheck-chromium·webkit DELETE — 정직 기록: 출력 저장용 재실행이
+프루브를 재생성해 즉시 재정리(2회 DELETE). 최종 users 전수 = 운영자 9행
+(ttongchim·bjw202·jw·quswjddnjs·jw-1~jw-5), 프루브 잔재 0.
+
+=== §13 근본 원인 확정·수리 — 결함 D-3 [hidden] 가드 부재 (2026-09-02, 리드 확정) ===
+§12 정정: «코드 무죄 확정» 판정은 §12 의 재검증이 속성·콘솔 수준 단언(hidden:false·토스트
+텍스트)이라 시각 레이아웃을 재지 않았기에 나온 것이다 — 이 절로 대체된다. 실제로는
+코드에 결함이 있었다.
+
+근본 원인: style.css 의 #auth-view{display:flex}·#main-view{display:flex} 는 UA
+스타일시트의 [hidden]{display:none} 을 항상 이긴다(author display 선언 우선 — 우선순위가
+아니라 출처(origin) 차원에서 author 가 UA 를 이긴다). 그 결과 el.hidden = true 가
+시각적으로 무효였고, 앱 논리(뷰 전환·쿠키·로그인)는 전부 정상인데 두 뷰가 겹쳐
+렌더링됐다. 운영자의 «무반응» = 최상위 auth-view 가 안 사라진 것, «패널 위 비정상
+공백» = 겹친 main-view. 규칙 증거: style.css 전체를 판독해 [hidden] 규칙이 0건임을
+직접 확인했고(가드 착지 전), RED 에서 규칙 단언이 실패로 재관측됐다.
+
+수리 — style.css 기본 골격 절에 가드 한 줄 (author 선언을 이기려면 !important 가 필요):
+
+diff --git a/web/style.css b/web/style.css
+index c976069..64f1e02 100644
+--- a/web/style.css
++++ b/web/style.css
+@@ -8,6 +8,12 @@
+ /* ── 기본 골격 ─────────────────────────────────────────── */
+ * { box-sizing: border-box; }
+
++/* hidden 가드 — 이 파일의 display:flex 선언(#auth-view·#main-view 등)은 UA 스타일시트의
++   [hidden]{display:none} 을 항상 이긴다(author 선언 우선). 그러면 el.hidden = true 가
++   시각적으로 무효가 되어 두 뷰가 겹쳐 렌더링된다 (카드 t32 §D 결함 D-3).
++   author 선언을 통째로 이기려면 !important 가 필요하다. */
++[hidden] { display: none !important; }
++
+ html, body {
+   margin: 0;
+   height: 100%;
+
+시각 단언 도입 — server/test/web-visual.test.ts (신규): 실리슨 서버(buildServer +
+listen port:0, MINIDISCORD_DATA_DIR 임시 디렉터리 — 운영자의 3000/3001 미접촉)에
+헤드리스 chromium 으로 접속해 register 성공 흐름을 돌린 뒤 #auth-view·#main-view 의
+bounding box 를 잰다. jsdom 은 link stylesheet 규칙도 offsetTop 도 못 재므로 실브라우저가
+필요했다. playwright 는 server 의 의존이 아니므로 npx 캐시(~/.npm/_npx)에서 최근 쓴
+후보 순으로 require 하고, chromium 캐시가 안 맞는 후보는 다음 후보로 넘긴다.
+트레이드오프(공시): 이 테스트가 server 스위트에 브라우저 의존을 추가한다 — playwright
+모듈(npx 캐시)과 chromium 바이너리(ms-playwright 캐시)가 없으면 실패하며, 조용한 skip
+대신 무엇이 없는지 실패 메시지로 알린다(시각 가드의 조용한 소멸 방지).
+
+jsdom 쪽 보강 — web-shell.test.ts 에 규칙 it 하나 추가: cssRuleBlock 재사용으로
+[hidden] 블록의 display: none !important 존재를 단언(실겹침은 visual it 이, 규칙 존재는
+이 it 이 잰다).
+
+RED 원문 (가드 착지 전, npx vitest run --root <t32/server> test/web-visual.test.ts
+test/web-shell.test.ts, exit=1 — 2 failed | 18 passed (20)):
+  FAIL test/web-visual.test.ts > D-3 hidden guard (real browser…) >
+       hides the auth view visually after successful registration
+  AssertionError: auth-view 가 여전히 렌더링된다(겹침) — box:
+    {"x":0,"y":0,"width":1280,"height":720}: expected { x: +0, y: +0, width: 1280, … }
+    to be null
+  FAIL test/web-shell.test.ts > … > keeps the [hidden] guard in style.css
+  — 겹침이 실수치로 관측됐다: 로그인 성공 후 auth-view 가 뷰포트 전체(1280×720) box 로
+    여전히 렌더링 중. 이것이 운영자가 본 «무반응+공백» 의 실체다.
+
+교훈 — 속성 단언의 한계: el.hidden·textContent 단언은 시각적 회귀(겹침·빠짐)를 못
+잡는다. §3~§11 의 전 GREEN 이 속성 수준이었으므로 D-3 을 못 봤다. 시각 대상의 가드는
+레이아웃 측정(bounding box)으로 보강한다. 덧붙여 이 RED 는 헬퍼의 숨은 가정도 잡았다:
+cssRuleBlock 초판은 «주석 속 문자열은 { 를 뒤따르지 않는다» 고 가정했는데 가드 설명
+주석이 [hidden]{display:none} 문법을 그대로 인용해 주석을 규칙으로 잘못 잡았고('display:none'
+반환), 주석을 먼저 벗기는 파싱으로 고쳤다 — 테스트 보강이 기존 테스트 도구를
+단단하게 만든 사례.
+
+GREEN (가드 착지 후 실측):
+  두 파일: 같은 명령 → exit 0, 20 passed (20)
+  server 전체: npm --prefix <t32/server> test → exit 0, 17 files / 199 passed (199)
+    — 17번째 파일이 web-visual.test.ts, 시각 단언이 스위트에 상주한다
+  typecheck: npm --prefix <t32/server> run typecheck → exit 0
+
+귀속: 이 절의 RED·GREEN·typecheck 은 이 워크트리(vitest 4.1.11) 실측. 근본 원인 판정은
+리드 확정 사항이며, 겹침의 실브라우저 재현(box 수치)은 이 워크트리의 chromium 관측이다.
+- 관측 공시: 커밋 직전 리드 1회 실행이 exit 1 로 떨어졌다(원인 미상 — 동시 실행 간섭 의심,
+  직후 재실행 초록). 레인 최종 초록 1회 추가 확인 후 커밋. 일회성 실패의 재발 여부는 §E.2
+  에 함께 적는다.

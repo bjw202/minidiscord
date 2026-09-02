@@ -372,19 +372,22 @@ describe('AC-WEBSHELL-013 logout', () => {
 // POST /api/auth/register → 서버는 400 본문을 냈고 화면은 무반응이었다.
 
 // style.css 에서 셀렉터의 규칙 블록 원문을 잡는다. 접두가 겹치는 셀렉터(#auth-view form 등)는
-// 셀렉터 다음에 여백+`{` 가 바로 오지 않으므로 여기서 걸러지고, 주석 속 문자열은 `{` 가
-// 뒤따르지 않아 무시된다. 중괄호는 깊이를 세어 짝을 맞춘다.
+// 셀렉터 다음에 여백+`{` 가 바로 오지 않으므로 여기서 걸러진다. 주석은 먼저 벗겨낸다 —
+// 규칙 설명 주석이 셀렉터 문법([hidden]{display:none} 등)을 그대로 인용하면 주석 속
+// 문자열이 진짜 규칙보다 먼저 잡히기 때문이다(D-3 가드 it 이 잡은 실제 사례). CSS 주석은
+// 중첩되지 않으므로 벗기기가 안전하다. 중괄호는 깊이를 세어 짝을 맞춘다.
 function cssRuleBlock(css: string, selector: string): string {
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, '')
   let at = -1
-  for (let i = css.indexOf(selector); i !== -1; i = css.indexOf(selector, i + 1)) {
-    if (css.slice(i + selector.length).trimStart().startsWith('{')) { at = i; break }
+  for (let i = bare.indexOf(selector); i !== -1; i = bare.indexOf(selector, i + 1)) {
+    if (bare.slice(i + selector.length).trimStart().startsWith('{')) { at = i; break }
   }
   expect(at, `style.css 에 ${selector} 규칙이 있어야 한다`).toBeGreaterThanOrEqual(0)
-  const brace = css.indexOf('{', at)
+  const brace = bare.indexOf('{', at)
   let depth = 0
-  for (let i = brace; i < css.length; i++) {
-    if (css[i] === '{') depth++
-    else if (css[i] === '}') { depth--; if (depth === 0) return css.slice(brace + 1, i) }
+  for (let i = brace; i < bare.length; i++) {
+    if (bare[i] === '{') depth++
+    else if (bare[i] === '}') { depth--; if (depth === 0) return bare.slice(brace + 1, i) }
   }
   return ''
 }
@@ -469,5 +472,57 @@ describe('register/auth-error repair (card t32 §D)', () => {
     const toast = document.getElementById('error-toast')!
     expect(toast.hidden, '가입 완료 신호가 화면에 남아야 한다').toBe(false)
     expect(toast.textContent).toBe('회원가입 완료')
+    // 성공 토스트는 오류와 같은 요소를 공유하되 성공 클래스로 상태색을 갈라 쓴다 (design DNA §1)
+    expect(toast.classList.contains('toast-success'), '성공 토스트는 성공 클래스를 가진다').toBe(true)
+  })
+
+  // 성공 알림만 저절로 사라진다 — 오류 알림은 삼켜짐 방지를 위해 화면에 남는다(바로 아래 it).
+  it('hides the success toast automatically after four seconds', async () => {
+    const app = await loadApp()
+    vi.useFakeTimers()
+    try {
+      stubFetch({
+        'POST /api/auth/register': { status: 201, body: { id: 1, username: 'ttongchim' } },
+        'POST /api/auth/login': { status: 200, body: { ok: true } },
+        'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
+        'GET /api/bots': { status: 200, body: [] },
+      })
+      await app.register('ttongchim', 'pw123456')
+      const toast = document.getElementById('error-toast')!
+      expect(toast.hidden).toBe(false)
+      vi.advanceTimersByTime(4_000)
+      expect(toast.hidden, '4초 뒤 성공 토스트는 저절로 사라진다').toBe(true)
+      expect(toast.classList.contains('toast-success'), '숨을 때 성공 클래스도 거둔다').toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // 오류 토스트는 자동으로 사라지지 않는다 — 삼켜진 오류가 없게 하는 기존 관습의 회귀
+  // 가드다. AC-WEBSHELL-011 은 표시 자체를 재므로 시간축(4초 후에도 남아 있음)은 여기가 잰다.
+  it('keeps the error toast on screen (no auto-hide)', async () => {
+    const app = await loadApp()
+    vi.useFakeTimers()
+    try {
+      stubFetch({ 'POST /api/rooms/9/archive': { status: 409, body: { error: '이미 보관된 방입니다' } } })
+      await app.archiveRoom(9)
+      const toast = document.getElementById('error-toast')!
+      expect(toast.hidden).toBe(false)
+      vi.advanceTimersByTime(4_000)
+      expect(toast.hidden, '오류 토스트는 저절로 사라지지 않는다').toBe(false)
+      expect(toast.classList.contains('toast-success'), '오류 토스트에 성공 클래스가 없어야 한다').toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // 결함 D-3 의 규칙 절반 — [hidden] 가드. author 의 display:flex 선언(#auth-view·
+  // #main-view)은 UA 스타일시트의 [hidden]{display:none} 을 항상 이기므로 el.hidden = true
+  // 가 시각적으로 무효가 되고 두 뷰가 겹쳐 렌더링된다. author 선언을 통째로 이기려면
+  // !important 가 필요하다. 실제 겹침 해소는 test/web-visual.test.ts 의 실브라우저
+  // bounding box 단언이 잰다 — 이 it 은 규칙 존재만 고정한다.
+  it('keeps the [hidden] guard in style.css', () => {
+    const css = readFileSync(join(webDir, 'style.css'), 'utf8')
+    expect(cssRuleBlock(css, '[hidden]')).toContain('display: none !important')
   })
 })

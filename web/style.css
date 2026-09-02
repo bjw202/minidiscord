@@ -8,6 +8,12 @@
 /* ── 기본 골격 ─────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
+/* hidden 가드 — 이 파일의 display:flex 선언(#auth-view·#main-view 등)은 UA 스타일시트의
+   [hidden]{display:none} 을 항상 이긴다(author 선언 우선). 그러면 el.hidden = true 가
+   시각적으로 무효가 되어 두 뷰가 겹쳐 렌더링된다 (카드 t32 §D 결함 D-3).
+   author 선언을 통째로 이기려면 !important 가 필요하다. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -206,6 +212,13 @@ input:focus { outline: 1px solid var(--md-accent); }
   background: var(--md-bg-panel);
   color: var(--md-status-error);
   border-top: 1px solid var(--md-divider);
+}
+
+/* 성공 토스트 — showToast(회원가입 완료)만 붙이는 클래스. 같은 요소를 공유하되
+   상태색만 갈라 쓴다 — 새 색상 값 없이 기존 팔레트의 온라인 녹색 (design DNA §1).
+   #error-toast(1-0-0) 의 오류색을 이기려면 ID 를 결합한 선택자(1-1-0)가 필요하다. */
+#error-toast.toast-success {
+  color: var(--md-status-online);
 }
 
 /* ── SPEC-WEBCHAT-001 채팅 영역 ── */
