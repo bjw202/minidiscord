@@ -11,6 +11,10 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { wire } from '../src/index.js'
 // 상한 상수와 표시 문언은 truncate 모듈에서 읽는다 — 숫자를 테스트에 복제하지 않는다 (SPEC-BOTSTAB-001 §F).
 import { MAX_BODY_BYTES, MAX_HISTORY_BYTES, MAX_NAME_BYTES, SIGIL_OPEN, TRUNC_MARKER_HEAD, TRUNC_MARKER_TAIL } from '../src/truncate.js'
+// AC-LIVEVERIFY-015 ㉠ 예외 — 중화된 바이트 단언에 한해 중화 함수를 단독 부른다. 이 호출은 배선을
+// 대신 재는 것이 아니라 fixture 가 경계에 있음을 재는 것이고(acceptance.md AC-015 예외 절), 절단을
+// 개입시키는 truncateToBudget 은 이 예외에 들지 않는다 — 절단이 개입하는 순간 그것이 곧 합성이다.
+import { neutralizeEnvelope } from '../src/channel-server.js'
 
 // v2 열쇠 유도 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
 // 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 스텁의 토큰 상수는 'tok' 다.
@@ -598,5 +602,44 @@ describe('channel wiring', () => {
       expect(m.body).toBe(b)
       expect(m.author).toBe('alice')
     })
+  })
+
+  // AC-LIVEVERIFY-015 — 배선이 중화를 절단보다 먼저 한다 (경계 fixture, SPEC-LIVEVERIFY-001 §C).
+  // plan.md §C 가 경고한 대로 두 방어의 합성을 테스트가 다시 만들어 기대값으로 쓰면 배선 순서는
+  // 다시 아무도 재지 못한다 — 그래서 도구 호출로 배선만 잰다.
+  // fixture 부등식: 날것 바이트 ≤ 상한 < 중화 바이트 — 이 둘이 같이 성립할 때만 순서 판별이 성립한다.
+  it('history wiring neutralizes before it truncates (AC-LIVEVERIFY-015)', async () => {
+    const { stub, obs } = await connected()
+    // 경계 fixture — 반복 수를 상한 상수에서 산술로 파생한다. 숫자 리터럴을 적으면(AC-016 ㉠) 상한이
+    // 바뀌었을 때 fixture 가 조용히 경계에서 벗어나 기준이 초록인 채로 아무것도 재지 않는다 (plan.md §C).
+    const seq = Buffer.byteLength('<channel', 'utf8')
+    const authorName = '<channel'.repeat(Math.floor(MAX_NAME_BYTES / seq))
+    const bigBody = '<channel'.repeat(Math.floor(MAX_BODY_BYTES / seq))
+    // ㉠ 전제 관측 — 날것 ≤ 상한 이고 중화 > 상한. 전제가 깨지면 fixture 가 순서를 가르지 못하므로,
+    // 상한 값이 바뀌었을 때 이 기준이 조용히 공허해지는 대신 붉어진다. (neutralizeEnvelope 단독
+    // 호출은 이 전제 단언에 한해 허용된다 — AC-015 예외 절.)
+    expect(Buffer.byteLength(authorName, 'utf8')).toBeLessThanOrEqual(MAX_NAME_BYTES)
+    expect(Buffer.byteLength(bigBody, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
+    expect(Buffer.byteLength(neutralizeEnvelope(authorName), 'utf8')).toBeGreaterThan(MAX_NAME_BYTES)
+    expect(Buffer.byteLength(neutralizeEnvelope(bigBody), 'utf8')).toBeGreaterThan(MAX_BODY_BYTES)
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') stub.push({ type: 'history_response', rid: m.rid, messages: [{ id: 9, created_at: '2026-09-02', author_name: authorName, body: bigBody }] })
+    })
+    const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
+    const h = parsedHistory(res)
+    const raw = (res as { content: { text: string }[] }).content[0].text
+    // ㉡ 순서 판별 — 이 단언이 두 순서를 가르는 자리다. 절단을 먼저 하면 날것이 상한 이하라
+    // 아무것도 잘리지 않고, 뒤이은 중화가 상한을 깬다.
+    const first = h.messages[0] as { id: number; author: string; body: string }
+    expect(Buffer.byteLength(first.author, 'utf8')).toBeLessThanOrEqual(MAX_NAME_BYTES)
+    expect(Buffer.byteLength(first.body, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
+    // ㉢ 중화 성립 — 결과 문자열 전체에 날것 봉투 시퀀스가 0건이다 (대소문자 무관).
+    const lowered = raw.toLowerCase()
+    expect(lowered.includes('<channel')).toBe(false)
+    expect(lowered.includes('</channel')).toBe(false)
+    // ㉣ 진행 보장 — fixture 원소는 버려지지 않고 실리고, cursor 는 그 원소의 id 다.
+    expect(h.messages.length).toBeGreaterThanOrEqual(1)
+    expect(first.id).toBe(9)
+    expect(h.cursor).toBe(9)
   })
 })

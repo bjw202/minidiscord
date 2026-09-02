@@ -1,0 +1,145 @@
+=== SPEC-LIVEVERIFY-001 M1 실측 증거 — C01-mutation.txt ===
+생성: 2026-09-02 · 작업 위치: .claude/worktrees/t32 (카드 t32 워크트리)
+대상: AC-LIVEVERIFY-015 (배선 순서 기준 착지) · AC-LIVEVERIFY-016 (상수 파생 + 변이 판별력)
+참고: 최초 시도한 `npm --prefix <트리> run build -w channel` 은 npm 이 --prefix 환경에서
+      workspace 를 찾지 못해 실패(트리 문제 아님) — 아래 §1 은 워크트리 루트에서의 성공 실행이다.
+참고 2: §3 은 기준 블록 주석 최종본(합성 형태 문자열을 주석에서 뺀 뒤) 기준으로 재실행한 값이다.
+
+=== §1 빌드 출력 (AC-016 When-1) — $ npm run build -w channel (워크트리 루트, exit 0) ===
+
+> @minidiscord/channel@0.1.0 build
+> tsc
+
+
+=== §2 초록 스위트 (AC-015 증거) — $ npm test -w channel (기준 착지 후, exit 0) ===
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/channel
+
+
+ Test Files  7 passed (7)
+      Tests  124 passed (124)
+   Start at  16:53:58
+   Duration  65.19s (transform 435ms, setup 0ms, import 1.20s, tests 70.47s, environment 0ms)
+
+
+=== §3 상수 파생 검사 (AC-016 ㉠) — 새 기준 블록(38줄) 대상 ===
+$ awk '/^  \/\/ AC-LIVEVERIFY-015/,/^  \}\)$/' channel/test/index-wiring.test.ts > /tmp/t32-c01-block.txt
+$ wc -l < /tmp/t32-c01-block.txt
+38
+$ head -3 /tmp/t32-c01-block.txt
+  // AC-LIVEVERIFY-015 — 배선이 중화를 절단보다 먼저 한다 (경계 fixture, SPEC-LIVEVERIFY-001 §C).
+  // plan.md §C 가 경고한 대로 두 방어의 합성을 테스트가 다시 만들어 기대값으로 쓰면 배선 순서는
+  // 다시 아무도 재지 못한다 — 그래서 도구 호출로 배선만 잰다.
+$ tail -3 /tmp/t32-c01-block.txt
+    expect(first.id).toBe(9)
+    expect(h.cursor).toBe(9)
+  })
+$ grep -c '256\|4000\|16000' /tmp/t32-c01-block.txt
+0   (grep exit 1 = 적중 없음 — 금지 리터럴 0건)
+$ grep -c 'MAX_NAME_BYTES' /tmp/t32-c01-block.txt
+4   (>= 1)
+$ grep -c 'MAX_BODY_BYTES' /tmp/t32-c01-block.txt
+4   (>= 1)
+
+=== §4 변이 diff (AC-016 ㉡) — $ git diff -- channel/src/index.ts ===
+사전 확인: 변이 직전 `git diff --stat -- channel/src/index.ts` 빈 출력(클린) 확인.
+원본 두 줄(index.ts:95-96): author: truncateToBudget(neutralizeEnvelope(m.author_name), MAX_NAME_BYTES), / body: truncateToBudget(neutralizeEnvelope(m.body), MAX_BODY_BYTES),
+diff --git a/channel/src/index.ts b/channel/src/index.ts
+index 2592782..26acaf5 100644
+--- a/channel/src/index.ts
++++ b/channel/src/index.ts
+@@ -92,8 +92,8 @@ export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClien
+       const kept = messages.map(m => ({
+         id: m.id,
+         at: m.created_at,
+-        author: truncateToBudget(neutralizeEnvelope(m.author_name), MAX_NAME_BYTES),
+-        body: truncateToBudget(neutralizeEnvelope(m.body), MAX_BODY_BYTES),
++        author: neutralizeEnvelope(truncateToBudget(m.author_name, MAX_NAME_BYTES)),
++        body: neutralizeEnvelope(truncateToBudget(m.body, MAX_BODY_BYTES)),
+       }))
+       // 2단계 — 새것부터 버리기 (REQ-BOTSTAB-007 2단계, plan.md §E). 오래된 것부터 버리면 cursor 가
+       // 버려진 원소를 «이미 지나간 것» 으로 선언하고 그 메시지들은 다음 요청부터 조용히 영구히 사라진다 —
+
+=== §5 변이 상태 테스트 출력 (실패 기준 이름 포함 — 전문, exit 1) ===
+$ npm test -w channel  (두 줄 뒤집힌 상태)
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/channel
+
+stderr | test/index-wiring.test.ts > channel wiring > history wiring neutralizes before it truncates (AC-LIVEVERIFY-015)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/index-wiring.test.ts (20 tests | 1 failed) 1369ms
+     × history wiring neutralizes before it truncates (AC-LIVEVERIFY-015) 17ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > history wiring neutralizes before it truncates (AC-LIVEVERIFY-015)
+AssertionError: expected 352 to be less than or equal to 256
+ ❯ test/index-wiring.test.ts:634:53
+    632|     // 아무것도 잘리지 않고, 뒤이은 중화가 상한을 깬다.
+    633|     const first = h.messages[0] as { id: number; author: string; body:…
+    634|     expect(Buffer.byteLength(first.author, 'utf8')).toBeLessThanOrEqua…
+       |                                                     ^
+    635|     expect(Buffer.byteLength(first.body, 'utf8')).toBeLessThanOrEqual(…
+    636|     // ㉢ 중화 성립 — 결과 문자열 전체에 날것 봉투 시퀀스가 0건이다 (대소문자 무관).
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  1 failed | 123 passed (124)
+   Start at  16:55:39
+   Duration  64.95s (transform 432ms, setup 0ms, import 1.17s, tests 70.25s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/channel
+npm error command failed
+npm error command sh -c vitest run
+
+--- §5 결론 — 실패한 기준 전체 집합 (1건) ---
+  test/index-wiring.test.ts > channel wiring > history wiring neutralizes before it truncates (AC-LIVEVERIFY-015)
+  형제 기준 동반 적색 없음 (123 passed). 실패 단언 = AC-015 ㉡ 순서 판별
+  (AssertionError: expected 352 to be less than or equal to 256 — 절단 없이 중화만 통과한 author).
+
+=== §6 복원 검증과 복원 후 초록 (AC-016 ㉢) ===
+$ git diff --stat -- channel/src/index.ts
+(빈 출력 — 클린 복원)
+$ git status --short channel/
+ M channel/test/index-wiring.test.ts
+$ npm test -w channel  (복원 후, exit 0)
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/channel
+
+
+ Test Files  7 passed (7)
+      Tests  124 passed (124)
+   Start at  16:57:22
+   Duration  65.06s (transform 418ms, setup 0ms, import 1.22s, tests 70.35s, environment 0ms)
+
