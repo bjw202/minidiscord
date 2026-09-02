@@ -254,3 +254,32 @@ app.js·index.html 본문이 나간다 — 위 관측이 응답 시점의 디스
 판정: server/src/index.ts:65-68 fastifyStatic 의 root 기본값 상수 인용일 뿐 — 사용자 입력이
 결합되는 경로가 아니라 서버 측 고정값이므로 결함 아님. 조치 불필요. (§E.2 잔여 목록이 아니라
 §D 수리 기록에 남기는 처분 기록 — 리드 결정 2.)
+
+=== §9 후속 — «환경 원인·코드 결함 아님» 판정 (2026-09-02, 리드 접수) ===
+배경: 수리 후 운영자 §A 재시도에서 «화면 무반응»이 재발했다. 서버·코드 쪽은 리드·레인이
+전부 재관측해 정상 확정(register 201 → login 200 + Set-Cookie → rooms 200, users 에
+운영자 시도 전부 착지, sessions 22행 = 클릭마다 서버 로그인 성공).
+
+레인 분담 판정 셋 (전부 실측):
+1) 초기화 복원 경로 — initApp → loadRooms(GET /api/rooms) → loadBots(GET /api/bots)
+   → showMain, 실패 시 showAuth (app.js:288-292). 두 엔드포인트 실재·정상
+   (세션 없이 401=설계, 쿠키 jar 흐름 201→200→200→200). «리로드마다 auth 복귀»
+   코드 결함 부정 — §D 추가 갈래 불발.
+2) 헤드리스 브라우저 긍정 대조 — playwright 1.62.1 + chromium: register 폼 제출 →
+   main-view 표시·auth-view 숨김, context.cookies() 에 md_session(secure=false,
+   httpOnly=true) 저장 관측, 콘솔 오류는 초기화 예상 401 1건뿐. 두 번 실행 모두
+   HEADLESS-GREEN — 표준 브라우저는 쿠키 저장·흐름이 정상. 출력:
+   evidence/headless-green-output.txt
+3) DevTools 3관찰 레시피 운영자 안내 전달(콘솔 오류 · login 응답 Set-Cookie ·
+   Application→Cookies md_session 행).
+
+판정: D-1·D-2 수리 이후의 재발 무반응은 서버·코드가 아니라 운영자 브라우저 환경
+(쿠키 저장 거부)이 유일하게 남은 원인 — 운영자 진단 결과(② Set-Cookie 있고 ③ 저장
+없음이면 차단 확정)로 닫는다. 본 SPEC 의 코드 결함(D-1·D-2)은 a44523c 로 수리 완료.
+
+프루브 잔재 정리 기록 (리드 승인, 2026-09-02):
+- probe-cookie-path · probe-headless-1 DELETE — sessions 2행 먼저, users 2행 정확 일치.
+  삭제 후 users 전수 = ttongchim(3)·bjw202(4)·jw(5) 3행.
+- 정직 기록: 헤드리스 재관측(2회차 출력)이 쓰기를 동반해 probe-headless-1 이 재생성되어
+  즉시 재정리(sessions 1행 + users 1행) — 재실행 스크립트는 DB 를 다시 쓴다.
+  최종 전수 재조회 = 3행(운영자 것만), 프루브 잔재 0.
