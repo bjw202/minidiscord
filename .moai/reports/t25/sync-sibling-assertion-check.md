@@ -1,11 +1,12 @@
 # SPEC-BOTSTAB-001 §M 형제 자리 단언 착지 판정 (카드 `t25` · sync 단계)
 
 > 작성: sync 레인. 2026-09-02. 근거 규정 `plan.md` §M-1~§M-4 + § 「착지」의 정의.
-> 나무 `.claude/worktrees/t25` @ `ee7dd40`, 브랜치 `WT-bot-stability`.
+> 나무 `.claude/worktrees/t25` @ `7248e89`(F1 수리 커밋), 브랜치 `WT-bot-stability`.
+> 개정 이력: 초판은 `ee7dd40` 기준 34블록이었다. F1 수리(`7248e89`)가 엣지 E-12 기준 두 개를 더해 살아 있는 출력이 36블록이 되었고, 이 판에서 그 두 블록의 판정을 더하고 밀린 줄 인용을 다시 앵커했다.
 
 ## 쉬운 말 요약
 
-이 카드가 고친 것은 「봇이 모델에게 보내는 글이 너무 길거나 위험한 글자를 담고 있으면 잘라 내고 표시를 붙인다」는 동작이다. 그 변경은 같은 표면을 재던 기존 테스트들의 계약을 함께 좁혔으므로, 좁아진 계약이 **실제 단언으로 착지했는지**를 사람이 한 번 확인해야 한다. 훑기 스크립트를 다시 돌려 대상 블록 **34개**를 얻었고, 그 34개 전부에서 상한·시길 상수를 인자로 쓰는 **실행되는 단언**을 찾았다. **미착지 0건**이다. 다만 이 절이 보증하는 것은 「단언이 있다」까지이고, 「그 단언이 옳게 재는가」는 보증하지 않는다 — 규정이 명시한 한계 그대로다.
+이 카드가 고친 것은 「봇이 모델에게 보내는 글이 너무 길거나 위험한 글자를 담고 있으면 잘라 내고 표시를 붙인다」는 동작이다. 그 변경은 같은 표면을 재던 기존 테스트들의 계약을 함께 좁혔으므로, 좁아진 계약이 **실제 단언으로 착지했는지**를 사람이 한 번 확인해야 한다. 훑기 스크립트를 다시 돌려 대상 블록 **36개**를 얻었고, 그 36개 전부에서 상한·시길 상수를 인자로 쓰는 **실행되는 단언**을 찾았다. **미착지 0건**이다. 다만 이 절이 보증하는 것은 「단언이 있다」까지이고, 「그 단언이 옳게 재는가」는 보증하지 않는다 — 규정이 명시한 한계 그대로다.
 
 ---
 
@@ -15,10 +16,14 @@
 |------|-----|
 | 명령 | `node .moai/state/verify/t25-plan/sibling-sweep.mjs` |
 | 종료 코드 | **0** |
-| 출력 블록 수 | **34** |
-| 원본 저장 | `.moai/state/verify/t25-sync/sweep-plain.txt` (사람 판독) · `.moai/state/verify/t25-sync/sweep.json` (`--json`, 기계 판독) |
+| 출력 블록 수 | **36** |
+| 원본 저장 | `.moai/state/verify/t25-run/f1-repair/sweep-after.txt` (수리 커밋 `7248e89` 동봉본) |
+| 이 판의 재실행 | sync 레인이 `7248e89` 트리에서 위 명령을 **직접 재실행**해 exit 0 · 36줄을 관측했고, 출력이 `sweep-after.txt` 와 **byte 동일**임을 `diff` 로 확인했다(차이 없음). 이 절의 판정은 그 재실행 출력에 귀속된다 |
+| 34블록 시점 원본 | `.moai/state/verify/t25-sync/{sweep-plain.txt, sweep.json}` — 초판(@`ee7dd40`) 근거로 보존 |
 
-**스냅숏 대조 (§M-1).** `spec.md` §3.3 의 스냅숏은 21블록이고 살아 있는 출력은 34블록이다. §M-1 은 «출력이 스냅숏과 다르면 출력이 이긴다» 이므로 **판정 대상은 34블록**이다. 차분 13 = M3·M4 신설 12 + AC-BOTSTAB-010 배선 목격 1(`channel-server.test.ts:547`, run 단계 K 보강). `m4a-evidence.md` §E2 의 착지표 33행은 K 보강(17:23) **이전** 캡처이며, 34번째 행이 이 판정에서 새로 채워진다.
+**스냅숏 대조 (§M-1).** `spec.md` §3.3 의 스냅숏은 21블록이고 살아 있는 출력은 36블록이다. §M-1 은 «출력이 스냅숏과 다르면 출력이 이긴다» 이므로 **판정 대상은 36블록**이다. 차분 15 = M3·M4 신설 12 + AC-BOTSTAB-010 배선 목격 1(`channel-server.test.ts:547`, run 단계 K 보강) + 엣지 E-12 신설 2(`index-wiring.test.ts:540`·`:568`, F1 수리 커밋 `7248e89`). `m4a-evidence.md` §E2 의 착지표 33행은 K 보강(17:23) **이전** 캡처이고, 34번째 행은 초판이, 35·36번째에 해당하는 E-12 두 행은 이 판이 채운다.
+
+**줄 밀림 재앵커 (이 판에서 고친 것).** F1 수리는 `index-wiring.test.ts:466` 부근의 낡은 주석 한 줄을 두 줄로 바꿨다. 그래서 그 아래 모든 줄이 **정확히 +1** 밀렸고, 초판 표의 블록 24~32 중 일부와 그 판정 단언의 줄 인용이 거짓이 되었다. 밀림폭을 산술로 더하지 않고 **원문을 다시 읽어** 각 단언을 찾아 고쳤다(이 저장소가 「줄 인용은 앵커로 다시 찾는다」로 이름 붙인 부류). 블록 24~29 는 변경 지점보다 위여서 인용이 그대로 유효하고, 블록 30 은 시작 줄만 유효하며 그 판정 단언 두 개가 밀렸다.
 
 ## ② 블록별 판정 (§M-3 ②)
 
@@ -57,13 +62,17 @@
 | 27 | index-wiring:281 | empty history — same shape, null cursor | `:289-290 ≤ MAX_HISTORY_BYTES` | 착지 | 좁힘 |
 | 28 | index-wiring:295 | poisoned message stays one element | `:323 ≤ MAX_HISTORY_BYTES` | 착지 | 좁힘 |
 | 29 | index-wiring:341 | cursor from ids only | `:357-358 ≤ MAX_HISTORY_BYTES` | 착지 | 좁힘 |
-| 30 | index-wiring:449 | AC-BOTSTAB-007 총 상한 + 절단 표시 | `:462 ≤ MAX_HISTORY_BYTES` · `:474 toContain(TRUNC_MARKER_HEAD)` · `:475 endsWith(TRUNC_MARKER_TAIL)` | 착지 | 좁힘 |
-| 31 | index-wiring:481 | AC-BOTSTAB-008 실린 id 의 최댓값 | `:508 ≤ MAX_HISTORY_BYTES` · `:512 ≤ MAX_BODY_BYTES` · `:513 endsWith(TRUNC_MARKER_TAIL)` | 착지 | 좁힘 |
-| 32 | index-wiring:518 | E-1 빈 이력 무변형 | `:530-531 ≤ MAX_HISTORY_BYTES` | 착지 | 좁힘 |
-| 33 | transport-auth:413 | two frames reach the session exactly once | `:431-433 ≤ MAX_NAME+MAX_BODY+'[] '` | 착지 | 좁힘 |
-| 34 | transport-auth:777 | broken mac / no envelope both dropped | `:801-803 ≤ 같은 합` | 착지 | 좁힘 |
+| 30 | index-wiring:449 | AC-BOTSTAB-007 총 상한 + 절단 표시 | `:462 ≤ MAX_HISTORY_BYTES` · `:475 toContain(TRUNC_MARKER_HEAD)` · `:476 endsWith(TRUNC_MARKER_TAIL)` | 착지 | 좁힘 |
+| 31 | index-wiring:482 | AC-BOTSTAB-008 실린 id 의 최댓값 | `:508-509 ≤ MAX_HISTORY_BYTES` · `:513 ≤ MAX_BODY_BYTES` · `:514 endsWith(TRUNC_MARKER_TAIL)` | 착지 | 좁힘 |
+| 32 | index-wiring:519 | E-1 빈 이력 무변형 | `:531-532 ≤ MAX_HISTORY_BYTES` | 착지 | 좁힘 |
+| 33 | index-wiring:540 | **E-12 (신규)** author 만 상한 초과여도 원소는 실린다 | `:559 ≤ MAX_NAME_BYTES` · `:561 toContain(TRUNC_MARKER_HEAD)` (그리고 `:547 > MAX_HISTORY_BYTES` 전제) | 착지 | 좁힘 |
+| 34 | index-wiring:568 | **E-12 홍수 회귀 (신규)** 큰 author 가 최저 id 여도 전원 생존 | `:590 ≤ MAX_NAME_BYTES` · `:591 toContain(TRUNC_MARKER_HEAD)` (그리고 `:578 > MAX_HISTORY_BYTES` 전제) | 착지 | 좁힘 |
+| 35 | transport-auth:413 | two frames reach the session exactly once | `:431-433 ≤ MAX_NAME+MAX_BODY+'[] '` | 착지 | 좁힘 |
+| 36 | transport-auth:777 | broken mac / no envelope both dropped | `:801-803 ≤ 같은 합` | 착지 | 좁힘 |
 
 **물음 ③ 이 「전제」인 유일한 블록 — 17번.** 상수를 인자로 쓰는 단언은 `:506` 하나이고 그것은 «fixture 이름이 정확히 OD-5 바이트다» 라는 전제 관측이다. 이 블록이 좁힌 조건(시길 없음)은 `:512 expect(rawOpens(content)).toBe(0)` 이 재지만 상수 식별자를 직접 쓰지 않는다. **판정은 착지다** — 정의는 «상수를 인자로 쓰는 실행되는 단언의 존재» 이고 `:506` 이 그것을 만족하며, 물음 ③은 판정 조건이 아니다(v0.7.1). 기록으로만 남긴다.
+
+**신규 블록 33·34 (E-12) 의 판정 근거.** 두 블록 모두 `MAX_NAME_BYTES` 와 `TRUNC_MARKER_HEAD` 를 **인자로 직접 쓰는 실행되는 단언**을 가진다 — 잘린 author 의 바이트 길이를 이름 상한과 견주고(`:559`·`:590`), 그 자리에 시스템이 붙인 표시의 고정 앞부분이 있는지 본다(`:561`·`:591`). 어느 쪽도 숫자를 복제하지 않는다. `MAX_HISTORY_BYTES` 를 쓰는 `:547`·`:578` 은 「author 가 혼자 총 상한을 넘는다」는 Given 을 고정하는 전제 관측이므로 판정 단언이 아니라 전제로 적었다 — 물음 ③ 표기가 「좁힘」인 것은 `:559`·`:590` 이 상한 이하임을 직접 재기 때문이다.
 
 ## ③ 착지하지 않은 블록 (§M-3 ③)
 
@@ -71,13 +80,15 @@
 
 ## ④ 종합 판정 (§M-3 ④ · §M-4)
 
-**통과** — 살아 있는 출력 34블록 전부에서 상한·시길 상수를 인자로 쓰는 실행되는 단언을 관측했고, 미착지 목록이 비어 있다.
+**통과** — 살아 있는 출력 36블록 전부에서 상한·시길 상수를 인자로 쓰는 실행되는 단언을 관측했고, 미착지 목록이 비어 있다.
 
 ---
 
 ## 판정에 쓴 보조 도구와 그 한계
 
 판정은 사람이 원문을 읽어 내렸고, 후보 줄을 뽑는 데 `.moai/state/verify/t25-sync/assert-landing-extract.mjs` 를 썼다(출력 `const-lines.txt`). 이 도구는 `sibling-sweep.mjs` 의 블록 가르기를 그대로 재현하고 블록 안에서 상수 식별자를 담은 줄을 뽑는다 — **판정하지 않는다.**
+
+**훑기 자신의 `assert_lines` 도 판정 단언을 다 담지 못한다.** 신규 블록 33 의 판정 단언 `:559` 는 `sweep-after.txt` 의 `assert_lines=554,556,561` 에 **없다** — 훑기의 규식이 `.toBeLessThanOrEqual(` 류 파생 단언을 잡지 못하기 때문이다(F1 수리 보고 `green.md` 가 감사 F4 재확인으로 같은 것을 적었다). 블록 34 의 `:590` 도 같다. 이 표의 판정은 사람이 원문을 읽어 내린 것이므로 그 누락에 영향받지 않지만, **`assert_lines` 를 착지의 증거로 쓰면 안 된다**는 뜻이다 — 그것은 후보 줄일 뿐이다.
 
 **첫 판에서 도구가 두 블록의 판정 단언을 놓쳤다.** 규식이 `MAX_*`·`TRUNC_*`·`SIGIL_*` 세 어족만 잡아서, 그 상수들로만 조립된 파생 상수 `CONTENT_TOTAL_LIMIT`(`channel-server.test.ts:369`)를 인자로 쓰는 블록 11·18 의 단언이 빠졌다. 원문 대조에서 잡아 규식을 넓혔다. 기록해 두는 이유: **§M-2 의 물음 ②는 «경계가 상수에서 나오는가» 이지 «상수 이름이 그 줄에 있는가» 가 아니다** — 파생 상수를 거친 경계도 숫자 복제가 아니므로 착지다. 좁은 규식만 믿었으면 착지한 블록 둘을 미착지로 적을 뻔했다.
 

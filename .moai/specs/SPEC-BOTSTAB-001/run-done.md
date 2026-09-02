@@ -13,7 +13,7 @@
 | 항목 | 값 | 나온 자리 |
 |------|-----|-----------|
 | 나무 | `.claude/worktrees/t25` @ `7c9958b`(plan 커밋), 브랜치 `WT-bot-stability` — run 내내 HEAD 불변 | `git rev-parse --short HEAD` (run 레인 직접 실행, 여러 차례) |
-| 최종 스위트 | **121 passed / 7 files (exit 0)** | `npx vitest run --root channel --reporter=dot` — 2026-09-01 17:33 run 레인 **직접 실행**(미커밋 run 작업 위 이 트리) |
+| 최종 스위트 | **121 passed / 7 files (exit 0)** — run 종결 시점 값 · **addendum**: F1 수리 뒤 최종 **123 passed / 7 files (exit 0)** (= 121 + 신규 2, 커밋 `7248e89`, `sync-done.md` §8 참조) | `npx vitest run --root channel --reporter=dot` — 2026-09-01 17:33 run 레인 **직접 실행**(미커밋 run 작업 위 이 트리). addendum 의 123 은 별개 실행이며 `.moai/state/verify/t25-run/f1-repair/full-suite.txt` 에 귀속된다 — 121 을 재측정한 값이 아니다 |
 | 단계별 스위트 | 95→98→107→116→119→120→121 | 각 마일스톤 종료 시 run 레인 직접 실행(전부 이 트리) |
 | 타입 검사 | `tsc --noEmit` exit 0 | `npm run typecheck -w channel` (마일스톤별 재관측) |
 | 소스 shasum 종결값 | `gateway-client 1cb17188…` · `channel-server 1cfd24b2…` · `index a9d44572…` · `truncate ebbfd01d…` | `shasum channel/src/*.ts` — run 레인 직접 실행. gateway-client 는 **계획 단계 기록값과 byte 동일**(M1 무변경 계약) |

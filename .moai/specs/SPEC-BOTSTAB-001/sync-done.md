@@ -63,3 +63,26 @@
 - **미푸시 유일 사본.** `WT-bot-stability` 는 원격에 없다. 리드가 통합하기 전에 이 워크트리를 폐기하면 작업이 사라진다.
 - §5-1 의 층 어긋남은 문서 층에만 있고 코드 동작에는 영향이 없다. 다만 다음에 이 SPEC 을 읽는 사람은 요구사항과 기준이 다른 말을 하는 상태를 만난다.
 - 플레이크(`transport-auth` 논스 테스트)는 이번 sync 실행에서 재현되지 않았다 — 121 전건 초록. 원인은 여전히 미규명이며 run-done §5-6 이 출발점이다.
+
+## §8 sync 이후 — F1 수리 기록 (커밋 `7248e89`)
+
+이 절은 `c544a5c` 로 sync 를 닫은 **뒤에** 일어난 일이다. §1~§7 의 수치(훑기 34블록·스위트 121)는 그때 그 트리(@`ee7dd40`)에서 측정한 값이고 **그대로 둔다** — 지금 참인 값은 이 절이 적는다.
+
+**무엇이 결함이었나 (감사 차단 F1).** 알림 통로는 보내는 사람 이름(`author`)이 너무 길면 잘라 냈지만, **이력 통로는 잘라 내지 않았다.** `server/src/auth.ts:32` 가 사용자 이름 길이를 검사하지 않으므로 큰 이름은 실제로 도달 가능한 입력이고, 이름 하나가 이력 총 상한(OD-4)을 혼자 넘으면 옛 코드의 2단계 루프가 그 원소마저 버려 **`cursor: null` · 빈 이력**을 냈다. 그 뒤로 `fetch_history` 는 영구히 빈 결과만 돌려준다 — 「원소 하나는 반드시 실린다」는 진행 보장(INV-2)이 파탄난 것이다.
+
+**수리.** `channel/src/index.ts:93` 한 줄 — `author: neutralizeEnvelope(m.author_name)` → `author: truncateToBudget(neutralizeEnvelope(m.author_name), MAX_NAME_BYTES)`. 알림 통로와 **같은 OD-5 상수**를 쓰고, `truncate.ts` 에 새 상수·새 함수를 만들지 않았다(기존 원시함수 재사용). 함께 낡아진 주석 두 곳을 갱신했다(`index.ts:86-91`, `index-wiring.test.ts:469`).
+
+**RED → GREEN 증거.** 전문은 `.moai/state/verify/t25-run/f1-repair/` 에 있다.
+
+| 항목 | 값 | 파일 |
+|------|-----|------|
+| RED (수리 전) | exit 1 — 엣지 E-12 `expected +0 to be 1` · 홍수 회귀 `keptIds.length = 0` | `red.md` · `red-e12-raw.txt` · `red-flood-raw.txt` |
+| GREEN 단일 파일 | exit 0 — 19 passed (기존 17 + 신규 2) | `green.md` · `green-raw.txt` |
+| GREEN 전체 스위트 | exit 0 — **123 passed / 7 files** (= 121 + 신규 2) | `full-suite.txt` |
+| 타입 검사 | exit 0 | `typecheck.txt` |
+| 형제 훑기 | exit 0 — **36블록** (= 34 + 신규 2) | `sweep-after.txt` |
+| shasum 귀속 | `index.ts` 수리 전 `860d1dac…` → 후 `eec03e23…` | `shasums.txt` |
+
+**§M 보고서 갱신.** `.moai/reports/t25/sync-sibling-assertion-check.md` 를 36블록 기준으로 다시 냈다 — 신규 E-12 두 블록의 착지 판정을 더했고(둘 다 착지), 수리가 `index-wiring.test.ts:466` 아래를 정확히 한 줄씩 밀어 거짓이 된 줄 인용 세 자리를 **원문을 다시 읽어** 고쳤다. 종합 판정은 **36/36 착지 · 미착지 0건**으로 §1 의 판정과 같은 결론이다. 그 갱신의 근거인 훑기는 sync 레인이 `7248e89` 트리에서 직접 재실행했고 출력이 `sweep-after.txt` 와 byte 동일함을 확인했다.
+
+**재감사 예고.** 이 갱신 커밋이 착지하면 리드가 같은 감사관 세션으로 재판정(F1 재판정 + 회귀 + 전체 재채점)을 보낸다. 이 절은 그 판정의 대상이지 판정 자체가 아니다.
