@@ -128,8 +128,20 @@ export async function login(username, password) {
     throw err
   }
   showMain()
-  await loadRooms()
-  await loadBots()
+  // 로그인 자체는 성공했지만 이어지는 목록 적재가 401 로 막히는 경우가 있다 — 브라우저가
+  // 쿠키 저장을 거부하면 Set-Cookie 가 무시돼 보호 경로(rooms·bots)가 401 이 되고, api() 의
+  // 401 처리가 인증 뷰로 되돌려 놓지만 어디에도 문구가 없어 무반응처럼 보인다. 이 구간의
+  // 실패는 세션 유지 실패 문구로 보인다 (카드 t32 §D — «성공해도 메시지가 없어 디버깅 불가»).
+  // 인증 실패(위 catch, 서버 401 문구)와 겹치지 않게 로딩 구간만 별도로 처리한다.
+  try {
+    await loadRooms()
+    await loadBots()
+  } catch (err) {
+    const el = $('auth-error')
+    el.textContent = '로그인은 됐지만 세션을 유지하지 못했습니다 — 브라우저 쿠키 설정을 확인하세요'
+    el.hidden = false
+    throw err
+  }
 }
 
 // 회원가입 성공 → 같은 자격으로 이어서 로그인한다 (REQ-WEBSHELL-008).
@@ -145,6 +157,9 @@ export async function register(username, password) {
     throw err
   }
   await login(username, password)
+  // 가입이 끝났다는 신호를 남긴다 — 성공이 «조용한 전환» 이면 운영자는 무반응으로 읽는다
+  // (카드 t32 §D — «성공해도 메시지가 없어 디버깅 불가»).
+  showToast('회원가입 완료')
 }
 
 // 서버 세션을 끊고 state 세 필드를 초기값으로 되돌린 뒤 인증 뷰로 간다 (REQ-WEBSHELL-012).
@@ -192,6 +207,14 @@ export async function createBot(name, description) {
 function toastError(err) {
   const toast = $('error-toast')
   toast.textContent = err instanceof Error ? err.message : String(err)
+  toast.hidden = false
+}
+
+// 성공 알림 — 오류 토스트와 같은 #error-toast 요소를 쓴다. 자동 숨김 없음도 toastError 와
+// 동일하다: 화면에 남는 것이 삼켜지는 신호보다 낫다 (카드 t32 §D).
+function showToast(text) {
+  const toast = $('error-toast')
+  toast.textContent = text
   toast.hidden = false
 }
 

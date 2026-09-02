@@ -437,4 +437,37 @@ describe('register/auth-error repair (card t32 §D)', () => {
     expect(cssRuleBlock(css, '#auth-view')).toContain('flex-wrap: wrap')
     expect(cssRuleBlock(css, '#auth-error')).toContain('width: 100%')
   })
+
+  // 갈래 2 — «무반응 제거» 보강. WebKit 판정(evidence/webkit-green-output.txt)으로
+  // 무반응의 원인이 운영자 브라우저의 쿠키 저장 거부로 확정됐지만, «성공해도 메시지가
+  // 없어 디버깅 불가» 는 그 자체로 결함이다: 쿠키가 무시되면 login 200 뒤 rooms 401 로
+  // api() 가 인증 뷰로 되돌리는데 어디에도 문구가 없었다.
+  it('shows the session-lost message when room loading fails after login (401)', async () => {
+    const app = await loadApp()
+    stubFetch({
+      'POST /api/auth/login': { status: 200, body: { ok: true } },
+      'GET /api/rooms': { status: 401, body: { error: '로그인이 필요합니다' } },
+    })
+    await expect(app.login('alice', 'pw123456')).rejects.toThrow()
+    // api() 의 401 처리가 인증 뷰로 되돌려 놓는다 — 그 위에 문구가 있어야 디버깅이 시작된다
+    expect(document.getElementById('auth-view')!.hidden).toBe(false)
+    expect(document.getElementById('main-view')!.hidden).toBe(true)
+    const err = document.getElementById('auth-error')!
+    expect(err.hidden, '세션 유지 실패가 화면에 보여야 한다').toBe(false)
+    expect(err.textContent).toBe('로그인은 됐지만 세션을 유지하지 못했습니다 — 브라우저 쿠키 설정을 확인하세요')
+  })
+
+  it('leaves a completion toast when registration succeeds', async () => {
+    const app = await loadApp()
+    stubFetch({
+      'POST /api/auth/register': { status: 201, body: { id: 1, username: 'ttongchim' } },
+      'POST /api/auth/login': { status: 200, body: { ok: true } },
+      'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
+      'GET /api/bots': { status: 200, body: [] },
+    })
+    await app.register('ttongchim', 'pw123456')
+    const toast = document.getElementById('error-toast')!
+    expect(toast.hidden, '가입 완료 신호가 화면에 남아야 한다').toBe(false)
+    expect(toast.textContent).toBe('회원가입 완료')
+  })
 })

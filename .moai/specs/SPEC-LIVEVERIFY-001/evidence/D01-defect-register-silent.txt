@@ -358,3 +358,120 @@ GREEN (CSS 수정 후 실측):
 
 귀속: 이 절의 RED·GREEN·프로브는 모두 이 워크트리(vitest 4.1.11) 실측. 스크린샷 2장은
 운영자 촬영본이다.
+
+=== §11 갈래 2 보강 — «무반응 제거» (2026-09-02, 리드 지시 §D RED→GREEN) ===
+발단:
+- WebKit 판정 (run 레인 실측, evidence/webkit-green-output.txt — WEBKIT-GREEN):
+  Playwright webkit 에서 register 201 → login 200 → rooms 200 → bots 200, md_session
+  저장, main-view 진입. Safari 엔진에서 무반응 재현 불가 → 운영자 브라우저
+  프로파일/설정(쿠키 거부) 문제 확정. 첫 실행(probe-webkit-1)도 같은 GREEN — 두 번째
+  실행은 409 재시도로 «이미 있는 사용자 이름입니다» 가 auth-error 에 표시되는 것을
+  추가 관측(D-1 수리의 WebKit 실동작).
+- 잔존 용의자 확정 (리드 문언): «Chrome+Blink(운영자) 실패 vs headless Chromium 통과 vs
+  Playwright WebKit 통과. 잔존 용의는 운영자 프로필의 쿠키 설정·확장 프로그램이며,
+  ITP 는 Playwright 빌드에 비활성이라 Safari 실기기는 여전히 후보».
+- 운영자 Safari 재시도 무반응 (jw-1, evidence/defect-2-3-jw1-retry.png ·
+  defect-2-4-jw1-retry-2.png): 서버 쪽은 전부 성공(§9)인데 화면만 조용했다.
+- 운영자 지시: «성공해도 메시지가 없어 디버깅 불가» — 그 자체가 결함이라 보강한다.
+
+수리 1 — 세션 유지 실패 경로의 무반응 제거 (web/app.js login()):
+  쿠키가 거부되면 login 200 뒤 rooms 401 로 api() 가 showAuth() 로 되돌리고 throw 하는데
+  어디에도 문구가 없었다. loadRooms·loadBots 구간만 별도 try/catch 로 감싸 catch 에서
+  #auth-error 를 채우고 되던진다(§3 의 D-1 수리와 같은 패턴) — 인증 실패 catch(서버 401
+  문구 표시)와 겹치지 않게 로딩 구간만 처리. 문구: «로그인은 됐지만 세션을 유지하지
+  못했습니다 — 브라우저 쿠키 설정을 확인하세요».
+
+수리 2 — 회원가입 성공 신호 (web/app.js register()):
+  register 성공·자동 로그인 완료 뒤 #error-toast 에 «회원가입 완료» 를 남긴다.
+  범용 토스트 헬퍼가 없어 toastError 와 같은 관습(텍스트 설정·hidden 해제·자동 숨김 없음)
+  의 showToast(text) 를 toastError 곁에 두고 재사용한다. 스타일·요소 추가 없음 —
+  기존 #error-toast 만 쓴다(성공 문구가 오류색으로 보이는 것은 리드 수용 범위).
+
+git diff -- web/app.js 원문:
+
+diff --git a/web/app.js b/web/app.js
+index 3d34c89..478c738 100644
+--- a/web/app.js
++++ b/web/app.js
+@@ -128,8 +128,20 @@ export async function login(username, password) {
+     throw err
+   }
+   showMain()
+-  await loadRooms()
+-  await loadBots()
++  // 로그인 자체는 성공했지만 이어지는 목록 적재가 401 로 막히는 경우가 있다 — 브라우저가
++  // 쿠키 저장을 거부하면 Set-Cookie 가 무시돼 보호 경로(rooms·bots)가 401 이 되고, api() 의
++  // 401 처리가 인증 뷰로 되돌려 놓지만 어디에도 문구가 없어 무반응처럼 보인다. 이 구간의
++  // 실패는 세션 유지 실패 문구로 보인다 (카드 t32 §D — «성공해도 메시지가 없어 디버깅 불가»).
++  // 인증 실패(위 catch, 서버 401 문구)와 겹치지 않게 로딩 구간만 별도로 처리한다.
++  try {
++    await loadRooms()
++    await loadBots()
++  } catch (err) {
++    const el = $('auth-error')
++    el.textContent = '로그인은 됐지만 세션을 유지하지 못했습니다 — 브라우저 쿠키 설정을 확인하세요'
++    el.hidden = false
++    throw err
++  }
+ }
+
+ // 회원가입 성공 → 같은 자격으로 이어서 로그인한다 (REQ-WEBSHELL-008).
+@@ -145,6 +157,9 @@ export async function register(username, password) {
+     throw err
+   }
+   await login(username, password)
++  // 가입이 끝났다는 신호를 남긴다 — 성공이 «조용한 전환» 이면 운영자는 무반응으로 읽는다
++  // (카드 t32 §D — «성공해도 메시지가 없어 디버깅 불가»).
++  showToast('회원가입 완료')
+ }
+
+ // 서버 세션을 끊고 state 세 필드를 초기값으로 되돌린 뒤 인증 뷰로 간다 (REQ-WEBSHELL-012).
+@@ -195,6 +210,14 @@ function toastError(err) {
+   toast.hidden = false
+ }
+
++// 성공 알림 — 오류 토스트와 같은 #error-toast 요소를 쓴다. 자동 숨김 없음도 toastError 와
++// 동일하다: 화면에 남는 것이 삼켜지는 신호보다 낫다 (카드 t32 §D).
++function showToast(text) {
++  const toast = $('error-toast')
++  toast.textContent = text
++  toast.hidden = false
++}
++
+ // ── 방 열기 ──────────────────────────────────────────────────────────
+
+테스트 보강 (같은 describe 에 it 두 개 추가):
+  - shows the session-lost message when room loading fails after login (401):
+    login 200 스텁 뒤 GET /api/rooms 를 401 로 — 인증 뷰 복귀 + #auth-error 가 위 문구로
+    표시됨을 단언.
+  - leaves a completion toast when registration succeeds:
+    register 201 + login 200 + rooms/bots 200 스텁 — #error-toast textContent 가
+    «회원가입 완료» 임을 단언.
+
+RED 원문 (수리 전, npx vitest run --root <t32/server> test/web-shell.test.ts, exit=1):
+  FAIL … > shows the session-lost message when room loading fails after login (401)
+  AssertionError: 세션 유지 실패가 화면에 보여야 한다: expected true to be false
+  FAIL … > leaves a completion toast when registration succeeds
+  AssertionError: 가입 완료 신호가 화면에 남아야 한다: expected true to be false
+  Tests  2 failed | 16 passed (18)
+  — 두 실패 모두 «요소가 계속 숨겨져 있다» 는 같은 모양: 무음 경로 그 자체의 관측이다.
+
+GREEN (수리 후 실측):
+  파일: 같은 명령 → exit 0, 18 passed (18)
+  server 전체: npm --prefix <t32/server> test → exit 0, 16 files / 197 passed (197)
+
+귀속: 이 절의 RED·GREEN 은 이 워크트리(vitest 4.1.11) 실측. WebKit 판정과 운영자
+스크린샷(jw-1)은 레인 실측·운영자 촬영본의 인용이다. §6 의 «재시작 불요» 결론이
+app.js 에도 동일 적용된다(같은 fastifyStatic 경로, §10 의 본문 실측과 같은 메커니즘).
+
+프루브 정리에 더해 (리드 접수 기록, 2026-09-02): §7·§9 의 프루브 계정은 전부 정리됐지만
+운영자 계정(quswjddnjs·jw-1 시도)은 무반응 판정의 당사자라 남겨 둔다 — «운영자 계정으로
+판정 — 유지, 삭제하지 않음(리드 확인)».
+
+§11 보충 (리드 문언 접수 — run 레인 append):
+- 잔존 용의자 확정: Chrome+Blink(운영자) 실패 vs headless Chromium 통과 vs Playwright
+  WebKit 통과. 잔존 용의는 운영자 프로필의 쿠키 설정·확장 프로그램이며, ITP 는 Playwright
+  빌드에 비활성이라 Safari 실기기는 여전히 후보 (리드 문언).
+- 프루브 정리 보충: probe-webkit-1·2 DELETE(sessions 2 + users 2) 후 users 전수 5행 중
+  quswjddnjs·jw-1 은 운영자 가입 테스트 계정으로 판정 — 유지, 삭제하지 않음(리드 확인).
+- WebKit 재현 출력: evidence/webkit-green-output.txt (probe-webkit-2 실행 — §11 본문 참조).
