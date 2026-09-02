@@ -6,9 +6,10 @@
 // 실브라우저(Playwright chromium)로 bounding box 를 잰다.
 //
 // 브라우저 의존 trade-off: 이 테스트는 npx 캐시(~/.npm/_npx/*/node_modules/playwright)의
-// playwright 모듈과 ms-playwright 캐시의 chromium 바이너리를 필요로 한다. 없으면 조용히
-// skip 하는 대신 아래 실패 메시지가 무엇이 없는지 알려준다 — 시각 회귀 가드가 조용히
-// 사라지는 것은 가드 부재만큼 위험하다.
+// playwright 모듈과 ms-playwright 캐시의 chromium 바이너리를 필요로 한다. 부재 환경
+// (CI 러너 등)에서는 실패 대신 skip 으로 전환하되, 조용한 skip 은 금지다 — console.warn
+// 한 줄(무엇을 왜 건너뛰었는지)과 vitest 의 skipped 표시로 반드시 흔적을 남긴다.
+// 로컬(브라우저 있음)에서는 기존처럼 시각 단언이 돈다.
 import { describe, it, expect } from 'vitest'
 import { mkdtempSync, rmSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -34,8 +35,20 @@ function loadPlaywrightCandidates(): any[] {
   return candidates.map(c => require(c.p))
 }
 
+// 모듈 부재는 실패가 아니라 명시적 skip — 단, 이유를 반드시 출력한다. vitest 4.1.11 은
+// skip 이 확정된 파일의 모듈 스코프 console.warn 을 수집 출력에서 가려 버리므로(실측),
+// «조용한 skip 금지» 를 지키려면 표준 오류로 직접 내보내는 것이 확실하다.
+let playwrightCandidates: any[] = []
+let skipReason: string | null = null
+try {
+  playwrightCandidates = loadPlaywrightCandidates()
+} catch (err) {
+  skipReason = err instanceof Error ? err.message : String(err)
+  process.stderr.write(`web-visual: Playwright 부재로 시각 단언 skip — 로컬에서 npm test 로 관측할 것 (${skipReason})\n`)
+}
+
 describe('D-3 hidden guard (real browser, card t32 §D)', () => {
-  it('hides the auth view visually after successful registration', async () => {
+  it('hides the auth view visually after successful registration', { skip: skipReason !== null, timeout: 60_000 }, async () => {
     // 운영자의 3000/3001 에 붙지 않는다 — 임시 데이터 디렉터리 + 포트 0(자유 포트).
     // 회원가입 흐름이 실제 sqlite 에 쓰지만 그 대상은 이 임시 디렉터리다.
     const dir = mkdtempSync(join(tmpdir(), 'md-visual-'))
@@ -47,7 +60,7 @@ describe('D-3 hidden guard (real browser, card t32 §D)', () => {
     const base = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`
 
     // chromium 캐시가 맞는 후보를 골라야 하므로 launch 실패를 다음 후보로 넘긴다
-    const browsers = loadPlaywrightCandidates()
+    const browsers = playwrightCandidates
     let lastErr: unknown
     let browser: any = null
     for (const pw of browsers) {
@@ -108,5 +121,5 @@ describe('D-3 hidden guard (real browser, card t32 §D)', () => {
       await app.close()
       rmSync(dir, { recursive: true, force: true })
     }
-  }, 60_000)
+  })
 })

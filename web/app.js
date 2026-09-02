@@ -207,15 +207,24 @@ export async function createBot(name, description) {
 function toastError(err) {
   const toast = $('error-toast')
   toast.textContent = err instanceof Error ? err.message : String(err)
+  // 성공 토스트의 4초 자동 숨김 창 안에 오류가 나면 성공 클래스가 남아 오류 문구가
+  // 성공색으로 보인다 — 거둔다 (카드 t32 §D 잔여 수리).
+  toast.classList.remove('toast-success')
   toast.hidden = false
 }
 
-// 성공 알림 — 오류 토스트와 같은 #error-toast 요소를 쓴다. 자동 숨김 없음도 toastError 와
-// 동일하다: 화면에 남는 것이 삼켜지는 신호보다 낫다 (카드 t32 §D).
+// 성공 알림 — 오류 토스트와 같은 #error-toast 요소를 쓰되 .toast-success 로 상태색을
+// 갈라 쓴다(design DNA §1 — --md-status-online). 성공은 4초 뒤 저절로 사라진다.
+// 오류(toastError)는 자동 숨김 없이 화면에 남는다 — 삼켜진 오류가 없게 하는 기존 관습.
 function showToast(text) {
   const toast = $('error-toast')
   toast.textContent = text
+  toast.classList.add('toast-success')
   toast.hidden = false
+  setTimeout(() => {
+    toast.hidden = true
+    toast.classList.remove('toast-success')
+  }, 4_000)
 }
 
 // ── 방 열기 ──────────────────────────────────────────────────────────

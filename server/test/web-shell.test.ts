@@ -516,6 +516,33 @@ describe('register/auth-error repair (card t32 §D)', () => {
     }
   })
 
+  // 잔여 수리(리드 승인) — 성공 토스트가 떠 있는 4초 창 안에 오류가 나면 toastError 가
+  // 성공 클래스를 거둬야 한다. 거두지 않으면 오류 문구가 성공색(--md-status-online)으로
+  // 보인다. showToast 의 자동 숨김이 클래스를 회수하기 전의 창을 잰다.
+  it('drops the success class when an error toast follows within the four-second window', async () => {
+    const app = await loadApp()
+    vi.useFakeTimers()
+    try {
+      stubFetch({
+        'POST /api/auth/register': { status: 201, body: { id: 1, username: 'ttongchim' } },
+        'POST /api/auth/login': { status: 200, body: { ok: true } },
+        'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
+        'GET /api/bots': { status: 200, body: [] },
+        'POST /api/rooms/9/archive': { status: 409, body: { error: '이미 보관된 방입니다' } },
+      })
+      await app.register('ttongchim', 'pw123456')
+      const toast = document.getElementById('error-toast')!
+      expect(toast.classList.contains('toast-success'), '가입 직후에는 성공 클래스가 있다').toBe(true)
+      // 시간을 흘리지 않는다 — 4초 자동 숨김이 아직 불리지 않은 창 안에서 오류를 낸다
+      await app.archiveRoom(9)
+      expect(toast.hidden, '오류 토스트가 표시된다').toBe(false)
+      expect(toast.textContent).toBe('이미 보관된 방입니다')
+      expect(toast.classList.contains('toast-success'), '오류에는 성공 클래스가 거둬져야 한다').toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   // 결함 D-3 의 규칙 절반 — [hidden] 가드. author 의 display:flex 선언(#auth-view·
   // #main-view)은 UA 스타일시트의 [hidden]{display:none} 을 항상 이기므로 el.hidden = true
   // 가 시각적으로 무효가 되고 두 뷰가 겹쳐 렌더링된다. author 선언을 통째로 이기려면

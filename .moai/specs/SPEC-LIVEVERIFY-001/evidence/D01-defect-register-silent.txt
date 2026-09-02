@@ -563,6 +563,166 @@ GREEN (가드 착지 후 실측):
 
 귀속: 이 절의 RED·GREEN·typecheck 은 이 워크트리(vitest 4.1.11) 실측. 근본 원인 판정은
 리드 확정 사항이며, 겹침의 실브라우저 재현(box 수치)은 이 워크트리의 chromium 관측이다.
+
+=== §14 묶음 후속 — 성공 토스트 색 분리·자동 숨김 (2026-09-02, 리드 지시) ===
+배경: §11 의 showToast 가 #error-toast 를 그대로 쓰므로 «회원가입 완료» 도 오류색(빨강)으로
+뜨고, 자동 숨김이 없어 화면에 계속 남았다 — 운영자 화면 «엉망» 의 두 번째 원인.
+
+수리 1 — 색 분리 (web/style.css + web/app.js showToast):
+  showToast 가 .toast-success 클래스를 붙이고, CSS 는 #error-toast.toast-success 로
+  상태색을 var(--md-status-online) 으로 갈라 쓴다 — 새 색상 값 0, 기존 팔레트 토큰만
+  (design-tokens.css:22 --md-status-online #23a55a). toastError 는 기존 그대로.
+수리 2 — 자동 숨김 (web/app.js showToast):
+  성공 토스트만 4초 뒤 hidden 복귀+클래스 회수(setTimeout 4_000). 오류 토스트는
+  삼켜짐 방지 관습대로 화면에 남는다 — toastError 무변경.
+
+RED 원문 (수리 전, web-shell.test.ts, exit=1 — 2 failed | 19 passed (21)):
+  FAIL … leaves a completion toast when registration succeeds
+  AssertionError: 성공 토스트는 성공 클래스를 가진다: expected false to be true
+  FAIL … hides the success toast automatically after four seconds
+  AssertionError: 4초 뒤 성공 토스트는 저절로 사라진다: expected false to be true
+  — vitest fake timers(vi.useFakeTimers + advanceTimersByTime(4_000))로 시간축을 잰다.
+  회귀 가드: it 'keeps the error toast on screen (no auto-hide)' — 오류 토스트는 4초 후에도
+  남고 성공 클래스가 없음을 단언. AC-WEBSHELL-011 은 표시 자체만 재므로 시간축은 이 it 이
+  잰다(수리 전후 모두 통과하는 가드).
+
+시각 단언이 또 하나를 잡았다 — 구체성 결함: 첫 CSS 는 .toast-success(0-1-0) 로 썼는데
+#error-toast(1-0-0) 의 오류색이 이겼다. jsdom 은 stylesheet 를 못 읽어 이걸 못 잡고,
+web-visual.test.ts 의 실브라우저 계산색 비교가 잡았다:
+  AssertionError: 토스트 색이 성공 토큰이어야 한다 —
+    {"toastColor":"rgb(242, 63, 67)","online":"rgb(35, 165, 90)","error":"rgb(242, 63, 67)"}
+  수리: 선택자를 #error-toast.toast-success(1-1-0) 로 올려 수리 — §13 의 «속성 단언 한계»
+  교훈이 이 묶음 안에서 곧바로 결함 하나를 더 잡은 사례.
+시각 단언 확장(web-visual.test.ts): register 성공 뒤 #error-toast 의 class 에
+  toast-success 존재 + 계산된 색이 --md-status-online 프로브와 같고 --md-status-error
+  프로브와 다름을 실브라우저에서 단언.
+
+GREEN (수리 후 실측):
+  두 파일: exit 0, 22 passed (22)
+  server 전체: exit 0, 17 files / 201 passed (201)
+  typecheck: exit 0
+
+잔여 공시 (리드 결정 대기 1건): toastError 가 «기존 그대로» 라는 지시대로 두면, 성공
+토스트가 떠 있는 4초 안에 오류가 나면 오류 문구가 성공색으로 보이는 창이 있다(클래스는
+자동 숨김 때 회수되므로 4초 경과 후에는 없다). 지우는 한 줄(toastError 에
+classList.remove)로 막을 수 있으나 지시상한이라 손대지 않았다 — §E.2 잔여로 올린다.
+
+diff 전문 (web/app.js showToast + web/style.css):
+
+diff --git a/web/app.js b/web/app.js
+--- a/web/app.js
++++ b/web/app.js
+@@ -210,12 +210,18 @@ function toastError(err) {
+-// 성공 알림 — 오류 토스트와 같은 #error-toast 요소를 쓴다. 자동 숨김 없음도 toastError 와
+-// 동일하다: 화면에 남는 것이 삼켜지는 신호보다 낫다 (카드 t32 §D).
++// 성공 알림 — 오류 토스트와 같은 #error-toast 요소를 쓰되 .toast-success 로 상태색을
++// 갈라 쓴다(design DNA §1 — --md-status-online). 성공은 4초 뒤 저절로 사라진다.
++// 오류(toastError)는 자동 숨김 없이 화면에 남는다 — 삼켜진 오류가 없게 하는 기존 관습.
+ function showToast(text) {
+   const toast = $('error-toast')
+   toast.textContent = text
++  toast.classList.add('toast-success')
+   toast.hidden = false
++  setTimeout(() => {
++    toast.hidden = true
++    toast.classList.remove('toast-success')
++  }, 4_000)
+ }
+
+diff --git a/web/style.css b/web/style.css
+--- a/web/style.css
++++ b/web/style.css
+@@ -208,6 +214,13 @@ input:focus { outline: 1px solid var(--md-accent); }
+   border-top: 1px solid var(--md-divider);
+ }
+
++/* 성공 토스트 — showToast(회원가입 완료)만 붙이는 클래스. 같은 요소를 공유하되
++   상태색만 갈라 쓴다 — 새 색상 값 없이 기존 팔레트의 온라인 녹색 (design DNA §1).
++   #error-toast(1-0-0) 의 오류색을 이기려면 ID 를 결합한 선택자(1-1-0)가 필요하다. */
++#error-toast.toast-success {
++  color: var(--md-status-online);
++}
+
+귀속: 이 절의 RED·GREEN·typecheck 은 이 워크트리(vitest 4.1.11) 실측. 구체성 결함
+관측(toastColor 수치)은 이 워크트리의 chromium 관측이다.
 - 관측 공시: 커밋 직전 리드 1회 실행이 exit 1 로 떨어졌다(원인 미상 — 동시 실행 간섭 의심,
   직후 재실행 초록). 레인 최종 초록 1회 추가 확인 후 커밋. 일회성 실패의 재발 여부는 §E.2
   에 함께 적는다.
+
+── §14 부속 — CI 브라우저 의존 해소: 명시적 skip (리드 갈래 3, 레인 판정 (b)) ──
+문제: .github/workflows/ci.yml 은 push·PR 마다 전체 npm test 를 돌리는데, CI 러너엔
+playwright 모듈(npx 캐시)도 chromium 바이너리(ms-playwright 캐시)도 없어
+web-visual.test.ts 가 적색이 된다. 부재 환경 재현(HOME 을 빈 임시 디렉터리로 비켜
+require 경로 차단 — 실측):
+  FAIL test/web-visual.test.ts > … > hides the auth view visually after successful registration
+  Error: playwright 미설치 — npx 캐시(~/.npm/_npx)가 없다. …
+  Test Files  1 failed (1)
+  Tests  1 failed (1)   (exit=1)
+
+판정 — 레인은 리드의 두 갈래 중 (b) 명시적 skip 을 택했다:
+  (a) CI 설치 단계(playwright devDependency 추가 + chromium 다운로드)는 새 의존과 설치
+      무게가 이 카드의 범위·예산(REQ 16/AC 16 상한)을 넘는다 — 후속 카드감.
+  (b) 부재 환경에서 실패 대신 skip 으로 전환하되 «조용한 skip 금지» 를 유지한다:
+      이유 문구 한 줄 출력 + vitest skipped 표시로 흔적을 남긴다. 시각 가드는
+      로컬에서 여전히 전부 돈다.
+구현: 모듈 스코프에서 loadPlaywrightCandidates() 를 try/catch 로 감싸 부재 시 skipReason
+을 남기고, it 옵션 { skip: skipReason !== null, timeout: 60_000 } 으로 전환.
+관측된 구현 세부(공시): vitest 4.1.11 은 skip 이 확정된 파일의 모듈 스코프 console.warn 을
+수집 출력에서 가렸다 — «반드시 출력» 요건을 지키려고 같은 문장을 표준 오류로도 내보낸다
+(지시의 console.warn 대신 stderr 직접 출력을 택한 유일한 이탈, 이유는 이 줄이다).
+
+diff 전문 (server/test/web-visual.test.ts):
++// 모듈 부재는 실패가 아니라 명시적 skip — 단, 이유를 반드시 출력한다. vitest 4.1.11 은
++// skip 이 확정된 파일의 모듈 스코프 console.warn 을 수집 출력에서 가려 버리므로(실측),
++// «조용한 skip 금지» 를 지키려면 표준 오류로 직접 내보내는 것이 확실하다.
++let playwrightCandidates: any[] = []
++let skipReason: string | null = null
++try {
++  playwrightCandidates = loadPlaywrightCandidates()
++} catch (err) {
++  skipReason = err instanceof Error ? err.message : String(err)
++  process.stderr.write(`web-visual: Playwright 부재로 시각 단언 skip — 로컬에서 npm test 로 관측할 것 (${skipReason})\n`)
++}
+   (it 시그니처: { skip: skipReason !== null, timeout: 60_000 } 로 전환,
+    loadPlaywrightCandidates() 직접 호출을 playwrightCandidates 참조로 교체,
+    꼬리 timeout 인수 제거 — 전체 diff 는 작업 트리 git diff 참조)
+
+검증 3관 (모두 실측):
+  (1) 로컬(브라우저 있음): 두 파일 exit 0, 22 passed (22) — 시각 단언 기존처럼 통과
+  (2) 부재 환경(HOME 차단): exit 0 + warn 줄 출력 확인 —
+      web-visual: Playwright 부재로 시각 단언 skip — 로컬에서 npm test 로 관측할 것
+      (playwright 미설치 — npx 캐시(~/.npm/_npx)가 없다. …)
+      Test Files 1 skipped (1) · Tests 1 skipped (1)
+  (3) server 전체: exit 0, 17 files / 201 passed (201) · typecheck exit 0
+
+귀속: 이 부속의 세 검증은 이 워크트리(vitest 4.1.11) 실측. (a) 갈래 기각 판단은 레인이
+리드 조건에 따라 적은 것으로, CI 설치 단계가 후속 카드로 남는다.
+
+=== §15 잔여 수리 — toastError 성공 클래스 회수 한 줄 (리드 승인, 2026-09-02) ===
+§14 의 잔여 공시가 리드 승인으로 수리됐다 — «새 결함이 아니라 색 분리 수리의 미완성 절반».
+수리: toastError() 에 toast.classList.remove('toast-success') 한 줄 — 성공 토스트의 4초
+자동 숨김 창 안에 오류가 나도 오류 문구가 성공색(--md-status-online)으로 보이지 않게.
+
+RED 원문 (수리 전, web-shell.test.ts, exit=1 — 1 failed | 21 passed (22)):
+  FAIL … drops the success class when an error toast follows within the four-second window
+  AssertionError: 오류에는 성공 클래스가 거둬져야 한다: expected true to be false
+  — 새 it: register 성공 → 시간을 흘리지 않고(4초 자동 숨김 미발동) archiveRoom 409 →
+    toastError 가 성공 클래스를 거두는지 단언. jsdom 은 계산색을 못 읽으므로 클래스
+    존재가 대리 판정이다(§13 교훈의 한계 안에서).
+
+GREEN (수리 후 실측):
+  두 파일(web-shell·web-visual): exit 0, 23 passed (23)
+  server 전체: exit 0, 17 files / 202 passed (202)
+  typecheck: exit 0
+
+CI skip 구현 상태 확인 (리드 «미반영» 판독 정정): 갈래 3 구현은 이미 작업 트리에 착지돼
+있다 — server/test/web-visual.test.ts 의 skipReason·stderr warn·조건부 skip 전건 존재
+(grep 실측), 미커밋 상태로 대기 중. §14 부속의 3관 검증이 그 증거다.
+
+기록 정리 상태 확인 (리드 요청): §11 의 두 추가 기록 모두 착지 확인 — 잔존 용의자 확정
+문구(D01:370, 리드 문언)·운영자 계정 유지 판정(D01:468, «운영자 계정으로 판정 — 유지,
+삭제하지 않음(리드 확인)»).
+
+미커밋 pathspec 제안 (최종 묶음): web/app.js(showToast 색·자동 숨김 + toastError 한 줄) ·
+server/test/web-shell.test.ts(잔여 수리 it) · server/test/web-visual.test.ts(CI skip) ·
+.moai/specs/SPEC-LIVEVERIFY-001/evidence/D01-defect-register-silent.txt(§14 부속·§15)
