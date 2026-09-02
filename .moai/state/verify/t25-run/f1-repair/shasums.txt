@@ -1,0 +1,14 @@
+# channel/src/index.ts shasums — F1 수리 전/후 (변경은 영구 적용 — 두 값 모두 기록)
+
+## before (HEAD 4fdfb97 == working tree, 수리 전)
+
+git show HEAD:channel/src/index.ts | shasum -a 256
+860d1dac19464d6bea0625d8ec435afc5fcb926818cec3c43fbee61840ce13f8  -
+
+shasum -a 256 channel/src/index.ts   (수리 전 working tree)
+860d1dac19464d6bea0625d8ec435afc5fcb926818cec3c43fbee61840ce13f8  channel/src/index.ts
+
+## after (F1 수리 적용 후 working tree)
+
+shasum -a 256 channel/src/index.ts
+eec03e230f511fdd5dda069430b3ce92386ec661e35df5e590898d05d38f26a5  channel/src/index.ts

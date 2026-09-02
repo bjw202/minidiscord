@@ -1,0 +1,36 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t25/channel
+
+stderr | test/index-wiring.test.ts > channel wiring > an element whose author alone exceeds the limits still survives with a progressing cursor (E-12, AC-BOTSTAB-007 ㉢ family)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/index-wiring.test.ts (18 tests | 1 failed) 1325ms
+     × an element whose author alone exceeds the limits still survives with a progressing cursor (E-12, AC-BOTSTAB-007 ㉢ family) 17ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > an element whose author alone exceeds the limits still survives with a progressing cursor (E-12, AC-BOTSTAB-007 ㉢ family)
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/index-wiring.test.ts:553:31
+    551|     const h = parsedHistory(res)
+    552|     // ㉠ 원소는 버려지지 않고 실린다 — «원소 하나는 반드시 실린다»(진행 보장, AC-BOTSTAB-007 ㉢).
+    553|     expect(h.messages.length).toBe(1)
+       |                               ^
+    554|     // ㉡ cursor 는 null 이 아니라 실린 원소의 id 다 — 이력 따라잡기가 멈추지 않는다.
+    555|     expect(h.cursor).toBe(7)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 17 passed (18)
+   Start at  10:10:32
+   Duration  1.56s (transform 40ms, setup 0ms, import 159ms, tests 1.32s, environment 0ms)
+

@@ -466,7 +466,8 @@ describe('channel wiring', () => {
     expect(Object.keys(h.messages[0] as Record<string, unknown>).sort()).toEqual(['at', 'author', 'body', 'id'])
     // ㉢ 원소가 0개가 아니다 — 진행 보장(plan.md §E). 혼자 상한을 넘는 원소도 반드시 하나는 실린다.
     expect(h.messages.length).toBe(1)
-    // id·at·author 는 무변형이다 — 절단의 대상은 body 뿐이다 (plan.md §H M4).
+    // id·at 은 무변형이다 — author 는 OD-5 를 넘을 때만 잘린다(아래 엣지 E-12, sync 감사 F1 수리).
+    // 이 fixture 의 'alice' 는 상한 이하라 원문 그대로다 (plan.md §H M4).
     expect(h.messages[0]).toMatchObject({ id: 7, at: '2026-09-01', author: 'alice' })
     expect(h.cursor).toBe(7)   // 실린 원소가 하나뿐이므로 cursor 는 그 id 다 (AC-BOTSTAB-008 과 같은 근거)
     // ㉣ 그 원소의 body 에 잘림 표시가 있다 — 시스템이 붙인 표시는 끝에 온다 (plan.md §C).
@@ -529,5 +530,73 @@ describe('channel wiring', () => {
     // 이력 총 상한(OD-4) 이하다 (acceptance.md 엣지 E-1 · AC-BOTSTAB-007 과 같은 재기).
     expect(Buffer.byteLength((res as { content: { text: string }[] }).content[0].text, 'utf8'))
       .toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+  })
+
+  // 엣지 E-12 — author 만 상한을 넘어도 원소는 실린다 (sync 감사 F1 수리, 카드 t25 · AC-BOTSTAB-007 ㉢ 가문).
+  // server/src/auth.ts:32 는 username 길이를 검사하지 않으므로(sync-audit §C-6) 큰 author 는 도달 가능한 입력이다.
+  // Given 은 감사가 재현한 «2만 바이트 이름» 공격의 모양이다 — author 만으로 문서가 이력 총 상한(OD-4)을 넘으면
+  // 낡은 코드의 2단계 루프는 그 원소마저 버려 cursor: null, 빈 이력을 냈고(RED 관측), 이후 fetch_history 는
+  // 영구히 빈 결과만 돌려주었다. 이 기준은 «author 가 혼자 커도 원소는 살고 커서는 나아간다» 를 못 박는다.
+  it('an element whose author alone exceeds the limits still survives with a progressing cursor (E-12, AC-BOTSTAB-007 ㉢ family)', async () => {
+    const { stub, obs } = await connected()
+    // 한국어 한 글자는 UTF-8 로 3바이트 — 반복 수에 상한 상수를 쓴다 (§F — 숫자 복제 금지).
+    // OD-4 회 반복 = author 3×OD-4 바이트. 2×OD-5 정도의 작은 초과는 총량이 OD-4 미만이라 버리기
+    // 루프를 지나치므로 이 기준이 재는 결함(INV-2 위반)에 닿지 않는다 — 그래서 author 혼자 OD-4 를 넘긴다.
+    const hugeAuthor = '가'.repeat(MAX_HISTORY_BYTES)
+    // 전제 확인 — 본문은 자그마하고 author 만이 총 상한을 혼자 넘는다는 것이 이 기준의 Given 이다.
+    expect(Buffer.byteLength(hugeAuthor, 'utf8')).toBeGreaterThan(MAX_HISTORY_BYTES)
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') stub.push({ type: 'history_response', rid: m.rid, messages: [{ id: 7, created_at: '2026-09-01', author_name: hugeAuthor, body: '짧은 본문' }] })
+    })
+    const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
+    const h = parsedHistory(res)
+    // ㉠ 원소는 버려지지 않고 실린다 — «원소 하나는 반드시 실린다»(진행 보장, AC-BOTSTAB-007 ㉢).
+    expect(h.messages.length).toBe(1)
+    // ㉡ cursor 는 null 이 아니라 실린 원소의 id 다 — 이력 따라잡기가 멈추지 않는다.
+    expect(h.cursor).toBe(7)
+    // ㉢ author 는 이름 상한(OD-5) 이하로 잘려 실린다 — 알림 통로와 같은 상수다.
+    const author = (h.messages[0] as { author: string }).author
+    expect(Buffer.byteLength(author, 'utf8')).toBeLessThanOrEqual(MAX_NAME_BYTES)
+    // ㉣ 잘림 표시가 붙었다 — 시스템이 붙인 표시의 고정 앞부분으로 잘렸음을 안다.
+    expect(author).toContain(TRUNC_MARKER_HEAD)
+  })
+
+  // 회귀(F1 홍수형) — 혼자 큰 author 원소가 «가장 오래된» 원소여도, 나머지 원소를 전부 태우고 사라지지 않는다.
+  // 감사의 축소 재현(sync-audit §C-6: kept=[id1 author 20KB, id2, id3] → kept.length=0)의 배선 형태다.
+  // 버리는 루프는 큰 id 부터 버리므로 큰 author 를 가장 낮은 id 에 두면, 낡은 코드는 정상 원소를 전부 버린
+  // 뒤 그 원소마저 버려 cursor: null 에 닿았다(RED 관측). 수리 뒤에는 author 절단 덕에 아무것도 버려지지 않는다.
+  it('a flood where the huge-author element is the oldest keeps every element and progresses the cursor (E-12 flood)', async () => {
+    const { stub, obs } = await connected()
+    const hugeAuthor = '가'.repeat(MAX_HISTORY_BYTES)   // E-12 와 같은 상수 조립 — author 3×OD-4 바이트
+    const NORMAL_BODIES = ['첫 번째', '두 번째', '세 번째', '네 번째']
+    // id 1 이 혼자 큰 author 원소(가장 낮은 id), 2~5 가 정상 원소다.
+    const rows = [
+      { id: 1, created_at: 't1', author_name: hugeAuthor, body: '큰 이름 본문' },
+      ...NORMAL_BODIES.map((b, i) => ({ id: i + 2, created_at: `t${i + 2}`, author_name: 'alice', body: b })),
+    ]
+    // 전제 확인 — 전부 실리면(수리 전 코드가 그렇다) 총 상한을 넘는 것이 이 시나리오의 동력이다.
+    expect(Buffer.byteLength(JSON.stringify(rows), 'utf8')).toBeGreaterThan(MAX_HISTORY_BYTES)
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') stub.push({ type: 'history_response', rid: m.rid, messages: rows })
+    })
+    const res = await obs.callTool({ name: 'fetch_history', arguments: {} })
+    const h = parsedHistory(res)
+    const keptIds = h.messages.map(m => (m as { id: number }).id)
+    // ㉠ 전부 타서 0 개가 되지 않는다 — 수리 후에는 아무것도 버려질 필요가 없어 다섯 개가 모두 실린다.
+    expect(keptIds.length).toBeGreaterThanOrEqual(1)
+    expect(keptIds).toContain(1)
+    // 큰 author 원소도 이름 상한 이하로 잘려 실린다 — 표시와 함께.
+    const huge = h.messages.find(m => (m as { id: number }).id === 1) as { author: string }
+    expect(Buffer.byteLength(huge.author, 'utf8')).toBeLessThanOrEqual(MAX_NAME_BYTES)
+    expect(huge.author).toContain(TRUNC_MARKER_HEAD)
+    // ㉡ cursor 는 «실린» 원소의 id 최댓값이고 null 이 아니다 — 진행이 멈추지 않는다(AC-BOTSTAB-008 과 같은 근거).
+    expect(h.cursor).not.toBeNull()
+    expect(h.cursor).toBe(Math.max(...keptIds))
+    // ㉢ 정상 원소의 본문은 한 글자도 다루어지지 않았다 — 이 시나리오에서 절단은 큰 author 원소에만 일어난다.
+    NORMAL_BODIES.forEach((b, i) => {
+      const m = h.messages.find(x => (x as { id: number }).id === i + 2) as { body: string; author: string }
+      expect(m.body).toBe(b)
+      expect(m.author).toBe('alice')
+    })
   })
 })
