@@ -221,8 +221,8 @@ milestones:
   M2: "channel/src/truncate.ts 신설(OD 상수 5·시길 탈출·코드포인트 절단·파생 ㉡ 정규식 수출)+테스트 9건(INV-1/2/3 포함). 98→107"
   M3: "알림 통로 배선(이름·본문·첨부 갈라서, 중화 뒤)+테스트 9건. 107→116"
   M4: "이력 통로 두 단계 절단+cursor=실린 원소 id 최댓값 — TDD(RED 48,079B→GREEN)+테스트 3건. 116→119"
-  M4a: "훑기 생출력 33블록 전원 상수 적중 단언(신규 23·보유 10)+AC-013(생 훑기 파싱·일곱째 파일)+PLACEMENT=OK. 119→120"
-  M5: "변이표 17행 전건 실측(일치 16·불일치 1=G 예측 오배정)+K 배선 목격 보강 후 재측정 일치+형제 두 수(빨개지는 것 0·무효화 33/33). 120→121"
+  M4a: "훑기 생출력 33블록 전원 상수 적중 단언(신규 23·보유 10)+AC-013(생 훑기 파싱·일곱째 파일)+PLACEMENT=OK. 119→120 (K 보강 전 캡처 기준)"
+  M5: "변이표 17행 전건 실측(일치 16·불일치 1=G 예측 오배정)+K 배선 목격 보강 후 재측정 일치+형제 두 수(빨개지는 것 0·무효화 33/33 — M5 게이트 시점, 생출력 34 기준 34/34). 120→121"
 mutation_measurements: ".moai/state/verify/t25-run/m5-mutation-observations.md (통합표) · mutation-{A..N2}.md (행별 전문) · m5-raw/ (원본)"
 flake_handover: "transport-auth nonces 논스 테스트 2회 출현·자가소멸 — .moai/state/verify/t25-run/flake-observations.md"
 ```
@@ -236,11 +236,11 @@ spec_id: SPEC-BOTSTAB-001
 evidence:
   suite: "121 passed / 7 files — run 레인 직접 실행(2026-09-01 17:33, 이 트리, exit 0)"
   mutation_table: ".moai/state/verify/t25-run/m5-mutation-observations.md — 17행 전건 관측, 빈 행 0, 일치 16 / 불일치 1(G)"
-  sibling_two_counts: "빨개지는 것 0건(클린 스위트 관측) · 무효화되는 것 33/33블록(AC-013 PASS + 훑기 재실행 33블록)"
+  sibling_two_counts: "빨개지는 것 0건(클린 스위트 관측) · 무효화되는 것 34/34블록 — M5 게이트 시점 33/33 → K 보강(2026-09-01 17:23) 뒤 생출력 34 기준 34/34, 차분 = channel-server.test.ts:547 AC-BOTSTAB-010 배선 목격 — run-done §0 과 동일 공시(AC-013 PASS + 훑기 재실행)"
   placement_probe: "PLACEMENT=OK (self-reference-probe.mjs, exit 0 — run 레인 직접 재실행)"
   regex_coupling: "[HARD] ㉡ 결합 기준 PASS — 파생 정규식(truncate.ts 수출)이 수출 상수 전부에 적중"
   scope_boundaries: "gateway-client.ts diff 0 · server/ 변경 0 · neutralizeEnvelope 무변경 · SPEC-CHANINJECT-001/* 무변경 — git diff --stat + shasum"
-  sync_handoff: "plan.md §M 의무 — sync 디스패치 경유(plan-done §4b). 판정 입력: .moai/state/verify/t25-run/{sibling-sweep-run.md, m4a-evidence.md §E2 착지표 33행}"
+  sync_handoff: "plan.md §M 의무 — sync 디스패치 경유(plan-done §4b). 판정 입력: .moai/state/verify/t25-run/{sibling-sweep-run.md, m4a-evidence.md §E2 착지표 33행} — 명시: 33행은 K 보강 이전 캡처, 살아 있는 출력은 34블록, sync 는 생출력으로 판정"
 pending_lead_decisions:
   - "커밋 승인(승인 전 미커밋 유지 — t8/t10 순서)"
   - "G 행 예측 오배정·acceptance.md 관측 열 채움·spec.md §3.3 재도출 — SPEC 본문 소유권(manager-spec 회부)"
