@@ -1,0 +1,211 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t25/channel
+
+stderr | test/gateway-client.test.ts > gateway client > sends hello with the verifier pub as the very first frame
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > passes the welcome frame through untouched, extra fields included
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > passes the message frame through untouched, files and delivery included
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > passes a deny verdict through as deny
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > routes by type only — an unknown frame reaches no callback
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > survives frames whose callback was not provided
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+······stderr | test/gateway-client.test.ts > gateway client > sends only while open, and reports it truthfully
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+····················x···stderr | test/index-wiring.test.ts > channel wiring > gateway message becomes exactly one session notification
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > puts every history parameter on the frame top level, since_id included
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+··········stderr | test/gateway-client.test.ts > gateway client > matches responses by rid, not by arrival order
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > cc message is delivered but raises no working status
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > rejects a history request at 10 seconds, not before
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > resets the backoff to 1000 after a successful connection
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·········stderr | test/gateway-client.test.ts > gateway client > resets the backoff to 1000 after a successful connection
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-mutual-auth.test.ts > gateway mutual auth > the real server and the real channel agree end to end, envelope included
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > does not enter the retry path when close arrives after stop()
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > does not enter the retry path when close arrives after stop()
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > does not open a new connection when stop() lands during the backoff wait
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > reconnects exactly once when stop() is not called
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > reconnects exactly once when stop() is not called
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > the no-new-connection predicate fails for a replica that omits the stopped check
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+····stderr | test/gateway-client.test.ts > gateway client > passes a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+···stderr | test/index-wiring.test.ts > channel wiring > a TO message reports working to the gateway
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > reply tool sends a bot_message with mapped file paths
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/index-wiring.test.ts > channel wiring > idle status follows the bot_message, not precedes it
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+····stderr | test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·······stderr | test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+··stderr | test/gateway-mutual-auth.test.ts > gateway mutual auth > a history response from the real server arrives inside an envelope and resolves
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·········stderr | test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > history result stays under the total byte limit and carries the truncation marker (AC-BOTSTAB-007)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a truncated history derives the cursor from the kept ids only, dropping the newest first (AC-BOTSTAB-008)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > empty history passes through untouched — cursor null, empty messages (E-1)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+············stderr | test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+········stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+··stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (sha256-pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+··stderr | test/transport-auth.test.ts > transport auth > a challenge from a stub that holds the confirm key establishes the session
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/transport-auth.test.ts > transport auth > no auth signature leaves the channel before the server has proved itself
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+····
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/channel-server.test.ts > pushChatMessage truncation wiring (SPEC-BOTSTAB-001 M3) > AC-BOTSTAB-006 (나) — 긴 경로 하나는 OD-3 안에서 잘리고 그 자리에 표시가 있다
+AssertionError: expected 518 to be less than or equal to 512
+ ❯ test/channel-server.test.ts:494:47
+    492|       content.slice(content.indexOf('(첨부 파일 경로: ') + '(첨부 파일 경로: '.len…
+    493|
+    494|     expect(Buffer.byteLength(notice, 'utf8')).toBeLessThanOrEqual(MAX_…
+       |                                               ^
+    495|     expect(notice.startsWith('/data/')).toBe(true) // 경로의 앞부분은 살아 있다
+    496|     expect(rawOpens(notice)).toBe(1) // 그 자리에 표시가 있다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  1 failed | 119 passed (120)
+   Start at  16:41:01
+   Duration  65.08s (transform 430ms, setup 0ms, import 1.26s, tests 70.34s, environment 0ms)
+

@@ -1,0 +1,52 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t25/channel
+
+stderr | test/index-wiring.test.ts > channel wiring > an element whose author alone exceeds the limits still survives with a progressing cursor (E-12, AC-BOTSTAB-007 ㉢ family)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a flood where the huge-author element is the oldest keeps every element and progresses the cursor (E-12 flood)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+ ❯ test/index-wiring.test.ts (19 tests | 2 failed) 1358ms
+     × an element whose author alone exceeds the limits still survives with a progressing cursor (E-12, AC-BOTSTAB-007 ㉢ family) 17ms
+     × a flood where the huge-author element is the oldest keeps every element and progresses the cursor (E-12 flood) 14ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > an element whose author alone exceeds the limits still survives with a progressing cursor (E-12, AC-BOTSTAB-007 ㉢ family)
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/index-wiring.test.ts:553:31
+    551|     const h = parsedHistory(res)
+    552|     // ㉠ 원소는 버려지지 않고 실린다 — «원소 하나는 반드시 실린다»(진행 보장, AC-BOTSTAB-007 ㉢).
+    553|     expect(h.messages.length).toBe(1)
+       |                               ^
+    554|     // ㉡ cursor 는 null 이 아니라 실린 원소의 id 다 — 이력 따라잡기가 멈추지 않는다.
+    555|     expect(h.cursor).toBe(7)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/index-wiring.test.ts > channel wiring > a flood where the huge-author element is the oldest keeps every element and progresses the cursor (E-12 flood)
+AssertionError: expected 0 to be greater than or equal to 1
+ ❯ test/index-wiring.test.ts:585:28
+    583|     const keptIds = h.messages.map(m => (m as { id: number }).id)
+    584|     // ㉠ 전부 타서 0 개가 되지 않는다 — 수리 후에는 아무것도 버려질 필요가 없어 다섯 개가 모두 실린다.
+    585|     expect(keptIds.length).toBeGreaterThanOrEqual(1)
+       |                            ^
+    586|     expect(keptIds).toContain(1)
+    587|     // 큰 author 원소도 이름 상한 이하로 잘려 실린다 — 표시와 함께.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 17 passed (19)
+   Start at  10:11:06
+   Duration  1.57s (transform 39ms, setup 0ms, import 141ms, tests 1.36s, environment 0ms)
+

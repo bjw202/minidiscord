@@ -1,0 +1,26 @@
+FACTS(문서에서 셈): 변이표 20행 · 수용 기준 13건 · 상한 상수 5개
+.moai/specs/SPEC-BOTSTAB-001/plan.md:216	mutation-rows	변이표 행수는 표에서 센 값과 같아야 한다 — 이 줄은 19, 현재값은 20
+    - `acceptance.md` 변이표 **19행**을 실제로 적용해 예측과 대조한다. 표에 «예측» 만 남고 «관측» 이 비어 있는 행을 하나도 남기지 않는다.
+.moai/specs/SPEC-BOTSTAB-001/plan.md:255	mutation-rows	변이표 행수는 표에서 센 값과 같아야 한다 — 이 줄은 19, 현재값은 20
+    5. `acceptance.md` 변이표 19행에 관측이 비어 있는 행이 없는지 확인한다.
+.moai/specs/SPEC-BOTSTAB-001/plan.md:319	mutation-rows	변이표 행수는 표에서 센 값과 같아야 한다 — 이 줄은 19, 현재값은 20
+    - `.moai/specs/SPEC-BOTSTAB-001/acceptance.md` — 기준 **13건**과 변이표 **19행**
+.moai/specs/SPEC-BOTSTAB-001/plan.md:321	score-attribution	0.733 은 매겨진 트리와 같은 줄에 적어야 한다
+    - `.moai/reports/t25/plan-audit.md` · `plan-audit-2.md` · `plan-audit-3.md` — 1·2·3회차 계획 감사(FAIL 0.733 → FAIL 0.792 → **PASS 0.820**). 세 보고서가 각각 A-0N · B-0N · C-0N 의 정본이다
+.moai/specs/SPEC-BOTSTAB-001/plan.md:321	score-attribution	0.792 은 매겨진 트리와 같은 줄에 적어야 한다
+    - `.moai/reports/t25/plan-audit.md` · `plan-audit-2.md` · `plan-audit-3.md` — 1·2·3회차 계획 감사(FAIL 0.733 → FAIL 0.792 → **PASS 0.820**). 세 보고서가 각각 A-0N · B-0N · C-0N 의 정본이다
+.moai/specs/SPEC-BOTSTAB-001/acceptance.md:346	unmeasurable-count	「잴 수 없는 자리」의 개수는 도구의 TALLY 줄이 소유한다 — 문서가 수로 굳히지 않는다
+    - **빨개지는 것**: `npm test -w channel` 로 **관측한다.** 계획 단계의 «0건» 은 예측이지 측정이 아니다(`spec.md` §3.3 — 영향 자리 19 중 여섯은 기대값이 그 줄에 없어 계획 단계 도구가 재지 못했다). 0이 아니면 그 자체가 신호다 — 「상한 이하·시길 없음
+.moai/specs/SPEC-BOTSTAB-001/plan-done.md:3	score-attribution	0.733 은 매겨진 트리와 같은 줄에 적어야 한다
+    - 1회차 계획 감사: **FAIL 0.733** (`.moai/reports/t25/plan-audit.md`)
+.moai/specs/SPEC-BOTSTAB-001/plan-done.md:4	score-attribution	0.792 은 매겨진 트리와 같은 줄에 적어야 한다
+    - 2회차 델타 감사: **FAIL 0.792** (`.moai/reports/t25/plan-audit-2.md`) / Tier M 통과선 **0.80**
+.moai/specs/SPEC-BOTSTAB-001/plan-done.md:183	unmeasurable-count	「잴 수 없는 자리」의 개수는 도구의 TALLY 줄이 소유한다 — 문서가 수로 굳히지 않는다
+    - **「빨개지는 것 0건」은 예측이지 측정이 아니다.** 영향 단언 19 중 여섯은 기대값이 그 줄에 없어 계획 단계 도구가 재지 못했다(`plan.md` §L ③). 확정은 run 이 `npm test -w channel` 로 낸다.
+.moai/specs/SPEC-BOTSTAB-001/progress.md:14	score-attribution	0.733 은 매겨진 트리와 같은 줄에 적어야 한다
+    score: 0.733
+.moai/specs/SPEC-BOTSTAB-001/progress.md:23	score-attribution	0.792 은 매겨진 트리와 같은 줄에 적어야 한다
+    score: 0.792
+.moai/specs/SPEC-BOTSTAB-001/progress.md:31	score-attribution	0.820 은 매겨진 트리와 같은 줄에 적어야 한다
+    score: 0.820
+DOC_STEM_SWEEP=12 hit(s)

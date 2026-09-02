@@ -1,0 +1,332 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t25/channel
+
+stderr | test/gateway-client.test.ts > gateway client > sends hello with the verifier pub as the very first frame
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > passes the welcome frame through untouched, extra fields included
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > passes the message frame through untouched, files and delivery included
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > passes a deny verdict through as deny
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > routes by type only — an unknown frame reaches no callback
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > survives frames whose callback was not provided
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > drops a malformed frame and keeps processing the next valid one
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > sends only while open, and reports it truthfully
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > gateway message becomes exactly one session notification
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·······stderr | test/gateway-client.test.ts > gateway client > puts every history parameter on the frame top level, since_id included
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+························stderr | test/gateway-client.test.ts > gateway client > matches responses by rid, not by arrival order
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+··········stderr | test/index-wiring.test.ts > channel wiring > cc message is delivered but raises no working status
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > rejects a history request at 10 seconds, not before
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > fails a history request immediately when not connected, and recovers after connecting
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+······stderr | test/gateway-mutual-auth.test.ts > gateway mutual auth > the real server and the real channel agree end to end, envelope included
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/gateway-mutual-auth.test.ts > gateway mutual auth > a relaying man in the middle passes the handshake and still injects nothing
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/index-wiring.test.ts > channel wiring > a TO message reports working to the gateway
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > reply tool sends a bot_message with mapped file paths
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/index-wiring.test.ts > channel wiring > idle status follows the bot_message, not precedes it
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > fetch_history forwards since_id and limit verbatim
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+····stderr | test/index-wiring.test.ts > channel wiring > history renders as one structured JSON document
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > empty history renders the same JSON shape with a null cursor
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a single poisoned message stays a single element and carries no live envelope sequence
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > after welcome, the same two frames reach the session exactly once each
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > derives the cursor from ids only, never from body text, and nulls it when empty
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·······stderr | test/index-wiring.test.ts > channel wiring > a chat message with no MCP peer raises no unhandled rejection
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+···stderr | test/gateway-mutual-auth.test.ts > gateway mutual auth > a history response from the real server arrives inside an envelope and resolves
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·······stderr | test/permission-relay.test.ts > permission relay > wire relays a request out to the gateway and a verdict back to Claude Code
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > history result stays under the total byte limit and carries the truncation marker (AC-BOTSTAB-007)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > a truncated history derives the cursor from the kept ids only, dropping the newest first (AC-BOTSTAB-008)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/index-wiring.test.ts > channel wiring > empty history passes through untouched — cursor null, empty messages (E-1)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+············stderr | test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+xxxstderr | test/gateway-client.test.ts > gateway client > resets the backoff to 1000 after a successful connection
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+x······stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+··stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (sha256-pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/transport-auth.test.ts > transport auth > a rogue that reads the hello cannot forge a challenge from what it read (pub)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+··stderr | test/transport-auth.test.ts > transport auth > a challenge from a stub that holds the confirm key establishes the session
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·stderr | test/transport-auth.test.ts > transport auth > no auth signature leaves the channel before the server has proved itself
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+·stderr | test/gateway-client.test.ts > gateway client > does not enter the retry path when close arrives after stop()
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/gateway-client.test.ts > gateway client > does not enter the retry path when close arrives after stop()
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+stderr | test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+·xstderr | test/gateway-client.test.ts > gateway client > does not open a new connection when stop() lands during the backoff wait
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+xstderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+xstderr | test/gateway-client.test.ts > gateway client > reconnects exactly once when stop() is not called
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+xstderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+xstderr | test/gateway-client.test.ts > gateway client > the no-new-connection predicate fails for a replica that omits the stopped check
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+xstderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+xstderr | test/gateway-client.test.ts > gateway client > passes a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나)
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+x·stderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+xstderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+xstderr | test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+minidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+
+xstderr | test/transport-auth.test.ts > transport auth > an envelope with a broken mac, and a frame with no envelope, are both dropped
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+xstderr | test/transport-auth.test.ts > transport auth > a replayed envelope is dropped because its sequence has already been used
+minidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+
+····
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > waits then reconnects to the replaced opts.url and says hello again
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:401:3
+    399|   // (v2 계약, SPEC-GWAUTH-002 — 재접속 hello 도 같은 세 필드{pub, client_nonce, …
+    400|   //  첫 소켓의 것과 다름이 곧 논스 재생성의 관측이다 — REQ-GWAUTH2-010)
+    401|   it('waits then reconnects to the replaced opts.url and says hello ag…
+       |   ^
+    402|     const srv1 = startServer()
+    403|     const { client, sleeps } = await connected(srv1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > doubles the backoff and never exceeds the ceiling
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:418:3
+    416|
+    417|   // AC-CHANCLIENT-012 — 백오프가 두 배씩 늘고 상한에서 멈춘다
+    418|   it('doubles the backoff and never exceeds the ceiling', async () => {
+       |   ^
+    419|     const url = await deadUrl()
+    420|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > resets the backoff to 1000 after a successful connection
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:442:3
+    440|
+    441|   // AC-CHANCLIENT-013 — 연결에 성공하면 백오프가 처음으로 돌아간다
+    442|   it('resets the backoff to 1000 after a successful connection', async…
+       |   ^
+    443|     let current = startServer()
+    444|     const sleeps: number[] = []
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > does not enter the retry path when close arrives after stop()
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:468:3
+    466|
+    467|   // AC-CHANCLIENT-014 — stop() 이후 도착한 close 는 재시도 경로에 들어가지 않는다 (부정 사례)
+    468|   it('does not enter the retry path when close arrives after stop()', …
+       |   ^
+    469|     const srv = startServer()
+    470|     const stopped = await connected(srv)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > does not open a new connection when stop() lands during the backoff wait
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:486:3
+    484|   // 가드 ② 를 지워도 true 다 (plan §G R-2). 이 기준을 무너뜨리는 변이: 변이 B —
+    485|   // retry() 안 await sleep 직후의 if (stopped) return 삭제.
+    486|   it('does not open a new connection when stop() lands during the back…
+       |   ^
+    487|     const srv = startServer()
+    488|     const g = startGatedClient(srv)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > reconnects exactly once when stop() is not called
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:505:3
+    503|   // (REQ-BOTSTAB-001·002). 과잉 방어를 막는 짝 — 「항상 안 붙는다」 구현이 이 기준에 실패한다.
+    504|   // 이 기준을 무너뜨리는 변이: 변이 C — retry() 첫 줄에 무조건 return.
+    505|   it('reconnects exactly once when stop() is not called', async () => {
+       |   ^
+    506|     const srv = startServer()
+    507|     const { sleeps } = await connected(srv)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  test/gateway-client.test.ts > gateway client > the no-new-connection predicate fails for a replica that omits the stopped check
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway-client.test.ts:520:3
+    518|   // 차이는 가드 ② 한 줄뿐이다 — startReplica 주석이 그 한 줄을 지목한다. 대역은 이 파일 안에
+    519|   // 있고 src 는 고치지 않는다. 이 기준을 무너뜨리는 변이: 변이 M2 — 술어를 내부 stopped 값으로.
+    520|   it('the no-new-connection predicate fails for a replica that omits t…
+       |   ^
+    521|     const srv = startServer()
+    522|     const g = startGatedClient(srv)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a history_response before welcome resolves nothing; after welcome it resolves
+Error: waitFor timeout: 재접속 확립 (auth 발신)
+ ❯ waitFor test/transport-auth.test.ts:279:37
+    277|   const t0 = Date.now()
+    278|   while (!pred()) {
+    279|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    280|     await new Promise(r => setTimeout(r, 10))
+    281|   }
+ ❯ test/transport-auth.test.ts:458:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > session establishment does not survive a reconnect
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/transport-auth.test.ts:469:3
+    467|
+    468|   // AC-CHANAUTH-004 — 재접속하면 게이트가 다시 닫힌다
+    469|   it('session establishment does not survive a reconnect', async () =>…
+       |   ^
+    470|     const stub = rogueGateway({ welcome: true })
+    471|     // 1) 첫 소켓은 정상적으로 세션이 확립된다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > both nonces are regenerated per socket and a replayed challenge is refused
+Error: waitFor timeout: 재접속
+ ❯ waitFor test/transport-auth.test.ts:279:37
+    277|   const t0 = Date.now()
+    278|   while (!pred()) {
+    279|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    280|     await new Promise(r => setTimeout(r, 10))
+    281|   }
+ ❯ test/transport-auth.test.ts:741:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/16]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (wrong)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (short)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (omit)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (other-room)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (bad-nonce)
+ FAIL  test/transport-auth.test.ts > transport auth > a malformed or wrong-length proof is refused without throwing (pipe-nonce)
+Error: waitFor timeout: 거절 뒤 재접속
+ ❯ waitFor test/transport-auth.test.ts:279:37
+    277|   const t0 = Date.now()
+    278|   while (!pred()) {
+    279|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    280|     await new Promise(r => setTimeout(r, 10))
+    281|   }
+ ❯ test/transport-auth.test.ts:767:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/16]⎯
+
+
+ Test Files  2 failed | 5 passed (7)
+      Tests  16 failed | 104 passed (120)
+   Start at  16:36:42
+   Duration  94.77s (transform 442ms, setup 0ms, import 1.28s, tests 134.91s, environment 0ms)
+

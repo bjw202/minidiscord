@@ -147,6 +147,58 @@ async function connected(srv: FakeServer, over: Partial<GatewayClientOpts> = {})
   return { client, sleeps }
 }
 
+// F-11 신설 기준(AC-BOTSTAB-001·012)이 쓰는 게이트 클라이언트 — 주입 sleep 은 기존 형태대로
+// 인자를 sleeps 에 쌓지만, 만료를 1ms 타이머에 맡기지 않고 시험이 release() 로 결정한다.
+// 이유: AC-001 의 전제는 「stop() 이 대기 만료 «전»에 불린다」인데 1ms 형태로는 만료가
+// waitFor 의 관측보다 먼저 지나가 전제가 간헐적으로 깨지고, 깨진 자리에서는 재접속이 이미
+// 일어난 뒤라 기준이 아무것도 재지 못한다(공허 통과). 대기 진입 관측(sleeps), 서버 쪽 소켓 수
+// 판정, 고정 setTimeout 판정 금지 — 세 가지는 기존 형태와 같다.
+function startGatedClient(srv: FakeServer) {
+  const sleeps: number[] = []
+  let release!: () => void
+  const settled = new Promise<void>(r => { release = r })
+  const client = createGatewayClient({
+    url: () => srv.url(),
+    token: 'tok123',
+    sleep: async ms => { sleeps.push(ms); await settled },
+  })
+  cleanups.push(() => client.stop())
+  return { client, sleeps, release, settled }
+}
+
+// 대기 만료 뒤에 세계가 돌았음의 증거 — probe 연결 하나의 hello 가 서버에 도착하는 것을 기다린다.
+// 재접속 시도가 있었다면 그것은 probe 보다 먼저 시작된 것(같은 약속의 연속)이므로, probe 의
+// hello 가 서버에 도착한 시점에는 그 시도의 착지 여부가 이미 srv.sockets 에 확정돼 있다.
+// 이 관측 없이 소켓 수를 읽으면 «아직 착지하지 않은» 재접속을 못 잡는다.
+async function letWorldTurn(srv: FakeServer): Promise<void> {
+  const before = srv.messages.length
+  const probe = new WebSocket(srv.url())
+  probe.on('open', () => probe.send(JSON.stringify({ type: 'hello', pub: 'probe', client_nonce: 'probe' })))
+  cleanups.push(() => probe.close())
+  await waitFor(() => srv.messages.length > before)
+}
+
+// AC-BOTSTAB-012 의 무가드 대역 — src gateway-client.ts 의 retry 와 같은 절차에서 가드 ②
+// (`if (stopped) return`) 한 줄만 뺀 재시도 절차. 가드 ① (`if (!stopped) retry()`) 은 그대로
+// 둔다 — 대역이 빼는 것이 가드 ② 하나뿐이어야 ㉢ 이 성립한다. src 는 고치지 않는다.
+function startReplica(url: () => string, sleep: (ms: number) => Promise<void>) {
+  let backoff = 1000
+  let stopped = false
+  let socket: WebSocket | null = null
+  function connect() {
+    socket = new WebSocket(url())
+    socket.on('close', () => { if (!stopped) retry() })   // 가드 ① — src 와 같다
+  }
+  async function retry() {
+    await sleep(backoff)
+    // src 의 retry 에는 여기에 `if (stopped) return` 이 있다 — 이 한 줄의 부재가 ㉢ 이 재는 차이의 전부다
+    backoff = Math.min(backoff * 2, 30000)
+    connect()
+  }
+  connect()
+  return { stop() { stopped = true; socket?.close() } }
+}
+
 describe('gateway client', () => {
   // AC-CHANCLIENT-001 — 소켓이 열리면 hello 가 첫 프레임으로 나간다
   // (v2 계약, SPEC-GWAUTH-002 — hello 는 pub 에 client_nonce 를 더한 정확히 세 필드다. 토큰은
@@ -412,8 +464,8 @@ describe('gateway client', () => {
     expect(sleeps[before]).toBe(1000)                    // 이어서 자란 값이 아니라 처음 값
   })
 
-  // AC-CHANCLIENT-014 — stop() 뒤에는 다시 붙지 않는다 (부정 사례)
-  it('never reconnects after stop() — measured against a live control client', async () => {
+  // AC-CHANCLIENT-014 — stop() 이후 도착한 close 는 재시도 경로에 들어가지 않는다 (부정 사례)
+  it('does not enter the retry path when close arrives after stop()', async () => {
     const srv = startServer()
     const stopped = await connected(srv)
     const control = await connected(srv)                 // 대조군: 멈추지 않는다
@@ -425,6 +477,75 @@ describe('gateway client', () => {
     await waitFor(() => control.sleeps.length >= 1)      // 대조군이 재접속 대기에 들어간 시점이 기준선
     expect(stopped.sleeps).toEqual([])                   // 멈춘 쪽은 대기조차 하지 않았다
     expect(stopped.client.send({ type: 'anything' })).toBe(false)
+  })
+
+  // AC-BOTSTAB-001 — 백오프 대기 중에 stop() 이 불리면 새 연결이 한 건도 생기지 않는다
+  // (REQ-BOTSTAB-001·004). 관측 표면은 서버 쪽 연결 수다 — 클라이언트 내부 stopped 값은
+  // 가드 ② 를 지워도 true 다 (plan §G R-2). 이 기준을 무너뜨리는 변이: 변이 B —
+  // retry() 안 await sleep 직후의 if (stopped) return 삭제.
+  it('does not open a new connection when stop() lands during the backoff wait', async () => {
+    const srv = startServer()
+    const g = startGatedClient(srv)
+    g.client.start()
+    await waitFor(() => srv.establishedCount() >= 1)
+    srv.sockets[0].terminate()                     // 서버가 연결을 끊는다
+    await waitFor(() => g.sleeps.length >= 1)      // 백오프 대기 진입 — 주입 sleep 호출로 관측
+    const atStop = srv.sockets.length              // stop() 시점의 서버 쪽 연결 수
+    g.client.stop()                                // 대기가 아직 만료되지 않은 시점 — 게이트가 잠가 둔다
+    g.release()                                    // 대기 만료
+    await g.settled                                // retry 의 남은 절차가 시험보다 먼저 돈다 (같은 약속)
+    await letWorldTurn(srv)                        // 세계가 돌았음의 증거를 관측한 뒤에 판정한다
+    // +1 은 probe 자신 — 클라이언트가 stop() 뒤에 만든 연결은 0 건이어야 한다 (재접속이 있었다면 +2 가 된다)
+    expect(srv.sockets.length).toBe(atStop + 1)
+  })
+
+  // AC-BOTSTAB-003 — stop() 을 부르지 않으면 재접속은 여전히 일어난다 (001·002 의 짝)
+  // (REQ-BOTSTAB-001·002). 과잉 방어를 막는 짝 — 「항상 안 붙는다」 구현이 이 기준에 실패한다.
+  // 이 기준을 무너뜨리는 변이: 변이 C — retry() 첫 줄에 무조건 return.
+  it('reconnects exactly once when stop() is not called', async () => {
+    const srv = startServer()
+    const { sleeps } = await connected(srv)
+    const before = srv.sockets.length
+    srv.sockets[0].terminate()                     // 서버가 연결을 끊는다
+    await waitFor(() => sleeps.length >= 1)        // 백오프 대기 진입
+    await waitFor(() => srv.sockets.length > before)   // stop() 없이 — 대기 만료 뒤의 재접속
+    expect(srv.sockets.length).toBe(before + 1)    // 정확히 1 늘어난다
+    expect(sleeps[0]).toBe(1000)                   // 첫 대기 인자
+  })
+
+  // AC-BOTSTAB-012 — AC-001 의 술어가 무가드 대역을 실패시킨다 (기준의 판별력, REQ-BOTSTAB-003)
+  // ㉠ 술어는 대역에 대해 거짓(연결 수가 늘고) ㉡ 진짜 클라이언트에 대해 참이다. ㉢ 둘의
+  // 차이는 가드 ② 한 줄뿐이다 — startReplica 주석이 그 한 줄을 지목한다. 대역은 이 파일 안에
+  // 있고 src 는 고치지 않는다. 이 기준을 무너뜨리는 변이: 변이 M2 — 술어를 내부 stopped 값으로.
+  it('the no-new-connection predicate fails for a replica that omits the stopped check', async () => {
+    const srv = startServer()
+    const g = startGatedClient(srv)
+    g.client.start()
+    await waitFor(() => srv.establishedCount() >= 1)
+    srv.sockets[0].terminate()
+    await waitFor(() => g.sleeps.length >= 1)
+    const realAtStop = srv.sockets.length
+    g.client.stop()
+    g.release()
+    await g.settled
+    await letWorldTurn(srv)
+    // ㉡ 같은 술어가 진짜 클라이언트에는 참이다 — +1 은 probe 자신 (술어: stop() 시점 값에서 증가 0)
+    expect(srv.sockets.length).toBe(realAtStop + 1)
+
+    const srv2 = startServer()
+    let replicaRelease!: () => void
+    const replicaSettled = new Promise<void>(r => { replicaRelease = r })
+    const replicaSleeps: number[] = []
+    const replica = startReplica(() => srv2.url(), async ms => { replicaSleeps.push(ms); await replicaSettled })
+    await waitFor(() => srv2.sockets.length >= 1)
+    srv2.sockets[0].terminate()
+    await waitFor(() => replicaSleeps.length >= 1)   // 대역도 같은 자리에서 대기에 들어간다
+    const replicaAtStop = srv2.sockets.length
+    replica.stop()                                   // 대역에도 같은 stop() 을 준다
+    replicaRelease()
+    await replicaSettled
+    await waitFor(() => srv2.sockets.length > replicaAtStop)   // 대역은 재접속한다 — 그 사건 자체를 기다린다
+    expect(srv2.sockets.length).toBe(replicaAtStop + 1)        // ㉠ 술어가 대역에 대해 거짓이다
   })
 
   // AC-GWAUTH-015 — 증명을 실은 welcome 도 손대지 않고 그대로 넘긴다 (SPEC-GWAUTH-001).
