@@ -265,7 +265,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
 
   // @MX:ANCHOR: [AUTO] v2 봉투 함수 — 확립 소켓이 내보내는 모든 프레임이 지나는 유일한 출구 (plan.md §D-6)
   // @MX:REASON: 한 자리라도 봉투를 빠뜨리면 그 프레임은 채널에서 조용히 버려진다 — 진단이 가장 어려운 실패 형태다.
-  // 발신 지점 다섯(welcome · sendStoredMessage 재전송 · sendToConn/history_response · deliver · sendToBot)이 전부
+  // 발신 지점 여섯(welcome · sendStoredMessage 재전송 · sendToConn/history_response · deliver · sendToBot · sendToOrigin)이 전부
   // 이 함수를 지나는가가 M2 의 덮개 대조표다. seq 는 여기서만 증가하고 payload 는 문자열 그대로 MAC 된다 (REQ-GWAUTH2-012·013)
   function sendEstablished(c: Established, ws: WebSocket, inner: object): void {
     const payload = JSON.stringify(inner)   // 서버가 만든 문자열 그대로 MAC 한다 — 정규화 규칙이 존재하지 않는다 (plan.md §D-6)

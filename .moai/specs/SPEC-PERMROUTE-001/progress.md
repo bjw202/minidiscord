@@ -580,6 +580,41 @@ $ npm test -w server                 → exit 1
 - `sendToBot` 회귀 시험(AC-009)은 «전원 발신 유지» 만 재고 «판정 경로에서 안 씀» 을 재지 않는다 — 후자는 acceptance AC-009 (가) grep 명령이 잰다 (착지 후 §E.3 이행 시 재실행)
 - M4 의 나머지(주석 개정·`web/rich.js:62`·`gateway.ts:261` «다섯»→여섯·`web-rich.test.ts:19` FAILED_BODY·M4-7 외 M4 항목)·M5·M6 은 미착지
 
+### M4 — 기존 시험·코드 주석 개정 (2026-09-04, run 레인)
+
+**귀속.** 같은 워크트리·브랜치. 편집 시점 HEAD `8e7e7ef`(M3+M4-7 커밋). **미커밋, 리드 확인 대기**. 편집 파일: `server/src/gateway.ts` · `server/test/gateway.test.ts` · `server/test/web-rich.test.ts` · `web/rich.js` 4파일.
+
+| 항 | 편집 |
+|---|---|
+| M4-1 | **M2 로 선행 이행됨** (리드 처분 — M2 절 처분 절 참조) |
+| M4-2 | `gateway.test.ts` D-5 시험 머리 주석 현행화 — 옛 결함 서술은 «실측 배경(이력)» 으로 유지(시제 소급하지 않음)하고 «지금의 배선(SPEC-PERMROUTE-001): 판정은 sendToOrigin 으로 «요청한 접속 하나» 에게만 되돌아간다» 를 단다. 시험 본문·단언 **무변경** (M4-3 회귀 방어선 — sendToBot 발신으로 second 도달을 재는 형태 유지) |
+| M4-4 | `:955`(구 `:899`) 메서드 목록 배열에 `'sendToOrigin'` 추가 + 위 주석 «다섯 메서드» → **«여섯 메서드»** |
+| M4-5 | `gateway.ts:268`(구 `:261`) «발신 지점 **다섯**(… deliver · sendToBot)» → «발신 지점 **여섯**(… · sendToBot · **sendToOrigin**)» — 열거에 여섯째 추가 |
+| M4-6 | `web-rich.test.ts:19` `FAILED_BODY` 를 **실물 출력**으로 교체 — plan 지시대로 손으로 발명하지 않고 `web-permission-contract.test.ts` 를 `--disable-console-intercept` 로 돌려 `WEBSHARED_FAILED_BODY` 관측: `⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다 (zxvbn)` — 브로커 실물(broker 직접 호출 → deny → DB 관측)이 내어 준 (ㄴ) 문구 그대로 |
+| M4-8 | `web/rich.js:62` «브로커의 판정 본문은 **세** 템플릿 모두» → **«네»** — **[HARD] 준수**: 개수 한 글자만, 같은 문장의 «정확히 한 줄이고» 유지, `:59`(정규식 갈래 셋 — 부류 4)·`:60`(줄임표 인용)·`:67`(`RESOLUTION_RE` 원문) **한 글자도 무편집** — grep 원문 재관측으로 확인 |
+| (dispatch must) | REQ-PERMROUTE-010 가드 근거 주석(`@MX:WARN`+`@MX:SPEC`) 제거 — **M2-5 로 이행됨**, t32 F-04 흡수 완료 |
+
+**M4 착지 후 실측.**
+
+```
+$ npm run typecheck -w server        → exit 0
+$ npm test -w server                 → exit 0 · Tests 214 passed (214)
+$ git diff --stat -- channel/        → 빈 출력 (AC-008 조건 유지 — channel 무편집)
+$ grep -n 'RESOLUTION_RE =' web/rich.js   → :67 원문 무변경
+```
+
+증거 전문: `.moai/reports/t34/evidence/M4-full-suite-after-m4.txt`.
+
+**Gaps (이 밀스톤이 관측하지 않은 것).**
+
+- M4-6 의 «실물» 관측 시점은 M3 배선 착지 뒤다 — failedBody 가 (ㄴ) 문구인 것은 현재 트리 기준이며, 그 출처 관측(`--disable-console-intercept` 실행)의 축자 출력은 이 절에 인용했다
+- web/rich.js 는 server 스위트의 web-rich.test.ts 로만 재고, 별도 web 패키지 빌드는 돌리지 않았다 — `RESOLUTION_RE` 무편집이 화면 동작 무변경의 근거
+- M5(형제 SPEC 개정, 리드 범위 상한)·M6(변이 검증)은 미착지
+
+**Residual-risk.**
+
+- «다섯» 어간은 형제 문서에 여러 자리 남아 있다(§6.2 9·10·12행 — M5 소유). 코드 쪽 «다섯» 은 이 밀스톤으로 소멸했으나 문서 쪽은 M5 까지 거짓인 채로 남는다 — plan §F 의 순서(기계적 형제 정정은 맨 끝)대로다
+
 **Residual-risk.**
 
 - AC-006 시험의 `brokenWs.close()` 후 정리 대기 300ms — 느린 환경에서 (ㄱ) 갈래가 (ㄷ) 로 오인될 이론적 창. 실패 시 타임아웃 상향이 수리

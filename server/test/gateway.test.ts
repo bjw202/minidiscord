@@ -853,11 +853,13 @@ describe('gateway', () => {
   })
 
   // 카드 t32 §D 결함 D-5 — 같은 (방, 봇) 에 소켓이 여럿일 때 판정이 «요청한» 소켓에 닿아야 한다.
-  // 실측 배경: 같은 봇 토큰으로 세 세션(run 레인·lead·봇)이 동시에 붙어 있었고, 방에는 «✅ 승인 전송됨» 이
-  // 떴는데 봇 터미널의 승인 프롬프트가 닫히지 않았다. sendToBot 이 첫 일치 소켓에서 return 하므로
-  // 판정이 요청하지 않은 소켓으로 갔고, 채널 쪽 emitted 집합 가드(REQ-CHANPERM-008)가 그 판정을
-  // 조용히 버려 아무 데서도 오류가 나지 않았다. deliver 는 같은 조건에서 전원에게 보낸다 — 두 발신
-  // 지점의 갈래가 어긋난 것이 뿌리다.
+  // 실측 배경(이력): 같은 봇 토큰으로 세 세션(run 레인·lead·봇)이 동시에 붙어 있었고, 방에는 «✅ 승인
+  // 전송됨» 이 떴는데 봇 터미널의 승인 프롬프트가 닫히지 않았다. 당시 sendToBot 은 첫 일치 소켓에서
+  // return 했고 판정이 요청하지 않은 소켓으로 갔으며, 채널 쪽 emitted 집합 가드(REQ-CHANPERM-008)가
+  // 그 판정을 조용히 버려 아무 데서도 오류가 나지 않았다. deliver 는 같은 조건에서 전원에게 보낸다 —
+  // 두 발신 지점의 갈래가 어긋난 것이 뿌리다.
+  // 지금의 배선(SPEC-PERMROUTE-001): 판정은 sendToOrigin 으로 «요청한 접속 하나» 에게만 되돌아간다 —
+  // 이 시험은 second 가 낸 요청의 판정이 second 에게 되돌아오는지를 잰다.
   it('routes a permission verdict to the socket that requested it when several sockets share one bot', async () => {
     const { app, gateway, port } = await build()
     const room = seedRoom()
@@ -952,9 +954,9 @@ describe('gateway', () => {
     await app.listen({ port: 0 })
     const port = (app.server.address() as { port: number }).port
 
-    // Gateway 계약: 다섯 메서드가 전부 함수다 (REQ-GW-021)
+    // Gateway 계약: 여섯 메서드가 전부 함수다 (REQ-GW-021 — SPEC-PERMROUTE-001 이 sendToOrigin 을 더했다)
     const gw = (app as any).gateway
-    for (const m of ['deliver', 'closeRoom', 'isOnline', 'sendToBot', 'setPermissionHandler']) {
+    for (const m of ['deliver', 'closeRoom', 'isOnline', 'sendToBot', 'sendToOrigin', 'setPermissionHandler']) {
       expect(typeof gw[m]).toBe('function')
     }
 
