@@ -1,0 +1,49 @@
+# 스크래치 측정 — ConnInfo.connId 를 필수 필드로 두었을 때의 typecheck 파급
+# 워크트리 .claude/worktrees/t34 · 브랜치 WT-perm-verdict-socket · HEAD 6a359f8
+# 스크래치 편집(측정 후 되돌림): export interface ConnInfo { roomId: number; botId: number; connId: string }
+# 명령: npm run typecheck -w server   → exit 1
+# 오류 줄 32 = 형제 시험 30 + 생산 2 (src/gateway.ts:142 핸들러 호출 · :204 Established 구성)
+
+파일별 집계 (sed -E 's/\(.*//' | sort | uniq -c):
+   2 src/gateway.ts
+  27 test/permissions.test.ts
+   2 test/room-members.test.ts
+   1 test/web-permission-contract.test.ts
+
+전체 오류 줄:
+src/gateway.ts(142,29): error TS2741: Property 'connId' is missing in type '{ roomId: number; botId: number; }' but required in type 'ConnInfo'.
+src/gateway.ts(204,11): error TS2322: Type '{ roomId: number; botId: number; tokenRowId: number; sessKey: NonSharedBuffer; seq: number; }' is not assignable to type 'Established'.
+test/permissions.test.ts(134,29): error TS2741
+test/permissions.test.ts(143,29): error TS2741
+test/permissions.test.ts(160,29): error TS2741
+test/permissions.test.ts(169,29): error TS2741
+test/permissions.test.ts(195,29): error TS2741
+test/permissions.test.ts(205,29): error TS2741
+test/permissions.test.ts(217,29): error TS2741
+test/permissions.test.ts(228,29): error TS2741
+test/permissions.test.ts(246,29): error TS2741
+test/permissions.test.ts(262,29): error TS2741
+test/permissions.test.ts(279,29): error TS2741
+test/permissions.test.ts(303,29): error TS2741
+test/permissions.test.ts(304,29): error TS2741
+test/permissions.test.ts(323,29): error TS2741
+test/permissions.test.ts(324,29): error TS2741
+test/permissions.test.ts(347,29): error TS2741
+test/permissions.test.ts(348,29): error TS2741
+test/permissions.test.ts(366,29): error TS2741
+test/permissions.test.ts(378,29): error TS2741
+test/permissions.test.ts(389,29): error TS2741
+test/permissions.test.ts(411,29): error TS2741
+test/permissions.test.ts(428,29): error TS2741
+test/permissions.test.ts(450,29): error TS2741
+test/permissions.test.ts(470,29): error TS2741
+test/permissions.test.ts(471,29): error TS2741
+test/permissions.test.ts(489,29): error TS2741
+test/permissions.test.ts(490,29): error TS2741
+test/room-members.test.ts(527,29): error TS2741
+test/room-members.test.ts(549,29): error TS2741
+test/web-permission-contract.test.ts(165,29): error TS2741
+
+# 판독: 형제 시험 파급 = 정확히 30자리, 계획의 grep 분모 30 과 일치한다.
+# 리드가 건 재회부 조건(30 과 materially 다르면 리드 회부)은 발동하지 않는다.
+# 생산 2자리는 §D-1 결론이 이미 예고한 자리다(핸들러 호출 · Established 구성).
