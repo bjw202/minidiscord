@@ -96,7 +96,7 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
       if (!info) return false                    // 모르는 ID — 재시작 직후와 같은 경로다 (REQ-PERM-003·010)
       open.delete(keyOf(roomId, requestId))      // 해제는 전송 시도 직후 — 성공 여부와 무관 (plan.md §B). 남기면 같은 답을 무한 재시도할 수 있다
       const behavior = m[1][0].toLowerCase() === 'y' ? 'allow' : 'deny'   // 정규식이 y|yes|n|no 로 좁혔으니 첫 글자로 갈린다 (REQ-PERM-006·007)
-      // REQ-PERMROUTE-006 — 판정은 «요청한 접속 하나» 로만 되돌아간다. 전원 발신(sendToBot)은 판정 경로에서 부르지 않는다
+      // REQ-PERMROUTE-006 — 판정은 «요청한 접속 하나» 로만 되돌아간다. 전원 발신 메서드는 판정 경로에서 부르지 않는다
       // REQ-PERMROUTE-008 — 접속을 찾지 못해도 같은 (방, 봇) 의 다른 접속으로 «대신 보내지 않는다» — 대체 발신은 채널 가드 의존의 재생이다
       // REQ-PERMROUTE-007 — 되돌리지 못하는 갈래는 둘이고 문구도 둘이다: (ㄱ) connId 가 있으나 그 접속이 없다 · (ㄴ) connId 자체가 없다
       // (ㄴ) 에 (ㄱ) 의 «끊겼다» 를 쓰면 아무것도 끊기지 않은 갈래에 틀린 진단을 준다 — 두 문구는 서로 다르다 (2회차 감사 N-06)

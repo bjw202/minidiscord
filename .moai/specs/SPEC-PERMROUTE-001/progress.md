@@ -756,7 +756,36 @@ plan 값 대비 움직임의 귀속 — **+**: 개정 주석들이 어간을 언
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-09-04
+run_commit_sha: pending-backfill-run-close
+run_lane: 칸반 run 레인 (세션 d76d8c1e) — 커밋 사슬 f64027d(M1) → 2708a7a(M2+M4-1) → 8e7e7ef(M3+M4-7) → 8ad7e2d(M4) → 92a4ca2(M5) → 4f707c2(M6-0) → 4535424(M6 증거) → run 종결 커밋(§E.3 본 커밋)
+
+**AC 15개 ↔ 시험·관측 인용 표 (DoD 1항 근거 — 최종 재실행 귀속: 워크트리 `.claude/worktrees/t34` · 브랜치 `WT-perm-verdict-socket` · 깨끗한 트리, 변이 창 밖).**
+
+| AC | 재는 시험/명령 | 최종 관측 (출처) |
+|---|---|---|
+| 001 | gateway.test.ts «issues one stable connId per connection, distinct across connections» | 초록 (`M6-0-full-suite-green.txt` 218 passed) — 변이 M2·M5 로 붉음 확인 (`M6-mutation-M2/M5.txt`) |
+| 002 | gateway.test.ts «delivers the requesting connection identity to the handler» | 초록 (동상) — 변이 M5 붉음 |
+| 003a | gateway.test.ts «routes the verdict to the requesting connection only» — B 수신 절반 | 초록 (동상) — 변이 M2·M5 붉음 |
+| 003b | 같은 시험 — `expectNoMessage(A)` 부정 절반 | 초록 (동상) — 변이 M1 에서 **이 시험만** 붉음 (`M6-mutation-M1.txt`) |
+| 004 | gateway.test.ts «returns false and delivers nowhere for a connId no connection owns» | 초록 (동상) |
+| 005 | permissions.test.ts «delivers nowhere and stores the broken-session notice when the requesting socket is gone» | 초록 (동상) — 변이 M3 붉음 · M4·M5 는 문구 절반 붉음 (**보고된 어긋남**, 처분 (나)) |
+| 006 | permissions.test.ts «stores three different bodies for allow, deny and broken-session verdicts» | 초록 (동상) — 변이 M2·M3·M4·M5 붉음 |
+| 007 | (가) import 훑기 + gateway.test.ts 파일 전체 초록 | 훑기 **0건·exit 1** + 스위트 218 초록 (`M-final-audit-ready.txt`) |
+| 008 | `npm test -w channel` 126 무변동 + `git diff --stat -- channel/` 빈 출력 | **126 passed (126)** + 빈 출력 (`M-final-channel-suite.txt`) — 변이 M6 로 붉음 확인 후 복원·재빌드·회복 관측 |
+| 009 | gateway.test.ts «sendToBot still reaches every matching connection and reports true» + (가)·(나) grep | 시험 초록(M6-0 스위트) + (가) **0건**(주석 어간 수리 후 재실행 exit 1)·(나) **2행** (`M-final-audit-ready.txt`) |
+| 010 | §6.2 표 양방향 대조 | M5 (다): 표 19행 전부 착지(현 20행 체계)·뒤집힌 자리 표 밖 0건·어간 재실행 (`M5-section6-rerun.txt`) — :188 처분으로 20행·어간 «`[0-9]개 메서드`» 신설 |
+| 011 | 변이표 여섯 | M6 — 4일치 + 어긋남 2건 **«보고됨»** (DoD 2항 충족, 처분 (나)) (`M6-mutation-*.txt`) |
+| 012 | 세 명령 | build channel **0** · test server **218**(≥210) · test channel **126**(=126) · typecheck ×2 **0** |
+| 013 | permissions.test.ts «a pending entry without connId delivers nowhere and stores the identity-missing notice» | 초록 (동상) — 변이 M3 붉음 |
+| 014 | grep 네 명령 | **2·6·0·0** (M1 실측과 동일 — `M-final-audit-ready.txt` 재실행) |
+
+**Gaps.**
+
+- AC-010 의 «역방향 전수 분류표» 완전판(적중 전건의 뒤집힘 여부 대조)은 sync-audit 영역이라 run 은 어간 재실행·착지 대조까지 담당했다
+- AC-011 의 어긋남 2건은 «보고됨» 상태로 종결 — acceptance AC-011 표 갱신은 sync 의 manager-spec 재위임 대상
+- «M1-6» 명칭의 14 실측은 리드 판독대로 M3 착지 직후 실측으로 이행됐고 11 시험과 전건 대응해 종결 (§E.2 M3 절)
 
 ---
 
