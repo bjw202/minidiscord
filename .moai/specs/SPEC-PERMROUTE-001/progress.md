@@ -527,7 +527,7 @@ $ npm test -w server                 → exit 1
   Test Files  1 failed | 16 passed (17)
   Tests  2 failed | 209 passed (211)
 ```
-증거: `M2-green-verdict-routing.txt` · `M2-full-suite-green.txt`.
+증거: `M2-green-verdict-routing.txt` · **`M2-full-suite-green-after-m4-1.txt`**(처분 (나) 이후 초록 회복 — 211 passed, run 직접 실행. 처분 «이전» 실행 기록 `M2-full-suite-green.txt` 는 머리에 낡음 표기를 달고 보존 — 리드 판독 defect 지시).
 
 **전체 스위트의 2건 붉음은 plan §B-2 가 예고한 예상 자리다.** `gateway.test.ts:833`·`:878` 의 `toEqual` 정확 일치가 `connId` 여분 키로 실패 — §6.2 14행·plan M4-1 이 소유한 개정 대상이며 이 밀스톤에서 고치지 않는다. M1 시점 210 전부 초록 → M2 시점 209 + 붉음 2(예상) + 신규 1 초록: 붉음의 원인이 M2-3 배선임을 편집 전후 대비가 보여 준다. 타깃 시험(AC-003a+003b)은 초록 — M2-6 «GREEN 관측» 의 문은 이것이다.
 
@@ -543,6 +543,47 @@ $ npm test -w server                 → exit 1
 
 - `sendToOrigin` 의 «찾았으나 소켓이 이미 닫힌 상태» 창 — SPEC 범위 밖(acceptance 예상 실패 갈래), unchanged
 - M4-1 두 자리는 리드 처분으로 M2 커밋에 선행 이행(위 처분 절) — M3 진행 시 전체 스위트는 초록이 기대값이며, pre-commit 게이트가 그것을 계속 실제 검사한다
+
+### M3 — 브로커 배선과 문구 (2026-09-04, run 레인)
+
+**귀속.** 같은 워크트리·브랜치. 편집 시점 HEAD `2708a7a`(M2 커밋). 코드·시험 변경 `server/src/permissions.ts` · `server/test/permissions.test.ts` · `server/test/gateway.test.ts` 3파일 — **미커밋, 리드 확인 대기**.
+
+**편집 내역 (M3-1~5 + 리드 M2 판독 지시).**
+
+| 항 | 편집 |
+|---|---|
+| M3-1 | **편집 불필요 관측** — 대기 레지스트리 `open` 이 `Map<string, ConnInfo>` 로 `info` 를 통째로 보관하므로 `connId` 는 자동 보관된다 (`permissions.ts:47`) |
+| M3-2 | `permissions.ts:99` `sendToBot(...)` → **`info.connId != null ? sendToOrigin(info.connId, …) : false`** — `undefined` 대기 항목은 `sendToOrigin` 을 부르지 않고 곧바로 (ㄴ) 갈래로 (리드 처분 §D-1 이 연 갈래). 대체 발신 없음 (REQ-PERMROUTE-008). 판정 경로에서 `sendToBot` 호출 소멸 — AC-009 (가) 명령의 통과 조건 |
+| M3-3 | 실패 문구 **둘로 갈림** — (ㄱ) «요청한 세션이 끊겨 판정을 전달하지 못했습니다 (id)» · (ㄴ) «요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다 (id)». 옛 문구 «봇이 접속해 있지 않아…» 소멸. 둘 다 꼬리 «전달하지 못했습니다 (id)» 유지 — `RESOLUTION_RE` 결합 ([HARD]). 본문 넷(승인/거절/ㄱ/ㄴ)이 서로 모두 다름 |
+| M3-4 | `permissions.test.ts` — AC-006 시험 신설 «stores three different bodies…»: 같은 토큰 소켓 셋으로 승인·거절·끊김 세 갈래 재현, 본문 셋이 서로 모두 다름 + (ㄷ) 문구가 «봇이 접속해 있지 않» 을 담지 않음을 단언 |
+| M3-5 | `permissions.test.ts` — AC-013 시험 신설 «a pending entry without connId…»: 소켓 없이 `onGatewayRequest({roomId, botId}, …)` 직접 호출 + 소켓 둘(A·B) 붙인 배치 — A·B 프레임 0건 + (ㄴ) 문구 저장 + «끊겨»·«봇이 접속해 있지 않» 부정 + 꼬리 정규식 단언 |
+| 리드 지시 | `gateway.test.ts` — AC-009 회귀 시험 신설 «sendToBot still reaches every matching connection and reports true»: 소켓 A·B 둘 다 `{type:'ping'}` 수신 + `true` 반환. **AC-009 매핑의 시험 이름 = 이것** (acceptance.md 기준표 «sendToBot 이 두 소켓 모두에 보냄» 절반의 실행 소유자) |
+
+**M3 착지 직후 실측 — typecheck·전체 스위트.**
+
+```
+$ npm run typecheck -w server        → exit 0
+$ npm test -w server                 → exit 1
+  Test Files  2 failed | 15 passed (17)
+  Tests  11 failed | 203 passed (214)
+```
+
+증거 전문: `.moai/reports/t34/evidence/M3-test-failures-full.txt`. 신규 시험 셋(AC-006·AC-013·AC-009 회귀)은 **전부 초록** — 214 = 211(기준선) + 3(신설), 실패 11건은 전부 형제 자리다.
+
+**[HARD] «14» 실측 대조 — 리드 회부 (plan M1-6·§6.2 18행 방아쇠).** 실패 시험 **11건** — assertion 소스 라인: `permissions.test.ts` `:198·:209·:231·:255·:272·:294·:312·:332·:353` + `room-members.test.ts` `:539·:553`. **단위 변환표**: 추론 14는 «라인» 단위(배달 12 + 문구상이 2), 실측 11은 «시험» 단위다 — 추론 라인 `:303·:304`·`:323·:324`·`:347·:348` 은 같은 시험 안의 연속 라인이라 시험 단위로는 각각 하나로 뭉친다. 대응표: `:195→:198` · `:205→:209` · `:228→:231` · `:246→:255` · `:262→:272` · `:279→:294` · `:303·:304→:312`(한 시험) · `:323·:324→:332`(한 시험) · `:347·:348→:353`(한 시험) · `room-members :527→:539` · `:549→:553` — 호출·단언 라인의 이동은 시험 안에서의 상대 위치다. **추론 밖 붉음 0건 · 추론 내 미발현 0건 — 전건 대응**. 숫자로는 14(라인) ≠ 11(시험) 이므로 plan 문자대로 리드에 회부한다. **M4-7 편집 대상은 이 실측 11 시험이 정한다.**
+
+**[HARD] 처분 — M4-7 을 M3 커밋에 선행 이행 (리드 처분, M2 선례 (나)).** M3 착지만으로는 스위트가 11건 붉어 pre-commit 게이트가 커밋을 막는다. 리드가 **M4-7(11 시험에 살아 있는 connId 심기)을 M3 커밋에 합쳐 초록으로 커밋**하라고 처분했다 — 우회 금지, RED 증거(`M3-test-failures-full.txt`)는 그대로 보존. 심기 방법: broker 직접 호출(소켓을 거치지 않아 connId 부재)을 **소켓 전송**으로 교체해 등록 경로에서 자연히 connId 가 실리게 했다. 예외 둘: «marks an undelivered» 의 off 방 요청(직접 호출 유지 — 소켓 없음이 시험 전제, (ㄴ) 실물이며 이 시험이 재는 것은 «문구 분화» 다)과 «the broker itself» 의 `tryHandleUserReply` 직접 판정(시험 본체 — 등록만 소켓으로). «connId 부재 갈래» 를 재는 시험은 AC-013 하나뿐이며 11 시험 어느 것도 그 용도로 재활용되지 않았다 (plan M4-7 [HARD] 준수). 편집 후 실측: **214 passed (214) 전부 초록** · typecheck 0 — `evidence/M3-full-suite-green-after-m4-7.txt`.
+
+**Gaps (이 밀스톤이 관측하지 않은 것).**
+
+- AC-006 시험의 «끊긴 소켓» 재현은 `ws.close()` + 300ms 대기에 기댄다 — close 이벤트 처리가 300ms 안에 끝난다는 관측은 이 실행에서 성립했으나 타이밍 의존이 남는다 (residual-risk 로도 적음)
+- `sendToBot` 회귀 시험(AC-009)은 «전원 발신 유지» 만 재고 «판정 경로에서 안 씀» 을 재지 않는다 — 후자는 acceptance AC-009 (가) grep 명령이 잰다 (착지 후 §E.3 이행 시 재실행)
+- M4 의 나머지(주석 개정·`web/rich.js:62`·`gateway.ts:261` «다섯»→여섯·`web-rich.test.ts:19` FAILED_BODY·M4-7 외 M4 항목)·M5·M6 은 미착지
+
+**Residual-risk.**
+
+- AC-006 시험의 `brokenWs.close()` 후 정리 대기 300ms — 느린 환경에서 (ㄱ) 갈래가 (ㄷ) 로 오인될 이론적 창. 실패 시 타임아웃 상향이 수리
+- «14(라인) vs 11(시험)» 단위 차이를 sync 문서 개정에서 어떻게 표기할지 — 리드 판독 후 progress·spec 정정 필요
 
 ---
 

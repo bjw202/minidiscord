@@ -924,6 +924,26 @@ describe('gateway', () => {
     await app.close()
   })
 
+  // AC-PERMROUTE-009 회귀 (SPEC-PERMROUTE-001) — sendToBot 은 일치하는 접속 «전원» 에게 보내는 동작을
+  // 유지한다 (REQ-PERMROUTE-011). 착지 뒤 생산 호출자는 0 이지만 첫 일치 return 로의 되돌림은 D-5 의
+  // 뿌리를 미래 호출자에게 되살린다 — A·B 둘 다 도착과 true 반환을 여기서 잰다 (리드 M2 판독 지시).
+  it('sendToBot still reaches every matching connection and reports true (AC-PERMROUTE-009)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+    const a = await wsConnect(port, token)
+    const b = await wsConnect(port, token)
+
+    expect(gateway.sendToBot(room, pm, { type: 'ping' })).toBe(true)
+    expect(await nextMessage(a.ws)).toEqual({ type: 'ping' })
+    expect(await nextMessage(b.ws)).toEqual({ type: 'ping' })
+
+    a.ws.close()
+    b.ws.close()
+    await app.close()
+  })
+
   // AC-GW-018 — 조립: buildServer 배선과 초대 목록의 online
   it('buildServer wires the gateway, archive hook and invite online flag', async () => {
     process.env.MINIDISCORD_DATA_DIR = join(dir, 'srv')

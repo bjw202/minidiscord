@@ -1,3 +1,4 @@
+> **[HARD] 처분 (나) 이전 실행 — 낡은 증거.** 이 출력은 M2 커밋(2708a7a) «이전» 의 트리에서 나온 것으로 2 failed | 209 passed 를 담는다 — 파일 이름(«green»)과 어긋난다(리드 판독 defect, 비차단). 처분 (나) 이후 초록 회복의 실측은 `M2-full-suite-green-after-m4-1.txt`(211 passed, 같은 커밋 트리·run 직접 실행)로 대체한다. 기록 보존을 위해 삭제하지 않는다.
 
 > test
 > vitest run
