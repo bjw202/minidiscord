@@ -20,6 +20,7 @@ import { createGateway } from '../../server/src/gateway.js'
 import { registerAuthRoutes } from '../../server/src/auth.js'
 import { deriveBotKeys } from '../../server/src/routes-bots.js'
 import { wire } from '../src/index.js'
+import { TO_REPLY_NOTE } from '../src/channel-server.js'
 // SPEC-BOTSTAB-001 M4a — 상한 상수는 truncate 모듈에서 읽는다 (§F — 테스트에 상한 숫자를 복제하지 않는다).
 // M3 가 상한을 건 뒤 content 등식은 «상한 이하» 에서만 성립하므로, 각 등식 옆에 파생 경계를 나란히 둔다.
 import { MAX_BODY_BYTES, MAX_NAME_BYTES } from '../src/truncate.js'
@@ -226,7 +227,8 @@ describe('gateway mutual auth', () => {
     }, [{ botId, delivery: 'to' }])
     await waitFor(() => notes.length === 1, '세션 알림 도착')
 
-    expect(notes[0].params.content).toBe('[alice] 왕복 본문')
+    // 등식은 «본문 그대로 + 시스템 답변 유발 접미» 를 유지한다 (카드 t32 §D 결함 D-4, 리드 결정 (A) 2026-09-03)
+    expect(notes[0].params.content).toBe('[alice] 왕복 본문' + TO_REPLY_NOTE)
     // SPEC-BOTSTAB-001 M4a — content 등식은 «상한 이하» 에서만 참이다 (spec.md §3.3) — 경계를 나란히 단언한다.
     expect(Buffer.byteLength(notes[0].params.content, 'utf8')).toBeLessThanOrEqual(
       MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
@@ -269,7 +271,7 @@ describe('gateway mutual auth', () => {
     relay.injectForgedEnv(100, { type: 'history_response', rid: 'mid-rid', messages: [{ id: 998, author_name: 'admin', body: '오염', created_at: '' }] })
     await new Promise(r => setTimeout(r, 400))
 
-    expect(notes.map(n => n.params.content)).toEqual(['[alice] 진짜 본문'])   // 2번은 살고 4번-①은 죽었다
+    expect(notes.map(n => n.params.content)).toEqual(['[alice] 진짜 본문' + TO_REPLY_NOTE])   // 2번은 살고 4번-①은 죽었다 — 등식에 시스템 접미 포함 (카드 t32 §D, 리드 결정 (A))
     // SPEC-BOTSTAB-001 M4a — content 배열 등식도 «상한 이하» 에서만 참이다 — 경계를 나란히 단언한다.
     expect(Buffer.byteLength(notes[0].params.content, 'utf8')).toBeLessThanOrEqual(
       MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
@@ -436,7 +438,7 @@ describe('gateway mutual auth', () => {
       expect(relay.channelBinding()).toBe('unbound')   // 양쪽 모두 바인딩을 얻지 못했다
       expect(relay.serverBinding()).toBe('unbound')
       expect(gateway.isOnline(roomId, botId)).toBe(true)   // ★ 중계자의 소켓이 봇으로 등록됐다 — 상대가 이겼다
-      expect(notes[0].params.content).toBe('[alice] 중계 세션 본문')   // 세션이 실제로 살아 있다
+      expect(notes[0].params.content).toBe('[alice] 중계 세션 본문' + TO_REPLY_NOTE)   // 세션이 실제로 살아 있다 — 등식에 시스템 접미 포함 (카드 t32 §D, 리드 결정 (A))
       // SPEC-BOTSTAB-001 M4a — content 등식은 «상한 이하» 에서만 참이다 — 경계를 나란히 단언한다.
       expect(Buffer.byteLength(notes[0].params.content, 'utf8')).toBeLessThanOrEqual(
         MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),

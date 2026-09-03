@@ -726,3 +726,100 @@ CI skip 구현 상태 확인 (리드 «미반영» 판독 정정): 갈래 3 구�
 미커밋 pathspec 제안 (최종 묶음): web/app.js(showToast 색·자동 숨김 + toastError 한 줄) ·
 server/test/web-shell.test.ts(잔여 수리 it) · server/test/web-visual.test.ts(CI skip) ·
 .moai/specs/SPEC-LIVEVERIFY-001/evidence/D01-defect-register-silent.txt(§14 부속·§15)
+
+=== §16 D-4 — 계약 충돌 발견으로 수리 보류 (2026-09-02, 리드 스캔 프로토콜 적용) ===
+결함 D-4(리드 회부): channel/src/channel-server.ts:163-188 pushChatMessage 가 주입 content 를
+«[이름] 본문+첨부안내» 로만 조립한다 — «delivery="to" 면 reply 도구로 답» 지시는 연결 시점
+INSTRUCTIONS(14-28행, 17행)에만 있고 주입 메시지 자체에는 없다. 운영자 실측: @TO 주입에
+● 텍스트로 답해 reply 호출 없음 — 방에 답이 안 간다. 수리 방향(미착지): delivery="to" 인
+때만 content 뒤에 지시 한 줄을 붙이고, 문안 상수를 INSTRUCTIONS:17 과 공유해 한 곳 고침
+두 곳 참조로 만든다. INSTRUCTIONS:17 문안은 channel-server.test.ts:237·337 이 못 박으므로
+상수는 그 문장 그대로여야 한다(설계 반영).
+
+계약 충돌 스캔 결과 (channel/test 전체 grep + 정독 실측):
+  [무영향] 바이트 상한 가문 — 알림 content 총상한 단언은 channel-server.test.ts:210·260·298·
+    322·383·401 · index-wiring.test.ts:194-196 전부 «상한 이하» 단정이고, OD-1 을 채우는
+    극단 fixture(AC-BOTSTAB-004 가·나, E-10 — :379·398·521)는 전부 delivery="cc" 라
+    지시 접미가 붙지 않는다. TO 표면 fixture 는 짧아 상한 이하 단정이 그대로 성립한다.
+  [무영향] content 등식 중 cc 표면 — channel-server.test.ts:286·317·409·511·540.
+  [무영향] INSTRUCTIONS 문안 고정 — :237·337 toContain 은 상수 설계가 보존한다.
+  [충돌] TO 표면 content 등식 5곳 — 지시 접미가 붙는 순간 전건이 깨진다:
+    1) channel-server.test.ts:422 (AC-BOTSTAB-005 가, SPEC-BOTSTAB-001 소유)
+    2) gateway-mutual-auth.test.ts:229 (SPEC-GWAUTH-002 하네스)
+    3) gateway-mutual-auth.test.ts:272 (배열 toEqual)
+    4) gateway-mutual-auth.test.ts:439
+    5) transport-auth.test.ts:428
+관측 증거 — 최소 프로브(접미 한 줄만 channel-server.ts:176 에 임시 적용) 실측:
+  FAIL … AC-BOTSTAB-005 (가) — AssertionError: expected '[carol] 따옴표 "인용" 과 공백, …'
+    to be '[carol] 따옴표 "인용" 과 공백, …' // Object.is equality
+    (+ → delivery="to"로 받은 메시지에는 반드시 reply 도구로 답변하세요.)
+  FAIL … expected '[alice] 왕복 본문\n→ delivery="to"로 받은 메시…' to be '[alice] 왕복 본문'
+  FAIL … expected '[alice] 중계 세션 본문\n→ …' to be '[alice] 중계 세션 본문'
+  (외 gateway-mutual-auth 1건·transport-auth 1건)
+  Tests  5 failed | 55 passed (60)
+  프로브 원복 뒤 같은 세 파일: exit 0, 60 passed (60) — 실패 5건이 전부 프로브 기인임이
+  입증됐고 channel/src 는 git diff 0 으로 원복 확인했다.
+
+처리: 리드 스캔 프로토콜의 중단 조건(형제 SPEC-BOTSTAB-001 소유 기준 조정 필요)에 해당해
+수리를 착지하지 않았다. index-wiring 의 RED it 둘도 넣지 않았다 — 수리 없는 RED 가
+스위트를 적색으로 남기기 때문이다(착지 시 첫 커밋에 함께 들어갈 준비만 돼 있다).
+리드 결정 대기:
+  (A) 등식 5곳을 «본문 무변형(toContain/starts) + 시스템 접미 존재» 형태로 조정 — 형제
+      SPEC 소유 기준이라 리드·형제 소유자 승인 필요. 단언의 의도(본문 생존·중간자 배제)는
+      형태 변경으로 보존된다.
+  (B) 리드가 대안 수리 형태를 정하는 경우 — 이 절의 스캔 표가 그 판단의 재료다.
+
+── §16 수리 착지 — 리드 결정 (A) 승인·조건 5건 (2026-09-03) ──
+리드 결정: (A) 승인, 조건 5건 전부 필수. 이 결정은 커밋에 포함되며 세션 핸드오프 중이라
+새 리드 세션이 인수한다.
+
+수리 (channel/src/channel-server.ts — 접미 메커니즘만):
+  - REPLY_DIRECTIVE 상수(= INSTRUCTIONS:17 의 못 박힌 문장 그대로) + TO_REPLY_NOTE
+    접미 상수('\n→ ' + 문안) 추출 — INSTRUCTIONS 17행과 pushChatMessage 접미가 같은
+    상수를 참조하는 «한 곳 고침 두 곳 참조». INSTRUCTIONS:17 을 못 박는
+    channel-server.test.ts:237·337 은 원문 보존으로 통과.
+  - pushChatMessage 조립 뒤 delivery === 'to' 일 때만 접미 추가 — cc 는 답변 금지라 미부착.
+  - 시스템 문안은 사람 유래 조각이 아니므로 중화·절단 대상 아님 — OD-1 예산 밖이며,
+    접미 포함 content 바이트는 새 경계 단언(«조립 총상한 + 접미»)으로 샌다.
+
+RED/GREEN:
+  RED  — index-wiring.test.ts 신규 it: «a TO delivery carries the reply-invoking system
+         suffix in its content» AssertionError: TO 주입 content 는 답변 유발 접미로 끝난다:
+         expected false to be true — 1 failed | 21 passed (22)
+  GREEN — channel 전체: exit 0, 7 files / 126 passed (126) · typecheck exit 0
+          server 전체: exit 0, 17 files / 202 passed (202)
+
+형제 단언 대장 — 5곳 조정 실측 대조 (t25 §E.4 sibling_assertion_check 선례 형태):
+  | # | 자리 | 소유 형제 SPEC | 조정 형태 | 의도 보존 |
+  | 1 | channel-server.test.ts:422 | SPEC-BOTSTAB-001 (M3, AC-BOTSTAB-005 가) | 등식에 TO_REPLY_NOTE 상수 포함(toBe 유지) | 본문 무변형·조립 구조·표시 없음 단언 전부 원문 유지 — 접미가 등식에 합류한 것뿐 ✓ |
+  | 2 | gateway-mutual-auth.test.ts:229 | SPEC-GWAUTH-002 (하네스) | toBe + TO_REPLY_NOTE | 왕복 본문 생존 단언 유지 ✓ |
+  | 3 | gateway-mutual-auth.test.ts:272 | SPEC-GWAUTH-002 (하네스) | 배열 toEqual + TO_REPLY_NOTE | «중간자가 넣은 999 는 죽고 진짜만 산다» 완결성 단언 유지 ✓ |
+  | 4 | gateway-mutual-auth.test.ts:439 | SPEC-GWAUTH-002 (하네스) | toBe + TO_REPLY_NOTE | 중계 세션 생존 단언 유지 ✓ |
+  | 5 | transport-auth.test.ts:428 | 전송 인증 회귀 하네스 | toBe + TO_REPLY_NOTE | welcome 뒤 두 프레임 정확 도달 단언 유지 ✓ |
+  합계: 조정 5곳 / 전건 의도 보존 — 각 자리의 M4a 파생 바이트 경계 단언은 원문 그대로 살아
+  있고(접미 포함 본문도 총상한 이하 — slack 이 접미를 흡수), 단 하나의 단언도 지워지지
+  않았다. 조정 diff 전문은 리드 판독용으로 작업 트리 git diff 에 있다(본 보고서와 동봉된
+  요지: 등식 문자열 끝에 `' + TO_REPLY_NOTE'` 결합 + 임포트 3건).
+
+sync 감사 대비 명시 문구: «형제 하네스 수정 사실 + 표면 확장 판정 — 기준 약화 아님. 시스템
+접미(TO_REPLY_NOTE) 추가에 의한 관측 표면 확장이며, 5곳 등식은 전부 toBe/toEqual 엄격
+형태를 유지한 채 접미를 상수로 포함하도록 확장됐다(지워진 단언 0건). 리드 결정 (A),
+2026-09-03.»
+
+§E.2 요약 문안 (리드가 run 종료 시 §E.2 확장에 넣을 자리):
+  «D-4 수리 — pushChatMessage 가 delivery="to" 주입 content 에 답변 유발 접미
+  (TO_REPLY_NOTE, INSTRUCTIONS:17 문안 공유 상수)를 부착. 형제 등식 5곳
+  (channel-server.test.ts:422 · gateway-mutual-auth.test.ts:229·272·439 ·
+  transport-auth.test.ts:428)을 등식+접미 형태로 조정 — 지워진 단언 0건, 기준 약화
+  아님(관측 표면 확장, 리드 결정 (A) 2026-09-03). channel 126 passed · server 202
+  passed · channel typecheck 0.»
+
+부수 관측: AC-BOTSTAB-013 ㉡ 형제 블록 훑기(truncate.test.ts)가 새 it 블록의 상수 식별자
+미적중을 잡았다 — 새 it 둘에 «조립 총상한(+접미)» 경계 단언을 덧붙여 충족(§F 상수 재사용).
+훑기가 새 기준의 경계 부재를 실시간으로 잡은 사례로, 기준은 약화가 아니라 강화됐다.
+
+일회성 실패 2회째 관측 (2026-09-03 09:43, D-4 수리 후 레인 최종 재관측):
+  channel 첫 재실행: 1 failed | 125 passed (126) — 실패 이름 미포착(tail 관측만 함).
+  이후 channel 명시 경로 재실행 + server 3회: 전건 초록(126 passed·202 passed ×3).
+  정직 기록: 이번은 순차 실행이라 리드가 가정한 «동시 실행 간섭» 과 맞지 않는다.
+  실패 정체 미상 — 재현 시 이름 캡처를 남기고, 빈도가 늘면 별도 조사 과제로 상향.

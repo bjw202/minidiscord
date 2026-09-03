@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { createChannelServer, neutralizeEnvelope } from '../src/channel-server.js'
+import { createChannelServer, neutralizeEnvelope, TO_REPLY_NOTE } from '../src/channel-server.js'
 // SPEC-BOTSTAB-001 M3 — 상한·시길 상수는 truncate 모듈에서 읽는다. 테스트에 상한 숫자를
 // 복제하지 않는 것이 §F 의 계약이다 (AC-BOTSTAB-004 ㉠ · AC-BOTSTAB-013 ㉡).
 import {
@@ -419,7 +419,9 @@ describe('pushChatMessage truncation wiring (SPEC-BOTSTAB-001 M3)', () => {
     await handle.pushChatMessage({ id: 103, author_name: 'carol', body, delivery: 'to' })
     const note = (await seen)!
 
-    expect(note.params.content).toBe(`[carol] ${body}`) // 조립 결과와 글자 그대로 같다
+    // 조립 결과는 «사람 유래 조각 그대로 + 시스템 답변 유발 접미» 다 — 등식을 유지하되
+    // 접미를 상수로 포함한다 (카드 t32 §D 결함 D-4, 리드 결정 (A) 2026-09-03)
+    expect(note.params.content).toBe(`[carol] ${body}${TO_REPLY_NOTE}`)
     expect(rawOpens(note.params.content)).toBe(0) // 잘림 표시를 담지 않는다
     // SPEC-BOTSTAB-001 M4a — 위 등식의 전제 «본문이 상한 이하» 를 상수로 못 박는다 — 상한을
     // 넘는 본문은 AC-BOTSTAB-004 (가) 의 대상이고, 이 기준은 상한 이하 무변형만 잰다 (REQ-012).

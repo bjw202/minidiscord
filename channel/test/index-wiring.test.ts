@@ -14,7 +14,7 @@ import { MAX_BODY_BYTES, MAX_HISTORY_BYTES, MAX_NAME_BYTES, SIGIL_OPEN, TRUNC_MA
 // AC-LIVEVERIFY-015 ㉠ 예외 — 중화된 바이트 단언에 한해 중화 함수를 단독 부른다. 이 호출은 배선을
 // 대신 재는 것이 아니라 fixture 가 경계에 있음을 재는 것이고(acceptance.md AC-015 예외 절), 절단을
 // 개입시키는 truncateToBudget 은 이 예외에 들지 않는다 — 절단이 개입하는 순간 그것이 곧 합성이다.
-import { neutralizeEnvelope } from '../src/channel-server.js'
+import { neutralizeEnvelope, TO_REPLY_NOTE } from '../src/channel-server.js'
 
 // v2 열쇠 유도 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
 // 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 스텁의 토큰 상수는 'tok' 다.
@@ -209,6 +209,34 @@ describe('channel wiring', () => {
     // cc 는 전달되지만 상태를 흔들지 않는다. 아직 도착하지 않았을 뿐일 가능성을 배제하려 여유를 준다.
     await new Promise(r => setTimeout(r, 200))
     expect(stub.countOf(m => m.type === 'status' && m.state === 'working')).toBe(workingBefore)
+  })
+
+  // 카드 t32 §D 결함 D-4 — «delivery="to" 주입 content 에 시스템 접미 존재». 연결 시점
+  // INSTRUCTIONS 만으로는 세션이 주입 본문을 ● 텍스트로 답해 reply 를 건너뛴다(운영자 실측) —
+  // 유발 지시는 주입 자체에 있어야 한다. cc 는 답변 금지라 접미가 없다는 짝도 함께 잰다.
+  it('a TO delivery carries the reply-invoking system suffix in its content', async () => {
+    const { stub, notified } = await connected()
+    stub.push({ type: 'message', id: 11, body: '정리 부탁해', author_name: 'alice', delivery: 'to' })
+    await waitFor(() => notified.length === 1, '알림 도착')
+    expect(notified[0].params.content.endsWith(TO_REPLY_NOTE), 'TO 주입 content 는 답변 유발 접미로 끝난다').toBe(true)
+    expect(notified[0].params.content).toContain('정리 부탁해')
+    // AC-CHANWIRE-001 과 같은 재기 — 접미를 포함한 content 도 «상수 조립 총상한 + 접미» 이하다.
+    // 접미 예산은 상수에서 잰다 (§F — 숫자 복제 금지).
+    expect(Buffer.byteLength(notified[0].params.content, 'utf8')).toBeLessThanOrEqual(
+      MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8') + Buffer.byteLength(TO_REPLY_NOTE, 'utf8'),
+    )
+  })
+
+  it('a CC delivery carries no reply-invoking suffix', async () => {
+    const { stub, notified } = await connected()
+    stub.push({ type: 'message', id: 12, body: '참고만', author_name: 'alice', delivery: 'cc' })
+    await waitFor(() => notified.length === 1, 'cc 알림')
+    expect(notified[0].params.content.endsWith(TO_REPLY_NOTE), 'cc 주입에는 접미가 없다').toBe(false)
+    expect(notified[0].params.content).not.toContain('reply 도구로 답변하세요')
+    // cc 는 접미가 없으므로 AC-CHANWIRE-001 의 기존 조립 총상한 안에 머문다
+    expect(Buffer.byteLength(notified[0].params.content, 'utf8')).toBeLessThanOrEqual(
+      MAX_NAME_BYTES + MAX_BODY_BYTES + Buffer.byteLength('[] ', 'utf8'),
+    )
   })
 
   // AC-CHANWIRE-003 — TO 수신이 working 상태를 만든다
