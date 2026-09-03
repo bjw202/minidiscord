@@ -10,7 +10,7 @@ minidiscord는 세 개의 독립 컴포넌트로 구성된다.
 
 | 컴포넌트 | 위치 | 역할 |
 |---|---|---|
-| **minidiscord 서버** | 내 PC, 단일 Node 프로세스 | 웹 UI 서빙, REST API, SSE 실시간 push, 봇 게이트웨이(WebSocket), SQLite/파일 저장 |
+| **minidiscord 서버** | 사내망·과제원, 단일 Node 프로세스 | 웹 UI 서빙, REST API, SSE 실시간 push, 봇 게이트웨이(WebSocket), SQLite/파일 저장 |
 | **채널 플러그인** (`minidiscord-channel`) | 각 Claude Code 세션마다 spawn | 공식 Channels 계약을 구현한 MCP 서버(stdio). 위로는 세션에 이벤트를 push하고, 아래로는 게이트웨이에 WebSocket으로 접속한다 |
 | **웹 UI** | 브라우저 | 디스코드형 2단 레이아웃(방 목록 + 채팅). 로그인, 메시지, 파일, 봇 초대/상태 표시 |
 
@@ -20,7 +20,7 @@ minidiscord는 세 개의 독립 컴포넌트로 구성된다.
 브라우저 ──HTTP/SSE──▶ minidiscord 서버 ◀──WebSocket── 채널 플러그인 ◀──stdio(MCP)── Claude Code 세션
 ```
 
-서버와 채널 플러그인은 같은 머신(내 PC)에서 돌기 때문에, 채널의 게이트웨이 접속 주소는 항상
+서버와 채널 플러그인은 같은 머신에서 돌기 때문에, 채널의 게이트웨이 접속 주소는 항상
 로컬(`ws://127.0.0.1:3000/bot`)이다. 이 전제 덕분에 파일 전달도 로컬 경로 직접 전달 방식으로
 단순화된다(자세한 내용은 아래 "주요 흐름" 참고).
 

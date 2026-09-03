@@ -1,0 +1,30 @@
+[chromium] API 흐름:
+  GET /api/rooms -> 401
+  POST /api/auth/register -> 201
+  POST /api/auth/login -> 200
+  GET /api/rooms -> 200
+  GET /api/bots -> 200
+[chromium] 쿠키: md_session
+[chromium] 최종 상태: {"authHidden":true,"mainHidden":false,"toast":{"hidden":false,"text":"회원가입 완료"},"authError":{"hidden":true,"text":""}}
+[chromium] pageerror: 0건
+[chromium] 콘솔: 
+  error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+
+[webkit] API 흐름:
+  GET /api/rooms -> 401
+  POST /api/auth/register -> 201
+  POST /api/auth/login -> 200
+  GET /api/rooms -> 200
+  GET /api/bots -> 200
+[webkit] 쿠키: md_session
+[webkit] 최종 상태: {"authHidden":true,"mainHidden":false,"toast":{"hidden":false,"text":"회원가입 완료"},"authError":{"hidden":true,"text":""}}
+[webkit] pageerror: 0건
+[webkit] 콘솔: 
+  error: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+
+---
+명령: NODE_PATH=<npx playwright 모듈 부모> node /tmp/md-recheck.js chromium|webkit (probe-recheck-*)
+대상: http://127.0.0.1:3001 (현재 코드 e43c60a — 토스트·세션 유지 실패 문구 포함)
+캡처: API 흐름·cookies·최종 DOM 상태·pageerror·console 전체
+판정: 두 엔진 PASS — main-view 진입 + «회원가입 완료» 토스트 관측 + pageerror 0건
+실행자: run 레인 — 2026-09-02 (리드 긴급 재검증 지시 — «새 코드 실브라우저 검증 공백» 해소)

@@ -224,13 +224,18 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     }
   }
 
+  // [HARD] 봇 프레임의 local_path 는 절대 경로다 (카드 t32 결함 D-8). attachments.stored_path 는
+  // config.dataDir 기본값 './data' 때문에 상대 경로로 저장되는데, 봇 세션의 cwd 는 서버와 다르므로
+  // 그대로 넘기면 풀리지 않는다. DB 값은 손대지 않는다 — 내려받기 봉인(routes-messages.ts REQ-MSG-009)이
+  // 이미 resolve() 로 비교하므로 저장 형태를 바꾸면 그쪽 계약이 함께 움직인다.
+  // 채우는 자리는 여기와 deliver 둘이다 — 한쪽만 고치면 다른 쪽이 조용히 상대 경로를 넘긴다.
   function sendStoredMessage(c: Established, ws: WebSocket, m: any): void {
     const attachments = db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(m.id) as any[]
     sendEstablished(c, ws, {
       type: 'message', id: m.id, body: m.body,
       author_name: authorName(m),
       delivery: m.delivery,
-      files: attachments.map(a => ({ name: a.filename, local_path: a.stored_path })),
+      files: attachments.map(a => ({ name: a.filename, local_path: resolve(a.stored_path) })),
     })
   }
 
@@ -330,7 +335,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
         if (!tr) continue
         sendEstablished(c, ws, {
           type: 'message', id: msg.id, body: msg.body, author_name: msg.author_name, delivery: tr.delivery,
-          files: attachments.map(a => ({ name: a.filename, local_path: a.stored_path })),
+          files: attachments.map(a => ({ name: a.filename, local_path: resolve(a.stored_path) })),
         })
         db.prepare('UPDATE bot_tokens SET last_delivered_id = ? WHERE id = ?').run(msg.id, c.tokenRowId)
       }
@@ -345,9 +350,18 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       return false
     },
     // 접속이 없으면 아무것도 보내지 않고 false — "오프라인이라 못 보냈다"의 유일한 신호 (REQ-GW-020)
+    // 일치하는 접속 «전원» 에게 보낸다 — deliver 와 같은 갈래다 (카드 t32 §D 결함 D-5).
+    // 첫 일치에서 return 하면 같은 봇 토큰으로 여러 세션이 붙어 있을 때 판정이 요청하지 않은
+    // 소켓으로 가고, 그 채널의 emitted 집합 가드(REQ-CHANPERM-008)가 조용히 버려 승인 프롬프트가
+    // 영원히 열린 채 남는다 — 실측: 같은 (방, 봇) 에 소켓 셋(run·lead·bot)이 붙은 상태에서 재현.
+    // 전원 발신이 안전한 근거가 그 가드다: 채널은 «자기가 낸» request_id 의 판정만 세션으로 되쏘고
+    // 나머지는 버리므로, 요청하지 않은 세션에 도착한 프레임은 아무 일도 하지 않는다.
+    // @MX:WARN: [AUTO] 이 발신의 정확성이 채널 쪽 emitted 가드에 의존한다 — 가드를 지우면 판정이 남의 세션에서 실행된다
+    // @MX:SPEC: SPEC-LIVEVERIFY-001
     sendToBot(roomId, botId, payload) {
-      for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); return true }
-      return false
+      let sent = false
+      for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); sent = true }
+      return sent
     },
     setPermissionHandler(fn) { permissionHandler = fn },
   }

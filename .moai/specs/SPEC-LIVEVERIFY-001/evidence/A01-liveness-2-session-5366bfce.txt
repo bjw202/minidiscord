@@ -1,0 +1,77 @@
+A01 ㉣ — 면 2 (세션 대화 기록) 발췌 · **새 세션**
+카드 t32 / SPEC-LIVEVERIFY-001 · 관측 2026-09-03 (레인 직접 실행, 읽기 전용)
+
+이 파일이 ㉣ 의 증거다. 토큰 사고 이전 세션의 발췌
+(A01-liveness-2-tool-use-excerpt.txt)는 ㉣ 로 승계되지 않으며, 그 파일은 세션과 무관한
+[HARD] 기록 형태 사실의 증거로만 남는다(그 파일 말미 추기 참조).
+
+주장
+  ㉢ 이 신원을 못 박은 **바로 그 세션**이 `R4TJ9WQ2` 를 만들어 `reply` 호출 인자에 실었다.
+
+── 증거 1 — tool_use 호출 인자 ──
+
+파일: ~/.claude/projects/-Users-byunjungwon-Dev-my-project-04-minidiscord-bot-01/
+      5366bfce-3324-430c-a9db-a436bb2bc79c.jsonl
+
+line 103  type=assistant  ts=2026-09-03T02:36:24.724Z
+  message.content[0].type  = "tool_use"
+  message.content[0].name  = "mcp__minidiscord-channel__reply"
+  message.content[0].input = {"text": "안녕하세요, 저는 bot-01 — 이 방에 MCP 채널로
+    붙어 있는 Claude Code 세션이고, 코딩·조사·파일 작업을 대신 처리합니다. R4TJ9WQ2"}
+
+line 108  type=assistant  ts=2026-09-03T02:36:27.193Z
+  message.content[0].type = "text"      ← 모델 서술. 판정에 세지 않는다
+
+  호출 인자가 서술보다 2.47초 앞선다 — 값이 먼저 나갔고 설명이 뒤따랐다.
+
+── 증거 2 — 유입 0건 (전수 훑기) ──
+
+  그 jsonl 전 줄을 파싱해 `R4TJ9WQ2` 를 담은 문자열의 JSON 경로를 전수 출력.
+  적중 줄 2개, 경로 2개뿐 —
+      line 103 → .message.content[0].input.text   (assistant, tool_use 인자)
+      line 108 → .message.content[0].text         (assistant, 텍스트)
+  user·system·tool_result 어느 레코드에도 없다. 세션이 이 값을 **받은** 기록이 없다.
+
+── 증거 3 — 방 DB 독립 교차 ──
+
+  DB: <wt>/server/data/minidiscord.db (실행 서버 pid 40927 이 연 파일)
+  SELECT … WHERE body LIKE '%R4TJ9WQ2%'  → 적중 정확히 1행:
+      id=57  room_id=1  author_type=bot  author_bot_id=1  created_at=2026-09-03 02:36:24
+  직전 사람 요청:
+      id=56  author_type=user  02:36:21  「@TO(bot-01) 안녕, 한 줄로 자기소개하고, 답 끝에
+             네가 즉석에서 지어낸 무…」                      ← 요청에 토큰 없음
+  서로 다른 프로세스가 쓴 두 면 모두 유입 0건이다.
+  DB 의 `created_at` 02:36:24 가 jsonl 의 `ts` 02:36:24.724Z 와 초 단위로 맞는다.
+
+── 증거 4 — ㉢ 의 세션과 ㉣ 의 기록이 같은 세션이다 ──
+
+  이 항이 토큰 사고로 한 번 깨졌던 자리이므로 연결을 명시적으로 세운다.
+
+    (ㄱ) cwd 가 `…/minidiscord/bot-01` 인 claude 세션은 **정확히 하나**다 — pid 42888
+         (기동 2026-09-03 11:31:37). 전수 확인: pgrep -x claude 의 각 pid 에 대해
+         lsof -d cwd 로 걸러 하나만 남았다.
+    (ㄴ) 그 세션의 `MINIDISCORD_TOKEN` 앞 8글자 = `42694b06` — ㉢ 의 터미널 echo 출력,
+         그리고 A01-invite-api.txt 의 발급 측 값과 같다.
+    (ㄷ) Claude Code 의 대화 기록은 cwd 로 슬러그된 디렉터리에 쌓이며, 그 디렉터리에서
+         **42888 기동(11:31:37) 이후에 쓰인 jsonl 은 5366bfce 하나**다(나머지 둘의 최종
+         수정은 10:58·10:51 로 그 이전 세션들의 것이다).
+    (ㄹ) 그 jsonl 의 호출 시각(02:36:24.724Z)이 방 DB 행 57 의 `created_at`(02:36:24)과
+         초 단위로 일치한다.
+
+  [미검증] Claude Code 는 대화 기록 파일을 계속 열어 두지 않아 `lsof -p 42888` 로
+  「이 프로세스가 이 파일을 쓴다」를 직접 잡지는 못했다. 위 넷은 **정황의 합**이며,
+  단일한 직접 손잡이는 아니다. 다만 (ㄱ) 의 유일성과 (ㄷ) 의 시각 구분이 다른 후보를
+  남기지 않는다.
+
+── 부수 — [HARD] 기록 형태 사실 재확인 ──
+
+  MCP 도구 호출이 `type="tool_use"` · `name="mcp__<서버명>__<도구명>"` · 인자는 `input`
+  필드로 적힌다는 v0.7.1 의 확정이 **다른 세션에서 한 번 더** 재현됐다. 1회 관측이 아니다.
+
+── 미검증 / 잔여 위험 ──
+
+  · 세션 기록은 그 세션 자신이 쓰는 파일이므로 「스스로에 대해 거짓을 적는 세션」에 대한
+    독립 증인은 아니다. 이번 위협 모형(값이 배달 경로로 들어왔는가)에 한해 결정적이며,
+    방 DB 교차가 그 한계를 절반 메운다.
+  · 되뇜(echo) 잔여는 v0.7.0 이 공시한 그대로 남는다 — 「그 세션이 reply 를 냈다」는 서고,
+    「그 값의 최초 저자」는 이 증거가 정하지 않는다.

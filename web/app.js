@@ -128,14 +128,38 @@ export async function login(username, password) {
     throw err
   }
   showMain()
-  await loadRooms()
-  await loadBots()
+  // 로그인 자체는 성공했지만 이어지는 목록 적재가 401 로 막히는 경우가 있다 — 브라우저가
+  // 쿠키 저장을 거부하면 Set-Cookie 가 무시돼 보호 경로(rooms·bots)가 401 이 되고, api() 의
+  // 401 처리가 인증 뷰로 되돌려 놓지만 어디에도 문구가 없어 무반응처럼 보인다. 이 구간의
+  // 실패는 세션 유지 실패 문구로 보인다 (카드 t32 §D — «성공해도 메시지가 없어 디버깅 불가»).
+  // 인증 실패(위 catch, 서버 401 문구)와 겹치지 않게 로딩 구간만 별도로 처리한다.
+  try {
+    await loadRooms()
+    await loadBots()
+  } catch (err) {
+    const el = $('auth-error')
+    el.textContent = '로그인은 됐지만 세션을 유지하지 못했습니다 — 브라우저 쿠키 설정을 확인하세요'
+    el.hidden = false
+    throw err
+  }
 }
 
 // 회원가입 성공 → 같은 자격으로 이어서 로그인한다 (REQ-WEBSHELL-008).
 export async function register(username, password) {
-  await api('/api/auth/register', { method: 'POST', body: { username, password } })
+  // 회원가입 단계 자체의 실패(400·409)도 #auth-error 에 서버 문구로 표시한다 —
+  // 핸들러의 «login 이 이미 채웠다» 가정은 회원가입 실패에서 거짓이다 (카드 t32 §D 결함 D-1).
+  try {
+    await api('/api/auth/register', { method: 'POST', body: { username, password } })
+  } catch (err) {
+    const el = $('auth-error')
+    el.textContent = err instanceof Error ? err.message : String(err)
+    el.hidden = false
+    throw err
+  }
   await login(username, password)
+  // 가입이 끝났다는 신호를 남긴다 — 성공이 «조용한 전환» 이면 운영자는 무반응으로 읽는다
+  // (카드 t32 §D — «성공해도 메시지가 없어 디버깅 불가»).
+  showToast('회원가입 완료')
 }
 
 // 서버 세션을 끊고 state 세 필드를 초기값으로 되돌린 뒤 인증 뷰로 간다 (REQ-WEBSHELL-012).
@@ -183,7 +207,24 @@ export async function createBot(name, description) {
 function toastError(err) {
   const toast = $('error-toast')
   toast.textContent = err instanceof Error ? err.message : String(err)
+  // 성공 토스트의 4초 자동 숨김 창 안에 오류가 나면 성공 클래스가 남아 오류 문구가
+  // 성공색으로 보인다 — 거둔다 (카드 t32 §D 잔여 수리).
+  toast.classList.remove('toast-success')
   toast.hidden = false
+}
+
+// 성공 알림 — 오류 토스트와 같은 #error-toast 요소를 쓰되 .toast-success 로 상태색을
+// 갈라 쓴다(design DNA §1 — --md-status-online). 성공은 4초 뒤 저절로 사라진다.
+// 오류(toastError)는 자동 숨김 없이 화면에 남는다 — 삼켜진 오류가 없게 하는 기존 관습.
+function showToast(text) {
+  const toast = $('error-toast')
+  toast.textContent = text
+  toast.classList.add('toast-success')
+  toast.hidden = false
+  setTimeout(() => {
+    toast.hidden = true
+    toast.classList.remove('toast-success')
+  }, 4_000)
 }
 
 // ── 방 열기 ──────────────────────────────────────────────────────────
@@ -308,6 +349,8 @@ export function initChat() {
   const composer = $('msg-input')
   composer.addEventListener('input', onComposerInput)
   composer.addEventListener('keydown', onComposerKeyDown)
+  // 첨부 선택 표시 — 무엇이 함께 나갈지 보이지 않으면 사용자는 첨부 여부를 알 수 없다 (카드 t32 D-7)
+  $('file-input').addEventListener('change', showPickedFile)
   $('send-btn').addEventListener('click', () => { sendMessage() })
   chatReady = true
 }
@@ -514,6 +557,13 @@ function commitMention(kind, name) {
 // '@pm' 까지 치고 Enter 를 누른 사용자는 완성을 기대하지, 깨진 멘션 전송을 기대하지 않는다.
 function onComposerKeyDown(e) {
   if (e.key !== 'Enter' || e.shiftKey) return
+  // 한글·일본어 등 조합 중의 Enter 는 전송이 아니라 조합 확정이다 (카드 t32 결함 D-6).
+  // 여기서 전송하면 조합 중 글자를 포함한 본문이 나간 뒤 입력창이 비워지고, 확정된
+  // 마지막 글자가 빈 칸에 들어가 뒤따르는 진짜 Enter 가 그 한 글자를 또 보낸다.
+  // keyCode 229 는 isComposing 을 싣지 않는 구형 IME 경로의 같은 신호다.
+  // [HARD] 이 return 은 preventDefault 보다 앞이어야 한다 — 뒤에 두면 조합 확정 자체가
+  // 막혀 한글 입력이 깨진다.
+  if (e.isComposing || e.keyCode === 229) return
   e.preventDefault()
   const box = $('autocomplete')
   if (!box.hidden) {
@@ -531,19 +581,42 @@ function onComposerKeyDown(e) {
 // 응답을 그리면 자기 메시지가 두 번 보인다. 실패하면 화면 요소로 알리고 입력을 복원한다.
 export async function sendMessage() {
   const box = $('msg-input')
+  const picker = $('file-input')
+  const files = Array.from(picker.files ?? [])
   const body = box.value
-  if (!body.trim()) return   // 빈 본문은 아무것도 하지 않는다
+  // 본문도 파일도 없을 때만 아무것도 하지 않는다 — 파일만 보내는 것은 서버가 받는다
+  // (routes-messages.ts REQ-MSG-005: body 도 파일도 없으면 400)
+  if (!body.trim() && files.length === 0) return
   box.value = ''
   hideAutocomplete()
   const form = new FormData()
+  // [HARD] 파일이 아닌 파트는 서버가 전부 body 로 이어 붙인다 — 텍스트 파트는 정확히 하나여야 한다
   form.append('body', body)
+  // 필드명은 서버가 가리지 않는다 (part.type === 'file' 로만 판정) — 'file' 은 읽는 사람을 위한 이름이다
+  for (const f of files) form.append('file', f)
   try {
     await api(`/api/rooms/${state.currentRoomId}/messages`, { method: 'POST', body: form })
+    clearPickedFile()   // 성공했을 때만 비운다 — 실패하면 선택이 남아 다시 보내기로 그대로 나간다
   } catch (err) {
     notifyError(err)
     // 그 사이 사용자가 다음 메시지를 치고 있을 수 있다 — 빈 칸일 때만 되살린다 (plan.md §D 9번)
     if (box.value === '') box.value = body
   }
+}
+
+// 선택된 파일 이름을 입력창 옆에 한 줄로 보인다. 여러 개면 «이름 외 N».
+function showPickedFile() {
+  const files = Array.from($('file-input').files ?? [])
+  const label = $('file-chosen')
+  label.textContent = files.length === 0 ? ''
+    : files.length === 1 ? `📎 ${files[0].name}`
+    : `📎 ${files[0].name} 외 ${files.length - 1}`
+}
+
+// 선택을 비운다. input.value = '' 가 files 를 비우는 표준 경로다.
+function clearPickedFile() {
+  $('file-input').value = ''
+  $('file-chosen').textContent = ''
 }
 
 // 전송 실패 알림 — alert 대신 화면 안의 요소로 낸다. jsdom 이 alert 를 던지지 않고

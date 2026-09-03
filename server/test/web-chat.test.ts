@@ -534,6 +534,119 @@ describe('AC-WEBCHAT-012 enter with open dropdown', () => {
   })
 })
 
+// ── 결함 D-6 (카드 t32) — 한글 조합 중 Enter 는 전송이 아니다 ────────
+// 한글 조합 중 Enter 는 keydown 을 두 번 낳는다: ① 조합 확정용(isComposing=true)과
+// ② 확정 뒤의 진짜 Enter. ① 을 전송으로 처리하면 조합 중 글자를 포함한 본문이 나간 뒤
+// 입력창이 비워지고, 확정된 마지막 글자가 빈 칸에 들어가 ② 가 그 한 글자를 또 보낸다.
+// 실측 재현: 방 DB id 58/59·60/61·81/82 — 각각 같은 초에 끝 글자 한 건이 더 올라갔다
+// (evidence/D01-defect-register-silent.txt §22).
+describe('D-6 enter during IME composition', () => {
+  it('does not send while a composition is active, and sends once after it commits', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    type('아침에 커피를 두 잔 마셨다'); await flush()
+
+    // ① 조합 확정용 keydown — 전송이 아니다
+    input().dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter', isComposing: true, bubbles: true, cancelable: true,
+    }))
+    await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+
+    // ② 확정 뒤의 진짜 Enter — 여기서 정확히 한 번 나간다
+    pressEnter(); await flush()
+    const posts = calls.filter(c => c.method === 'POST')
+    expect(posts.length).toBe(1)
+
+    // 나간 본문이 문장 전체여야 한다 — 마지막 글자가 떨어져 나가지 않았다는 관측
+    const sent = (posts[0].body as FormData).get('body')
+    expect(sent).toBe('아침에 커피를 두 잔 마셨다')
+
+    // 입력창은 비어 있다 — 조합 잔여가 남아 다음 Enter 에 또 나가지 않는다
+    expect(input().value).toBe('')
+  })
+
+  it('does not send on a legacy keyCode 229 keydown (Safari-family IME)', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    type('주말엔 등산을 갈 계획이다'); await flush()
+
+    input().dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter', keyCode: 229, bubbles: true, cancelable: true,
+    } as KeyboardEventInit))
+    await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+  })
+})
+
+// ── 결함 D-7 (카드 t32) — 웹에서 사람이 파일을 올릴 수 있어야 한다 ────
+// index.html 은 `#file-input` 을 두었으나 어느 SPEC 도 그것을 여는 UI 와 전송 결합을
+// 소유하지 않아, 사람이 방에 파일을 올릴 경로가 없었다(운영자 실측: 드래그앤드롭·메뉴 모두
+// 실패, attachments 표 0행 — evidence/D01-defect-register-silent.txt §23).
+// 서버는 이미 받는다: routes-messages.ts 의 `req.parts()` 는 `part.type === 'file'` 인
+// 파트를 필드명과 무관하게 저장하고, 파일이 아닌 파트는 전부 body 로 이어 붙인다.
+function pickFile(name = 'note.txt', content = '자몽샐러드-7391') {
+  const f = new File([content], name, { type: 'text/plain' })
+  const picker = document.getElementById('file-input') as HTMLInputElement
+  Object.defineProperty(picker, 'files', { value: [f], configurable: true })
+  picker.dispatchEvent(new Event('change', { bubbles: true }))
+  return f
+}
+
+describe('D-7 attaching a file from the web composer', () => {
+  it('sends the picked file as a file part alongside the body', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    pickFile()
+    type('파일 하나 보냅니다'); await flush()
+    pressEnter(); await flush()
+
+    const posts = calls.filter(c => c.method === 'POST')
+    expect(posts.length).toBe(1)
+    const fd = posts[0].body as FormData
+    // 서버는 필드명을 가리지 않으나, 파일 파트가 하나 실려야 한다
+    const parts = [...fd.values()].filter(v => v instanceof File) as File[]
+    expect(parts.length).toBe(1)
+    expect(parts[0].name).toBe('note.txt')
+    // 텍스트 파트는 하나뿐이어야 한다 — 서버가 파일 아닌 파트를 전부 body 로 이어 붙이므로
+    // 둘이 되면 본문이 오염된다
+    expect(fd.getAll('body')).toEqual(['파일 하나 보냅니다'])
+  })
+
+  it('sends a file with no text, and clears the picker after a successful send', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    pickFile('보고서.txt', '내용')
+    pressEnter(); await flush()
+
+    const posts = calls.filter(c => c.method === 'POST')
+    expect(posts.length).toBe(1)
+    const parts = [...(posts[0].body as FormData).values()].filter(v => v instanceof File) as File[]
+    expect(parts[0].name).toBe('보고서.txt')
+
+    // 전송 성공 뒤에는 선택이 비워져, 다음 Enter 에 같은 파일이 또 나가지 않는다
+    expect((el('file-input') as HTMLInputElement).value).toBe('')
+    expect(el('file-chosen').textContent).toBe('')
+  })
+
+  it('still sends nothing when there is neither text nor a file', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    pressEnter(); await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+  })
+})
+
 // ── AC-WEBCHAT-013 — 전송은 한 번, 응답 미렌더, 실패 복원 ────────────
 describe('AC-WEBCHAT-013 send once, no response render, restore on failure', () => {
   it('posts once, does not render the response, and restores on failure', async () => {
