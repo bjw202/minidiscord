@@ -1,0 +1,65 @@
+A01 ㉣ — 면 2 (세션 대화 기록) 발췌  ·  카드 t32 / SPEC-LIVEVERIFY-001
+관측 시각: 2026-09-03 (레인 직접 실행, 읽기 전용)
+
+주장
+  봇 세션이 K7QM2XVB 를 «만들어» reply 도구의 호출 인자에 실어 보냈다.
+  받은 값을 되뇌었을 가능성은 두 면 모두에서 유입 기록 0건으로 배제된다.
+
+── 증거 1 — 세션 기록의 tool_use 블록 (면 2) ──
+
+파일: ~/.claude/projects/-Users-byunjungwon-Dev-my-project-04-minidiscord-bot-01/
+      755fdaa9-8aea-4367-bdcb-a033717621cf.jsonl
+
+line 84  type=assistant  ts=2026-09-03T01:44:03.892Z
+  message.content[0].type  = "tool_use"
+  message.content[0].name  = "mcp__minidiscord-channel__reply"
+  message.content[0].input = {"text": "안녕하세요, 저는 bot-01 — 이 방에 MCP 채널로
+    붙어 있는 Claude Code 세션이고, 코딩·조사·파일 작업을 대신 해드립니다. K7QM2XVB"}
+
+line 89  type=assistant  ts=2026-09-03T01:44:06.211Z
+  message.content[0].type = "text"
+  "방에 답했습니다. 한 줄 자기소개와 함께 즉석에서 지은 8자리 `K7QM2XVB`를 붙였습니다."
+
+  판정 경계(acceptance.md AC-001 증거 4 [HARD]): 위 둘 중 «호출 인자» 는 line 84 뿐이다.
+  line 89 는 모델 텍스트이므로 세지 않는다. line 84 가 line 89 보다 2.3초 앞선다 —
+  값이 먼저 인자로 나갔고 서술은 그 뒤다.
+
+── 증거 2 — 유입 경로 0건 (전수 훑기) ──
+
+  명령(요지): 위 jsonl 전 줄을 파싱해 K7QM2XVB 를 담은 문자열의 JSON 경로를 전수 출력.
+  결과: 적중 줄 2개, 경로 2개뿐 —
+      line 84 → .message.content[0].input.text     (assistant, tool_use 인자)
+      line 89 → .message.content[0].text           (assistant, 텍스트)
+  user·system·tool_result 어느 레코드에도 이 문자열은 없다. 세션이 이 값을 «받은»
+  기록이 존재하지 않는다.
+
+── 증거 3 — 방 DB 독립 교차 ──
+
+  DB: <worktree>/server/data/minidiscord.db  (실행 중 서버 pid 813 이 연 파일을 lsof 로
+      확인해 고른 것 — 워크트리 루트의 ./data/minidiscord.db 는 이 서버의 것이 아니다)
+  SELECT ... FROM messages WHERE body LIKE '%K7QM2XVB%'  → 적중 정확히 1행:
+      id=48  room_id=1  author_type=bot  author_bot_id=1  created_at=2026-09-03 01:44:03
+  같은 방 직전 행:
+      id=47  author_type=user  01:43:59  «@TO(bot-01) 안녕, 한 줄로 자기소개하고,
+             답 끝에 네가 즉석에서 지어낸 무작위 …»   ← 요청에는 토큰이 없다
+  즉 토큰은 방 전체에서 봇의 발화 한 곳에만 있고, 사람 쪽 어디에도 없다.
+  두 면(세션 기록·방 DB)이 서로 다른 프로세스가 쓴 서로 다른 파일이며 둘 다 유입 0건이다.
+
+── 부수 확정: [HARD] 미측정 항목의 답 ──
+
+  plan-phase 가 «MCP 도구 호출이 세션 기록에 어떤 타입으로 적히는가» 를 단정하지 않고
+  run 첫 실행에 넘겼다(v0.7.0 §E.1). 이 발췌가 답이다:
+      적힌다. type="tool_use", name="mcp__<서버명>__<도구명>" 형태이며
+      호출 인자는 input 필드에 그대로 담긴다.
+  따라서 AC-001 ㉣ 는 면 2 로 판정 가능하고, 면 1(터미널 화면)의 육안 구분 확정을
+  기다리지 않는다 — v0.7.0 O-C6 이 예정한 경로 그대로다.
+
+── 미검증 / 잔여 위험 ──
+
+  · 세션 기록은 그 세션 자신이 쓰는 파일이므로, «스스로에 대해 거짓을 적는 세션» 에
+    대해서는 독립 증인이 아니다. 이번 위협 모형(값이 배달 경로로 들어왔는가)에
+    한해서만 결정적이며, 방 DB 교차가 그 한계를 절반 메운다(다른 프로세스가 쓴 파일).
+  · 면 1(터미널 화면의 호출 인자)은 여전히 미착지 — 접힌 «Called minidiscord-channel»
+    을 펼치지 않은 캡처뿐이다. 판정에는 필요하지 않다.
+  · 중복 접속 관측: 이 왕복에서 토큰을 담은 봇 메시지는 DB 전체에 정확히 1행이다 —
+    run·lead 세션이 봇으로 함께 붙어 있음에도 «봇 답변이 둘 이상» 은 관측되지 않았다.

@@ -865,8 +865,15 @@ sync 감사 대비 명시 문구: «형제 하네스 수정 사실 + 표면 확�
 
 baseline 귀속: 워크트리 .claude/worktrees/t32 @ cdc94c6, 이 실행·이 트리.
   cdc94c6 diff 에 권한 경로 변경 0줄(리드 확인과 일치). 09:14 의
-  a01-web-permission-approve-answer.png 시점에는 채널 클라이언트가 하나뿐이었다
+  defect-5-0-web-permission-approve-answer.png 시점에는 채널 클라이언트가 하나뿐이었다
   (run·lead 는 09:55·09:56 접속) — 「무엇이 달라졌나」의 답은 코드가 아니라 동시 접속 수다.
+
+초기 관측 두 장의 귀속: evidence/defect-5-0-ter-reply-tool-sent.png ·
+  defect-5-0-web-permission-approve-answer.png (둘 다 09:14, D-4 커밋 이전) 은 «그때는
+  중계가 통했다» 를 담은 관측이며, 위 증거 1의 «그때는 접속이 하나뿐» 과 짝을 이뤄
+  「무엇이 달라졌나 = 동시 접속 수」를 세운다. 원래 A01 후보로 수집됐으나 A01 은 면 2
+  (A01-liveness-2-tool-use-excerpt.txt)로 성립했으므로, 이름을 defect-5-0-* 로 옮겨
+  D-5 의 대조 관측으로 귀속한다 (리드 결정 2026-09-03).
 
 미검증(Gaps): 09:14 관측이 어떤 도구의 승인이었는지는 캡처에서 확인하지 않았다.
   defect-5-2 는 레인이 직접 열어 «Fetch History Tool · Do you want to proceed? 1.Yes/2.No»
