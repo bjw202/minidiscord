@@ -224,13 +224,18 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     }
   }
 
+  // [HARD] 봇 프레임의 local_path 는 절대 경로다 (카드 t32 결함 D-8). attachments.stored_path 는
+  // config.dataDir 기본값 './data' 때문에 상대 경로로 저장되는데, 봇 세션의 cwd 는 서버와 다르므로
+  // 그대로 넘기면 풀리지 않는다. DB 값은 손대지 않는다 — 내려받기 봉인(routes-messages.ts REQ-MSG-009)이
+  // 이미 resolve() 로 비교하므로 저장 형태를 바꾸면 그쪽 계약이 함께 움직인다.
+  // 채우는 자리는 여기와 deliver 둘이다 — 한쪽만 고치면 다른 쪽이 조용히 상대 경로를 넘긴다.
   function sendStoredMessage(c: Established, ws: WebSocket, m: any): void {
     const attachments = db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(m.id) as any[]
     sendEstablished(c, ws, {
       type: 'message', id: m.id, body: m.body,
       author_name: authorName(m),
       delivery: m.delivery,
-      files: attachments.map(a => ({ name: a.filename, local_path: a.stored_path })),
+      files: attachments.map(a => ({ name: a.filename, local_path: resolve(a.stored_path) })),
     })
   }
 
@@ -330,7 +335,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
         if (!tr) continue
         sendEstablished(c, ws, {
           type: 'message', id: msg.id, body: msg.body, author_name: msg.author_name, delivery: tr.delivery,
-          files: attachments.map(a => ({ name: a.filename, local_path: a.stored_path })),
+          files: attachments.map(a => ({ name: a.filename, local_path: resolve(a.stored_path) })),
         })
         db.prepare('UPDATE bot_tokens SET last_delivered_id = ? WHERE id = ?').run(msg.id, c.tokenRowId)
       }

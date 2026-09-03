@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, isAbsolute, resolve } from 'node:path'
 import { createHash, createHmac, randomBytes, sign, timingSafeEqual } from 'node:crypto'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
@@ -1293,6 +1293,68 @@ describe('AC-GWAUTH2 server side', () => {
     // 소켓을 끊고 다시 붙는다 — 커서가 앞서 있으므로 새 재전송 세 개를 심어 «같은 관측» 을 반복한다
     seedTargets('둘째 접속 재전송')
     expect(await seqsOf()).toEqual([1, 2, 3, 4])   // 소켓 사이에서 이어지지 않는다
+    await app.close()
+  })
+})
+
+// ── 결함 D-8 (카드 t32) — 봇에 넘기는 local_path 는 절대 경로여야 한다 ──────
+// config.dataDir 기본이 './data'(상대)라 attachments.stored_path 가 상대 경로로 저장된다.
+// 그 값을 그대로 봇 프레임에 실으면, 봇 세션의 cwd 가 서버와 다르므로 경로가 풀리지 않는다.
+// 실측(카드 t32 A06): 봇이 Read 하나로 끝날 자리에서 Bash find 를 먼저 써 승인 왕복이 둘이 됐다
+// (evidence/D01-defect-register-silent.txt §26).
+//
+// [HARD] local_path 를 채우는 자리는 **둘**이다 — deliver(실시간 배달)와
+// sendStoredMessage(재접속 시 밀린 것 재생). 한쪽만 고치면 다른 쪽이 조용히 상대 경로를 넘긴다.
+// 기존 첨부 기준들이 이 결함을 놓친 이유는 전부 **절대 경로**를 심어 두었기 때문이다.
+describe('D-8 absolute local_path in bot frames', () => {
+  // 실제 저장 형태를 그대로 재현한다 — 절대 경로를 심으면 이 기준은 공허해진다
+  const REL = join('data', 'uploads', 'ffffffff-0000-note.txt')
+
+  it('deliver hands an absolute local_path even when stored_path is relative', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+
+    const msgId = db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', '봐줘')")
+      .run(room, ).lastInsertRowid as number
+    db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, 3, ?)')
+      .run(msgId, 'note.txt', REL, 'text/plain')
+    const row = db.prepare('SELECT * FROM messages WHERE id=?').get(msgId) as any
+
+    gateway.deliver(room, { ...row, author_name: 'alice' }, [{ botId: pm, delivery: 'to' }])
+    const msg = await nextMessage(ws)
+
+    expect(msg.files).toHaveLength(1)
+    expect(isAbsolute(msg.files[0].local_path)).toBe(true)
+    expect(msg.files[0].local_path).toBe(resolve(REL))
+    expect(msg.files[0].name).toBe('note.txt')
+
+    ws.close()
+    await app.close()
+  })
+
+  it('the replay path hands an absolute local_path too', async () => {
+    const { app, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+
+    const msgId = db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', '밀린 것')")
+      .run(room).lastInsertRowid as number
+    db.prepare('INSERT INTO message_targets (message_id, bot_id, delivery) VALUES (?, ?, ?)').run(msgId, pm, 'to')
+    db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, 3, ?)')
+      .run(msgId, 'note.txt', REL, 'text/plain')
+
+    const { ws } = await wsConnect(port, token)
+    const replay = await nextMessage(ws)
+
+    expect(replay.id).toBe(msgId)
+    expect(replay.files).toHaveLength(1)
+    expect(isAbsolute(replay.files[0].local_path)).toBe(true)
+    expect(replay.files[0].local_path).toBe(resolve(REL))
+
+    ws.close()
     await app.close()
   })
 })
