@@ -163,7 +163,60 @@ gate: npm test 336 passed (server 17f/210 + channel 7f/126), FAIL 0 · typecheck
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```
+sync_status: audit-ready
+spec_version: 0.7.4
+sync_commit_sha: pending-backfill-sync
+gate: npm test 336 passed (server 17f/210 + channel 7f/126), FAIL 0 · typecheck server exit=0 channel exit=0 — 모두 sync 레인이 이 워크트리(HEAD b81bd63)에서 직접 실행
+frontmatter: spec.md 만 status in-progress → completed (updated 2026-09-03 은 이미 그 값이라 무변경). plan.md · acceptance.md 는 프런트매터 블록 자체가 없어 전이할 필드가 부재 — 형제 SPEC 셋(BOTSTAB·E2E·CI)도 같아 저장소 관습이며 결함이 아니다. 본문 무편집
+```
+
+**게이트 실측 (sync 레인이 직접 실행 — 명령과 관측 출력).**
+
+- `npm test`(전 워크스페이스) — server `Test Files 17 passed (17)` · `Tests 210 passed (210)`, channel `Test Files 7 passed (7)` · `Tests 126 passed (126)`. 합 **336 통과 · 실패 0**. 이 실행에서 `channel/test/transport-auth.test.ts` 는 실패하지 않았다(§E.2 가 공시한 흔들림은 이 실행에서 재현되지 않았다 — 세 번째 재현 실패).
+- `npm run typecheck -w server` → **exit 0**, `npm run typecheck -w channel` → **exit 0**(종료 코드 직접 실측).
+- 귀속: 이 워크트리 `.claude/worktrees/t32`, 브랜치 `WT-m6-real-session`, 명령 실행 시점 HEAD `b81bd63`. §E.3 이 인용한 336 과 같은 값이나 **이 절의 값은 sync 레인의 독립 재실행 결과**이며 §E.3 에서 옮겨 적은 것이 아니다.
+
+**이 sync 단계(문서 동기화 단계)가 바꾼 문서.**
+
+| 경로 | 무엇을 했나 |
+|---|---|
+| `CHANGELOG.md` | `[Unreleased]` 첫 항목으로 카드 `t32` 절 신설 — 신원·생산 술어 넷, §D 결함 아홉의 증상·원인·수리, 배치 문구 정정(옛 `t26` 흡수), 이력 통로 순서 시험(옛 `t29` 흡수), 하지 않은 것, 알려진 흔들림, 관측 |
+| `README.md` | 「지금 상태」 문단에 한 문장 추가 — 실 Claude Code 세션의 종단 간 관측 사실과 카드 `t32` 명시. 배치 문구는 run 단계에서 이미 정정돼 낡은 자리 0건(아래 훑기) |
+| `.moai/specs/SPEC-LIVEVERIFY-001/progress.md` | 이 §E.4 절 |
+| `.moai/specs/SPEC-LIVEVERIFY-001/spec.md` | **프런트매터 `status` 한 필드만**(`in-progress → completed`; `updated` 는 이미 `2026-09-03`) — 본문·HISTORY 무편집. `plan.md`·`acceptance.md` 는 프런트매터가 없어 **바뀐 것이 없다** |
+
+**README 훑기 (sync 레인 실행).** `grep -n '내 PC' README.md` → **적중 0건**(exit 1). run 단계의 배치 문구 정정이 본문에 남긴 낡은 자리는 없다. `CHANGELOG.md` 의 옛 카드 항목에는 같은 문구가 남아 있으나 그것은 그 시점의 기록이므로 정정 대상이 아니다(「본문은 지금 참, 이력은 그때 참」).
+
+**§E.3 이 sync 로 넘긴 잔여 넷 — 이 단계의 처분.**
+
+1. **㉢ 의 「브라우저↔서버 짝뿐」 정의가 흔들릴 수 있다** — 조항을 고치지 않았다(수용 기준 본문 편집은 이 단계의 소유가 아니다). CHANGELOG 「이 카드가 하지 않은 것」에 **공개 공시**로 옮겨 적었고, 술어를 「봇 쪽 접속 0건」으로 좁히는 편이 견고하다는 권고도 함께 실었다.
+2. **`ps` 필터 문자열이 낡을 수 있다** — 같은 처분. 낡음의 방향(거짓 실패 쪽으로 움직인다)까지 CHANGELOG 에 적어, 나중에 0건을 만난 사람이 통과로 오독하지 않게 했다.
+3. **D-9 · D-5(B) 는 카드 `t34` 이월** — 이 단계에서 실행하지 않았고, CHANGELOG 에 이월 사실을 명시했다.
+4. **토큰 전수 검사의 귀속** — 64자 16진 적중 0 은 **리드의 관측이며 레인이 재현하지 않았다.** 이 단계도 재현하지 않았다(운영자 실행 거부 사유가 그대로 유효하다). CHANGELOG 에 귀속을 명시한 채로 옮겨 적었다 — 검사를 했다고 주장하지 않는다.
+
+**이 단계가 하지 않은 것 (Gaps).**
+
+- `spec.md` · `plan.md` · `acceptance.md` 의 **본문을 한 글자도 편집하지 않았다.** `acceptance.md` 는 리드의 편집 동결 대상이며, 본문 정정이 필요해 보이는 자리도 만들지 않고 보고로 돌렸다.
+- **커밋·스테이징을 하지 않았다.** `git add`·`git commit`·`git push` 미실행 — 커밋은 리드 확인 후 레인 조율자가 한다. 그래서 `sync_commit_sha` 는 `pending-backfill-sync` 이며, 착지 커밋 뒤 후속 커밋에서 채운다.
+- **§A 열두 항을 재실행하지 않았다.** 이 단계의 판정 근거는 §E.2·§E.3 과 `evidence/A00-checklist.md` 의 기록이며, 실 세션 관측 자체는 run 단계의 것이다.
+- **증거 파일 24개의 실재를 재확인하지 않았다.** run 단계가 기계로 확인한 결과(누락 0)를 옮겨 적었을 뿐, 이 단계가 다시 세지 않았다.
+
+### 리드 확인 대기
+
+- **sync 감사 보고 경로**: `.moai/reports/t32/sync-audit.md` (1라운드 본문 + 「재판정 (2라운드 · 델타 한정)」 절)
+- **판정**: **PASS 0.836** / 통과선 **0.80** · 차단 0건. 렌즈 `--security --deep`.
+  - **통과선의 출처**: 감사관이 `.claude/rules/moai/workflow/spec-workflow.md:141` § SPEC Complexity Tier 표 `M (Medium)` 행에서 **직접 읽었다**(두 라운드 모두). Tier 는 `spec.md` 프런트매터 `tier: M`. 디스패치가 전한 값을 쓰지 않았다.
+  - **궤적**: 1라운드 **FAIL 0.795**(차단 2건) → 수리 → 2라운드 **PASS 0.836**. 차원: Functionality 0.80→0.84 · Security 0.82→0.82(무변동) · Craft 0.86→0.86(무변동) · Consistency 0.68→0.82. 가중 조화평균 `1/(0.40/0.84 + 0.25/0.82 + 0.20/0.86 + 0.15/0.82)` = 0.8357.
+  - **[HARD] 귀속**: 0.836 은 HEAD `b81bd63` + 스테이징된 여섯 항목의 트리에 대한 값이다. **커밋 뒤 트리는 재채점되지 않았다.**
+- **1라운드 차단 둘 — 처분 (둘 다 코드 무변경, CLOSED)**
+  - **F-01** `evidence/A12-archived.png` 가 어떤 커밋에도 들어간 적이 없었는데(`git log --all -- <path>` 무출력) 이미 커밋된 `spec.md` v0.7.4 HISTORY 와 `A00-checklist.md` 가 그 파일을 증거로 이름 댔다 — 얼린 기록이 클론에 없는 파일을 가리키는 상태. **처분**: 스테이징에 편입(`git ls-files --error-unmatch` exit 0 으로 확인). 감사관 재확인: 증거 디렉터리 실재 46 == 추적 46, A00 인용 26개 전건 추적, CHANGELOG `t32` 절 인용 경로 `NOT TRACKED` 0줄.
+  - **F-02** §E.4 가 「spec·plan·acceptance 셋 다 전이」라고 적었으나 거짓이었다(`plan.md`·`acceptance.md` 는 프런트매터 블록 부재). **프런트매터 부재 자체는 결함이 아니다** — 감사관이 형제 SPEC 셋(BOTSTAB·E2E·CI)을 확인해 저장소 관습임을 밝혔다. **처분**: 프런트매터 신설이 아니라 **문장을 사실로 정정**. 두 자리(신호 블록 `:171` · 바꾼 문서 표 `:187`)를 함께 고쳤고, 정정 뒤 형제 훑기 결과 낡은 자리 0건(레인 패턴 1회 + 감사관이 독립 패턴으로 1회, 적중 6줄 전건 판독).
+- **2라운드 신규 발견 — F-08 (low, 차단 아님) · CLOSED**: 스테이징된 `sync-audit.md` 블롭이 **1라운드 본문만** 담은 판이라, 재스테이징 없이 커밋하면 커밋되는 감사 궤적이 FAIL 에서 멈추고 그것을 뒤집은 재판정을 담지 않는다(F-01 과 같은 부류, 방향만 반대). **처분**: 착지 직전 재스테이징 완료 — `git diff --name-only .moai/reports/t32/sync-audit.md` 무출력(스테이징 == 워크트리)로 레인이 확인.
+- **[HARD] 이 PASS 가 재지 않은 것 (감사관 자기 공시)**: §A 열두 항 중 **아홉 항**(A02·A03·A04·A05·A06·A08·A09·A10·A11)의 증거 파일을 감사관은 열지 않았다 — 그 항들에 대해 감사관은 PASS 도 FAIL 도 주장하지 않으며, run 레인의 `☑` 는 그 레인의 관측이다. `A12-archived.png` 의 **화면 내용**도 두 라운드 모두 판독하지 않았다(추적 상태만 확인). 게이트는 2라운드에서 재실행하지 않았다(코드 무변경).
+- **비차단 잔존 (리드 판단 자리)**: F-03(`TO_REPLY_NOTE` 가 중화된 사람 유래 본문과 같은 문자열에 섞여 표식을 흉내 낼 수 있다 — 실질 약화이되 새 능력은 아니라는 양쪽 논증) · F-04(전원 발신의 안전 근거가 다른 패키지의 `emitted` 가드에 있는데 서버 쪽에 그 의존을 적은 시험이 없다).
+- **감사관이 소스로 확인해 준 것 둘** — ① D-5 의 `emitted` 가드가 실재하고 주장대로 동작한다(`channel/src/channel-server.ts` `if (!emitted.has(v.request_id)) return`); 유출 없음(수신자 전원이 같은 봇 토큰의 v2 상호 인증 통과자). ② **AC-012 v0.7.4 개정은 약화가 아니다** — 옛 문언이 요구한 `⚪`·`"online":false` 는 보관 트랜잭션(`routes-rooms.ts`)이 토큰을 전부 철회하고 초대 질의(`routes-bots.ts`)가 `revoked_at IS NULL` 만 나열하므로 원리상 도달 불가였고, 새 조항은 웹 API 를 거치지 않는 표면(`lsof`)을 축으로 더하며 옛 조항에 없던 [HARD]를 **추가로** 건다.
+- **커밋 대기 — 명시 pathspec 여섯** (리드 확인 후 레인이 실행): `.moai/reports/t32/sync-audit.md` · `.moai/specs/SPEC-LIVEVERIFY-001/evidence/A12-archived.png` · `.moai/specs/SPEC-LIVEVERIFY-001/progress.md` · `.moai/specs/SPEC-LIVEVERIFY-001/spec.md` · `CHANGELOG.md` · `README.md`. **제외 확인**: `.claude/agent-memory/**`(다른 세션 유물) · `.moai/logs/trace-*.jsonl` · `.moai/state/**`. `git add -A/-a` 미사용.
 
 ### run 레인 재개 판독 (2026-09-03 12:3x, 세션 14886f25)
 

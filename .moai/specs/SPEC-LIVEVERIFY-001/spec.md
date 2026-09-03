@@ -2,7 +2,7 @@
 id: SPEC-LIVEVERIFY-001
 title: "실 Claude 세션 수용 검증 — 체크리스트 12항 · README 배치 문구 정정 · 이력 통로 순서 고정"
 version: "0.7.4"
-status: in-progress
+status: completed
 created: 2026-09-02
 updated: 2026-09-03
 author: manager-spec
