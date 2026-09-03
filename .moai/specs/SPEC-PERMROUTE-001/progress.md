@@ -695,6 +695,58 @@ plan 값 대비 움직임의 귀속 — **+**: 개정 주석들이 어간을 언
 
 **Gaps.** — 시험 4건은 구현 존재 하의 초록 착지라 «무너뜨리는 변이» 가 없다(acceptance 의 공통 요구). 이 공백은 변이 M2·M5 가 AC-001·002 를, 변이 M3 가 AC-005 를 붉히는 것으로 닫는다 — M6 의 판정에 포함.
 
+### M6 — 변이 검증 (2026-09-04, run 레인)
+
+**귀속.** 같은 워크트리·브랜치. 편집 시점 HEAD `4f707c2`(M6-0 커밋). 변이는 창 안에서만 존재 — **모든 변이 복원 완료**, `git hash-object` 전·후 대조 일치(gateway `50a50aa4…` · permissions `a6a0c77b…` · channel-server `75360a1e…`). 생산 트리 코드 순변경 0.
+
+**여섯 변이 실측 대조 — AC-PERMROUTE 기준 단위 (집계 기준 제외 규칙 적용: AC-012 전체·AC-007 «파일 초록» 절반은 변이마다 예상대로 함께 붉었고 셈에서 제외).**
+
+| 변이 | 표 예상 | 실측 (AC 집합) | 판정 |
+|---|---|---|---|
+| M1 | 003b | **003b** (실패 시험 1건) | **일치** |
+| M2 | 001·003a·006 | **001·003a·006** (실패 시험 17건 — 그중 14건은 형제 SPEC 기준(AC-GW-017 등 «판정 도달»)의 시험으로 이 SPEC 기준 밖, 셈 밖 — 전건 나열은 evidence/M6-mutation-M2.txt) | **일치** (AC 단위) |
+| M3 | 005·006·013 | **005·006·013** (실패 시험 3건) | **정확히 일치** |
+| M4 | 006·013 | **006·013 + 005 시험 붉음** (실패 시험 4건) | **어긋남 ①** — 아래 보고 |
+| M5 | 001·002·003a·006 | **001·002·003a·006** (+ AC-005 시험 붉음 — 어긋남 ① 과 같은 부류, 실패 시험 22건) | AC 단위 일치 + **어긋남 ① 중복** |
+| M6 | 008 — 그리고 **서버 쪽 0건** | channel 실패 5건 중 **4건이 가드를 재는 시험**(AC-CHANPERM-008·AC-CHANAUTH-007 부류) — 나머지 1건(transport-auth)은 단독 재실행 **30 passed** 로 **t36 플레이크 7번째 관측**(변이 무관). **서버 218 passed 전부 초록 — 서버 쪽 붉음 0건** | **일치** — REQ-PERMROUTE-010 반증 없음 |
+
+증거 전문: `.moai/reports/t34/evidence/M6-mutation-M{1,2,3,4,5}.txt` · `M6-mutation-M6-channel.txt` · `M6-mutation-M6-server.txt`.
+
+**[HARD] 어긋남 보고 — M4·M5 에서 AC-005 시험이 붉다 (표에 없음).** 원인: M6-0 이 신설한 AC-005 시험이 «실패 안내 행의 **문구 형태**»(«요청한 세션이 끊겨» 포함 + 꼬리)를 단언한다. M4(실패 문구를 성공 문구와 같게)는 그 문구를 «✅ 승인 전송됨» 으로 바꿔 AC-005 의 «실패 안내 행» 요건 자체를 위반하고, M5(connId 미실음)는 (ㄴ) 문구로 바꿔 같은 단언을 붉힌다. **AC-005 고유의 관측(남은 소켓 0건)은 두 변이 모두 통과** — 붉은 것은 문구 단언 절반이며, 그 단언은 AC-006·013 과 중복되는 «문구 분화» 관측이다. 변이표 도출 시점(M6-0 이전)엔 AC-005 시험이 없어 이 연쇄가 계산에 없었다. **기준을 고치지 않고 어긋남으로 보고한다** (plan M6 지시).
+
+**[HARD] 어긋남 ① 처분 — (나) 확정 (리드 M6 판독).** **AC-005 시험을 완화하지 않는다** — «더 많이 재는 시험을 표에 맞춰 약화시키는 것은 방향이 거꾸로다». 이 어긋남은 **보고된 어긋남**으로 DoD 2항(«어긋남이 보고됨»)을 충족한다: **M4·M5 는 AC-005 시험의 문구 절반도 무너뜨린다(표 도출 시점에 시험 부재).** `acceptance.md` AC-011 표에 이 절반을 반영하는 개정은 본문 소유권상 **sync 에서 manager-spec 재위임** 대상이다(이 run 은 본문을 고치지 않는다).
+
+**M2 의 형제 시험 14건 — «이 SPEC 기준 밖» 판독(리드 수용)의 전건 목록** (공통 단언: «판정 프레임이 봇 소켓에 도달한다» — AC-GW-017 등 형제 SPEC 기준의 재판정이며 AC-PERMROUTE-003a 와 같은 성격을 형제 시험이 다시 재는 것):
+
+| 파일 | 시험 | 붉은 단언 |
+|---|---|---|
+| `permissions.test.ts` | delivers an allow verdict | 판정 프레임 도달 (`:198`) |
+| `permissions.test.ts` | delivers a deny verdict as deny | `deny` 값 도달 (`:209`) |
+| `permissions.test.ts` | accepts a verdict once | 첫 판정 도달 (`:231`) |
+| `permissions.test.ts` | never resolves a request from a different room | 대조군 proper 배달 (`:255`) |
+| `permissions.test.ts` | refuses an unauthenticated verdict | proper 배달 (`:272`) |
+| `permissions.test.ts` | falls through non-matching text | real 배달 (`:294`) |
+| `permissions.test.ts` | accepts all four verdict words | allow·deny 도달 (`:332`·`:337`) |
+| `permissions.test.ts` | same request_id in two rooms | 양방 배달 (`:353`·`:358`) |
+| `room-members.test.ts` | never lets a non-member approve | 멤버 판정 도달 (`:539`) |
+| `room-members.test.ts` | the broker itself refuses a non-member verdict | 멤버 판정 도달 (`:553`) |
+| `web-permission-contract.test.ts` | dumps the real broker bodies | 배달 본문 관측 |
+| `web-permission-contract.test.ts` | AC-WEBRICH-001 delivers an approve verdict | 도달 |
+| `web-permission-contract.test.ts` | AC-WEBRICH-002 delivers a deny verdict | 도달 |
+| `web-permission-contract.test.ts` | AC-WEBRICH-003 extracts the real request_id | 도달 |
+
+**t36 플레이크 7번째 관측.** 변이 M6 채널 스위트에서 `transport-auth.test.ts «the entry point closes a rejected socket…»` 1건 실패 — 변이와 무관한 전송 인증 시험이며 단독 재실행 **30 passed** 자가소멸. t25 2회 · t33 3회 · t34 1회(plan 때) · t34 M6 1회 = 관측 누적 갱신 (pick t36 시 인계).
+
+**Gaps (이 밀스톤이 관측하지 않은 것).**
+
+- M6 변이의 «008» 관측에서 실패한 5건 가운데 가드 재는 시험은 4건이다 — AC-CHANPERM-008·AC-CHANAUTH-007 **자체** 와 시험의 1:1 대응표는 채널 쪽 acceptance 소유로 이 회차가 재편하지 않았다. «가드를 재는 시험들이 붉었다» 는 관측까지가 이 회차의 범위
+- 변이 M2·M5 의 형제 시험 붉음(각 14·16건)의 «셈 밖» 처리는 acceptance 변이표 머리의 집계 기준 제외 규칙을 «이 SPEC 의 기준이 아닌 것» 으로 확장 적용한 판독이다 — 그 확장의 적법성은 리드 판독 대상
+- AC-PERMROUTE-012(기준선 비회귀)의 최종 재실행은 변이 창 밖의 깨끗한 트리에서 §E.3 이행 시 실시
+
+**Residual-risk.**
+
+- 변이 창 동안 채널 dist 를 재빌드했다 — 복원 뒤 재빌드·126 회복을 관측했으나, dist 는 git 추적 밖이라 «소스=dist» 는 이 재빌드 관측이 유일한 근거다 (불일치 시 서버 시험이 거짓 실패하는 기존 부류)
+
 **Residual-risk.**
 
 - AC-006 시험의 `brokenWs.close()` 후 정리 대기 300ms — 느린 환경에서 (ㄱ) 갈래가 (ㄷ) 로 오인될 이론적 창. 실패 시 타임아웃 상향이 수리

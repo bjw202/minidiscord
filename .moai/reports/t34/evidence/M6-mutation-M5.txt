@@ -1,0 +1,404 @@
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+
+ ❯ test/room-members.test.ts (21 tests | 2 failed) 6858ms
+     × never lets a non-member approve, and leaves the request for a member to answer 3290ms
+     × the broker itself refuses a non-member verdict, independent of the route gate 1806ms
+ ❯ test/gateway.test.ts (39 tests | 5 failed) 10422ms
+     × relays permission_request to the handler and sendToBot reports delivery 222ms
+     × routes a permission verdict to the socket that requested it when several sockets share one bot 211ms
+     × routes the verdict to the requesting connection only (AC-PERMROUTE-003a + 003b) 2013ms
+     × issues one stable connId per connection, distinct across connections (AC-PERMROUTE-001) 311ms
+     × delivers the requesting connection identity to the handler (AC-PERMROUTE-002) 315ms
+ ❯ test/web-permission-contract.test.ts (5 tests | 4 failed) 16774ms
+   × dumps the real broker bodies shared with skeleton B 1692ms
+     × AC-001 delivers an approve verdict to the bot with the exact request_id 5005ms
+     × AC-002 delivers a deny verdict 5004ms
+     × AC-003 extracts the real request_id even when the preview contains lookalike runs 5006ms
+ ❯ test/permissions.test.ts (27 tests | 11 failed) 25564ms
+     × delivers an allow verdict to the connected bot 1767ms
+     × delivers a deny verdict as deny, not as allow 1769ms
+     × accepts a verdict once and lets a repeat fall through as chat 1752ms
+     × never resolves a request from a different room 3270ms
+     × refuses an unauthenticated verdict and leaves the request pending 3272ms
+     × falls through non-matching text and unknown ids without touching the pending request 3272ms
+     × marks an undelivered verdict differently from a delivered one 272ms
+     × accepts all four verdict words, normalizes case, and rejects ids containing l 1777ms
+     × same request_id in two rooms keeps both requests resolvable 1773ms
+     × stores three different bodies for allow, deny and broken-session verdicts 659ms
+     × delivers nowhere and stores the broken-session notice when the requesting socket is gone (AC-PERMROUTE-005) 2078ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 22 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery
+AssertionError: expected { roomId: 1, botId: 1 } to deeply equal { roomId: 1, botId: 1, …(1) }
+
+- Expected
++ Received
+
+  {
+    "botId": 1,
+-   "connId": Any<String>,
+    "roomId": 1,
+  }
+
+ ❯ test/gateway.test.ts:833:26
+    831|     await new Promise(r => setTimeout(r, 200))
+    832|     expect(seen).toHaveLength(1)
+    833|     expect(seen[0].info).toEqual({ roomId: room, botId: pm, connId: ex…
+       |                          ^
+    834|     expect(seen[0].params.request_id).toBe('p1')
+    835|     expect(seen[0].params.tool_name).toBe('Bash')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/22]⎯
+
+ FAIL  test/gateway.test.ts > gateway > routes a permission verdict to the socket that requested it when several sockets share one bot
+AssertionError: expected { roomId: 1, botId: 1 } to deeply equal { roomId: 1, botId: 1, …(1) }
+
+- Expected
++ Received
+
+  {
+    "botId": 1,
+-   "connId": Any<String>,
+    "roomId": 1,
+  }
+
+ ❯ test/gateway.test.ts:880:26
+    878|     await new Promise(r => setTimeout(r, 200))
+    879|     expect(seen).toHaveLength(1)
+    880|     expect(seen[0].info).toEqual({ roomId: room, botId: pm, connId: ex…
+       |                          ^
+    881|
+    882|     expect(gateway.sendToBot(room, pm, { type: 'permission_verdict', r…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/22]⎯
+
+ FAIL  test/gateway.test.ts > gateway > routes the verdict to the requesting connection only (AC-PERMROUTE-003a + 003b)
+Error: timeout waiting ws message
+ ❯ Timeout._onTimeout test/gateway.test.ts:154:14
+    152|       const i = inbox.waiters.findIndex(w => w.timer === timer)
+    153|       if (i >= 0) inbox.waiters.splice(i, 1)
+    154|       reject(new Error('timeout waiting ws message'))
+       |              ^
+    155|     }, timeoutMs)
+    156|     inbox.waiters.push({ resolve, timer })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/22]⎯
+
+ FAIL  test/gateway.test.ts > gateway > issues one stable connId per connection, distinct across connections (AC-PERMROUTE-001)
+AssertionError: expected undefined not to be undefined // Object.is equality
+ ❯ test/gateway.test.ts:970:33
+    968|     expect(infos).toHaveLength(3)
+    969|     expect(infos[0].connId).toBe(infos[1].connId)      // 같은 접속 — 사는 동…
+    970|     expect(infos[2].connId).not.toBe(infos[0].connId)  // 다른 접속 — 서로 다…
+       |                                 ^
+    971|
+    972|     a.ws.close()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/22]⎯
+
+ FAIL  test/gateway.test.ts > gateway > delivers the requesting connection identity to the handler (AC-PERMROUTE-002)
+AssertionError: expected 'undefined' to be 'string' // Object.is equality
+
+Expected: "string"
+Received: "undefined"
+
+ ❯ test/gateway.test.ts:995:36
+    993|     expect(infos[0].roomId).toBe(room)
+    994|     expect(infos[0].botId).toBe(pm)
+    995|     expect(typeof infos[0].connId).toBe('string')
+       |                                    ^
+    996|     expect((infos[0].connId as string).length).toBeGreaterThan(0)   //…
+    997|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers an allow verdict to the connected bot
+AssertionError: expected null to deeply equal { type: 'permission_verdict', …(2) }
+
+- Expected:
+{
+  "behavior": "allow",
+  "request_id": "abcde",
+  "type": "permission_verdict",
+}
+
++ Received:
+null
+
+ ❯ test/permissions.test.ts:201:24
+    199|     const seen = nextMessage(ws)
+    200|     await post(app, roomId, cookie, 'yes abcde')
+    201|     expect(await seen).toEqual({ type: 'permission_verdict', request_i…
+       |                        ^
+    202|   })
+    203|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers a deny verdict as deny, not as allow
+AssertionError: expected null not to be null
+ ❯ test/permissions.test.ts:214:19
+    212|     await post(app, roomId, cookie, 'no abcde')
+    213|     const v = await seen
+    214|     expect(v).not.toBeNull()
+       |                   ^
+    215|     expect(v.behavior).toBe('deny')          // 항상 allow 를 보내는 구현은 여기서…
+    216|     expect(v.request_id).toBe('abcde')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > accepts a verdict once and lets a repeat fall through as chat
+TypeError: Cannot read properties of null (reading 'behavior')
+ ❯ test/permissions.test.ts:238:26
+    236|     const first = nextMessage(ws)
+    237|     await post(app, roomId, cookie, 'yes abcde')
+    238|     expect((await first).behavior).toBe('allow')
+       |                          ^
+    239|
+    240|     const second = nextMessage(ws)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > never resolves a request from a different room
+TypeError: Cannot read properties of null (reading 'behavior')
+ ❯ test/permissions.test.ts:264:27
+    262|     const proper = nextMessage(ws)
+    263|     await post(app, a.roomId, cookie, 'yes abcde')                  //…
+    264|     expect((await proper).behavior).toBe('allow')
+       |                           ^
+    265|   })
+    266|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > refuses an unauthenticated verdict and leaves the request pending
+TypeError: Cannot read properties of null (reading 'behavior')
+ ❯ test/permissions.test.ts:283:27
+    281|     const proper = nextMessage(ws)
+    282|     await post(app, roomId, cookie, 'yes abcde')          // 대기 항목은 손상…
+    283|     expect((await proper).behavior).toBe('allow')
+       |                           ^
+    284|   })
+    285|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > falls through non-matching text and unknown ids without touching the pending request
+TypeError: Cannot read properties of null (reading 'behavior')
+ ❯ test/permissions.test.ts:307:25
+    305|     const real = await post(app, roomId, cookie, 'yes abcde')         …
+    306|     expect(real.json().consumed_by).toBe('permission')
+    307|     expect((await seen).behavior).toBe('allow')
+       |                         ^
+    308|   })
+    309|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > marks an undelivered verdict differently from a delivered one
+AssertionError: expected '⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다…' not to be '⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다…' // Object.is equality
+ ❯ test/permissions.test.ts:329:30
+    327|     expect(delivered.body).toContain('abcde')
+    328|     expect(dropped.body).toContain('fghij')
+    329|     expect(dropped.body).not.toBe(delivered.body.replace('abcde', 'fgh…
+       |                              ^
+    330|     expect(dropped.body).toContain('전달하지 못했습니다')                      …
+    331|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > accepts all four verdict words, normalizes case, and rejects ids containing l
+AssertionError: expected null to deeply equal { type: 'permission_verdict', …(2) }
+
+- Expected:
+{
+  "behavior": "allow",
+  "request_id": "abcde",
+  "type": "permission_verdict",
+}
+
++ Received:
+null
+
+ ❯ test/permissions.test.ts:351:25
+    349|     const y = await post(app, roomId, cookie, '  Y ABCDE  ')        //…
+    350|     expect(y.json().consumed_by).toBe('permission')
+    351|     expect(await allow).toEqual({ type: 'permission_verdict', request_…
+       |                         ^
+    352|
+    353|     const deny = nextMessage(ws)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > same request_id in two rooms keeps both requests resolvable
+AssertionError: expected null to deeply equal { type: 'permission_verdict', …(2) }
+
+- Expected:
+{
+  "behavior": "allow",
+  "request_id": "abcde",
+  "type": "permission_verdict",
+}
+
++ Received:
+null
+
+ ❯ test/permissions.test.ts:374:28
+    372|     const resA = await post(app, a.roomId, cookie, 'yes abcde')
+    373|     expect(resA.json().consumed_by).toBe('permission')
+    374|     expect(await verdictA).toEqual({ type: 'permission_verdict', reque…
+       |                            ^
+    375|
+    376|     const verdictB = nextMessage(wsB)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > stores three different bodies for allow, deny and broken-session verdicts
+AssertionError: expected '⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다…' to contain '✅ 승인 전송됨 (abcde)'
+
+Expected: "✅ 승인 전송됨 (abcde)"
+Received: "⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다 (abcde)"
+
+ ❯ test/permissions.test.ts:543:23
+    541|       .all(room.roomId) as { body: string }[]).map(r => r.body)
+    542|     expect(bodies).toHaveLength(3)
+    543|     expect(bodies[0]).toContain('✅ 승인 전송됨 (abcde)')
+       |                       ^
+    544|     expect(bodies[1]).toContain('⛔ 거절 전송됨 (fghij)')
+    545|     expect(bodies[2]).toContain('요청한 세션이 끊겨')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/22]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers nowhere and stores the broken-session notice when the requesting socket is gone (AC-PERMROUTE-005)
+AssertionError: expected '⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다…' to contain '요청한 세션이 끊겨'
+
+Expected: "요청한 세션이 끊겨"
+Received: "⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다 (abcde)"
+
+ ❯ test/permissions.test.ts:589:22
+    587|     const row = db.prepare("SELECT body FROM messages WHERE room_id=? …
+    588|       .get(room.roomId) as { body: string }
+    589|     expect(row.body).toContain('요청한 세션이 끊겨')      // (ㄱ) 실패 안내 1행
+       |                      ^
+    590|     expect(row.body).toMatch(/전달하지 못했습니다 \(abcde\)$/)
+    591|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/22]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > never lets a non-member approve, and leaves the request for a member to answer
+AssertionError: expected null to deeply equal { type: 'permission_verdict', …(2) }
+
+- Expected:
+{
+  "behavior": "allow",
+  "request_id": "abcde",
+  "type": "permission_verdict",
+}
+
++ Received:
+null
+
+ ❯ test/room-members.test.ts:542:24
+    540|     const real = nextMessage(ws)
+    541|     await postMsg(app, alice.cookie, roomId, 'yes abcde')
+    542|     expect(await real).toEqual({ type: 'permission_verdict', request_i…
+       |                        ^
+    543|   })
+    544|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/22]⎯
+
+ FAIL  test/room-members.test.ts > room membership gates > the broker itself refuses a non-member verdict, independent of the route gate
+AssertionError: expected null to deeply equal { type: 'permission_verdict', …(2) }
+
+- Expected:
+{
+  "behavior": "allow",
+  "request_id": "abcde",
+  "type": "permission_verdict",
+}
+
++ Received:
+null
+
+ ❯ test/room-members.test.ts:559:35
+    557|     expect(broker.tryHandleUserReply(roomId, mallory.id, 'yes abcde'))…
+    558|     expect(broker.tryHandleUserReply(roomId, alice.id, 'yes abcde')).t…
+    559|     expect(await nextMessage(ws)).toEqual({ type: 'permission_verdict'…
+       |                                   ^
+    560|   })
+    561|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/22]⎯
+
+ FAIL  test/web-permission-contract.test.ts > dumps the real broker bodies shared with skeleton B
+Error: 조건이 시간 안에 성립하지 않았다
+ ❯ waitFor test/web-permission-contract.test.ts:93:40
+     91|   const start = Date.now()
+     92|   while (!cond()) {
+     93|     if (Date.now() - start > ms) throw new Error('조건이 시간 안에 성립하지 않았다')
+       |                                        ^
+     94|     await new Promise(r => setTimeout(r, 10))
+     95|   }
+ ❯ test/web-permission-contract.test.ts:157:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/22]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-001 delivers an approve verdict to the bot with the exact request_id
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:181:3
+    179|
+    180| describe('AC-WEBRICH-001..004 permission & invite contract', () => {
+    181|   it('AC-001 delivers an approve verdict to the bot with the exact req…
+       |   ^
+    182|     const c = await build()
+    183|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/22]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-002 delivers a deny verdict
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:209:3
+    207|   })
+    208|
+    209|   it('AC-002 delivers a deny verdict', async () => {
+       |   ^
+    210|     const c = await build()
+    211|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/22]⎯
+
+ FAIL  test/web-permission-contract.test.ts > AC-WEBRICH-001..004 permission & invite contract > AC-003 extracts the real request_id even when the preview contains lookalike runs
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/web-permission-contract.test.ts:223:3
+    221|   })
+    222|
+    223|   it('AC-003 extracts the real request_id even when the preview contai…
+       |   ^
+    224|     const c = await build()
+    225|     const { roomId, botId, token } = seedRoomAndBot()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/22]⎯
+
+
+ Test Files  4 failed | 13 passed (17)
+      Tests  22 failed | 196 passed (218)
+   Start at  07:45:43
+   Duration  25.85s (transform 1.01s, setup 0ms, import 2.69s, tests 64.31s, environment 1.12s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+npm error command failed
+npm error command sh -c vitest run

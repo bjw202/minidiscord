@@ -1,0 +1,89 @@
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+
+ ❯ test/permissions.test.ts (27 tests | 3 failed) 10527ms
+     × stores three different bodies for allow, deny and broken-session verdicts 659ms
+     × a pending entry without connId delivers nowhere and stores the identity-missing notice 63ms
+     × delivers nowhere and stores the broken-session notice when the requesting socket is gone (AC-PERMROUTE-005) 559ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/permissions.test.ts > permission relay > stores three different bodies for allow, deny and broken-session verdicts
+AssertionError: expected '✅ 승인 전송됨 (kmnop)' to contain '요청한 세션이 끊겨'
+
+Expected: "요청한 세션이 끊겨"
+Received: "✅ 승인 전송됨 (kmnop)"
+
+ ❯ test/permissions.test.ts:545:23
+    543|     expect(bodies[0]).toContain('✅ 승인 전송됨 (abcde)')
+    544|     expect(bodies[1]).toContain('⛔ 거절 전송됨 (fghij)')
+    545|     expect(bodies[2]).toContain('요청한 세션이 끊겨')
+       |                       ^
+    546|     expect(bodies[2]).not.toContain('봇이 접속해 있지 않')   // 틀린 진단 금지 (REQ-…
+    547|     expect(new Set(bodies).size).toBe(3)                     // 셋이 서로 …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > a pending entry without connId delivers nowhere and stores the identity-missing notice
+AssertionError: expected { type: 'permission_verdict', …(2) } to be null
+
+- Expected:
+null
+
++ Received:
+{
+  "behavior": "allow",
+  "request_id": "abcde",
+  "type": "permission_verdict",
+}
+
+ ❯ test/permissions.test.ts:562:34
+    560|     broker.onGatewayRequest({ roomId: room.roomId, botId: room.botId }…
+    561|     await post(app, room.roomId, cookie, 'yes abcde')
+    562|     expect(await nextMessage(a)).toBeNull()   // A 에게 아무것도 오지 않는다
+       |                                  ^
+    563|     expect(await nextMessage(b)).toBeNull()   // B 도 — 어느 접속으로도 되돌리지 않…
+    564|     const row = db.prepare("SELECT body FROM messages WHERE room_id=? …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/permissions.test.ts > permission relay > delivers nowhere and stores the broken-session notice when the requesting socket is gone (AC-PERMROUTE-005)
+AssertionError: expected { type: 'permission_verdict', …(2) } to be null
+
+- Expected:
+null
+
++ Received:
+{
+  "behavior": "allow",
+  "request_id": "abcde",
+  "type": "permission_verdict",
+}
+
+ ❯ test/permissions.test.ts:586:38
+    584|     await new Promise(r => setTimeout(r, 300))         // close 정리 관측
+    585|     await post(app, room.roomId, cookie, 'yes abcde')
+    586|     expect(await nextMessage(other)).toBeNull()         // 남은 소켓 0건
+       |                                      ^
+    587|     const row = db.prepare("SELECT body FROM messages WHERE room_id=? …
+    588|       .get(room.roomId) as { body: string }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 16 passed (17)
+      Tests  3 failed | 215 passed (218)
+   Start at  07:43:58
+   Duration  10.81s (transform 964ms, setup 0ms, import 2.68s, tests 29.20s, environment 1.14s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+npm error command failed
+npm error command sh -c vitest run
