@@ -823,3 +823,82 @@ sync 감사 대비 명시 문구: «형제 하네스 수정 사실 + 표면 확�
   이후 channel 명시 경로 재실행 + server 3회: 전건 초록(126 passed·202 passed ×3).
   정직 기록: 이번은 순차 실행이라 리드가 가정한 «동시 실행 간섭» 과 맞지 않는다.
   실패 정체 미상 — 재현 시 이름 캡처를 남기고, 빈도가 늘면 별도 조사 과제로 상향.
+
+=== §17 결함 D-5 — 방에서 승인했는데 봇 터미널 프롬프트가 닫히지 않는다 (2026-09-03) ===
+
+증상 (운영자 실측, 캡처 2장):
+  defect-5-1-room-approve-sent.png — 방에 «🔒 승인 요청(mcp_minidiscord-channel_fetch_history,
+    request_id mepzy)» 01:01:13 → «✅ 승인 전송됨 (mepzy)» 01:01:17.
+  defect-5-2-terminal-prompt-stuck.png — 같은 시각 봇 세션 터미널의 fetch_history 승인
+    프롬프트(1.Yes / 2.No)가 닫히지 않고 대기.
+  환경: 봇 세션 pid 72096, 10:00:37 기동(D-4 커밋 cdc94c6 09:52 이후). @TO hi 10:01:01.
+
+── 원인 (5절, VCI §3) ──
+
+주장: 판정은 gateway → channel 구간에서 끊겼다. 뿌리는 server/src/gateway.ts sendToBot 의
+  «첫 일치 소켓에서 return true» 이며, 코드 변경이 아니라 «같은 (방, 봇) 에 소켓이 여럿»
+  이라는 실행 조건이 이 결함을 처음 노출시켰다.
+
+증거 1 — 같은 (방, 봇) 에 채널 클라이언트가 셋 붙어 있었다.
+  명령: lsof -nP -iTCP:3000 -sTCP:ESTABLISHED  +  ps -o pid,ppid,lstart,command
+  관측: pid 66669 ← 부모 66509 = run 레인 세션(claude --name run), 09:55:57 접속
+        pid 66942 ← 부모 66910 = lead 세션(claude --name lead), 09:56:14 접속
+        pid 72173 ← 부모 72096 = 봇 세션, 10:00:39 접속
+        셋 다 channel/dist/index.js. run·lead 세션에도 minidiscord-channel MCP 가 물려 있어
+        봇과 같은 자격으로 게이트웨이에 접속해 있었다.
+
+증거 2 — 두 발신 지점의 갈래가 어긋나 있었다 (코드 판독).
+  deliver(gateway.ts:320)   : 일치 소켓 «전원» 순회 → 채팅은 봇에 도착했다.
+  sendToBot(수리 전 :349)   : 첫 일치에서 return true → 판정은 삽입 순서 첫째(run 레인)로 갔다.
+  channel-server.ts:219 handlePermissionVerdict 는 emitted 집합에 없는 request_id 를 조용히
+  버린다(REQ-CHANPERM-008). 그래서 어느 층에서도 오류가 나지 않았고, 방의 «✅ 승인 전송됨» 은
+  거짓이 아니었다 — sent 는 참이었고, 다만 셋 중 «요청하지 않은» 하나에게 전달됐다.
+
+증거 3 — RED 재현.
+  파일: server/test/gateway.test.ts — 새 it «routes a permission verdict to the socket that
+    requested it when several sockets share one bot» (같은 초대 토큰으로 소켓 둘, 두 번째가
+    request_id mepzy 로 요청 → 요청한 소켓이 판정을 받는가).
+  명령: npx vitest run test/gateway.test.ts -t "routes a permission verdict" --root server
+  수리 전 관측: 1 failed — «Error: timeout waiting ws message» (요청한 소켓에 판정 미도달).
+  수리 후 관측: 1 passed.
+  RED→GREEN 사이의 변경은 sendToBot 한 곳뿐이므로 이 짝이 곧 변이 판별이다.
+
+baseline 귀속: 워크트리 .claude/worktrees/t32 @ cdc94c6, 이 실행·이 트리.
+  cdc94c6 diff 에 권한 경로 변경 0줄(리드 확인과 일치). 09:14 의
+  a01-web-permission-approve-answer.png 시점에는 채널 클라이언트가 하나뿐이었다
+  (run·lead 는 09:55·09:56 접속) — 「무엇이 달라졌나」의 답은 코드가 아니라 동시 접속 수다.
+
+미검증(Gaps): 09:14 관측이 어떤 도구의 승인이었는지는 캡처에서 확인하지 않았다.
+  defect-5-2 는 레인이 직접 열어 «Fetch History Tool · Do you want to proceed? 1.Yes/2.No»
+  가 열린 채임을 확인했으나, 그 프레임 자체에는 시각이 찍혀 있지 않다 — 방 캡처와의 동시성은
+  운영자 보고이지 프레임에서 읽히는 사실이 아니다.
+잔여 위험: (A) 채택으로 이 카드에서는 닫히지만, 요청 소켓 단위의 정확한 되돌림은 (B) 후속 카드다.
+
+── 수리 (리드 판정: (A) 채택, 운영자 결정 2026-09-03) ──
+
+(A) 브로드캐스트 — sendToBot 을 deliver 와 같은 «전원 순회» 로 바꾸고, 하나라도 보냈으면 true.
+    server/src/gateway.ts 한 곳. 오프라인(일치 0건) 시 false 라는 REQ-GW-020 의 신호는 불변.
+(B) 요청 소켓 되돌림 — 요청을 낸 ws 신원을 onGatewayRequest → open 맵까지 실어 그 소켓에만
+    회신. spec.md REQ-PERM-004 가 글자 그대로 고정한 PermissionBroker/ConnInfo 시그니처
+    (permissions.ts:33 @MX:REASON) 개정이 필요해 이 카드 범위 밖 — 리드가 후속 카드로 등록.
+중복 접속 자체는 (A) 로 흡수한다 — 세션 설정 변경 없음(운영자 결정).
+
+── sync 감사 대비 명시: 가드의 승격 ──
+
+(A) 를 채택하면 channel-server.ts 의 emitted 집합 가드(REQ-CHANPERM-008)의 지위가 바뀐다.
+  수리 전: 재생 공격 방어 — 같은 판정을 되풀이해 deny 를 allow 로 덮어쓰지 못하게 하는 장치.
+  수리 후: 그에 더해 «정확성의 필수 부품» — 요청하지 않은 세션에 도착한 판정을 버리는 것이
+    브로드캐스트를 안전하게 만드는 유일한 근거다. 가드를 지우면 남의 세션에서 판정이 실행된다.
+  이 승격을 코드에도 남겼다: gateway.ts sendToBot 위 @MX:WARN 한 줄.
+  감사관에게: 이 의존은 은닉된 것이 아니라 선언된 것이며, (B) 가 착지하면 다시 재생 방어
+  단독 지위로 내려온다.
+
+── 검증 수치 (이 실행·이 트리, cdc94c6 + 미커밋 수리) ──
+
+  npx vitest run test/gateway.test.ts -t "routes a permission verdict" --root server
+    → 수리 전 1 failed / 수리 후 1 passed (31 skipped)
+  npx vitest run --root server        → 17 files · 203 passed (수리 전 202 → 새 it 1건 증가)
+  npm run typecheck -w server         → exit 0
+
+후속 재관측: D-5 의 실 재관측은 새 권한 요청이 자연히 생길 때(첨부 읽기 등) 이뤄진다 —
+별도 왕복을 만들지 않는다(리드 지시 2026-09-03).

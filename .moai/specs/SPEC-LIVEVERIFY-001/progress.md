@@ -71,6 +71,18 @@
 
 _<pending run-phase>_
 
+### 중간 상태 기록 (2026-09-03 갱신 — run 종료 시 전건 §E.2 로 확장)
+
+- **run 커밋 궤적(전건 리드 승인 후 착지)**: `23624e0`(plan) → `b2921a7`(M1 — AC-015 배선 순서 기준·변이 판별 1건 실측·124 passed) → `ab6c346`(M2 — 문서 정정 9자리·훑기 11행) → `a44523c`(§D 수리 D-1·D-2) → `3112666`(D01 §8) → `5cca2f4`(D01 §9) → `5131046`(D-2 시각 마무리) → `e43c60a`(무반응 제거 — 세션 유지 실패 문구·가입 토스트) → `b960149`(D-3 근본 수리 — [hidden] 가드·Playwright 시각 단언 신규) → `1ee58a8`(토스트 상태색·자동 숨김·CI skip).
+- **run 게이트 재판정**: PASS 0.837 / 통과선 0.80(Tier M) / 차단 0건 — `.moai/reports/plan-audit/SPEC-LIVEVERIFY-001-2026-09-02.md`. 레인 표본 재현 일치.
+- **§D 결함 시리즈(전부 닫힘)**: D-1(register 실패 무표시)·D-2(오류 배너 위치)·D-3(근본 원인 — author display:flex 가 UA [hidden]{display:none} 을 이겨 두 뷰 겹침 렌더링; a44523c 이후 운영자 «무반응» 재발의 실체) + 토스트 상태색·4초 자동 숨김 + CI 러너 명시적 skip. 최종 관측: server 전체 **202 passed (17 files)** — 레인·리드 이중 관측, typecheck 0. 결함 전 기록 `evidence/D01-defect-register-silent.txt`(728행, §1~§15) + 스크린샷 defect-1·2 시리즈 + `webkit-green-output.txt` + `e43c60a-recheck-output.txt`.
+- **교훈(§13·§14)**: «속성 단언으로는 시각적 회귀를 못 잡는다» — hidden 속성·토스트 텍스트 단언으로 GREEN 이었던 판정이 D-3(겹침)을 못 본 것. Playwright 시각 단언(boundingBox·계산색) 도입, 즉시 구체성 결함(#error-toast.toast-success 1-1-0)을 추가 포착.
+- **프로브 잔재 정리**: 재현·진단 프루브 전건 DELETE(리드 승인 하) — 최종 users 전수 = 운영자 계정만(ttongchim·bjw202·jw·quswjddnjs·jw-1~jw-5). 운영자 계정은 무반응 판정 당사자라 유지(리드 확인).
+- **§A 상태**: 운영자 강제 새로고침 → §A 재개 대기(방 생성부터). 증거(A01~A12·A00) 착지분부터 레인이 판독 착수, 판정은 전건 착지 후.
+- **채널 이상 공시(기록 보존)**: 2026-09-02 18:1x 교차 세션 메시징 일시 두절 — 서브에이전트 경유 전달로 해소됨.
+- **환경 기록 (2026-09-03 09:5x 재실측 — 앞선 기록 정정)**: 살아 있는 minidiscord 서버는 **`127.0.0.1:3000` 하나뿐**이다(pid 11320 · 09-02 17:37 기동 · cwd `.claude/worktrees/t32/server` · `tsx src/index.ts` · `GET /` 200). **정정**: 같은 절의 앞 기록이 「pid 7634 가 3001 을 서빙 중」이라 적었으나 **거짓**이다 — pid 7634 는 다른 프로젝트의 `remotion render --help`(2026-07-24 기동)이고 `GET :3001/` 은 404 다. 3000 의 `*:3000` 리스너(pid 94851)도 무관한 remotion 프로세스다. 뿌리: `lsof` 로 **포트 점유만** 보고 프로세스 신원을 확인하지 않은 미관측 주장(VCI §1.1).
+- **§A 재관측 전 신선도 실측 (2026-09-03)**: ㉠ `channel/dist/channel-server.js` = **09:52 빌드**(src 09:35 보다 최신) · `TO_REPLY_NOTE`/`REPLY_DIRECTIVE` **4건 존재** → D-4 수리가 dist 에 들어 있어 **재빌드 불필요**, 봇 세션 재기동만 필요. ㉡ 서버가 주는 `/app.js` 와 디스크 `web/app.js` 의 shasum **동일**(`85620695ee27`) → 정적 파일 최신, **서버 재기동 불필요**. ㉢ 서버 기동(09-02 17:37) 이후 커밋 다섯 건 중 `server/src` 변경 **0건**(변경은 `server/test`·`web/`·`channel/` 뿐) → 실행 중 서버는 최신 코드와 동치.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

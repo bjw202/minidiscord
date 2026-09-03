@@ -345,9 +345,18 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       return false
     },
     // 접속이 없으면 아무것도 보내지 않고 false — "오프라인이라 못 보냈다"의 유일한 신호 (REQ-GW-020)
+    // 일치하는 접속 «전원» 에게 보낸다 — deliver 와 같은 갈래다 (카드 t32 §D 결함 D-5).
+    // 첫 일치에서 return 하면 같은 봇 토큰으로 여러 세션이 붙어 있을 때 판정이 요청하지 않은
+    // 소켓으로 가고, 그 채널의 emitted 집합 가드(REQ-CHANPERM-008)가 조용히 버려 승인 프롬프트가
+    // 영원히 열린 채 남는다 — 실측: 같은 (방, 봇) 에 소켓 셋(run·lead·bot)이 붙은 상태에서 재현.
+    // 전원 발신이 안전한 근거가 그 가드다: 채널은 «자기가 낸» request_id 의 판정만 세션으로 되쏘고
+    // 나머지는 버리므로, 요청하지 않은 세션에 도착한 프레임은 아무 일도 하지 않는다.
+    // @MX:WARN: [AUTO] 이 발신의 정확성이 채널 쪽 emitted 가드에 의존한다 — 가드를 지우면 판정이 남의 세션에서 실행된다
+    // @MX:SPEC: SPEC-LIVEVERIFY-001
     sendToBot(roomId, botId, payload) {
-      for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); return true }
-      return false
+      let sent = false
+      for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); sent = true }
+      return sent
     },
     setPermissionHandler(fn) { permissionHandler = fn },
   }

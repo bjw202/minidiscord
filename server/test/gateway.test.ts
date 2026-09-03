@@ -852,6 +852,42 @@ describe('gateway', () => {
     await app.close()
   })
 
+  // 카드 t32 §D 결함 D-5 — 같은 (방, 봇) 에 소켓이 여럿일 때 판정이 «요청한» 소켓에 닿아야 한다.
+  // 실측 배경: 같은 봇 토큰으로 세 세션(run 레인·lead·봇)이 동시에 붙어 있었고, 방에는 «✅ 승인 전송됨» 이
+  // 떴는데 봇 터미널의 승인 프롬프트가 닫히지 않았다. sendToBot 이 첫 일치 소켓에서 return 하므로
+  // 판정이 요청하지 않은 소켓으로 갔고, 채널 쪽 emitted 집합 가드(REQ-CHANPERM-008)가 그 판정을
+  // 조용히 버려 아무 데서도 오류가 나지 않았다. deliver 는 같은 조건에서 전원에게 보낸다 — 두 발신
+  // 지점의 갈래가 어긋난 것이 뿌리다.
+  it('routes a permission verdict to the socket that requested it when several sockets share one bot', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+
+    // 같은 초대 토큰으로 두 소켓 — 먼저 붙은 것이 «요청하지 않은» 쪽이다.
+    const first = await wsConnect(port, token)
+    const second = await wsConnect(port, token)
+
+    const seen: { info: any; params: any }[] = []
+    gateway.setPermissionHandler((info, params) => seen.push({ info, params }))
+
+    // 요청은 두 번째 소켓이 낸다.
+    second.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'mepzy', tool_name: 'fetch_history', description: '이력 조회', input_preview: '{}' }))
+    await new Promise(r => setTimeout(r, 200))
+    expect(seen).toHaveLength(1)
+    expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+
+    expect(gateway.sendToBot(room, pm, { type: 'permission_verdict', request_id: 'mepzy', behavior: 'allow' })).toBe(true)
+
+    // [HARD] 요청한 소켓이 판정을 받는다. 첫 소켓만 받고 끝나면 봇의 프롬프트는 영원히 열려 있다.
+    const verdict = await nextMessage(second.ws)
+    expect(verdict).toEqual({ type: 'permission_verdict', request_id: 'mepzy', behavior: 'allow' })
+
+    first.ws.close()
+    second.ws.close()
+    await app.close()
+  })
+
   // AC-GW-018 — 조립: buildServer 배선과 초대 목록의 online
   it('buildServer wires the gateway, archive hook and invite online flag', async () => {
     process.env.MINIDISCORD_DATA_DIR = join(dir, 'srv')
