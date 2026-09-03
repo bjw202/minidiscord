@@ -1,0 +1,97 @@
+A01 ㉠㉡㉢ — 면 2 (세션 대화 기록) 발췌 · 신원 증거
+카드 t32 / SPEC-LIVEVERIFY-001 · 관측 2026-09-03 (레인 직접 실행, 읽기 전용)
+
+이 파일은 `A01-session-terminal.png` 의 **면 2** 다. 조항이 요구하던 「한 장 안에서 셋이
+함께 읽힌다」를 **한 파일 안에서 셋이 함께 읽힌다** 로 대신한다 — 세 장의 캡처가 서로를
+가리키지 못하던 자리(각 캡처에 세션 표지가 없다)를 파일이 대신 묶는다.
+(리드·운영자 결정 2026-09-03. 근거는 progress.md 「run 레인 재개 판독」 §③.)
+
+주장
+  대화 기록 `5366bfce-…jsonl` 을 쓴 그 세션은 (㉠) 봇 작업 디렉터리에서 도는 실 Claude
+  Code 세션이고, (㉡) minidiscord 채널이 그 안에 적재되어 **동작**했으며, (㉢) 그 세션의
+  셸 환경이 든 토큰의 앞 8글자가 발급 측 기록의 값과 **같다**.
+
+파일: ~/.claude/projects/-Users-byunjungwon-Dev-my-project-04-minidiscord-bot-01/
+      5366bfce-3324-430c-a9db-a436bb2bc79c.jsonl   (111줄)
+
+
+── ㉠ 실 Claude Code 세션이며, 그 세션은 봇의 것이다 ──
+
+  명령: jq -r '.cwd // empty' <jsonl> | sort | uniq -c
+        jq -r '.sessionId // empty' <jsonl> | sort -u
+  관측:
+      68  /Users/byunjungwon/Dev/my-project-04/minidiscord/bot-01     ← cwd 값이 이 하나뿐
+          5366bfce-3324-430c-a9db-a436bb2bc79c                        ← sessionId 도 하나뿐
+
+  `cwd` 와 `sessionId` 는 **런타임이 각 레코드에 적는 필드**이며 모델이 쓰는 본문이 아니다.
+  값이 갈리지 않으므로 이 파일은 **한 세션**의 것이고, 그 세션의 작업 디렉터리는 봇 디렉터리
+  `…/minidiscord/bot-01` 이다. 파일이 Claude Code 의 대화 기록 형식(`type` · `message` ·
+  `timestamp` 필드)으로 적혀 있다는 것 자체가 「실 Claude Code 세션」을 세운다.
+
+  [면 1 대비] 기동 화면 캡처가 세우던 것과 같은 것을 세우되, 캡처에 노출되던 토큰 전문이
+  이 면에는 **존재하지 않는다**(아래 안전 확인 참조).
+
+
+── ㉡ 채널이 그 세션 안에 적재됐고, 나아가 동작했다 ──
+
+  명령: (각 줄) jq -r '.message.content[]? | select(.type=="tool_use") | .name'
+  관측 — 채널 도구 호출 **셋**, 각각 결과가 돌아왔다:
+
+    line  58  02:32:11.558Z  tool_use  mcp__minidiscord-channel__fetch_history  {"limit":60}
+    line  60  02:34:02.270Z  tool_result ← 방 대화 기록 본문 {"cursor":51,"messages":[…]}
+    line  70  02:34:11.644Z  tool_use  mcp__minidiscord-channel__reply
+    line  72  02:34:11.721Z  tool_result ← "sent"
+    line 103  02:36:24.724Z  tool_use  mcp__minidiscord-channel__reply
+    line 105  02:36:24.826Z  tool_result ← "sent"
+
+  **이 면은 `/mcp` 화면보다 강하다.** `/mcp` 는 「적재됨·연결됨」을 말하는 데서 그치지만,
+  위 여섯 줄은 그 채널이 **실제로 왕복했다**를 말한다 — 채널이 붙지 않은 세션은 애초에
+  `mcp__minidiscord-channel__*` 도구를 부를 수 없고, line 60 의 결과는 **서버가 돌려준
+  방 대화 기록 본문**이라 모델이 지어낼 수 있는 값이 아니다.
+
+  **[교차] line 60 의 시각이 방 DB 의 승인 행과 초 단위로 맞는다.**
+    방 DB: id 52  system  2026-09-03 02:34:02  「✅ 승인 전송됨 (qxiqy)」
+    이 파일: line 60      2026-09-03T02:34:02.270Z  fetch_history 의 tool_result
+  서로 다른 프로세스가 쓴 두 기록이 같은 초를 가리킨다 — 방에서 보낸 판정이 **이 세션에
+  도달해 도구가 반환됐다**. D-5(§17) 실 관측의 손잡이가 여기서 한 번 더 굳는다.
+
+
+── ㉢ 그 세션이 이 방의 봇이다 (토큰 앞 8글자 대조) ──
+
+    line 84  02:35:25.163Z  tool_use  Bash
+             {"command":"echo \"${MINIDISCORD_TOKEN:0:8}\"",
+              "description":"Print first 8 chars of MINIDISCORD_TOKEN"}
+    line 86  02:35:28.705Z  tool_result  for=toolu_014X4yjqD3QWjLLisjBRLB93
+             42694b06
+
+  발급 측 기록과 대조:
+    A01-invite-api.txt:19   token = 42694b06…      ← 앞 8글자만 기록(전문 금지)
+    → **같다.**
+
+  **값의 방향이 옳다.** `42694b06` 은 `tool_result` 에 있다 — 즉 **런타임이 그 세션의 셸에서
+  명령을 실행해 돌려준 값**이지 모델이 본문에 적은 값이 아니다. ㉣ 에서는 「세션이 스스로
+  지어냈는가」가 관건이라 유입이 없어야 했지만, ㉢ 에서 재려는 것은 정반대 — 그 세션의
+  **환경**이 무엇을 들고 있는가이므로, 실행 결과로 나오는 것이 맞는 방향이다.
+
+  대조 자체는 캡처 면과 **한 글자도 달라지지 않았다** — 매체만 바뀌었다.
+
+
+── 안전 확인 (토큰 전문 비노출) ──
+
+  명령: grep -oE '[0-9a-f]{64}' <jsonl>            → 0건
+        grep -oE '[0-9a-f]{64}' A01-invite-api.txt → 0건
+  두 원본 어디에도 64자 전문이 없다. 이 면은 [HARD]「토큰 전문은 어느 증거에도 남기지
+  않는다」를 구조적으로 만족한다 — 캡처 면(clipboard_1788402716_52536.png)이 명령행에
+  전문을 노출해 착지 불가였던 것과 갈리는 지점이다(D01 §20).
+
+
+── 미검증 / 잔여 위험 ──
+
+  · 대화 기록은 그 세션 자신의 프로세스가 쓰는 파일이므로, 「스스로에 대해 거짓을 적는
+    세션」에 대한 독립 증인은 아니다. 다만 (ㄱ) `cwd`·`sessionId`·`tool_result` 는 모델
+    본문이 아니라 **런타임이 적는 자리**이고, (ㄴ) line 60 의 결과가 방 DB 와 초 단위로
+    교차하므로, 이 한계는 이 위협 모형에서 결정적이지 않다.
+  · 이 파일이 세우는 것은 **신원**(㉠㉡㉢)까지다. **생산**(㉣)은 별도 면
+    `A01-liveness-2-session-5366bfce.txt` 가 세우며, 두 면이 **같은 jsonl** 을 읽으므로
+    「신원을 확인한 그 세션이 그 답을 만들었다」가 파일 하나로 이어진다 — 세 캡처가
+    서로를 못 가리키던 자리를 이것이 닫는다.
