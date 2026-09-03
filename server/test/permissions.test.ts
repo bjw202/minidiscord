@@ -568,4 +568,25 @@ describe('permission relay', () => {
     expect(row.body).not.toContain('봇이 접속해 있지 않')
     expect(row.body).toMatch(/전달하지 못했습니다 \(abcde\)$/)     // 꼬리 유지 — RESOLUTION_RE 결합 ([HARD])
   })
+
+  // AC-PERMROUTE-005 (SPEC-PERMROUTE-001) — 브로드캐스트 대체가 없다. M6-0 신설(리드 처분 (가)):
+  // 004 가 게이트웨이 메서드를 직접 재는 것과 달리, 사람의 답에서 시작하는 «전 경로» 를 잰다 —
+  // 요청 소켓을 끊고 답하면 남은 소켓 0건 + 실패 안내 1행. 브로커가 실패를 sendToBot 으로 되돌아가는
+  // 구현은 이 시험에서 죽는다.
+  it('delivers nowhere and stores the broken-session notice when the requesting socket is gone (AC-PERMROUTE-005)', async () => {
+    const { app, port, cookie } = await build()
+    const room = seedRoomAndBot('A', 'pm')
+    const requester = await wsConnect(port, room.token)
+    const other = await wsConnect(port, room.token)   // 같은 (방, 봇) 의 «남은» 소켓 — 대체 발신이 있으면 여기가 받는다
+    requester.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))         // 대기 항목 등록 관측 — connId 가 실린 채로
+    requester.close()                                   // 요청 소켓만 끊는다 — 대기 항목은 남는다 (REQ-PERM-003)
+    await new Promise(r => setTimeout(r, 300))         // close 정리 관측
+    await post(app, room.roomId, cookie, 'yes abcde')
+    expect(await nextMessage(other)).toBeNull()         // 남은 소켓 0건
+    const row = db.prepare("SELECT body FROM messages WHERE room_id=? AND author_type='system' AND body NOT LIKE '🔒%'")
+      .get(room.roomId) as { body: string }
+    expect(row.body).toContain('요청한 세션이 끊겨')      // (ㄱ) 실패 안내 1행
+    expect(row.body).toMatch(/전달하지 못했습니다 \(abcde\)$/)
+  })
 })

@@ -946,6 +946,79 @@ describe('gateway', () => {
     await app.close()
   })
 
+  // AC-PERMROUTE-001 (SPEC-PERMROUTE-001) — 접속마다 하나, 사는 동안 하나. M6-0 신설(리드 처분 (가)):
+  // 같은 접속의 두 요청은 같은 connId, 다른 접속은 다른 connId — 한쪽만 재면 «매번 새 값» 과 «모두 같은
+  // 상수» 중 하나가 통과하므로 두 절반을 한 시험에 둔다.
+  it('issues one stable connId per connection, distinct across connections (AC-PERMROUTE-001)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+    const a = await wsConnect(port, token)
+    const b = await wsConnect(port, token)
+
+    const infos: any[] = []
+    gateway.setPermissionHandler(info => infos.push(info))
+
+    a.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    a.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'fghij', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    b.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'kmnop', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 300))
+
+    expect(infos).toHaveLength(3)
+    expect(infos[0].connId).toBe(infos[1].connId)      // 같은 접속 — 사는 동안 하나
+    expect(infos[2].connId).not.toBe(infos[0].connId)  // 다른 접속 — 서로 다르다
+
+    a.ws.close()
+    b.ws.close()
+    await app.close()
+  })
+
+  // AC-PERMROUTE-002 (SPEC-PERMROUTE-001) — 요청한 접속의 신원이 핸들러까지 온다. M6-0 신설(리드 처분 (가)).
+  // connId 값은 실행마다 다르므로 roomId·botId 는 값으로, connId 는 존재·타입으로 잰다 (acceptance.md).
+  it('delivers the requesting connection identity to the handler (AC-PERMROUTE-002)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+    const { ws } = await wsConnect(port, token)
+
+    const infos: any[] = []
+    gateway.setPermissionHandler(info => infos.push(info))
+
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 300))
+
+    expect(infos).toHaveLength(1)
+    expect(infos[0].roomId).toBe(room)
+    expect(infos[0].botId).toBe(pm)
+    expect(typeof infos[0].connId).toBe('string')
+    expect((infos[0].connId as string).length).toBeGreaterThan(0)   // 비어 있지 않은 문자열
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-PERMROUTE-004 (SPEC-PERMROUTE-001) — 살아 있지 않은 신원으로는 아무 데도 가지 않는다. M6-0 신설(리드 처분 (가)).
+  // 반환값만 재면 «false 를 돌려주면서 그래도 보낸다» 가 통과하므로 양쪽 소켓의 0건을 함께 잰다.
+  it('returns false and delivers nowhere for a connId no connection owns (AC-PERMROUTE-004)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+    const a = await wsConnect(port, token)
+    const b = await wsConnect(port, token)
+
+    const sent = gateway.sendToOrigin('zzzzz-dead-connid', { type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+    expect(sent).toBe(false)
+    await expectNoMessage(a.ws)
+    await expectNoMessage(b.ws)
+
+    a.ws.close()
+    b.ws.close()
+    await app.close()
+  })
+
   // AC-GW-018 — 조립: buildServer 배선과 초대 목록의 online
   it('buildServer wires the gateway, archive hook and invite online flag', async () => {
     process.env.MINIDISCORD_DATA_DIR = join(dir, 'srv')

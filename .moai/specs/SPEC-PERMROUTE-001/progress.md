@@ -656,6 +656,45 @@ plan 값 대비 움직임의 귀속 — **+**: 개정 주석들이 어간을 언
 
 - «행 지목형» 주석이 표 끝에서 멀어진 자리(design.md 표·plan.md 부류표)는 행이 여럿이라 지목 문자열이 유일한 연결이다 — 지목 문자열이 원문과 일치하는지는 (다) 대조에서 확인했다
 
+### M6-0 — 수용 기준 시험 4건 신설 (2026-09-04, run 레인 · 리드 처분 (가))
+
+**귀속.** 같은 워크트리·브랜치. 편집 시점 HEAD `92a4ca2`(M5 커밋). **미커밋, 리드 확인 대기**. 편집 2파일 — `server/test/gateway.test.ts` · `server/test/permissions.test.ts`. **생산 코드 무변경**.
+
+**발단.** M6 진입 전 run 이 발견한 plan 커버리지 갭 — plan M2·M3 의 시험 신설 항목(003a+003b·006·013·009 회귀)은 착지됐으나 **AC-001·002·004·005 를 개별로 재는 시험이 plan 어디에도 없다**. 영향: DoD 1항(전 AC 관측 인용) 불이행 + 변이 M2·M5 의 관측 집합이 {003a,006} 으로 동일해져 AC-011 «여섯 집합 전부 구별» 이 관측 불가. 리드가 (가) «시험 4건 신설 후 M6» 으로 처분했고 plan 갭 공시는 sync 의 plan.md 공시로 이관.
+
+**신설 4건 — 기존 하니스 재사용, 생산 코드 무변경.**
+
+| AC | 시험 (파일) | 잰 것 |
+|---|---|---|
+| 001 | gateway.test.ts «issues one stable connId per connection, distinct across connections» | 같은 접속 두 요청의 connId **같음** + 다른 접속 connId **다름** — 두 절반을 한 시험에 |
+| 002 | gateway.test.ts «delivers the requesting connection identity to the handler» | roomId·botId 값 + connId 존재·타입(비어 있지 않은 문자열) |
+| 004 | gateway.test.ts «returns false and delivers nowhere for a connId no connection owns» | `false` 반환 + 양쪽 소켓 0건 (`expectNoMessage`) |
+| 005 | permissions.test.ts «delivers nowhere and stores the broken-session notice when the requesting socket is gone» | 사람의 답 전 경로 — 요청 소켓 끊긴 뒤 답 → 남은 소켓 0건 + (ㄱ) 실패 문구 1행 + 꼬리 |
+
+**실측.** typecheck exit 0 · `npm test -w server` **218 passed (218)** 전부 초록 (214+4). 증거 전문: `.moai/reports/t34/evidence/M6-0-full-suite-green.txt`. (첫 실행에서 AC-002 시험이 `wsConnect` 반환 모양 실수로 1건 실패 — `{ ws, welcome }` 디스트럭처링으로 수리, 재실행 초록. RED 관측 없이 착지 — 구현이 이미 있으므로 무너짐 관측은 변이 M2·M5 가 진다, 리드 판독.)
+
+**AC ↔ 시험/명령 매핑표 — 15개 전부 (DoD 1항 «관측 인용» 의 근거).**
+
+| AC | 재는 시험/명령 |
+|---|---|
+| 001 | gateway.test.ts «issues one stable connId per connection, distinct across connections (AC-PERMROUTE-001)» |
+| 002 | gateway.test.ts «delivers the requesting connection identity to the handler (AC-PERMROUTE-002)» |
+| 003a | gateway.test.ts «routes the verdict to the requesting connection only» — B 수신 절반 (`nextMessage` 1건) |
+| 003b | 같은 시험 — `expectNoMessage(A)` 부정 절반 |
+| 004 | gateway.test.ts «returns false and delivers nowhere for a connId no connection owns (AC-PERMROUTE-004)» |
+| 005 | permissions.test.ts «delivers nowhere and stores the broken-session notice when the requesting socket is gone (AC-PERMROUTE-005)» |
+| 006 | permissions.test.ts «stores three different bodies for allow, deny and broken-session verdicts» |
+| 007 | (가) grep 훑기 명령 (acceptance AC-007) + gateway.test.ts 파일 전체 초록 — 위 시험들 합산 |
+| 008 | `npm test -w channel` 126 무변동 + `git diff --stat -- channel/` 빈 출력 (M6 에서 재실행) |
+| 009 | gateway.test.ts «sendToBot still reaches every matching connection and reports true» + (가)·(나) grep 명령 |
+| 010 | §6.2 표 20행 양방향 대조 (M5 착지 + §E.3 이행 시 전수) |
+| 011 | 변이표 여섯 (M6 — 이번 밀스톤) |
+| 012 | 세 명령 — build channel · test server(≥210) · test channel(=126) · typecheck ×2 (M6 이후 §E.3 재실행) |
+| 013 | permissions.test.ts «a pending entry without connId delivers nowhere and stores the identity-missing notice» |
+| 014 | grep 네 명령 — (ㄱ)2·(ㄴ)6·(ㄷ)0·0 (M1 실측, §E.3 이행 시 재실행) |
+
+**Gaps.** — 시험 4건은 구현 존재 하의 초록 착지라 «무너뜨리는 변이» 가 없다(acceptance 의 공통 요구). 이 공백은 변이 M2·M5 가 AC-001·002 를, 변이 M3 가 AC-005 를 붉히는 것으로 닫는다 — M6 의 판정에 포함.
+
 **Residual-risk.**
 
 - AC-006 시험의 `brokenWs.close()` 후 정리 대기 300ms — 느린 환경에서 (ㄱ) 갈래가 (ㄷ) 로 오인될 이론적 창. 실패 시 타임아웃 상향이 수리
