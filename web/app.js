@@ -555,6 +555,13 @@ function commitMention(kind, name) {
 // '@pm' 까지 치고 Enter 를 누른 사용자는 완성을 기대하지, 깨진 멘션 전송을 기대하지 않는다.
 function onComposerKeyDown(e) {
   if (e.key !== 'Enter' || e.shiftKey) return
+  // 한글·일본어 등 조합 중의 Enter 는 전송이 아니라 조합 확정이다 (카드 t32 결함 D-6).
+  // 여기서 전송하면 조합 중 글자를 포함한 본문이 나간 뒤 입력창이 비워지고, 확정된
+  // 마지막 글자가 빈 칸에 들어가 뒤따르는 진짜 Enter 가 그 한 글자를 또 보낸다.
+  // keyCode 229 는 isComposing 을 싣지 않는 구형 IME 경로의 같은 신호다.
+  // [HARD] 이 return 은 preventDefault 보다 앞이어야 한다 — 뒤에 두면 조합 확정 자체가
+  // 막혀 한글 입력이 깨진다.
+  if (e.isComposing || e.keyCode === 229) return
   e.preventDefault()
   const box = $('autocomplete')
   if (!box.hidden) {

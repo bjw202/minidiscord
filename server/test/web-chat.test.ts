@@ -534,6 +534,55 @@ describe('AC-WEBCHAT-012 enter with open dropdown', () => {
   })
 })
 
+// ── 결함 D-6 (카드 t32) — 한글 조합 중 Enter 는 전송이 아니다 ────────
+// 한글 조합 중 Enter 는 keydown 을 두 번 낳는다: ① 조합 확정용(isComposing=true)과
+// ② 확정 뒤의 진짜 Enter. ① 을 전송으로 처리하면 조합 중 글자를 포함한 본문이 나간 뒤
+// 입력창이 비워지고, 확정된 마지막 글자가 빈 칸에 들어가 ② 가 그 한 글자를 또 보낸다.
+// 실측 재현: 방 DB id 58/59·60/61·81/82 — 각각 같은 초에 끝 글자 한 건이 더 올라갔다
+// (evidence/D01-defect-register-silent.txt §22).
+describe('D-6 enter during IME composition', () => {
+  it('does not send while a composition is active, and sends once after it commits', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    type('아침에 커피를 두 잔 마셨다'); await flush()
+
+    // ① 조합 확정용 keydown — 전송이 아니다
+    input().dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter', isComposing: true, bubbles: true, cancelable: true,
+    }))
+    await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+
+    // ② 확정 뒤의 진짜 Enter — 여기서 정확히 한 번 나간다
+    pressEnter(); await flush()
+    const posts = calls.filter(c => c.method === 'POST')
+    expect(posts.length).toBe(1)
+
+    // 나간 본문이 문장 전체여야 한다 — 마지막 글자가 떨어져 나가지 않았다는 관측
+    const sent = (posts[0].body as FormData).get('body')
+    expect(sent).toBe('아침에 커피를 두 잔 마셨다')
+
+    // 입력창은 비어 있다 — 조합 잔여가 남아 다음 Enter 에 또 나가지 않는다
+    expect(input().value).toBe('')
+  })
+
+  it('does not send on a legacy keyCode 229 keydown (Safari-family IME)', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    type('주말엔 등산을 갈 계획이다'); await flush()
+
+    input().dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter', keyCode: 229, bubbles: true, cancelable: true,
+    } as KeyboardEventInit))
+    await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+  })
+})
+
 // ── AC-WEBCHAT-013 — 전송은 한 번, 응답 미렌더, 실패 복원 ────────────
 describe('AC-WEBCHAT-013 send once, no response render, restore on failure', () => {
   it('posts once, does not render the response, and restores on failure', async () => {
