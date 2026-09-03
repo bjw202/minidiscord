@@ -1,0 +1,17 @@
+     119
+     116
+ConnInfo:       31
+sendToBot:       67
+sendToConn:       27
+onGatewayRequest:       47
+setPermissionHandler:       33
+sendEstablished:       15
+발신 지점:       19
+다섯(좁힘):       58
+@MX:WARN:        5
+실패문구:       26
+세 템플릿:        3
+=== 어간 «[0-9]개 메서드» (run 신설 — 리드 M5 판독 처분) — bash 재관측:
+.moai/specs/SPEC-GATEWAY-001/acceptance.md:188:| AC-GW-018 | REQ-GW-021, 022 | `buildServer wires the gateway, archive hook and invite online flag` | `app.gateway` 5개 메서드, 보관이 소켓을 끊음, 초대 목록 `online` 이 접속 상태를 따라감 |
+.moai/specs/SPEC-GATEWAY-001/acceptance.md:192:> 2026-09-04 개정 — 위 표의 AC-GW-018 행: «5개 메서드» 는 이제 여섯이다 — `sendToOrigin` 이 더해졌다(`SPEC-PERMROUTE-001` REQ-PERMROUTE-004).
+적중:        2

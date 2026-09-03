@@ -175,6 +175,8 @@ SPEC-AUTH-001 → SPEC-ROOM-001 → SPEC-BOT-001  →  SPEC-MENTION-001
 인증된 접속이 `permission_request` 를 보내면, 서버는 `setPermissionHandler` 로 등록된 함수를 `({ roomId, botId }, 그 메시지)` 로 호출해야 한다. 등록된 함수가 없으면 조용히 무시한다.
 `sendToBot(roomId, botId, payload)` 는 그 조합의 접속을 찾아 `payload` 를 보내고 `true` 를, 접속이 없으면 아무것도 보내지 않고 `false` 를 돌려줘야 한다.
 
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 조항의 두 자리가 개정됐다. (1) 핸들러 호출은 `({ roomId, botId, connId }, 그 메시지)` 이다 — `connId` 는 요청을 낸 접속의 불투명 식별자로, REQ-PERMROUTE-002 가 더했다. (2) 판정을 되돌리는 통로는 `sendToOrigin(connId: string, payload: object): boolean` 이다 — `sendToBot` 은 일치 접속 전원 발신으로 남되, 착지 뒤 판정 경로의 생산 호출자는 0 이 된다(REQ-PERMROUTE-006·011). 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
+
 이 SPEC 은 **창구만** 만든다. 승인 요청의 상태 관리와 `permission_verdict` 의 내용을 판단하는 일은 `permissions.ts` 의 몫이며 이 SPEC 범위 밖이다.
 
 ### 4.8 태스크 간 계약 (시그니처 고정)
@@ -198,6 +200,8 @@ export interface Gateway {
 }
 export function createGateway(app: FastifyInstance, opts: { uploadsDir: string }): Gateway
 ```
+
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 코드 블록의 두 자리가 개정됐다 — `ConnInfo` 에 `connId?: string` 선택 필드가 더해지고(REQ-PERMROUTE-003), `Gateway` 에 `sendToOrigin(connId: string, payload: object): boolean` 이 여섯째 메서드로 더해진다(REQ-PERMROUTE-004). 원문은 지우지 않는다.
 
 **REQ-GW-022** (When — 조립)
 `buildServer` 는 허브 데코레이트 뒤에 `createGateway(app, { uploadsDir: config.uploadsDir })` 를 호출해 `app.gateway` 로 데코레이트하고, `registerRoomRoutes(app, { onArchive: roomId => gateway.closeRoom(roomId) })` 로 보관 훅을 연결해야 한다. 또한 `GET /api/rooms/:id/invites` 의 `online` 필드는 상수 `false` 가 아니라 `gateway.isOnline(roomId, bot_id)` 의 결과여야 한다 — `SPEC-BOT-001` 이 "실제 판정은 카드 `t3` 게이트웨이가 채운다"고 남겨 둔 자리다.

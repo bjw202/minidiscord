@@ -83,6 +83,8 @@ setPermissionHandler(fn: ((info: ConnInfo, params: any) => void) | null): void
 
 `setPermissionHandler` 의 `params` 가 `any` 인 것은 게이트웨이 쪽 계약 그대로다. 이 SPEC 은 그것을 좁혀 받는다 — §4.1 REQ-PERM-004 참조.
 
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 «축약 없이» 블록의 세 자리가 모두 개정됐다 — `ConnInfo` 에 `connId?: string` 선택 필드가 더해지고(REQ-PERMROUTE-003), `Gateway` 에 `sendToOrigin(connId: string, payload: object): boolean` 이 더해져 판정 통로가 `sendToBot` 에서 옮겨 가며(REQ-PERMROUTE-004·006), 핸들러가 받는 `info` 는 요청 접속의 `connId` 를 싣는다(REQ-PERMROUTE-002). 원문은 지우지 않는다.
+
 ---
 
 ## 4. 요구사항 (GEARS)
@@ -120,6 +122,8 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker
 >
 > 브로커는 정규식 판정과 방 대조 사이에서 멤버십을 확인하고, 멤버가 아니면 `false` 를 돌려주며 대기 항목을 소모하지 않는다. 나머지 계약(반환값 `true` 의 뜻, `createPermissionBroker` 시그니처, 데코레이터 이름 `permissions`)은 그대로다. 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
 
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`) — 두 번째 개정.** 위 인터페이스의 `onGatewayRequest` 가 받는 `ConnInfo` 의 모양이 다시 개정됐다 — `connId?: string` 선택 필드가 더해진다(REQ-PERMROUTE-003·006). 브로커는 대기 항목에 `connId` 를 함께 보관하고, 판정을 `sendToOrigin(info.connId, …)` 으로 «판정을 요청한 접속 하나» 에게만 되돌린다. `connId` 를 담지 않은 대기 항목의 판정은 어느 소켓에도 가지 않고 REQ-PERMROUTE-007 의 (ㄴ) 실패 문구로 끝난다. 원문과 첫 개정은 지우지 않는다.
+
 데코레이터 이름은 `permissions` 이며, `declare module 'fastify'` 에 `permissions: PermissionBroker` 를 더한다. **데코레이션이 빠지면 가로채기가 통째로 무력화된다** — 라우트 쪽 호출이 옵셔널 체이닝이라 조용히 `undefined` 가 되어 모든 판정이 평범한 대화 메시지로 저장되고, 어떤 오류도 나지 않는다. 이 조건을 요구사항으로 못 박는 이유다(원본 모순 1번, `plan.md` §D).
 
 ### 4.2 판정 해석과 소비
@@ -135,6 +139,8 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker
 **REQ-PERM-007** (When — 거절)
 소비된 메시지의 판정어가 `n` 또는 `no` 이면, 서버는 같은 경로로 `behavior: 'deny'` 를 보내야 한다. 거절은 승인과 **다른 값**이 봇에 도달해야 성립한다 — 판정어와 무관하게 `'allow'` 를 보내는 구현은 이 요구사항을 만족하지 않는다.
 
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** REQ-PERM-006·007 의 두 겹이 개정됐다. (1) 통로 — 판정은 `Gateway.sendToBot` 이 아니라 `Gateway.sendToOrigin(info.connId, …)` 으로 간다. **판정 경로에서 `Gateway.sendToBot` 을 호출해서는 안 된다**(REQ-PERMROUTE-006). (2) 주소 단위 — «등록한 (방, 봇) 에게만» 이 아니라 **«판정을 요청한 접속 하나» 에게만** 간다: 같은 (방, 봇) 의 다른 소켓은 받지 않고, 접속을 찾지 못했을 때 다른 소켓으로 «대신 보내지도 않는다»(REQ-PERMROUTE-005·008). 원문은 지우지 않는다.
+
 **REQ-PERM-008** (When — 1회용)
 판정이 전송되면 그 `request_id` 는 대기 레지스트리에서 제거되어야 한다. 같은 `request_id` 에 대한 두 번째 답은 소비되지 않고 평범한 대화 메시지로 흘러가야 하며, 봇에게 두 번째 판정이 가서는 안 된다.
 
@@ -142,6 +148,8 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker
 판정이 전송된 뒤, 서버는 그 결과를 알리는 system 메시지 한 행을 같은 방에 저장하고 SSE 로 발행해야 한다. 그 본문은 승인과 거절을 서로 다른 문구로 구분해야 하고, `request_id` 를 포함해야 한다.
 
 `Gateway.sendToBot` 이 `false` 를 돌려준 경우(그 방·봇의 연결이 없는 경우) 그 본문은 **판정이 전달되지 않았음**을 사람이 읽을 수 있는 문구로 밝혀야 한다. 전달된 경우와 같은 문구를 써서는 안 된다. 원본 구현은 반환값을 버렸는데, 그러면 봇이 죽어 있는 동안 누른 승인이 화면상 성공으로 보이면서 세션은 계속 멈춰 있는다 — 의도적 확장이며 근거는 `plan.md` §D 3번에 있다.
+
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 실패 갈래의 이름과 뜻이 개정됐다 — 갈래는 `Gateway.sendToOrigin` 이 `false`(그 `connId` 를 가진 살아 있는 접속이 없는 경우)와 대기 항목의 `connId` 부재(소켓 없이 만들어진 요청)의 **둘**이고, 문구도 둘로 갈린다 — «요청한 세션이 끊겨 …» 와 «요청한 세션의 신원이 기록되지 않아 …». 두 문구 모두 꼬리 «전달하지 못했습니다 (`<request_id>`)» 를 유지하며, 옛 문구 «봇이 접속해 있지 않아 …» 는 소멸했다(REQ-PERMROUTE-007). 원문은 지우지 않는다.
 
 ### 4.3 흘려보내기와 격리 (금지 조항)
 
