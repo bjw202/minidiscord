@@ -349,6 +349,8 @@ export function initChat() {
   const composer = $('msg-input')
   composer.addEventListener('input', onComposerInput)
   composer.addEventListener('keydown', onComposerKeyDown)
+  // 첨부 선택 표시 — 무엇이 함께 나갈지 보이지 않으면 사용자는 첨부 여부를 알 수 없다 (카드 t32 D-7)
+  $('file-input').addEventListener('change', showPickedFile)
   $('send-btn').addEventListener('click', () => { sendMessage() })
   chatReady = true
 }
@@ -579,19 +581,42 @@ function onComposerKeyDown(e) {
 // 응답을 그리면 자기 메시지가 두 번 보인다. 실패하면 화면 요소로 알리고 입력을 복원한다.
 export async function sendMessage() {
   const box = $('msg-input')
+  const picker = $('file-input')
+  const files = Array.from(picker.files ?? [])
   const body = box.value
-  if (!body.trim()) return   // 빈 본문은 아무것도 하지 않는다
+  // 본문도 파일도 없을 때만 아무것도 하지 않는다 — 파일만 보내는 것은 서버가 받는다
+  // (routes-messages.ts REQ-MSG-005: body 도 파일도 없으면 400)
+  if (!body.trim() && files.length === 0) return
   box.value = ''
   hideAutocomplete()
   const form = new FormData()
+  // [HARD] 파일이 아닌 파트는 서버가 전부 body 로 이어 붙인다 — 텍스트 파트는 정확히 하나여야 한다
   form.append('body', body)
+  // 필드명은 서버가 가리지 않는다 (part.type === 'file' 로만 판정) — 'file' 은 읽는 사람을 위한 이름이다
+  for (const f of files) form.append('file', f)
   try {
     await api(`/api/rooms/${state.currentRoomId}/messages`, { method: 'POST', body: form })
+    clearPickedFile()   // 성공했을 때만 비운다 — 실패하면 선택이 남아 다시 보내기로 그대로 나간다
   } catch (err) {
     notifyError(err)
     // 그 사이 사용자가 다음 메시지를 치고 있을 수 있다 — 빈 칸일 때만 되살린다 (plan.md §D 9번)
     if (box.value === '') box.value = body
   }
+}
+
+// 선택된 파일 이름을 입력창 옆에 한 줄로 보인다. 여러 개면 «이름 외 N».
+function showPickedFile() {
+  const files = Array.from($('file-input').files ?? [])
+  const label = $('file-chosen')
+  label.textContent = files.length === 0 ? ''
+    : files.length === 1 ? `📎 ${files[0].name}`
+    : `📎 ${files[0].name} 외 ${files.length - 1}`
+}
+
+// 선택을 비운다. input.value = '' 가 files 를 비우는 표준 경로다.
+function clearPickedFile() {
+  $('file-input').value = ''
+  $('file-chosen').textContent = ''
 }
 
 // 전송 실패 알림 — alert 대신 화면 안의 요소로 낸다. jsdom 이 alert 를 던지지 않고

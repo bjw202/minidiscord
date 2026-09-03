@@ -355,7 +355,10 @@ input:focus { outline: 1px solid var(--md-accent); }
 /* #file-input 은 HTML 의 hidden 속성으로 숨겨 둔다 — CSS display:none 을 덮지 않는다.
    SPEC-WEBRICH-001 이 hidden 을 떼는 순간 바로 보이는 것이 형제와의 약속이다. */
 
-#send-btn { align-self: flex-end; }
+#send-btn, #attach-btn { align-self: flex-end; }
+/* 📎 는 label 이지만 버튼처럼 보이고 눌린다 — #send-btn 과 같은 정렬을 공유한다 (카드 t32 D-7) */
+#attach-btn { cursor: pointer; user-select: none; padding: 0 0.4rem; }
+#file-chosen { align-self: flex-end; font-size: 0.85em; opacity: 0.8; }
 
 /* SPEC-WEBRICH-001 */
 /* 리치 표면 — 첨부 칩·권한 버튼·초대 다이얼로그. 색은 design-tokens 의 var(--md-*) 만 쓴다
