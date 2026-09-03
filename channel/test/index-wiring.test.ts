@@ -213,9 +213,12 @@ describe('channel wiring', () => {
     stub.push({ type: 'message', id: 9, body: '일정 정리해줘', author_name: 'alice', delivery: 'to' })
     await waitFor(() => stub.sent.some(m => m.type === 'status' && m.state === 'working'), 'working 프레임')
     await waitFor(() => notified.length === 1, '알림 도착')
-    const workingIdx = stub.sent.findIndex(m => m.type === 'status' && m.state === 'working')
-    expect(workingIdx).toBeGreaterThanOrEqual(0)
-    expect(stub.sent[workingIdx].state).toBe('working')
+    // 이 라우트가 내는 첫 상태 프레임이 'working' 이어야 한다 — 'idle' 을 먼저 내는 구현은 여기서 걸린다.
+    // (t4 감사 F-12 정정: 이전 단언은 state === 'working' 으로 찾은 자리에 다시 같은 것을 물어 항상 참이었다)
+    const states = stub.sent.filter(m => m.type === 'status').map(m => m.state)
+    expect(states[0]).toBe('working')
+    // TO 한 건에 working 은 한 번만 — 상태를 반복해 흔드는 구현을 막는다
+    expect(states.filter(x => x === 'working')).toHaveLength(1)
   })
 
   // AC-CHANWIRE-004 — reply 도구가 게이트웨이 bot_message 가 된다

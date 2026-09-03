@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import { openDb, type Db } from '../src/db.js'
-import { registerAuthRoutes, requireAuth } from '../src/auth.js'
+import { registerAuthRoutes, requireAuth, USERNAME_MAX_LENGTH } from '../src/auth.js'
 
 let dir: string
 let db: Db
@@ -85,6 +85,31 @@ describe('auth', () => {
     }
     const c = db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }
     expect(c.c).toBe(0)
+  })
+
+  // t33: 상한이 없으면 2만 바이트 이름이 그대로 저장된다 — 길이·글자 상한을 한 자리에서 잰다
+  it('rejects over-long and malformed usernames, accepts a normal one', async () => {
+    const app = await build()
+    const rejected = [
+      'a'.repeat(20000),                              // 재현 사례: 2만 글자
+      'a'.repeat(USERNAME_MAX_LENGTH + 1),            // 경계 바로 바깥
+      'bad\u0000name',                                // 제어문자 NUL (C0)
+      'bad\u009fname',                               // 제어문자 (C1)
+      ' alice',                                       // 앞 공백
+      'alice ',                                       // 뒤 공백
+    ]
+    for (const username of rejected) {
+      const res = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username, password: 'pw123456' } })
+      expect(res.statusCode, `username length ${username.length}`).toBe(400)
+    }
+    expect((db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }).c).toBe(0)
+
+    // 경계 안쪽과 평범한 이름은 그대로 통과해야 한다 — 상한이 정상 가입을 막지 않는지 확인
+    for (const username of ['a'.repeat(USERNAME_MAX_LENGTH), 'alice', '홍길동']) {
+      const res = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username, password: 'pw123456' } })
+      expect(res.statusCode, username).toBe(201)
+    }
+    expect((db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }).c).toBe(3)
   })
 
   it('sets an httpOnly lax session cookie', async () => {

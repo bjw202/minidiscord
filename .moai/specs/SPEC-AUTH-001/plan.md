@@ -74,7 +74,7 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply): Pro
 
 | 라우트 | 성공 | 실패와 코드 |
 |--------|------|-------------|
-| `POST /api/auth/register` | 201 | 입력 미달 400 / 중복 409 |
+| `POST /api/auth/register` | 201 | 입력 미달·이름 상한(32 코드 포인트)·제어문자·앞뒤 공백 400 (REQ-AUTH-006·016, v0.6.0) / 중복 409 |
 | `POST /api/auth/login` | 200 + `Set-Cookie` | 자격증명 불일치 401 |
 | `POST /api/auth/logout` | 200 | 없음 (쿠키 없어도 200) |
 | (모든 보호 라우트) | 각 라우트 소관 | 미인증 401 — `requireAuth` 가 핸들러 실행 전에 응답한다 |
@@ -128,9 +128,13 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply): Pro
 
 수용 기준: AC-AUTH-001..014 전부.
 
+### 사후 개정 — 사용자 이름 상한 (카드 `t33`, v0.6.0)
+
+M1 의 절차가 아니다. `t33` 은 B급 카드(plan 없음)라 `server/src/auth.ts` 의 상한과 `server/test/auth.test.ts` 의 테스트 1건이 이 문서보다 **먼저** 착지했고, 이 개정은 그 동작을 REQ-AUTH-016 · AC-AUTH-015 로 되받는다. 증거는 `.moai/reports/t33/run-done.md` §1–§2. 실행 절차로 남는 것은 하나 — AC-AUTH-015 의 `✓` 줄을 `--reporter=verbose` 출력에서 읽는 것이며, M1 단계 6 과 같은 형태다.
+
 ## §G 자기 검증
 
-구현 완료 판정은 `acceptance.md` 의 AC-AUTH-001..014 전부다. 별도 기준을 만들지 않는다.
+구현 완료 판정은 `acceptance.md` 의 AC-AUTH-001..015 전부다. 별도 기준을 만들지 않는다.
 
 실행자는 마일스톤 종료 시 다음을 `progress.md` `§E.2` 에 기록한다.
 
@@ -155,8 +159,9 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply): Pro
 ## §I 상호 참조
 
 - `.moai/plan/2026-08-26-minidiscord/plan-v2.md`, `spec-v2.md` — **이 SPEC 의 유일한 규범 근거**(읽기 전용). 같은 디렉터리의 `plan.md`·`spec.md` 는 폐기된 v1 이며 참조하지 않는다.
-- `spec.md` — 이 SPEC 의 GEARS 요구사항(REQ-AUTH-001..015)과 범위 경계
-- `acceptance.md` — AC-AUTH-001..014
+- `spec.md` — 이 SPEC 의 GEARS 요구사항(REQ-AUTH-001..016)과 범위 경계
+- `acceptance.md` — AC-AUTH-001..015
+- `.moai/reports/t33/run-done.md` — 사용자 이름 상한(REQ-AUTH-016·AC-AUTH-015)의 재현·수리 증거. v0.6.0 사후 개정의 근거다
 - `.moai/reports/plan-audit/t2-3spec-audit.md` — 이 SPEC 을 FAIL(0.62)로 판정한 1차 plan-audit 보고서. v0.3.0 교정 라운드의 근거다
 - `.moai/reports/plan-audit/t2-3spec-audit-iter2.md` — 이 SPEC 을 PASS(0.90)로 판정한 2차 plan-audit 보고서. v0.4.0 교정 라운드(R1·R2)의 근거다
 - `progress.md` — 단계별 증거 기록처

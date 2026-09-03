@@ -24,6 +24,11 @@ export function verifyPassword(pw: string, stored: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
+// 사용자 이름 상한 — 상한이 없으면 2만 바이트 이름이 그대로 저장된다(t33)
+export const USERNAME_MAX_LENGTH = 32
+// 제어문자(C0/C1)와 앞뒤 공백을 거른다 — 표시·로그를 깨뜨리고 닮은꼴 중복 계정을 만든다
+const USERNAME_FORBIDDEN = /[\u0000-\u001f\u007f-\u009f]/
+
 // @MX:NOTE: [AUTO] 이 SPEC 이 등록하는 라우트는 이 세 개뿐 (REQ-AUTH-013) — 그 밖의 경로는 테스트 헬퍼에서만 등록한다
 export function registerAuthRoutes(app: FastifyInstance, db: Db): void {
   app.post('/api/auth/register', async (req, reply) => {
@@ -31,6 +36,13 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db): void {
     // 타입 검사를 길이 검사보다 먼저 (REQ-AUTH-006) — 문자열이 아닌 값이 .length 검사를 통과하지 못하게 한다
     if (typeof username !== 'string' || username === '' || typeof password !== 'string' || password.length < 8) {
       return reply.code(400).send({ error: 'username과 8자 이상 password가 필요합니다' })
+    }
+    // 길이·글자 상한 (t33) — 형식 위반과 길이 위반을 구분해 안내한다
+    if ([...username].length > USERNAME_MAX_LENGTH) {
+      return reply.code(400).send({ error: `username은 ${USERNAME_MAX_LENGTH}자 이하여야 합니다` })
+    }
+    if (USERNAME_FORBIDDEN.test(username) || username !== username.trim()) {
+      return reply.code(400).send({ error: 'username에 제어문자나 앞뒤 공백을 쓸 수 없습니다' })
     }
     try {
       db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(username, hashPassword(password))

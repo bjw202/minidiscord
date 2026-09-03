@@ -93,6 +93,9 @@ function buildAttachmentNote(files: ChatMessage['files']): string {
   return `\n(첨부 파일 경로: ${frags.join(', ')}${droppedNote})`
 }
 
+// @MX:ANCHOR: [AUTO] MCP 채널 서버 팩토리 — wire() 와 기준 하네스가 부르는 공개 경계다 (t4 감사 F-13)
+// @MX:REASON: ChannelDeps / ChannelHandle 시그니처는 SPEC-CHANNEL-001 의 알림·도구 계약이고,
+// emitted 발신 집합은 SPEC-CHANAUTH-001 이 인정한 유일한 상태다. 어느 쪽을 바꿔도 판정 중계가 조용히 어긋난다
 export function createChannelServer(deps: ChannelDeps): ChannelHandle {
   // 발신 집합 — 채널이 내보낸 request_id 문자열들의 상한 있는 목록. 무상태 원칙 개정이
   // 새로 인정하는 유일한 상태다(SPEC-CHANAUTH-001 plan §B). Set 의 삽입 순서 보장을 그대로 써서
