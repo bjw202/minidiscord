@@ -492,6 +492,58 @@ $ npm test -w server   → exit 0 · Test Files 17 passed (17) · Tests 210 pass
 - 스텁 `sendToOrigin → false` 는 M2-1 의 RED 시험을 붉게 만든다. M2-1 의 RED 관측에서 «스텁 때문» 인지 «현행 전원 발신 배선 때문» 인지는 구분해 기록해야 한다 — 스텁을 치우면 전원 발신 배선만으로도 M2-1 시험(부정 단언)은 붉다. M2-4 가 스텁을 대체하며 GREEN 시점엔 소멸
 - `:204` 발급이 REQ-PERMROUTE-001 의 «발급은 등록 자리 하나에서만» 을 지키는가 — 이 자리가 유일한 `conns.set` 직전 구성 자리라 단일성은 유지되나, AC-PERMROUTE-001·002 시험이 M2 착지 후 이를 실행으로 잰다
 
+### M2 — 게이트웨이 배선, RED 먼저 (2026-09-04, run 레인)
+
+**귀속.** 같은 워크트리·브랜치. 편집 시점 HEAD `f64027d`(M1 커밋). 코드 변경 `server/src/gateway.ts` · `server/test/gateway.test.ts` 2파일 — **미커밋, 리드 확인 대기**.
+
+**편집 내역 (M2-1 · 3 · 4 · 5 — M2-2 «발급» 은 M1 선행 이행, 리드 «run M1 판독» 승인).**
+
+| 항 | 편집 |
+|---|---|
+| M2-1 (RED) | `gateway.test.ts` 에 부정 단언 시험 신설 — «routes the verdict to the requesting connection only (AC-PERMROUTE-003a + 003b)». 같은 토큰 소켓 둘(A·B), 요청은 B, 브로커 대행 핸들러가 `sendToOrigin` 으로 되돌린다. **B 수신 관측 «뒤에»** `expectNoMessage(A)` 로 부정 절반을 센다 — «아직 안 온 것» 과 «오지 않는 것» 의 갈림 (acceptance AC-003b 관측 방법) |
+| M2-3 | `:142` permissionHandler 호출에 `connId: info.connId` 실음 (REQ-PERMROUTE-002) |
+| M2-4 | 스텁 대체 — `conns` 를 돌아 `c.connId === connId` 하나만 `sendEstablished` 로 보내고 `true`, 없으면 `false`. 봉투 승계(REQ-GWAUTH2-012)·단일 접속(REQ-PERMROUTE-005) |
+| M2-5 | `sendToBot` 위 근거 주석 중 «첫 일치에서…» 3줄 + «전원 발신이 안전한 근거…» 2줄 + `@MX:WARN` + `@MX:SPEC` **제거** (§6.2 13행 처분 — 범위 `:354-360`). `:352`(REQ-GW-020 계약)·`:353`(동작 진술 — REQ-PERMROUTE-011 유지 요구)은 **유지** — N3-03 판정선 그대로. 앵커 `grep -n '전원 발신이 안전한 근거' server/src/gateway.ts` → 0건 (제거 관측) |
+
+**RED 관측 (편집 전).**
+
+```
+$ npx vitest run test/gateway.test.ts -t 'routes the verdict to the requesting connection only'
+  FAIL  ... > routes the verdict to the requesting connection only (AC-PERMROUTE-003a + 003b)
+  Error: timeout waiting ws message
+  Tests  1 failed | 34 skipped (35)   · exit 1
+```
+증거 전문: `.moai/reports/t34/evidence/M2-red-verdict-routing.txt`.
+
+**[HARD] RED 귀속 공시 — plan M2-1 문구와의 어긋남.** plan 은 «현행 전원 발신 코드에서 이 시험이 실제로 붉다» 고 적었으나, 실측 RED 의 원인은 **전원 발신이 아니라 배선 부재**다 — M2-1 시점엔 `sendToOrigin` 이 M1 스텁(항상 `false`)이고 `:142` 가 아직 `connId` 를 안 싣는다(`info.connId` = `undefined`). «전원 발신 때문에 요청하지 않은 소켓이 받는다» 는 부정성은 이미 `t32` 실측(같은 (방, 봇) 소켓 셋)이 지고 있고, 착지 후에는 AC-PERMROUTE-009 의 «`sendToBot` 이 두 소켓 모두에 보냄» 회귀 절반이 그 관측의 자리가 된다. 이 어긋남은 계획 서술의 귀속 오차이지 시험 설계의 결함이 아니다 — 시험은 AC-003a+003b 를 그대로 잰다.
+
+**GREEN 관측 (편집 후).**
+
+```
+$ npm run typecheck -w server        → exit 0
+$ npx vitest run test/gateway.test.ts -t 'routes the verdict to the requesting connection only'
+  Tests  1 passed | 34 skipped (35)   · exit 0
+$ npm test -w server                 → exit 1
+  Test Files  1 failed | 16 passed (17)
+  Tests  2 failed | 209 passed (211)
+```
+증거: `M2-green-verdict-routing.txt` · `M2-full-suite-green.txt`.
+
+**전체 스위트의 2건 붉음은 plan §B-2 가 예고한 예상 자리다.** `gateway.test.ts:833`·`:878` 의 `toEqual` 정확 일치가 `connId` 여분 키로 실패 — §6.2 14행·plan M4-1 이 소유한 개정 대상이며 이 밀스톤에서 고치지 않는다. M1 시점 210 전부 초록 → M2 시점 209 + 붉음 2(예상) + 신규 1 초록: 붉음의 원인이 M2-3 배선임을 편집 전후 대비가 보여 준다. 타깃 시험(AC-003a+003b)은 초록 — M2-6 «GREEN 관측» 의 문은 이것이다.
+
+**[HARD] 처분 — M4-1 두 자리를 M2 로 선행 이행 (리드 처분 (나), 2026-09-04).** 위 실측 직후 pre-commit 게이트의 `npm test` 가 이 붉음 2건으로 M2 커밋을 차단했다 — M2~M4 사이 붉은 상태는 plan 설계상 필연이라 게이트와 구조 충돌이다. 리드가 (가) `SKIP_MOAI_PRECOMMIT=1` 우회 대신 (나) «M4-1 개정을 M2 커밋에 포함» 을 골랐다 — 근거: 우회는 거버넌스 행위이고 붉은 커밋을 이력에 남기며, (나) 는 두 줄이고 게이트가 계속 실제 검사를 한다. 개정 형태는 여분 키 허용이 아니라 **`connId` 명시 단언**(`connId: expect.any(String)`) — 배달 신원이 실렸다는 것을 시험이 스스로 재게. M4-1 자리가 `gateway.test.ts` 라 «14 실측»(permissions·room-members) 대상과 겹치지 않아 M3 직후 대조를 오염시키지 않는다 (리드 판독). plan M4 목록의 «:833·:878» 표기 정정은 **sync 때** 한다. plan §F 순서 변경은 이 처분으로 리드 승인됨.
+
+**Gaps (이 밀스톤이 관측하지 않은 것).**
+
+- AC-PERMROUTE-009 의 «`sendToBot` 이 두 소켓 모두에 보냄» 을 직접 셈하는 시험은 아직 없다 — 기존 D-5 시험은 «second 에 도달» 만 보증한다(옛 첫 일치 `return` 코드는 여기서 붉는다). **first 도 받음을 셈하는 회귀 시험 신설이 필요한지는 리드 판독 대상** (acceptance AC-009 의 회귀 절반)
+- M3(브로커 배선·문구)은 미착지 — `permissions.ts` 무변경. «14 실측» 은 리드 판독대로 M3 착지 직후 실시
+- §6.1 어간 `@MX:WARN` 의 적중 6 → 5 — M2-5 제거의 예상된 값 이동(spec §6.1 [HARD]: run 편집으로 움직이는 값은 결함이 아님). M5 역방향 훑기 시점 기준값
+
+**Residual-risk.**
+
+- `sendToOrigin` 의 «찾았으나 소켓이 이미 닫힌 상태» 창 — SPEC 범위 밖(acceptance 예상 실패 갈래), unchanged
+- M4-1 두 자리는 리드 처분으로 M2 커밋에 선행 이행(위 처분 절) — M3 진행 시 전체 스위트는 초록이 기대값이며, pre-commit 게이트가 그것을 계속 실제 검사한다
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal

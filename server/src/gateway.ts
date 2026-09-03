@@ -143,7 +143,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       case 'history_request': return handleHistory(info, msg)
       case 'permission_request': {
         // 등록된 핸들러가 없으면 조용히 무시한다 — 판정은 permissions.ts 의 몫 (REQ-GW-020)
-        permissionHandler?.({ roomId: info.roomId, botId: info.botId }, msg)
+        // 요청을 낸 접속의 신원을 싣는다 — 판정이 «그 접속 하나» 로 되돌아가는 근거 (REQ-PERMROUTE-002)
+        permissionHandler?.({ roomId: info.roomId, botId: info.botId, connId: info.connId }, msg)
         return
       }
     }
@@ -357,20 +358,17 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     },
     // 접속이 없으면 아무것도 보내지 않고 false — "오프라인이라 못 보냈다"의 유일한 신호 (REQ-GW-020)
     // 일치하는 접속 «전원» 에게 보낸다 — deliver 와 같은 갈래다 (카드 t32 §D 결함 D-5).
-    // 첫 일치에서 return 하면 같은 봇 토큰으로 여러 세션이 붙어 있을 때 판정이 요청하지 않은
-    // 소켓으로 가고, 그 채널의 emitted 집합 가드(REQ-CHANPERM-008)가 조용히 버려 승인 프롬프트가
-    // 영원히 열린 채 남는다 — 실측: 같은 (방, 봇) 에 소켓 셋(run·lead·bot)이 붙은 상태에서 재현.
-    // 전원 발신이 안전한 근거가 그 가드다: 채널은 «자기가 낸» request_id 의 판정만 세션으로 되쏘고
-    // 나머지는 버리므로, 요청하지 않은 세션에 도착한 프레임은 아무 일도 하지 않는다.
-    // @MX:WARN: [AUTO] 이 발신의 정확성이 채널 쪽 emitted 가드에 의존한다 — 가드를 지우면 판정이 남의 세션에서 실행된다
-    // @MX:SPEC: SPEC-LIVEVERIFY-001
     sendToBot(roomId, botId, payload) {
       let sent = false
       for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); sent = true }
       return sent
     },
-    // sendToOrigin — M1 은 계약(선언)만 착지한 단계다. 구현 배선은 M2-4 가 붙이고, 스텁은 «일치하는 접속 없음»과 같은 false 다
-    sendToOrigin(connId, payload) { return false },
+    // REQ-PERMROUTE-004 — «그 connId 를 가진 살아 있는 접속 하나» 에게만 보낸다. sendEstablished 를
+    // 지나므로 봉투 규칙이 승계되고(REQ-GWAUTH2-012), 다른 어떤 접속에도 보내지 않는다(REQ-PERMROUTE-005)
+    sendToOrigin(connId, payload) {
+      for (const [ws, c] of conns) if (c.connId === connId) { sendEstablished(c, ws, payload); return true }
+      return false
+    },
     setPermissionHandler(fn) { permissionHandler = fn },
   }
 }

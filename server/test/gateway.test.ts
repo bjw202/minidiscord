@@ -830,7 +830,7 @@ describe('gateway', () => {
     ws.send(JSON.stringify({ type: 'permission_request', request_id: 'p1', tool_name: 'Bash', description: '설치', input_preview: 'npm i' }))
     await new Promise(r => setTimeout(r, 200))
     expect(seen).toHaveLength(1)
-    expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+    expect(seen[0].info).toEqual({ roomId: room, botId: pm, connId: expect.any(String) })
     expect(seen[0].params.request_id).toBe('p1')
     expect(seen[0].params.tool_name).toBe('Bash')
 
@@ -875,7 +875,7 @@ describe('gateway', () => {
     second.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'mepzy', tool_name: 'fetch_history', description: '이력 조회', input_preview: '{}' }))
     await new Promise(r => setTimeout(r, 200))
     expect(seen).toHaveLength(1)
-    expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+    expect(seen[0].info).toEqual({ roomId: room, botId: pm, connId: expect.any(String) })
 
     expect(gateway.sendToBot(room, pm, { type: 'permission_verdict', request_id: 'mepzy', behavior: 'allow' })).toBe(true)
 
@@ -885,6 +885,42 @@ describe('gateway', () => {
 
     first.ws.close()
     second.ws.close()
+    await app.close()
+  })
+
+  // SPEC-PERMROUTE-001 — 판정은 «요청한 접속 하나» 에게만 되돌아온다 (M2 RED 먼저).
+  // 이전 배선(sendToBot 전원 발신)은 요청하지 않은 소켓에도 판정을 뿌렸고 채널의 emitted 집합 가드가
+  // 조용히 버렸다 (카드 t32 D-5). sendToOrigin 배선이 지어지기 전까지 이 시험은 붉다 — 브로커 대행
+  // 핸들러가 sendToOrigin 을 부르므로, 스텁(false) 상태에서는 B 의 수신 대기가 시간 초과로 떨어진다.
+  it('routes the verdict to the requesting connection only (AC-PERMROUTE-003a + 003b)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+
+    // 같은 초대 토큰으로 두 소켓 — 먼저 붙은 A 가 «요청하지 않은» 쪽, 나중에 붙은 B 가 요청자다.
+    const a = await wsConnect(port, token)
+    const b = await wsConnect(port, token)
+
+    // 브로커 대행: 핸들러는 요청한 접속의 connId 를 받아 곧바로 sendToOrigin 으로 되돌린다 —
+    // 착지 후 생산 배선(permissions.ts)이 취할 모양 그대로다.
+    gateway.setPermissionHandler((info, params) => {
+      gateway.sendToOrigin(info.connId as string, { type: 'permission_verdict', request_id: params.request_id, behavior: 'allow' })
+    })
+
+    // 요청은 B 가 낸다.
+    b.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'prr1a', tool_name: 'Bash', description: '설치', input_preview: 'npm i' }))
+
+    // AC-PERMROUTE-003a — 요청한 소켓이 판정 프레임을 정확히 1건 받는다.
+    const verdict = await nextMessage(b.ws)
+    expect(verdict).toEqual({ type: 'permission_verdict', request_id: 'prr1a', behavior: 'allow' })
+
+    // [HARD] AC-PERMROUTE-003b — B 에 도착을 관측한 «뒤에» A 의 수집함을 센다. «아직 안 온 것»과
+    // «오지 않는 것»을 갈라 내기 위한 순서다 (acceptance.md AC-003b 관측 방법).
+    await expectNoMessage(a.ws)
+
+    a.ws.close()
+    b.ws.close()
     await app.close()
   })
 
