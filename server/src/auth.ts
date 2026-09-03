@@ -26,8 +26,10 @@ export function verifyPassword(pw: string, stored: string): boolean {
 
 // 사용자 이름 상한 — 상한이 없으면 2만 바이트 이름이 그대로 저장된다(t33)
 export const USERNAME_MAX_LENGTH = 32
-// 제어문자(C0/C1)와 앞뒤 공백을 거른다 — 표시·로그를 깨뜨리고 닮은꼴 중복 계정을 만든다
-const USERNAME_FORBIDDEN = /[\u0000-\u001f\u007f-\u009f]/
+// 보이지 않으면서 표시를 흔드는 문자와 앞뒤 공백을 거른다 — 제어(Cc)·형식(Cf)·줄/문단 구분(Zl/Zp).
+// Cc 만 막으면 U+202E(방향 뒤집기)·U+200B(폭 0 공백)·U+2028(줄 구분자)이 그대로 들어와
+// 표시·로그를 깨뜨리고 화면상 구분되지 않는 닮은꼴 계정을 만든다 (t33 F2 — sync 감사)
+const USERNAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u
 
 // @MX:NOTE: [AUTO] 이 SPEC 이 등록하는 라우트는 이 세 개뿐 (REQ-AUTH-013) — 그 밖의 경로는 테스트 헬퍼에서만 등록한다
 export function registerAuthRoutes(app: FastifyInstance, db: Db): void {

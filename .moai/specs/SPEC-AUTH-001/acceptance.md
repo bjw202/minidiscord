@@ -34,7 +34,7 @@
 | AC-AUTH-012 | REQ-AUTH-014, REQ-AUTH-015 | 아래 AC-AUTH-012 본문 참조 | `server/src` 에 네 파일만, 기준 SHA 확인이 종료 코드 `0`, `spec_base_sha` 대비 `db.ts` diff 가 종료 코드 `0` + 빈 출력 |
 | AC-AUTH-013 | RED→GREEN 전이 | 아래 AC-AUTH-013 본문 참조 | 두 전이가 순서대로 관측됨 |
 | AC-AUTH-014 | REQ-AUTH-003, REQ-AUTH-013 | 아래 AC-AUTH-014 본문 참조 | `buildServer()` 가 조립한 서버에서 `app.db` 존재, 가입 `201`, 로그인이 `md_session` 쿠키 발급, `/api/health` `200` |
-| AC-AUTH-015 | REQ-AUTH-016 | `npm test -w server -- --reporter=verbose` | 출력에 `✓ test/auth.test.ts > … > rejects over-long and malformed usernames, accepts a normal one` 줄이 나타남 — 거절 6건 `400`·`users` 0행, 통과 3건(32자 경계·`alice`·`홍길동`) `201`·`users` 3행 |
+| AC-AUTH-015 | REQ-AUTH-016 | `npm test -w server -- --reporter=verbose` | 출력에 `✓ test/auth.test.ts > … > rejects over-long and malformed usernames, accepts a normal one` 와 `✓ test/auth.test.ts > … > rejects invisible format and line-separator characters inside the name` 두 줄이 나타남 — 거절 9건(6+3) `400`·`users` 0행, 통과 3건(32자 경계·`alice`·`홍길동`) `201`·`users` 3행 (v0.6.1) |
 
 ---
 
@@ -71,7 +71,7 @@ it('rejects invalid registration input', async () => {
 })
 ```
 
-**Then** 테스트가 통과한다 — 여섯 입력 모두 `400` 이고, `users` 테이블에 행이 하나도 생기지 않는다. 첫 건(빈 `username`)은 REQ-AUTH-006 의 빈 문자열 조건이 잡고, 뒤의 세 건은 같은 요구사항의 타입 검사가 문자열이 아닌 값이 길이 검사를 그대로 통과하는 것을 막는다. 두 조건은 어느 하나가 빠지면 통과하지 못하도록 함께 걸려 있다. 길이·제어문자·앞뒤 공백은 이 기준이 아니라 AC-AUTH-015 가 잰다(v0.6.0).
+**Then** 테스트가 통과한다 — 여섯 입력 모두 `400` 이고, `users` 테이블에 행이 하나도 생기지 않는다. 첫 건(빈 `username`)은 REQ-AUTH-006 의 빈 문자열 조건이 잡고, 뒤의 세 건은 같은 요구사항의 타입 검사가 문자열이 아닌 값이 길이 검사를 그대로 통과하는 것을 막는다. 두 조건은 어느 하나가 빠지면 통과하지 못하도록 함께 걸려 있다. 길이·금지 문자(Cc·Cf·Zl·Zp)·앞뒤 공백은 이 기준이 아니라 AC-AUTH-015 가 잰다(v0.6.0·0.6.1).
 
 ### AC-AUTH-003 — 중복 사용자 이름 거절
 
@@ -277,24 +277,31 @@ it('buildServer wires cookie, db and auth routes', async () => {
 
 **이 기준이 관측하지 않는 것**: `buildServer` 로 조립한 서버에서 `requireAuth` 가 보호 라우트를 실제로 막는지. 이 SPEC 시점에는 `buildServer` 가 등록하는 보호 라우트가 하나도 없어(`/api/me` 는 테스트 전용) 관측할 대상 자체가 없다. 그 절반은 `SPEC-ROOM-001` 의 `AC-ROOM-011` 이 방 라우트가 붙은 뒤에 관측한다. 여기서 추론으로 메우지 않는다.
 
-### AC-AUTH-015 — 사용자 이름 길이·글자 상한 (v0.6.0 신설, 카드 `t33`)
+### AC-AUTH-015 — 사용자 이름 길이·글자 상한 (v0.6.0 신설, 카드 `t33`; v0.6.1 금지 문자 범위 확장)
 
 이 기준이 없으면 REQ-AUTH-016 을 통째로 지워도 나머지 14개 기준이 전부 통과한다 — AC-AUTH-002 의 여섯 입력은 어느 것도 길이나 글자를 재지 않기 때문이다. 카드 `t33` 이 재현한 결함이 정확히 그 상태였다: 2만 글자 이름이 `201` 로 통과하고 `users.username` 에 20000 글자가 저장됐다(`.moai/reports/t33/run-done.md` §1, 관측 원문 `[RED] status = 201 | body = {"ok":true}` / `[RED] stored username length = 20000`).
 
 **Given** 빈 임시 DB 위에 `registerAuthRoutes` 가 등록된 Fastify 인스턴스가 있고, `server/test/auth.test.ts` 가 `USERNAME_MAX_LENGTH` 를 `../src/auth.js` 에서 import 한다.
 **When** `npm test -w server -- --reporter=verbose` 를 실행한다.
-**Then** 출력에 `✓ test/auth.test.ts > auth > rejects over-long and malformed usernames, accepts a normal one` 줄이 나타난다. 판정은 출력에 `✓ test/auth.test.ts > ` 로 시작해 ` > rejects over-long and malformed usernames, accepts a normal one` 로 끝나는 줄(끝에 붙는 소요 시간은 제외)이 있는가 하나로 한다. 그 줄이 없으면 이 기준은 **실패**다.
+**Then** 출력에 다음 두 줄이 **모두** 나타난다 — `✓ test/auth.test.ts > auth > rejects over-long and malformed usernames, accepts a normal one` 과 `✓ test/auth.test.ts > auth > rejects invisible format and line-separator characters inside the name`. 판정은 출력에 `✓ test/auth.test.ts > ` 로 시작해 각각 ` > rejects over-long and malformed usernames, accepts a normal one` / ` > rejects invisible format and line-separator characters inside the name` 로 끝나는 줄(끝에 붙는 소요 시간은 제외)이 둘 다 있는가로 한다. 어느 한 줄이라도 없으면 이 기준은 **실패**다. 둘째 줄은 v0.6.1 에서 더해졌다 — 첫 테스트만 있으면 `USERNAME_FORBIDDEN` 을 v0.6.0 의 C0/C1 정규식으로 되돌려도 통과한다(sync 감사 F2 가 재현한 구멍).
 
-그 테스트가 단언하는 것은 다음 넷이다.
+첫 테스트가 단언하는 것은 다음 넷이다.
 
-1. **거절 6건** — `'a'.repeat(20000)`(재현 사례), `'a'.repeat(USERNAME_MAX_LENGTH + 1)`(경계 바깥, 33자), `'bad\u0000name'`(C0 제어문자), `'bad\u009fname'`(C1 제어문자), `' alice'`(앞 공백), `'alice '`(뒤 공백) 각각을 `password: 'pw123456'` 과 함께 `POST /api/auth/register` 에 보낸 응답의 `statusCode` 가 전부 `400`.
+1. **거절 6건** — `'a'.repeat(20000)`(재현 사례), `'a'.repeat(USERNAME_MAX_LENGTH + 1)`(경계 바깥, 33자), `'bad\u0000name'`(NUL, Cc), `'bad\u009fname'`(C1 제어, Cc), `' alice'`(앞 공백), `'alice '`(뒤 공백) 각각을 `password: 'pw123456'` 과 함께 `POST /api/auth/register` 에 보낸 응답의 `statusCode` 가 전부 `400`.
 2. 거절 6건 뒤 `SELECT COUNT(*) FROM users` 가 `0` — 어느 이름도 저장되지 않았다. 재현 탐침에서 `stored username length = 20000` 이던 자리가 수리 후 `stored username length = NONE` 으로 관측된 것과 같은 사실이다(run-done §2).
 3. **통과 3건** — `'a'.repeat(USERNAME_MAX_LENGTH)`(정확히 32자, 경계 안쪽), `'alice'`, `'홍길동'` 이 각각 `201`. 상한이 정상 가입과 한글 이름을 막지 않는다는 증거다.
 4. 통과 3건 뒤 `SELECT COUNT(*) FROM users` 가 `3`.
 
+둘째 테스트(v0.6.1)가 단언하는 것은 다음 둘이다. 셋 다 이름 **안쪽**에 있어 규칙 3 의 `trim()` 으로는 잡히지 않고, 셋 다 C0/C1 바깥이라 v0.6.0 의 술어로도 잡히지 않는다 — 규칙 2 의 Cf·Zl 확장만이 잡는다.
+
+5. **거절 3건** — `'ali\u202Ece'`(`U+202E` 오른쪽→왼쪽 재정렬, Cf), `'ali\u200Bce'`(`U+200B` 폭 0 공백, Cf), `'ali\u2028ce'`(`U+2028` 줄 구분자, Zl) 각각을 `password: 'pw123456'` 과 함께 `POST /api/auth/register` 에 보낸 응답의 `statusCode` 가 전부 `400`.
+6. 거절 3건 뒤 `SELECT COUNT(*) FROM users` 가 `0`.
+
+두 테스트를 합쳐 거절 9건·통과 3건이다. 내부 Zs 공백(`U+00A0`·`U+3000`)이 통과하는 것은 REQ-AUTH-016 규칙 2 의 「금지하지 않는 것」이 규범이지만 어느 테스트도 재지 않는다 — 아래 「관측하지 않는 것」.
+
 응답 본문은 이 테스트가 단언하지 않으므로 여기서 관측 조건으로 두지 않는다. 규범은 REQ-AUTH-016 에 있다 — 길이 위반은 `{"error":"username은 32자 이하여야 합니다"}`, 제어문자·앞뒤 공백 위반은 `{"error":"username에 제어문자나 앞뒤 공백을 쓸 수 없습니다"}`. 재현 탐침이 관측한 원문은 `[RED] status = 400 | body = {"error":"username은 32자 이하여야 합니다"}` 이고(run-done §2), 나머지 한 메시지는 `server/src/auth.ts` 원문에서 읽는다.
 
-**이 기준이 관측하지 않는 것**: 봇 이름(`POST /api/bots`)에는 상한이 없고 이 기준은 그것을 재지 않는다 — REQ-AUTH-016 의 범위 절. 이미 저장된 긴 이름으로 로그인이 성립하는지도 재지 않는다.
+**이 기준이 관측하지 않는 것**: 봇 이름(`POST /api/bots`)에는 상한이 없고 이 기준은 그것을 재지 않는다 — REQ-AUTH-016 의 범위 절. 이미 저장된 긴 이름으로 로그인이 성립하는지도 재지 않는다. 이름 안쪽의 Zs 공백(`U+00A0`·`U+3000`)이 `201` 로 통과하는지도 재지 않는다 — 통과 3건에 그런 입력이 없다(v0.6.1). 그 허용은 REQ-AUTH-016 규칙 2 의 서술에만 있고 회귀 짝이 없다.
 
 ---
 
@@ -305,6 +312,8 @@ it('buildServer wires cookie, db and auth routes', async () => {
 | 같은 사용자가 여러 번 로그인 | `sessions` 에 행이 여러 개 쌓이고 모두 유효하다. 기기별 로그인을 허용하는 자연스러운 결과다 | 범위 밖 — 세션 관리는 spec.md §5 |
 | `md_session` 쿠키에 존재하지 않는 토큰 | `401`. 오류 본문은 쿠키 없음과 동일하다 | AC-AUTH-007 이 쿠키 없음까지 다룬다 |
 | 사용자 이름 앞뒤 공백 | `400`, 메시지 `username에 제어문자나 앞뒤 공백을 쓸 수 없습니다`. 서버는 trim 해 주지 않고 거절한다 — `' alice'` 로는 계정이 생기지 않는다. (v0.6.0 이전에는 trim 없이 그대로 받아 `' alice'` 와 `'alice'` 가 다른 계정이 됐다 — 카드 `t33` 이 닫음, REQ-AUTH-016) | AC-AUTH-015 의 앞 공백·뒤 공백 케이스 |
+| 사용자 이름 안쪽에 보이지 않는 문자 (`U+202E`·`U+200B`·`U+2028`) | `400`, 메시지는 앞뒤 공백과 같은 `username에 제어문자나 앞뒤 공백을 쓸 수 없습니다`. v0.6.0 은 C0/C1 만 막아 `'ali\u200Bce'` 가 `'alice'` 와 화면상 구분되지 않는 다른 계정으로 만들어졌다 — sync 감사 F2, v0.6.1 이 닫음(REQ-AUTH-016 규칙 2) | AC-AUTH-015 둘째 테스트의 거절 3건 |
+| 사용자 이름 안쪽에 Zs 공백 (`'a\u00a0b'`·`'a\u3000b'`) | 통과한다(`201`). Zs 는 글자를 재정렬하거나 숨기지 않아 금지 근거 밖이고, 내부 ASCII 공백은 v0.6.0 부터 허용이었다. 앞뒤에 오면 규칙 3 이 거절한다 | 검증 없음 — AC-AUTH-015 「관측하지 않는 것」 |
 | 사용자 이름이 정확히 32 코드 포인트 | 통과한다(`201`). 경계 조건이 `> 32` 라 32자는 유효하고 33자부터 `400` 이다. 단위가 코드 포인트라 `홍길동` 은 3자다 | AC-AUTH-015 의 `'a'.repeat(32)`(통과)·`'a'.repeat(33)`(거절) |
 | 봇 이름이 32자를 넘음 | 이 SPEC 의 범위 밖 — `POST /api/bots` 는 상한이 없다(REQ-AUTH-016 범위 절) | 검증 없음 — `SPEC-ROOM-001` 소관 |
 | 비밀번호가 정확히 8자 | 통과한다. 경계 조건이 `< 8` 이라 8자는 유효하다 | AC-AUTH-002 의 `short7`(7자)이 아래쪽 경계를 잡는다 |

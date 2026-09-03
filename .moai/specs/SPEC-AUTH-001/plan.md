@@ -74,7 +74,7 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply): Pro
 
 | 라우트 | 성공 | 실패와 코드 |
 |--------|------|-------------|
-| `POST /api/auth/register` | 201 | 입력 미달·이름 상한(32 코드 포인트)·제어문자·앞뒤 공백 400 (REQ-AUTH-006·016, v0.6.0) / 중복 409 |
+| `POST /api/auth/register` | 201 | 입력 미달·이름 상한(32 코드 포인트)·금지 문자(Cc·Cf·Zl·Zp)·앞뒤 공백 400 (REQ-AUTH-006·016, v0.6.0·0.6.1) / 중복 409 |
 | `POST /api/auth/login` | 200 + `Set-Cookie` | 자격증명 불일치 401 |
 | `POST /api/auth/logout` | 200 | 없음 (쿠키 없어도 200) |
 | (모든 보호 라우트) | 각 라우트 소관 | 미인증 401 — `requireAuth` 가 핸들러 실행 전에 응답한다 |
@@ -130,7 +130,7 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply): Pro
 
 ### 사후 개정 — 사용자 이름 상한 (카드 `t33`, v0.6.0)
 
-M1 의 절차가 아니다. `t33` 은 B급 카드(plan 없음)라 `server/src/auth.ts` 의 상한과 `server/test/auth.test.ts` 의 테스트 1건이 이 문서보다 **먼저** 착지했고, 이 개정은 그 동작을 REQ-AUTH-016 · AC-AUTH-015 로 되받는다. 증거는 `.moai/reports/t33/run-done.md` §1–§2. 실행 절차로 남는 것은 하나 — AC-AUTH-015 의 `✓` 줄을 `--reporter=verbose` 출력에서 읽는 것이며, M1 단계 6 과 같은 형태다.
+M1 의 절차가 아니다. `t33` 은 B급 카드(plan 없음)라 `server/src/auth.ts` 의 상한과 `server/test/auth.test.ts` 의 테스트 1건이 이 문서보다 **먼저** 착지했고, 이 개정은 그 동작을 REQ-AUTH-016 · AC-AUTH-015 로 되받는다. 증거는 `.moai/reports/t33/run-done.md` §1–§2. 실행 절차로 남는 것은 하나 — AC-AUTH-015 의 `✓` 줄을 `--reporter=verbose` 출력에서 읽는 것이며, M1 단계 6 과 같은 형태다. v0.6.1(sync 감사 F2)은 같은 순서를 되풀이했다 — run 레인이 `USERNAME_FORBIDDEN` 을 유니코드 범주 Cc·Cf·Zl·Zp 로 넓히고 테스트 1건을 더한 뒤, 이 문서가 REQ-AUTH-016 규칙 2 와 AC-AUTH-015 를 되받았다. 읽을 `✓` 줄이 둘이 됐다.
 
 ## §G 자기 검증
 

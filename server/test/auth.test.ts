@@ -112,6 +112,22 @@ describe('auth', () => {
     expect((db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }).c).toBe(3)
   })
 
+  // t33 F2 (sync 감사): C0/C1 만 막으면 유니코드 형식 문자·줄 구분자가 이름 안으로 들어온다.
+  // 셋 다 «보이지 않으면서 표시를 흔드는» 문자이고 위치는 이름 내부다 — 앞뒤 공백 검사로는 잡히지 않는다.
+  it('rejects invisible format and line-separator characters inside the name', async () => {
+    const app = await build()
+    const rejected = [
+      'ali\u202Ece',   // U+202E RIGHT-TO-LEFT OVERRIDE — 뒤 글자의 표시 방향을 뒤집는다
+      'ali\u200Bce',   // U+200B ZERO WIDTH SPACE — 폭 0. 'alice' 와 화면상 구분되지 않는 다른 계정이 된다
+      'ali\u2028ce',   // U+2028 LINE SEPARATOR — 로그·표시를 줄 단위로 쪼갠다
+    ]
+    for (const username of rejected) {
+      const res = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username, password: 'pw123456' } })
+      expect(res.statusCode, JSON.stringify(username)).toBe(400)
+    }
+    expect((db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }).c).toBe(0)
+  })
+
   it('sets an httpOnly lax session cookie', async () => {
     const app = await build()
     await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
