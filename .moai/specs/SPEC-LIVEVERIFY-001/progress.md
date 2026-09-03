@@ -166,7 +166,7 @@ gate: npm test 336 passed (server 17f/210 + channel 7f/126), FAIL 0 · typecheck
 ```
 sync_status: audit-ready
 spec_version: 0.7.4
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: ca03303
 gate: npm test 336 passed (server 17f/210 + channel 7f/126), FAIL 0 · typecheck server exit=0 channel exit=0 — 모두 sync 레인이 이 워크트리(HEAD b81bd63)에서 직접 실행
 frontmatter: spec.md 만 status in-progress → completed (updated 2026-09-03 은 이미 그 값이라 무변경). plan.md · acceptance.md 는 프런트매터 블록 자체가 없어 전이할 필드가 부재 — 형제 SPEC 셋(BOTSTAB·E2E·CI)도 같아 저장소 관습이며 결함이 아니다. 본문 무편집
 ```
@@ -198,7 +198,7 @@ frontmatter: spec.md 만 status in-progress → completed (updated 2026-09-03 �
 **이 단계가 하지 않은 것 (Gaps).**
 
 - `spec.md` · `plan.md` · `acceptance.md` 의 **본문을 한 글자도 편집하지 않았다.** `acceptance.md` 는 리드의 편집 동결 대상이며, 본문 정정이 필요해 보이는 자리도 만들지 않고 보고로 돌렸다.
-- **커밋·스테이징을 하지 않았다.** `git add`·`git commit`·`git push` 미실행 — 커밋은 리드 확인 후 레인 조율자가 한다. 그래서 `sync_commit_sha` 는 `pending-backfill-sync` 이며, 착지 커밋 뒤 후속 커밋에서 채운다.
+- ~~**커밋·스테이징을 하지 않았다.** `git add`·`git commit`·`git push` 미실행 — 커밋은 리드 확인 후 레인 조율자가 한다. 그래서 `sync_commit_sha` 는 `pending-backfill-sync` 이며, 착지 커밋 뒤 후속 커밋에서 채운다.~~ **← 이 문장은 작성 시점(문서 동기화 직후)의 기록이며 지금은 낡았다.** 리드 판정 PASS + 운영자 커밋 승인 뒤 sync 종결 커밋 `ca03303` 이 착지했고(명시 pathspec 여섯, `git add -A/-a` 미사용, pre-commit 게이트 우회 없음, exit 0), `sync_commit_sha` 는 그 해시로 채워졌다. **`git push` 는 여전히 미실행이다 — 브랜치 미푸시가 유지된다.**
 - **§A 열두 항을 재실행하지 않았다.** 이 단계의 판정 근거는 §E.2·§E.3 과 `evidence/A00-checklist.md` 의 기록이며, 실 세션 관측 자체는 run 단계의 것이다.
 - **증거 파일 24개의 실재를 재확인하지 않았다.** run 단계가 기계로 확인한 결과(누락 0)를 옮겨 적었을 뿐, 이 단계가 다시 세지 않았다.
 
@@ -216,7 +216,10 @@ frontmatter: spec.md 만 status in-progress → completed (updated 2026-09-03 �
 - **[HARD] 이 PASS 가 재지 않은 것 (감사관 자기 공시)**: §A 열두 항 중 **아홉 항**(A02·A03·A04·A05·A06·A08·A09·A10·A11)의 증거 파일을 감사관은 열지 않았다 — 그 항들에 대해 감사관은 PASS 도 FAIL 도 주장하지 않으며, run 레인의 `☑` 는 그 레인의 관측이다. `A12-archived.png` 의 **화면 내용**도 두 라운드 모두 판독하지 않았다(추적 상태만 확인). 게이트는 2라운드에서 재실행하지 않았다(코드 무변경).
 - **비차단 잔존 (리드 판단 자리)**: F-03(`TO_REPLY_NOTE` 가 중화된 사람 유래 본문과 같은 문자열에 섞여 표식을 흉내 낼 수 있다 — 실질 약화이되 새 능력은 아니라는 양쪽 논증) · F-04(전원 발신의 안전 근거가 다른 패키지의 `emitted` 가드에 있는데 서버 쪽에 그 의존을 적은 시험이 없다).
 - **감사관이 소스로 확인해 준 것 둘** — ① D-5 의 `emitted` 가드가 실재하고 주장대로 동작한다(`channel/src/channel-server.ts` `if (!emitted.has(v.request_id)) return`); 유출 없음(수신자 전원이 같은 봇 토큰의 v2 상호 인증 통과자). ② **AC-012 v0.7.4 개정은 약화가 아니다** — 옛 문언이 요구한 `⚪`·`"online":false` 는 보관 트랜잭션(`routes-rooms.ts`)이 토큰을 전부 철회하고 초대 질의(`routes-bots.ts`)가 `revoked_at IS NULL` 만 나열하므로 원리상 도달 불가였고, 새 조항은 웹 API 를 거치지 않는 표면(`lsof`)을 축으로 더하며 옛 조항에 없던 [HARD]를 **추가로** 건다.
-- **커밋 대기 — 명시 pathspec 여섯** (리드 확인 후 레인이 실행): `.moai/reports/t32/sync-audit.md` · `.moai/specs/SPEC-LIVEVERIFY-001/evidence/A12-archived.png` · `.moai/specs/SPEC-LIVEVERIFY-001/progress.md` · `.moai/specs/SPEC-LIVEVERIFY-001/spec.md` · `CHANGELOG.md` · `README.md`. **제외 확인**: `.claude/agent-memory/**`(다른 세션 유물) · `.moai/logs/trace-*.jsonl` · `.moai/state/**`. `git add -A/-a` 미사용.
+- ~~**커밋 대기 — 명시 pathspec 여섯**~~ **→ 착지했다.** 리드 판정 PASS(0.836 직독·통과선 SSOT 대조·스테이징 6 대조·evidence 46==46 재현·typecheck 재실행 exit 0) + 운영자 커밋 승인 뒤 실행.
+  - **커밋 ①** `ca03303` — `docs(SPEC-LIVEVERIFY-001): sync 종결 — 감사 PASS 0.836·status completed·A12-archived 편입 (card t32)`. `6 files changed, 589 insertions(+), 3 deletions(-)`. 명시 pathspec 여섯: `.moai/reports/t32/sync-audit.md` · `.moai/specs/SPEC-LIVEVERIFY-001/evidence/A12-archived.png` · `.moai/specs/SPEC-LIVEVERIFY-001/progress.md` · `.moai/specs/SPEC-LIVEVERIFY-001/spec.md` · `CHANGELOG.md` · `README.md`. **제외 확인**: `.claude/agent-memory/**`(다른 세션 유물) · `.moai/logs/trace-*.jsonl` · `.moai/state/**`. `git add -A/-a` 미사용, **pre-commit 게이트 우회 없음**(`SKIP_MOAI_PRECOMMIT` 미사용, exit 0). 커밋 직전 `HEAD b81bd63` · 브랜치 `WT-m6-real-session` · 스테이징 집합을 재확인했다.
+  - **커밋 ②**(이 절을 담은 백필 커밋) — `sync_commit_sha` 백필 + 낡아진 형제 두 자리 정정. **자기 해시는 자기 안에 적을 수 없으므로** 이 커밋의 SHA 는 문서가 아니라 리드 보고로 전달한다(자기참조를 나중에 실제 해시로 교체하는 부류를 만들지 않는다).
+- **[HARD] 디스패치 전제 하나가 성립하지 않아 실행하지 않은 것 — 리드 회부.** 후속 커밋의 ROADMAP 두 줄(① `t34` 카드 행 끝에 F-04 흡수 문구, ② 「보류 카드」 표에 F-03 행)은 **대상이 실재하지 않아 집행하지 않았다.** 실측: `grep -n 't34\|보류 카드\|보류' ROADMAP.md` **적중 0건**이고, `git show main:ROADMAP.md` · `git show origin/main:ROADMAP.md` 에도 `t34`·「보류 카드」·「재정렬」 적중이 **0건**이다. 이 나무의 `ROADMAP.md`(123줄)가 담은 것은 M1~M6 마일스톤 지도와 `t1`~`t6` 여섯 행짜리 카드 표뿐이다 — 카드 재정렬판 ROADMAP 은 이 저장소의 어느 도달 가능한 ref 에도 없다. **표와 행을 새로 만드는 것은 문서의 모양을 바꾸는 일이라 레인이 자기 권한으로 하지 않는다.** F-03·F-04 의 등재 자리를 리드가 정하면 그때 집행한다. 두 항목의 내용은 이 절 위쪽 「비차단 잔존」 불릿에 이미 기록돼 있어 유실되지 않는다.
 
 ### run 레인 재개 판독 (2026-09-03 12:3x, 세션 14886f25)
 
