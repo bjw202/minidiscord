@@ -438,7 +438,59 @@ grep -rn 'info).toEqual' server/test/gateway.test.ts
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 타입과 공개 계약 (2026-09-03, run 레인)
+
+**귀속.** 워크트리 `.claude/worktrees/t34` · 브랜치 `WT-perm-verdict-socket` · 편집 시점 HEAD `c3d1d09`(plan 종결 — **M1 편집은 미커밋 상태로 리드 확인 대기**) · 코드 변경은 `server/src/gateway.ts` 1파일 (+12/-2).
+
+**편집 내역 (M1-1~3 + plan 밖 최소 해석 둘).**
+
+| 자리 | 편집 |
+|---|---|
+| `gateway.ts` `ConnInfo` | `connId?: string` **선택 필드** 추가 (§D-1 리드 처분) |
+| `gateway.ts` `Established` | `connId: string` **필수로 좁힘** — 발급 누락을 타입이 잡는 비대칭 (§D-1 결론) |
+| `Gateway` 인터페이스 | `sendToOrigin(connId: string, payload: object): boolean` 선언 추가 (REQ-PERMROUTE-004) |
+| `:204` 구성 자리 | `connId: randomUUID()` 발급 — **plan 밖 판정 (가)**: `Established` 좁힘만으로는 이 자리가 타입 에러가 되어 M1-4 문턱(exit 0)을 통과할 수 없다. M2-2 의 «발급» 이 이로 선행 이행됨 |
+| `createGateway` return | `sendToOrigin` 스텁(`return false`) — **plan 밖 판정 (나)**: 선언만 추가하면 return 객체가 `Gateway` 를 만족하지 못해 타입 에러. M2-4 가 진짜 구현으로 대체 |
+
+**M1-4 — typecheck 문턱.**
+
+```
+$ npm run typecheck -w server        → exit 0
+```
+
+증거: `.moai/reports/t34/evidence/M1-typecheck-optional-field.txt`. 선택 필드이므로 형제 시험 30자리는 타입 검사에서 깨지지 않았다 — §D-1 처분의 전제 유지, 리드 재회부 조건(형제 파급 30 이탈) **미발동**.
+
+**M1-5 — AC-PERMROUTE-014 네 명령.**
+
+```
+(ㄱ) PermissionBroker 공개 메서드   → 2
+(ㄴ) Gateway 공개 메서드            → 6   (착지 전 5 — sendToOrigin 선언 관측)
+(ㄷ) `ws.on('close'` 경로 참조      → 0
+(ㄷ) `dropConn` 경로 참조           → 0
+```
+
+증거(명령+출력 축자): `.moai/reports/t34/evidence/M1-ac014-commands.txt`. REQ-PERMROUTE-009 (새 훅·장부 금지) 관측 — 넷 전부 기대값.
+
+**M1-6 — 형제 시험 붉은 자리 전수 실측.**
+
+```
+$ npm test -w server   → exit 0 · Test Files 17 passed (17) · Tests 210 passed (210)
+```
+
+증거 전문: `.moai/reports/t34/evidence/M1-test-baseline-after-m1.txt`.
+
+**[HARD] 실측 0 ≠ 추론값 14 — 리드 회부 (plan M1-6 문자대로).** 실패 자리는 0 이다. 14 는 «M2-3(핸들러 호출에 `connId` 실음)과 M3(`sendToOrigin` 배선 + `undefined` 실패 갈래)이 착지한 뒤»에야 발현되는 붉음이므로, M1 시점(배선 미착지)에서는 발현될 수 없다. plan M1-6 의 «다르면(많든 적든) 리드에 보고한다» 는 문자대로 회부한다 — **리드 판독 대상: 14 실측의 유효 시점.** (plan M4-7 이 «M1-6 의 실측이 먼저 오고 편집 대상은 그 실측이 정한다»고 가리키는 실질 시점은 배선 착지 직후로 읽힌다.) 이 회차는 처분을 리드에 위임하고 **M2 로 진행하지 않는다** — dispatch stop 조건 «M1-6 실측 ≠ 14 → 진행 멈추고 리드 보고» 의 규정 준수다.
+
+**Gaps (이 밀스톤이 관측하지 않은 것).**
+
+- **14 추론값의 실행 검증은 이 밀스톤에서 닫히지 않았다** — 배선이 없어 붉음의 발현 자체가 없다. 리드 판독이 시점을 정하면 그 시점의 전수 실측이 닫는다
+- `npm test -w channel`(126)·`typecheck -w channel` 은 실행하지 않았다 — M1 범위 밖이며 AC-PERMROUTE-012 기준선 비회귀는 M6 이 잰다. (stop 조건의 «기준선 210 이탈» 은 이 회차의 210 유지 관측으로 무변동 확인)
+- M1 편집을 **커밋하지 않았다** — 리드 확인 후 pathspec 명시 커밋 예정 (푸시 없음)
+
+**Residual-risk.**
+
+- 스텁 `sendToOrigin → false` 는 M2-1 의 RED 시험을 붉게 만든다. M2-1 의 RED 관측에서 «스텁 때문» 인지 «현행 전원 발신 배선 때문» 인지는 구분해 기록해야 한다 — 스텁을 치우면 전원 발신 배선만으로도 M2-1 시험(부정 단언)은 붉다. M2-4 가 스텁을 대체하며 GREEN 시점엔 소멸
+- `:204` 발급이 REQ-PERMROUTE-001 의 «발급은 등록 자리 하나에서만» 을 지키는가 — 이 자리가 유일한 `conns.set` 직전 구성 자리라 단일성은 유지되나, AC-PERMROUTE-001·002 시험이 M2 착지 후 이를 실행으로 잰다
 
 ---
 

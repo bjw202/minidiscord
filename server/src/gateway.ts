@@ -17,7 +17,8 @@ export interface MessageRow {
   attachments?: { id: number; filename: string }[]
 }
 
-export interface ConnInfo { roomId: number; botId: number }
+// connId 는 선택 필드다 — 소켓 확립에서 발급되지만 소켓 없이 만들어진 ConnInfo(시험·브로커 직접 호출)는 없을 수 있다 (REQ-PERMROUTE-003, 리드 처분: 선택)
+export interface ConnInfo { roomId: number; botId: number; connId?: string }
 
 // @MX:ANCHOR: [AUTO] 태스크 간 계약 — routes-messages(다음 SPEC)·permissions(다음 카드)·routes-bots(이 SPEC) 셋이 소비하는 공개 표면
 // @MX:REASON: REQ-GW-021 이 시그니처를 글자 그대로 고정한다. 메서드 하나라도 바꾸면 소비자 세 곳이 동시에 깨진다
@@ -26,12 +27,15 @@ export interface Gateway {
   closeRoom(roomId: number): void
   isOnline(roomId: number, botId: number): boolean
   sendToBot(roomId: number, botId: number, payload: object): boolean
+  // 판정을 «요청한 접속 하나» 에게만 되돌리는 통로 — sendToConn(비공개 전원 발신)과 정반대 배달이라 이름을 빌리지 않았다 (REQ-PERMROUTE-004)
+  sendToOrigin(connId: string, payload: object): boolean
   setPermissionHandler(fn: ((info: ConnInfo, params: any) => void) | null): void
 }
 
 // 확립된 소켓의 상태 — 전부 소켓 지역이다 (plan.md §D-8). sessKey 는 이 소켓의 논스·pub·cb 에서만
 // 유도되고, seq 는 이 맵이 유일한 보관장소라 소켓 사이에서 이어지지 않는다 (REQ-GWAUTH2-010·013)
-type Established = ConnInfo & { tokenRowId: number; sessKey: Buffer; seq: number }
+// Established 는 connId 를 필수로 좁힌다 — 발급 누락이 타입에서 잡히는 비대칭 (plan.md §D-1)
+type Established = ConnInfo & { connId: string; tokenRowId: number; sessKey: Buffer; seq: number }
 // challenge 를 보낸 뒤 auth 를 기다리는 소켓의 상태 — 이 자리에는 등록 권한이 없다 (REQ-GWAUTH2-009)
 type PendingHandshake = {
   roomId: number; botId: number; tokenRowId: number
@@ -203,6 +207,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     if (!ok) { dropConn(ws); return }
     const conn: Established = {
       roomId: hs.roomId, botId: hs.botId, tokenRowId: hs.tokenRowId,
+      // 접속 식별자는 등록 자리 하나에서만 발급한다 (REQ-PERMROUTE-001) — 이 구성 자리가 그 하나다
+      connId: randomUUID(),
       // 세션 열쇠는 이 소켓의 논스·pub·cb 에서 유도한다 — k_srv 를 아는 상대도 논스와 cb 없이는 못 만든다 (design.md §C)
       sessKey: createHmac('sha256', hs.confirmKey)
         .update(handshakeTranscript('session', hs.clientNonce, hs.serverNonce, hs.roomId, hs.botId, hs.verifierPub, hs.cb))
@@ -363,6 +369,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); sent = true }
       return sent
     },
+    // sendToOrigin — M1 은 계약(선언)만 착지한 단계다. 구현 배선은 M2-4 가 붙이고, 스텁은 «일치하는 접속 없음»과 같은 false 다
+    sendToOrigin(connId, payload) { return false },
     setPermissionHandler(fn) { permissionHandler = fn },
   }
 }

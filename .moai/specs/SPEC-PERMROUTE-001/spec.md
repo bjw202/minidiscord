@@ -2,7 +2,7 @@
 id: SPEC-PERMROUTE-001
 title: "권한 판정을 요청한 접속에만 되돌린다 — 접속 신원 배선과 채널 가드 의존 해제"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
