@@ -1,0 +1,23 @@
+old run 1: PASS
+old run 2: PASS
+old run 3: FAIL (/tmp/t36-old-run-3.log)
+old run 4: PASS
+old run 5: PASS
+old run 6: PASS
+old run 7: PASS
+old run 8: PASS
+old run 9: FAIL (/tmp/t36-old-run-9.log)
+old run 10: PASS
+old run 11: PASS
+old run 12: PASS
+old run 13: PASS
+old run 14: PASS
+old run 15: PASS
+old run 16: PASS
+old run 17: PASS
+old run 18: PASS
+old run 19: PASS
+old run 20: PASS
+BASELINE RESULT: 18 pass / 2 fail (old criterion, no load)
+
+[exited with code 0]

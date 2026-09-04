@@ -1,0 +1,17 @@
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t36/channel
+
+
+ Test Files  7 passed (7)
+      Tests  126 passed (126)
+   Start at  16:12:42
+   Duration  65.77s (transform 426ms, setup 0ms, import 1.33s, tests 71.33s, environment 0ms)
+

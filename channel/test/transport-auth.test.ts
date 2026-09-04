@@ -739,7 +739,10 @@ describe('transport auth', () => {
     // 소켓을 끊고 재접속 뒤, 직전 소켓의 challenge 를 그대로 재생한다 (새 논스로 다시 계산하지 않는다)
     stub.replayNextChallenge()
     stub.dropAll()
-    await waitFor(() => stub.connections() === 2, '재접속', 4500)
+    // «연결 수 2» 가 아니라 «새 논스 관측» 을 기다린다 — 연결 수용(connection)과 둘째 hello 처리
+    // (message)는 별개의 이벤트 루프 작업이라, 연결 수만 기다리면 hello 도착 전에 읽어 이 단언이
+    // 거짓 실패한다 (t36 — CI run 33838590462 1차 시도 :744 값 동일 실패·무부하 로컬 20회 중 2회 재현).
+    await waitFor(() => stub.nonceSeen() !== nonce1, '재접속 뒤 새 논스 관측', 4500)
     const nonce2 = stub.nonceSeen()
     expect(nonce2).not.toBe(nonce1)        // client_nonce 는 소켓마다 새로 만들어졌다
     stub.push({ type: 'message', id: 2, author_name: 'alice', delivery: 'to', body: '재생 뒤' })

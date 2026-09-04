@@ -1,0 +1,23 @@
+fixed run 1: PASS
+fixed run 2: PASS
+fixed run 3: PASS
+fixed run 4: PASS
+fixed run 5: PASS
+fixed run 6: PASS
+fixed run 7: PASS
+fixed run 8: PASS
+fixed run 9: PASS
+fixed run 10: PASS
+fixed run 11: PASS
+fixed run 12: PASS
+fixed run 13: PASS
+fixed run 14: PASS
+fixed run 15: PASS
+fixed run 16: PASS
+fixed run 17: PASS
+fixed run 18: PASS
+fixed run 19: PASS
+fixed run 20: PASS
+FIXED RESULT: 20 pass / 0 fail (fixed criterion, 20 consecutive)
+
+[exited with code 0]
