@@ -811,14 +811,14 @@ run_lane: 칸반 run 레인 (세션 d76d8c1e) — 커밋 사슬 f64027d(M1) → 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```
-sync_status: reaudit-pending
+sync_status: completed
 sync_audit_round_1: FAIL 0.776 (Tier M 통과선 0.80) — .moai/reports/t34/sync-audit.md
 sync_complete_at: 2026-09-04
-sync_commit_sha: pending-backfill-sync-close
+sync_commit_sha: 83c3078
 sync_lane: 칸반 sync 레인 (세션 fa7bdc·7fa107b0) — manager-docs. 문서 동기화와 1회차 감사 수리를 수행했다: CHANGELOG `[Unreleased]` 항목 신설 + `t32` D-5 문단 추월 표기, README 실패 문구 진단 정정, §E.3 백필과 이 §E.4, F-01·F-03·F-04 의 `progress.md` 자리 수리, `spec.md` 프론트매터 `status` 되돌림. 생산 코드·시험·`channel/` 무편집
 ```
 
-**`sync_status` 를 «audit-ready» 로 적지 않는 이유.** 이 신호를 처음 쓴 시점에는 감사가 돌지 않았고 값은 `audit-ready` 였다. 지금은 감사가 **돌았고 FAIL 이 났다.** 차단 다섯의 수리가 착지했지만 **2회차 감사는 아직 돌지 않았으므로**, 「감사 받을 준비가 됐다」는 이 트리에 대해 이미 한 번 반증된 표현이다. 지금 참인 것은 「1회차 FAIL 의 차단 다섯을 수리했고 재판정을 기다린다」뿐이며 `reaudit-pending` 이 그것을 말한다. **이 값은 2회차 PASS 전에는 `audit-ready` 로도 `completed` 로도 올라가지 않는다.**
+**`sync_status` 가 `completed` 인 근거 — 그리고 이 자리가 두 번 고쳐진 이유.** 이 신호를 처음 쓴 시점에는 감사가 돌지 않았고 값은 `audit-ready` 였다. 1회차 감사가 **FAIL 0.776** 을 냈으므로 「감사 받을 준비가 됐다」는 이 트리에 대해 반증됐고, 차단 다섯의 수리가 착지한 뒤에도 재판정 전이었으므로 `reaudit-pending` 으로 낮춰 적었다 — 「1회차 FAIL 의 차단 다섯을 수리했고 재판정을 기다린다」가 그때 참인 전부였기 때문이다. **3회차 감사가 PASS 0.871 을 냈다**(Tier M 통과선 0.80, 차단 0건, `.moai/reports/t34/sync-audit-3.md`). 2회차는 FAIL 0.819 로 점수는 통과선 위였으나 차단 G-01(§6.2 앵커 낡음)이 판정을 끌어내렸고, 그 수리가 3회차에서 닫혔다. 그래서 지금 참인 것은 「감사 종결·판정 PASS」이며 `completed` 가 그것을 말한다. 이 값이 세 단계를 밟은 것(`audit-ready` → `reaudit-pending` → `completed`)은 **판정 전에 종결값을 적지 않는다**는 규율의 기록이지 번복이 아니다.
 
 `sync_commit_sha` 는 §E.3 의 `run_commit_sha` 와 같은 이유로 착지 뒤에 백필한다 — 커밋은 자기 해시를 미리 알 수 없다. run 종결 커밋의 백필값은 **`dbee7b0`** 이며, 이 sync 단계가 그 자리를 채웠다(리드 판독 `lead-decisions.md` 「run 종결 — dbee7b0」과 `git rev-parse --short HEAD` 출력 `dbee7b0` 대조).
 
