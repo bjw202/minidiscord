@@ -8,6 +8,12 @@
 /* ── 기본 골격 ─────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
+/* hidden 가드 — 이 파일의 display:flex 선언(#auth-view·#main-view 등)은 UA 스타일시트의
+   [hidden]{display:none} 을 항상 이긴다(author 선언 우선). 그러면 el.hidden = true 가
+   시각적으로 무효가 되어 두 뷰가 겹쳐 렌더링된다 (카드 t32 §D 결함 D-3).
+   author 선언을 통째로 이기려면 !important 가 필요하다. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -41,6 +47,7 @@ input:focus { outline: 1px solid var(--md-accent); }
 /* ── 인증 화면 — 가장 밝은 배경 위에 패널 카드 하나 ────── */
 #auth-view {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: var(--md-space-5);
@@ -68,9 +75,11 @@ input:focus { outline: 1px solid var(--md-accent); }
   color: var(--md-text-muted);
 }
 
-/* 서버가 준 오류 문구 — 붉은 상태색 (design DNA §1) */
+/* 서버가 준 오류 문구 — 붉은 상태색 (design DNA §1). 전폭(width: 100%)이라 #auth-view 의
+   flex-wrap 과 함께 첫 줄을 혼자 쓰고 두 패널은 다음 줄에 나란히 온다 (카드 t32 §D 결함 D-2) */
 #auth-error {
   margin: var(--md-space-2) 0 0;
+  width: 100%;
   color: var(--md-status-error);
 }
 
@@ -203,6 +212,13 @@ input:focus { outline: 1px solid var(--md-accent); }
   background: var(--md-bg-panel);
   color: var(--md-status-error);
   border-top: 1px solid var(--md-divider);
+}
+
+/* 성공 토스트 — showToast(회원가입 완료)만 붙이는 클래스. 같은 요소를 공유하되
+   상태색만 갈라 쓴다 — 새 색상 값 없이 기존 팔레트의 온라인 녹색 (design DNA §1).
+   #error-toast(1-0-0) 의 오류색을 이기려면 ID 를 결합한 선택자(1-1-0)가 필요하다. */
+#error-toast.toast-success {
+  color: var(--md-status-online);
 }
 
 /* ── SPEC-WEBCHAT-001 채팅 영역 ── */
@@ -339,7 +355,10 @@ input:focus { outline: 1px solid var(--md-accent); }
 /* #file-input 은 HTML 의 hidden 속성으로 숨겨 둔다 — CSS display:none 을 덮지 않는다.
    SPEC-WEBRICH-001 이 hidden 을 떼는 순간 바로 보이는 것이 형제와의 약속이다. */
 
-#send-btn { align-self: flex-end; }
+#send-btn, #attach-btn { align-self: flex-end; }
+/* 📎 는 label 이지만 버튼처럼 보이고 눌린다 — #send-btn 과 같은 정렬을 공유한다 (카드 t32 D-7) */
+#attach-btn { cursor: pointer; user-select: none; padding: 0 0.4rem; }
+#file-chosen { align-self: flex-end; font-size: 0.85em; opacity: 0.8; }
 
 /* SPEC-WEBRICH-001 */
 /* 리치 표면 — 첨부 칩·권한 버튼·초대 다이얼로그. 색은 design-tokens 의 var(--md-*) 만 쓴다

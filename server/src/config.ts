@@ -1,7 +1,7 @@
 // 서버 설정: 포트와 데이터 경로
 export const config = {
   port: Number(process.env.MINIDISCORD_PORT ?? 3000),
-  // 기본은 루프백이다. README 가 선언한 '내 PC에서만 도는 서버' 전제를 코드가 지키게 한다
+  // 기본은 루프백이다. 배치 목표는 사내망·과제원이지만, 가입 게이트가 선행되기 전까지는 기본 바인드를 루프백으로 유지한다
   // (sync-audit F-03). 0.0.0.0 바인드는 같은 네트워크의 누구나 가입해 모든 방을 읽을 수 있게 만들었다.
   host: process.env.MINIDISCORD_HOST ?? '127.0.0.1',
   // 지연 평가: 테스트가 import 이후에 MINIDISCORD_DATA_DIR 을 설정해도 반영되도록 게터로 둔다

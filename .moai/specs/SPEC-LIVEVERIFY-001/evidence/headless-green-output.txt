@@ -1,0 +1,12 @@
+결과:
+  쿠키: md_session(secure=false,httpOnly=true)
+  auth-view hidden: true
+  main-view hidden: false
+  콘솔 오류: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+HEADLESS-GREEN: 브라우저 수준 흐름 정상
+
+---
+명령: NODE_PATH=<npx playwright 모듈 부모> node /tmp/md-headless-check.js
+대상: http://127.0.0.1:3000 (운영자 서버, 워크트리 server/ CWD)
+실행자: run 레인 — 2026-09-02 (리드 «환경 원인·코드 결함 아님» 판정의 긍정 대조)
+재관측 귀속: 위 출력은 두 번째 실행이다(첫 실행 18:2x, 리드 보고에 인용 — 두 번 모두 HEADLESS-GREEN).

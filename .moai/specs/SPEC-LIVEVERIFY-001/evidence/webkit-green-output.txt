@@ -1,0 +1,20 @@
+WebKit 흐름:
+  GET /api/rooms -> 401
+  POST /api/auth/register -> 201
+  POST /api/auth/login -> 200
+  GET /api/rooms -> 200
+  GET /api/bots -> 200
+  쿠키: md_session
+  auth-view hidden: true
+  main-view hidden: false
+  auth-error 표시: { hidden: true, text: '' }
+  콘솔 오류: Failed to load resource: the server responded with a status of 401 (Unauthorized)
+
+---
+명령: NODE_PATH=<npx playwright 모듈 부모> node /tmp/md-webkit-check.js (probe-webkit-2)
+엔진: Playwright webkit (Safari 엔진) — ~/Library/Caches/ms-playwright webkit-2336
+판정: WEBKIT-GREEN — register 201 → login 200 → rooms 200 → bots 200, md_session 저장,
+main-view 진입. Safari 엔진에서 무반응 재현 불가 → 운영자 브라우저 프로파일/설정 문제 확정.
+첫 실행(probe-webkit-1)도 같은 GREEN(201→200→200→200) — 두 번째 실행은 409 재시도로
+«이미 있는 사용자 이름입니다» 가 auth-error 에 표시되는 것을 추가 관측(D-1 수리 WebKit 실동작).
+실행자: run 레인 — 2026-09-02 (리드 갈래 1 판정용)
