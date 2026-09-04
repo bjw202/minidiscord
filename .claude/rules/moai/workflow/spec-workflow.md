@@ -298,6 +298,11 @@ Output:
 - CHANGELOG entry
 - Pull request
 
+Completed-SPEC semantics (a completed SPEC is a decision of its time — the code is the
+current-state SSOT; replacements are one HISTORY line; no sibling amendments or
+line-anchor tables): `.claude/rules/moai/workflow/completed-spec-semantics.md`
+(paths-scoped to `.moai/specs/**`).
+
 ## Context Management
 
 /clear Strategy:

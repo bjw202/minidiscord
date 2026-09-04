@@ -73,10 +73,10 @@ $ ls /Users/…/.claude/worktrees/t33/.moai/specs | wc -l
 | 22 | SPEC-CI-001 | completed | **(c) 종결** | `.github/workflows/ci.yml` 이 SPEC 의 세 결정을 문자 그대로 반영 |
 | 23 | SPEC-E2E-001 | completed | **(c) 종결** | `scripts/e2e.mts`·`restart-persistence.test.ts`·`npm run e2e` 실재 |
 | 24 | SPEC-BOTSTAB-001 | completed | **(c) 종결** | `truncate.ts`·`stopped` 재접속 가드 실재, 병합 커밋 `7f0b02a` 관측 |
-| 25 | SPEC-PERMROUTE-001 | completed | **미정** | 구현은 t34 나무에 완결, main 에는 흔적 0 — §4.3 |
-| 26 | SPEC-LIVEVERIFY-001 | completed | **미정** | 구현은 t32 나무에 완결, main 에는 흔적 0 — §4.3 |
+| 25 | SPEC-PERMROUTE-001 | completed | **(c) 종결 확정** | main 통합 완료(병합 `b8658ba`) — §4.3 재분류 조건 충족, 갱신 기록 §7 |
+| 26 | SPEC-LIVEVERIFY-001 | completed | **(c) 종결 확정** | main 통합 완료(병합 `556dfd1`) — §4.3 재분류 조건 충족, 갱신 기록 §7 |
 
-집계: **(a) 0 · (b) 1 · (c) 22 · 미정 3 = 26**
+집계(2026-09-04 run 갱신): **(a) 0 · (b) 1 · (c) 24 · 미정 1 = 26** — 갱신 내역 §7
 
 ---
 
@@ -318,6 +318,20 @@ SPEC-LIVEVERIFY-001      0     0      0     ← 미병합
 | OD-4 | 미병합 둘의 재분류 시점 | main 통합(카드 `t37` ①) 이후 (c)종결로 확정하는 절차 |
 | OD-5 | `_archive` 이동 대상 | 이 목록 기준이라면 **`SPEC-GWAUTH-001` 한 건**뿐이다 |
 
+→ **2026-09-04 처분 기록**: OD-1(분모 26)·OD-4(통합 후 재분류)·OD-5(GWAUTH-001 한 건)는 운영자 확정으로 카드 `t37` 에서 집행됐고, OD-2 는 후속 카드 `t38` 로 발급됐으며, OD-3 는 `ROADMAP.md` «후속 후보» 절에 등재됐다. 증거: `.moai/reports/t37/integration.md`
+
 ---
 
-*카드 `t37` plan 단계. 코드·SPEC 본문 무수정. 기준 트리 `f5cb336`.*
+## 7. 갱신 기록 — run 단계 (2026-09-04, card t37 ① 완료 직후)
+
+§4.3 이 정해둔 재분류 조건(«카드 t37 ① main 통합이 끝나면 (c)종결로 재분류»)이 충족됐다.
+
+- `SPEC-LIVEVERIFY-001` — 병합 `556dfd1` 로 main 계통에 편입. §2 표 26행을 **(c) 종결 확정**으로 갱신.
+- `SPEC-PERMROUTE-001` — 병합 `b8658ba` 로 main 계통에 편입. §2 표 25행을 **(c) 종결 확정**으로 갱신.
+- §2 집계를 **(a) 0 · (b) 1 · (c) 24 · 미정 1 = 26** 으로 고침. §1 의 «(c) 22 · 미정 3» 은 plan 시점 기록으로 그대로 둔다 — 본문은 지금 참, 작성 시점 기록은 그때 참.
+- 남는 미정 1건은 `SPEC-CHANINJECT-001` — 후속 카드 `t38` 소유.
+- 갱신 주체: run 레인(card t37). 증거: `.moai/reports/t37/integration.md`
+
+---
+
+*카드 `t37` plan 단계. 코드·SPEC 본문 무수정. 기준 트리 `f5cb336`.* (§7 갱신은 run 단계)
