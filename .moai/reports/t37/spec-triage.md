@@ -73,8 +73,8 @@ $ ls /Users/…/.claude/worktrees/t33/.moai/specs | wc -l
 | 22 | SPEC-CI-001 | completed | **(c) 종결** | `.github/workflows/ci.yml` 이 SPEC 의 세 결정을 문자 그대로 반영 |
 | 23 | SPEC-E2E-001 | completed | **(c) 종결** | `scripts/e2e.mts`·`restart-persistence.test.ts`·`npm run e2e` 실재 |
 | 24 | SPEC-BOTSTAB-001 | completed | **(c) 종결** | `truncate.ts`·`stopped` 재접속 가드 실재, 병합 커밋 `7f0b02a` 관측 |
-| 25 | SPEC-PERMROUTE-001 | completed | **(c) 종결 확정** | main 통합 완료(병합 `b8658ba`) — §4.3 재분류 조건 충족, 갱신 기록 §7 |
-| 26 | SPEC-LIVEVERIFY-001 | completed | **(c) 종결 확정** | main 통합 완료(병합 `556dfd1`) — §4.3 재분류 조건 충족, 갱신 기록 §7 |
+| 25 | SPEC-PERMROUTE-001 | completed | **(c) 종결 — PR #2 머지로 확정** | 통합 브랜치 `WT-spec-triage-merge` 에 병합(`b8658ba`). **main 편입은 PR #2 가 머지되는 시점에 성립하며, §4.3 재분류 조건도 그때 참이 된다** — 이 행이 쓰인 시점에는 `git merge-base --is-ancestor b8658ba origin/main` 이 exit 1 이었다. 갱신 기록 §7 |
+| 26 | SPEC-LIVEVERIFY-001 | completed | **(c) 종결 — PR #2 머지로 확정** | 통합 브랜치 `WT-spec-triage-merge` 에 병합(`556dfd1`). **main 편입은 PR #2 가 머지되는 시점에 성립하며, §4.3 재분류 조건도 그때 참이 된다** — 이 행이 쓰인 시점에는 `git merge-base --is-ancestor 556dfd1 origin/main` 이 exit 1 이었다. 갱신 기록 §7 |
 
 집계(2026-09-04 run 갱신): **(a) 0 · (b) 1 · (c) 24 · 미정 1 = 26** — 갱신 내역 §7
 
@@ -324,13 +324,14 @@ SPEC-LIVEVERIFY-001      0     0      0     ← 미병합
 
 ## 7. 갱신 기록 — run 단계 (2026-09-04, card t37 ① 완료 직후)
 
-§4.3 이 정해둔 재분류 조건(«카드 t37 ① main 통합이 끝나면 (c)종결로 재분류»)이 충족됐다.
+§4.3 이 정해둔 재분류 조건은 «카드 t37 ① main 통합이 끝나면 (c)종결로 재분류» 다. **이 갱신을 쓴 시점에 그 조건은 아직 충족되지 않았다** — 병합 셋은 통합 브랜치 `WT-spec-triage-merge` 에 착지했을 뿐이고, `git merge-base --is-ancestor b8658ba origin/main` 은 exit 1 이었다. 따라서 아래 두 행은 **PR #2 머지로 확정되는 조건형**으로 적는다 (sync 감사 F-03 처분, 2026-09-04).
 
-- `SPEC-LIVEVERIFY-001` — 병합 `556dfd1` 로 main 계통에 편입. §2 표 26행을 **(c) 종결 확정**으로 갱신.
-- `SPEC-PERMROUTE-001` — 병합 `b8658ba` 로 main 계통에 편입. §2 표 25행을 **(c) 종결 확정**으로 갱신.
+- `SPEC-LIVEVERIFY-001` — 병합 `556dfd1` 로 통합 브랜치에 착지. main 계통 편입은 **PR #2 머지로 확정**. §2 표 26행을 그 조건형으로 갱신.
+- `SPEC-PERMROUTE-001` — 병합 `b8658ba` 로 통합 브랜치에 착지. main 계통 편입은 **PR #2 머지로 확정**. §2 표 25행을 그 조건형으로 갱신.
 - §2 집계를 **(a) 0 · (b) 1 · (c) 24 · 미정 1 = 26** 으로 고침. §1 의 «(c) 22 · 미정 3» 은 plan 시점 기록으로 그대로 둔다 — 본문은 지금 참, 작성 시점 기록은 그때 참.
 - 남는 미정 1건은 `SPEC-CHANINJECT-001` — 후속 카드 `t38` 소유.
 - 갱신 주체: run 레인(card t37). 증거: `.moai/reports/t37/integration.md`
+- **조건형 정정 주체: sync 레인(card t37, 2026-09-04).** 근거: `.moai/reports/t37/sync-audit.md` F-03. run 이 적은 «편입 완료» 는 쓰인 시점에 참이 아니었다 — 참이 되기 전에 적힌 주장은 두지 않는다는 리드 처분.
 
 ---
 

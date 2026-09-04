@@ -1,3 +1,7 @@
+---
+paths: ".moai/specs/**"
+---
+
 # Completed SPEC Semantics
 
 > Loading scope: `paths:`-scoped to `.moai/specs/**` — loads when SPEC artifacts are read or edited; excluded from the always-loaded surface (rule-authoring.md duty (d)). Origin: card t37 SPEC triage, operator-confirmed 2026-09-04. Evidence: `.moai/reports/t37/integration.md`.
