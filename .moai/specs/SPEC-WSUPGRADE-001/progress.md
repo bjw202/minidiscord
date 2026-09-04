@@ -5,12 +5,12 @@
 ```yaml
 plan_status: audit-ready
 plan_complete_at: 2026-09-04
-spec_version: "0.3.0"
+spec_version: "0.4.0"
 tier: M
 requirements: 11
 acceptance_criteria: 12
 criteria_with_mutation: 12
-open_decisions: [A-1, A-2]
+open_decisions: []            # A-1=(a) wsConnect 한 곳 / A-2=(a) 개발 기계 — 리드 처분 2026-09-04, plan.md §A
 spec_kind: investigation   # 규명 카드 — 수리 설계 없음
 audit_rounds:
   - iteration: 1
@@ -31,6 +31,15 @@ audit_rounds:
     regressions_from_round_1: 0
     repaired_in: "spec.md/plan.md/acceptance.md v0.3.0 (N1~N6)"
     new_evidence: .moai/reports/t39/probe-upgrade-window.{mjs,log}
+  - iteration: 3
+    verdict: PASS
+    score: 0.84
+    threshold: 0.80
+    report: .moai/reports/t39/plan-audit-3.md
+    must_pass_violations: 0
+    closed_from_round_2: 6          # N1~N6 전건 종결
+    regressions: 0
+    repaired_in: "spec.md/plan.md/acceptance.md v0.4.0 (D1 ㉮ 창별 분리 · D2 포획 창 정의 · 충돌 탐지 조항 · §A 미결 2건 결정화)"
 ```
 
 ## §E.2 Run-phase Evidence
