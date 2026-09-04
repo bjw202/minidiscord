@@ -13,3 +13,5 @@
 - [Re-derive when scope widens](feedback_rederive-when-scope-widens.md) — an amended scope decision voids the old enumeration; recount from scratch and say when the total is unchanged
 - [A forwardable transcript excludes no relay](feedback_forwardable-transcript.md) — nonces stop forgery and replay, not forwarding; bind the transport into the transcript AND the KDF, or disclose the residual
 - [A line pointer is a count in disguise](feedback_line-pointers-are-counts-in-disguise.md) — `file:line` citations decay silently and can even confirm the wrong item; use content-matched grep anchors and prove each hits exactly 1
+- [A criterion never checks its own domain](feedback_criterion-never-checks-its-own-domain.md) — synthetic inputs proved the mapping while two of three could never occur; pair every mapping check with per-branch reachability evidence
+- [Mechanism reproduced is not what happened](feedback_mechanism-reproduced-is-not-what-happened.md) — a probe that recreates the signature raises a branch to "possible", never to "the answer"; keep untested branches marked untested, not disproven
