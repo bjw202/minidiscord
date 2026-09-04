@@ -88,6 +88,16 @@ kickoff_approval: "칸반 카드 t39 run 디스패치(리드, 2026-09-05)로 pla
 - **GATE 증거(하네스 부착 상태)** — `cd server && npx vitest run -t "history_request applies limit before since_id, speaker, since and until"` → `Test Files  1 passed | 16 skipped (17)` / `Tests  1 passed | 219 skipped (220)`, exit 0. 포획 0건으로 captures 디렉터리 미생성 확인.
 - **Gaps** — 포획 경로의 실제 착지(비(非)101 포획 JSON)는 첫 실포획(M3)까지 미관측이다. 설계는 probe-upgrade-window.{mjs,log} 가 잰 값(무손상·귀속 적중)을 그대로 따르지만, 하네스 본문의 그 경로는 아직 실행으로 쟀지 않다.
 
+### M2 — 지문표·2차 판정·세 갈래 사상 (plan.md §F M2)
+
+- **착지 자리** — `server/test/wsupgrade-judgment.ts`(M1 이 만든 같은 파일에 추가)의 `fingerprint`(지문표 §5.4 ①→⑤ 첫 적중)·`secondVerdict`(2차 판정 ㉮→㉮′→㉯→㉰, ㉱·충돌은 앞 가드)·`classifyComparison`(§5.5 네 조합) — 전부 순수 함수다.
+- **합성 입력만** — 실제 404 포획을 기다리지 않는다(AC-003·AC-004(1)·AC-009). AC-004 의 (2) 정의역 도달성은 이 시험의 범위가 아니다 — plan.md §F M2 대로 M5 가 실제 포획/탐침 출력으로 채운다(현재: H-2 재현됨 · H-1·H-3 근거 없음 — 갈래 셋 그대로 열려 있다).
+- **AC-003** — 다섯 합성 입력(400+Sec-WebSocket-Version+빈 본문 / Fastify JSON / `plain-404` 맨 서버 모양 / text/html / 502) → 다섯 다른 이름(미분류 포함, 이름 지어 주지 않음). content-type 이 json 이어도 본문 모양이 Fastify 가 아니면 미분류 — «모양» 술어의 이빨 시험 추가.
+- **AC-004(1)** — 창2 적중→H-3, 적중 0+보유 없음(listening false·address 포트 불일치 둘 다)→H-1, 적중 0+보유→H-2, **창1 단독 적중→미분류(㉮′, H-3 이 아님)**, 귀속 대조 불가(㉱)→미분류, 충돌→미분류, 지문 ② 밖→미분류.
+- **AC-009** — `(1,0)→병렬에서만 실패` · `(≥1,≥1)→항상 실패` · `(0,0)→미관측(PASS 아님, REQ-008)` · `(0,1)→뒤집힘`.
+- **GATE 증거** — `cd server && npx vitest run test/wsupgrade-judgment.test.ts` → `Test Files  1 passed (1)` / `Tests  8 passed (8)`, exit 0.
+- **AC-007 사전 점검** — M2 파일 둘의 훑기 어간 적중 0건(커밋 전 grep 확인).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

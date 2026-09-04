@@ -83,3 +83,106 @@ export function attributeHits(
   const collision = [...seen.values()].some(n => n >= 2)
   return { hits, collision }
 }
+
+// ===== M2 — 지문표·2차 판정·세 갈래 사상 (spec.md §5.4·§5.5, plan.md §F M2) =====
+// 모두 순수 함수다 — 합성 입력으로 시험하고, 실제 포획 기록을 같은 기계로 판정한다.
+
+// 응답자 부류 — 이름은 spec.md §5.4 부류 열을 따른다. 어느 술어에도 걸리지 않는 응답은
+// 미분류로 남긴다 — 추측으로 채우지 않는다(REQ-WSUPGRADE-003).
+export type ResponderClass =
+  | 'ws WebSocketServer (경로 미스)'
+  | 'Fastify 기본 404'
+  | '맨 http.createServer'
+  | '정적·Vite 계열 서버'
+  | '미분류'
+
+// 헤더 쌍에서 대소문자를 무시하고 값을 읽는다 — rawHeaders 의 대소문자는 서버마다 다르다.
+export function headerOf(headers: { name: string; value: string }[], name: string): string | undefined {
+  const key = name.toLowerCase()
+  const pair = headers.find(h => h.name.toLowerCase() === key)
+  return pair?.value
+}
+
+function jsonShapeOf(body: string): unknown {
+  try { return JSON.parse(body) } catch { return undefined }
+}
+
+// ② 의 «모양» — Fastify 기본 404 본문 {message:…, error:'Not Found', statusCode:404}.
+function isFastify404Shape(parsed: unknown): boolean {
+  if (typeof parsed !== 'object' || parsed === null) return false
+  const o = parsed as Record<string, unknown>
+  return typeof o.message === 'string' && o.error === 'Not Found' && o.statusCode === 404
+}
+
+// ③ 의 «프레임워크 표지» — 맨 http.createServer 의 기본 404 가 세팅하지 않는 헤더들.
+// 실측(F2, probe-upgrade.log): 맨 서버의 404 는 Date·Connection·Keep-Alive 만 온다 —
+// content-type 조차 없다. 표지가 하나라도 있으면 «맨» 이 아니다.
+function hasFrameworkMarker(headers: { name: string; value: string }[]): boolean {
+  const markers = ['content-type', 'server', 'x-powered-by', 'via']
+  return markers.some(m => headerOf(headers, m) !== undefined)
+}
+
+// 지문표(spec.md §5.4) — 술어 ①→⑤ 순서로 걸어 첫 적중을 응답자 부류로 삼는다.
+export function fingerprint(input: Pick<CaptureRecord, 'statusCode' | 'headers' | 'body'>): ResponderClass {
+  const parsed = jsonShapeOf(input.body)
+  // ① — F1 의 경로다. 관측된 실패는 404 이므로 이 부류는 대조군으로 표에 남는다.
+  if (input.statusCode === 400 &&
+      (headerOf(input.headers, 'sec-websocket-version') !== undefined || input.body.trim() === '')) {
+    return 'ws WebSocketServer (경로 미스)'
+  }
+  // ② — 게이트웨이 없는 Fastify 앱이거나, 게이트웨이 있는 앱이 업그레이드를 라우터로 흘린 경우.
+  // H-1·H-2·H-3 은 여기서 갈린다 — 2차 판정(secondVerdict)의 몫이다.
+  if (input.statusCode === 404 && isFastify404Shape(parsed)) return 'Fastify 기본 404'
+  // ③ — F2 탐침의 응답 모양(JSON 아님 + 표지 없음).
+  if (input.statusCode === 404 && parsed === undefined && !hasFrameworkMarker(input.headers)) {
+    return '맨 http.createServer'
+  }
+  // ④ — 스위트 밖 프로세스일 수 있다.
+  if (input.statusCode === 404 && (headerOf(input.headers, 'content-type') ?? '').includes('text/html')) {
+    return '정적·Vite 계열 서버'
+  }
+  // ⑤ — 어느 술어에도 걸리지 않음. 기록만 남기고 이름을 지어 주지 않는다.
+  return '미분류'
+}
+
+// 2차 판정의 갈래 — 갈래 집합 {H-1, H-2, H-3} 을 좁히지 않는다(spec.md §4). 판정할 수 없는
+// 자리는 전부 미분류로 남긴다 — 추측한 갈래를 내면 그것이 실패다(AC-004).
+export type Branch = 'H-1' | 'H-2' | 'H-3' | '미분류'
+
+// 2차 판정(spec.md §5.4 둘째 표) — 지문 ②(Fastify 기본 404)가 적중했을 때만 돈다. 판별의 축은
+// 소켓 튜플이 아니라 «내 앱이 이 요청을 받았는가»이며, 그 물음은 귀속 적중으로만 답한다(§2 「귀속」).
+// 표의 순서는 ㉮→㉮′→㉯→㉰→㉱ 이지만, ㉱(대조 불가)와 충돌은 갈래 자체를 세울 수 없는 자리라
+// 앞에서 미분류로 가드한다 — 출력 집합은 표와 같다.
+export function secondVerdict(record: CaptureRecord): Branch {
+  if (fingerprint(record) !== 'Fastify 기본 404') return '미분류'   // 이 표는 지문 ② 에서만 돈다
+  // ㉱ — 두 창의 로그가 없거나 localPort·경로를 읽지 못해 귀속 대조 자체가 불가능하다.
+  if (record.localPort === null || record.clientPath === null) return '미분류'
+  // 충돌 — 귀속은 성립하지 않은 것으로 다룬다(§2 「귀속」). 임시 포트 재사용이 삼중 대조를
+  // 무너뜨린 자리를 근거로 계상하지 않는다.
+  if (record.collision !== '없음') return '미분류'
+  const onRequestHits = record.attributionHits.filter(h => h.window === 'onRequest').length
+  const upgradeHits = record.attributionHits.filter(h => h.window === 'upgrade').length
+  // ㉮ — 창2(onRequest) 귀속 적중 ≥ 1 만 자기 앱 «라우터»가 답했다(H-3)로 받는다.
+  if (onRequestHits >= 1) return 'H-3'
+  // ㉮′ — 창1 단독 적중은 자기모순 관측이다: 지문 ② 인데 창1 이 발화했다면 그 자리의 응답자는
+  // ws 여야 했다(F1). 가장 그럴듯한 설명은 귀속 오사상 — 갈래를 고르지 않고 미분류로 남긴다.
+  if (upgradeHits >= 1) return '미분류'
+  // ㉯·㉰ — 적중 0 은 포획 시점의 포트 보유로만 갈린다.
+  const possession = record.portPossession
+  if (possession === null) return '미분류'   // 보유 상태조차 없으면 판정 불가 — 추측으로 채우지 않는다
+  const addr = possession.address as { port?: number } | null
+  const holding = possession.listening && addr !== null && addr.port === possession.ownPort
+  return holding ? 'H-2' : 'H-1'   // ㉰ / ㉯
+}
+
+// 세 갈래 분류(spec.md §5.5) — 병렬 팔 실패 Mp, 직렬 팔 실패 Ms. 두 팔의 실패 수만으로 결정한다.
+// (0,0) 은 미관측이며 PASS 로 사상하지 않는다(REQ-WSUPGRADE-008 — 침묵은 통과가 아니다).
+// (0,≥1) 은 뒤집힘 — 예상 밖의 관측을 이름 없는 통에 접지 않는다.
+export type ComparisonClass = '병렬에서만 실패' | '항상 실패' | '미관측' | '뒤집힘'
+
+export function classifyComparison(mp: number, ms: number): ComparisonClass {
+  if (mp >= 1 && ms === 0) return '병렬에서만 실패'
+  if (mp >= 1 && ms >= 1) return '항상 실패'
+  if (mp === 0 && ms === 0) return '미관측'
+  return '뒤집힘'
+}
