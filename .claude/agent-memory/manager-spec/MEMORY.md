@@ -1,5 +1,8 @@
 # Memory Index
 
+- [A count is not an attribution](feedback_a-count-is-not-an-attribution.md) — a window-level counter delta cannot say the captured event was mine; name the correlating value
+- [Widening a sweep swallows its own watcher](feedback_widening-a-sweep-swallows-its-own-watcher.md) — the widened file list pulled the SPEC docs in and the criterion was red on a clean tree; exclude by class, never by self-exemption
+
 - [The verification layer inverts the verdict](feedback_verification-layer-inverts-the-verdict.md) — a helper that drops a term makes the correct implementation fail and the defective one pass; close it with a mutation, not a helper edit
 
 - [Naming manufactures justification](feedback_naming-manufactures-justification.md) — calling a state "authenticated" led me to invent a false proof; read the wire payload first

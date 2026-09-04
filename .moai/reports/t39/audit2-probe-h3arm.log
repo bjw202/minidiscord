@@ -1,0 +1,4 @@
+upgrade 리스너 수 = 1
+  /bot       -> 101 업그레이드 성공 | 카운터 증감 0
+  /nope      -> status 400 body Bad Request | 카운터 증감 0
+onRequest 가 본 URL 전건 : []

@@ -1,0 +1,16 @@
+[배열1] upgrade 리스너 수 = 2
+  /bot  -> 101 | 클라 임시포트 53278
+  /nope -> status 400 Bad Request | 클라 임시포트 53279
+  관측 리스너가 본 것 : [{"url":"/bot","remotePort":53278,"localAddress":"127.0.0.1"},{"url":"/nope","remotePort":53279,"localAddress":"127.0.0.1"}]
+  onRequest 가 본 URL : []
+  귀속 대조(/nope 의 클라 포트로 찾기) 적중 = 1
+[배열2] 타앱 {"address":"127.0.0.1","family":"IPv4","port":53280} | 자기앱 {"address":"::1","family":"IPv6","port":53280}
+  ws://127.0.0.1:P/bot -> status 404 {"message":"Route GET:/bot not found","error":"Not Found","statusCode" | 클라 임시포트 53281
+  자기 앱 관측 리스너가 본 것 : []
+  자기 앱 onRequest 가 본 URL : []
+  귀속 대조 적중 = 0
+[배열3] 주 리스너 {"address":"::1","family":"IPv6","port":53282}
+  ws://127.0.0.1:P/bot -> 101 | 클라 임시포트 53283
+  ws://[::1]:P/bot     -> 101 | 클라 임시포트 53284
+  관측 리스너가 본 것 : [{"url":"/bot","remotePort":53283,"localAddress":"127.0.0.1"},{"url":"/bot","remotePort":53284,"localAddress":"::1"}]
+  귀속 대조 적중 — IPv4 경유 1 · IPv6 경유 1
