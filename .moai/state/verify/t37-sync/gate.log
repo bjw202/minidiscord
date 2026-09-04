@@ -1,0 +1,60 @@
+quality gate failed: npm test
+
+npm warn Unknown cli config "--passWithNoTests". This will stop working in the next major version of npm.
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until
+Error: Unexpected server response: 404
+ ❯ ClientRequest.<anonymous> ../node_modules/ws/lib/websocket.js:930:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t37/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t37/server
+npm error command failed
+npm error command sh -c vitest run
+
+
+> test
+> npm test --workspaces --if-present --passWithNoTests
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t37/server
+
+ ❯ test/gateway.test.ts (39 tests | 1 failed) 9372ms
+     × history_request applies limit before since_id, speaker, since and until 7ms
+
+ Test Files  1 failed | 16 passed (17)
+      Tests  1 failed | 219 passed (220)
+   Start at  15:01:21
+   Duration  15.40s (transform 1.32s, setup 0ms, import 3.44s, tests 34.70s, environment 1.58s)
+
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t37/channel
+
+
+ Test Files  7 passed (7)
+      Tests  126 passed (126)
+   Start at  15:01:37
+   Duration  65.32s (transform 417ms, setup 0ms, import 1.33s, tests 70.53s, environment 0ms)
+          
+   ERROR  
+          
+  Quality gate failed.                                                                                                
+
