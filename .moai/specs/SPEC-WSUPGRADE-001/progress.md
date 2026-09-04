@@ -53,9 +53,40 @@ audit_rounds:
     repaired_in: "spec.md/plan.md/acceptance.md v0.5.0 (기록 마감: version·HISTORY·progress §E.1)"
 ```
 
+## §F Phase 4 Mode Selection
+
+```yaml
+tier: M
+scope_files: "2-3 (test harness in server/test/gateway.test.ts + judgment test + records)"
+domain_count: 1          # server/test 만 — 생산 코드 무수정(AC-012)
+language_mix: typescript-only
+concurrency_benefit: LOW # 코딩 중심(Anthropic coding-task caveat) + 마일스톤 순서 의존(M1→M2→M3→M4→M5)
+agent_team_prereqs: n/a
+mode_evaluation:
+  direct: not selected   # 다중 마일스톤 구현 — 자명 단순 변경 아님
+  serial: SELECTED
+  fanout: not selected   # 코딩 중심 + 쓰기 가능 에이전트 동시 실행 금지
+  sweep: not selected    # 기계적 대량 변환 아님
+decision: serial
+justification: >
+  관측 하네스·판정 시험 구현은 코딩 중심이고 마일스톤에 엄격한 순서 의존이 있다
+  (M4 변이는 M3 대조 실행 창과 겹치면 인공 실패가 기록에 섞인다 — plan.md §F 각주).
+  서브에이전트 하나를 마일스톤 순서로 직렬 위임한다.
+kickoff_approval: "칸반 카드 t39 run 디스패치(리드, 2026-09-05)로 plan→run 진입 승인 완료"
+```
+
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 관측 하네스 (plan.md §F M1)
+
+- **착지 자리** — `server/test/gateway.test.ts` 의 `build()`(:28 부근)와 `wsConnect`(:177 부근). A-1=(a) 결정(하네스는 `wsConnect` 한 곳)을 따른다.
+- **창 둘** — 창1 `app.server.on('upgrade', …)` 소비하지 않는 리스너(createGateway 뒤, listen 전 — probe-upgrade-window.log 배열1 의 실측 배치), 창2 Fastify `onRequest` 훅(라우트 등록 전). 두 창 모두 `build()` 안에서 attach 되어 이 파일의 모든 접속이 균일하게 관측된다. 창1 은 소켓을 쓰지도 닫지도 않는다(G-1).
+- **포획** — `wsConnect` 의 `unexpected-response` 리스너가 기록만 하고 아무 값도 돌려주지 않는다(`emit` 거짓 → ws 의 `abortHandshake` 그대로 던짐 — ws 8.21.3 `websocket.js:929` 소스 확인, plan.md §C, AC-005). 기록 전체는 try/catch 로 싸여 기록 실패가 원래 실패를 가리지 않는다.
+- **기록 14 항목** — AC-001 넷(상태 코드·상태 줄 원문·헤더 전건(rawHeaders 쌍 보존)·본문 동기 판독) + AC-002 열(소켓 양끝 넷+계열 둘, 두 창 로그 전건, 귀속 적중 항목 전건+건수, t_open·t_close, 충돌 유무, 포트 보유 상태). JSON 1포획 1파일로 `.moai/reports/t39/captures/` 에 남긴다 — 루트는 시험 파일 위치에서 두 단계 위(`import.meta.url`), 디렉터리는 첫 포획 때만 생성(포획 0건인 실행은 흔적 없음).
+- **귀속·충돌** — 귀속 대조(localPort·경로·포획 창 삼중)와 충돌 탐지는 순수 모듈 `server/test/wsupgrade-judgment.ts`(신설 — M1 은 기록 형태+귀속 대조, M2 가 같은 파일에 지문표·판정을 더함)로 뺐다. 하네스와 M2 시험이 같은 조각을 쓴다.
+- **AC-007 사전 점검** — 이 카드가 더하거나 고친 실행 부류 파일(`gateway.test.ts`·`wsupgrade-judgment.ts`)의 훑기 어간(`spawn`/`exec`/`execSync`/`fork`/`child_process`) 적중 0건(커밋 전 grep 확인).
+- **GATE 증거(하네스 부착 상태)** — `cd server && npx vitest run -t "history_request applies limit before since_id, speaker, since and until"` → `Test Files  1 passed | 16 skipped (17)` / `Tests  1 passed | 219 skipped (220)`, exit 0. 포획 0건으로 captures 디렉터리 미생성 확인.
+- **Gaps** — 포획 경로의 실제 착지(비(非)101 포획 JSON)는 첫 실포획(M3)까지 미관측이다. 설계는 probe-upgrade-window.{mjs,log} 가 잰 값(무손상·귀속 적중)을 그대로 따르지만, 하네스 본문의 그 경로는 아직 실행으로 쟀지 않다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

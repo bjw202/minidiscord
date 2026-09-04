@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, isAbsolute, resolve } from 'node:path'
+import { join, isAbsolute, resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createHash, createHmac, randomBytes, sign, timingSafeEqual } from 'node:crypto'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
@@ -12,6 +13,7 @@ import { createGateway } from '../src/gateway.js'
 import { registerAuthRoutes } from '../src/auth.js'
 import { registerBotRoutes } from '../src/routes-bots.js'
 import { pubOf, ksrvHexOf, skOf, connectV2, recordSocket } from './gateway-v2.js'
+import { attributeHits, type CaptureRecord, type WinEntry } from './wsupgrade-judgment.js'
 
 let dir: string
 let db: Db
@@ -22,6 +24,66 @@ beforeEach(() => {
   mkdirSync(join(dir, 'up'), { recursive: true })
 })
 afterEach(() => { db.close(); rmSync(dir, { recursive: true, force: true }) })
+
+// SPEC-WSUPGRADE-001 M1 — 자기 앱 수신 관측 저장소(spec.md §2 「자기 앱 수신 관측」). build() 가
+// 관측 한 벌을 하나씩 쌓고, wsConnect 의 포획이 자기 포트로 관측을 찾아 귀속 대조를 한다.
+// 이 파일 안에서 build() 가 여러 번 불려도 마지막으로 그 포트를 낸 앱이 «자기 앱»이다 —
+// 닫힌 앱의 임시 포트가 뒤 build() 에 재배정돼도 뒤 쪽이 배열 뒤에 있으므로 올바르게 고른다.
+interface WsUpgradeObservation {
+  ownPort: number
+  w1: WinEntry[]
+  w2: WinEntry[]
+  app: { server: { listening: boolean; address(): unknown } }
+}
+const wsupgradeObservations: WsUpgradeObservation[] = []
+
+// 이 wsConnect 포트를 낸 build() 의 관측을 찾는다. Array.findLast 는 이 tsconfig(ES2022)에
+// 없으므로 손으로 뒤에서부터 훑는다.
+function wsupgradeObservationOf(port: number): WsUpgradeObservation | undefined {
+  for (let i = wsupgradeObservations.length - 1; i >= 0; i--) {
+    if (wsupgradeObservations[i].ownPort === port) return wsupgradeObservations[i]
+  }
+  return undefined
+}
+
+// 소켓 양끝의 주소 넷과 계열 둘을 읽는다. 런타임에는 net.Socket 이지만 업그레이드 사건과
+// IncomingMessage 의 타입상으로는 Duplex 로만 보이는 자리라 좁혀 읽는다. 값이 없으면
+// null 로 기록한다 — 누락이 아니라 null 이다(AC-002 이분 판정이 누락을 실패로 센다).
+function wsupgradeSockEnds(socket: unknown): {
+  localAddress: string | null; localPort: number | null
+  remoteAddress: string | null; remotePort: number | null
+  localFamily: string | null; remoteFamily: string | null
+} {
+  const s = socket as {
+    localAddress?: string | null; localPort?: number | null
+    remoteAddress?: string | null; remotePort?: number | null
+    localFamily?: string | null; remoteFamily?: string | null
+  } | null | undefined
+  return {
+    localAddress: s?.localAddress ?? null,
+    localPort: typeof s?.localPort === 'number' ? s.localPort : null,
+    remoteAddress: s?.remoteAddress ?? null,
+    remotePort: typeof s?.remotePort === 'number' ? s.remotePort : null,
+    localFamily: s?.localFamily ?? null,
+    remoteFamily: s?.remoteFamily ?? null,
+  }
+}
+
+// 기록 자리 — 저장소 루트 기준 .moai/reports/t39/captures/(acceptance.md §A 「기록 자리」).
+// 루트는 cwd 가 아니라 이 시험 파일 위치(server/test/)에서 두 단계 위로 찾는다 — 워커의 cwd 를
+// 믿지 않기 위해서다(web-shell.test.ts 의 같은 관용구). 디렉터리는 첫 포획 때만 만든다 —
+// 포획 0건인 실행은 흔적을 남기지 않는다. 기록 실패는 원래 실패(비(非)101 응답)를 가리지도
+// 대신하지도 않는다 — 조용히 무시하고 던짐 경로로 간다(plan.md §C).
+let wsupgradeCaptureSeq = 0
+function wsupgradePersistCapture(record: CaptureRecord): void {
+  try {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
+    const capturesDir = join(root, '.moai', 'reports', 't39', 'captures')
+    mkdirSync(capturesDir, { recursive: true })
+    const name = `capture-${record.capturedAt.replace(/[:.]/g, '-')}-${++wsupgradeCaptureSeq}.json`
+    writeFileSync(join(capturesDir, name), JSON.stringify(record, null, 2) + '\n')
+  } catch { /* 포획 기록의 실패는 조용히 — 관측이 시험을 바꾸지 않는다(G-1) */ }
+}
 
 // hub.publish 를 감싸 발행 내역을 기록한다. SseHub 가 publish 를 속성으로 갖는
 // 평범한 객체라는 SPEC-SSE-001 의 계약에 의존한다 (plan.md §D 4번).
@@ -38,6 +100,21 @@ async function build(opts: { botFiles?: 'off' } = {}) {
     orig(roomId, event, data)
   }
   app.decorate('hub', hub)
+  // SPEC-WSUPGRADE-001 M1 — 창2: Fastify onRequest 훅(spec.md §2 「자기 앱 수신 관측」). 이 파일의
+  // 모든 시험이 균일하게 관측되도록 listen 전에 둔다. 업그레이드 요청은 이 창을 통과하지 않는다
+  // (실측 .moai/reports/t39/probe-upgrade-window.log 배열1) — 그래서 이 창의 개수만으로는
+  // «자기 앱이 답했다»를 뜻하지 않고, 귀속 대조를 통과한 항목만이 뜻한다(§5.4 버린 판별자 셋째 행).
+  const w2: WinEntry[] = []
+  app.addHook('onRequest', (req, _reply, done) => {
+    w2.push({
+      window: 'onRequest',
+      seq: w2.length + 1,
+      path: req.raw.url ?? null,
+      remotePort: wsupgradeSockEnds(req.raw.socket).remotePort,
+      t: Date.now(),
+    })
+    done()
+  })
   registerAuthRoutes(app, db)
   registerBotRoutes(app)   // AC-GWAUTH2-001 이 초대 경로의 저장 값을 관측한다 — 라우트가 필요하다
   // botFilesDir: 봇이 첨부로 보낼 수 있는 파일의 허용 뿌리. 테스트는 임시 트리 전체를 허용해
@@ -51,8 +128,23 @@ async function build(opts: { botFiles?: 'off' } = {}) {
     onConnection: ws => { recorders.push(recordSocket(ws)) },
   })
   app.decorate('gateway', gateway)
+  // SPEC-WSUPGRADE-001 M1 — 창1: 소비하지 않는 upgrade 리스너. 소켓을 쓰지도 닫지도 끊지도
+  // 않는다(G-1: 관측이 대상을 바꾸면 안 된다) — ws 의 자기 리스너와 나란히 발화하며 핸드셰이크를
+  // 깨지 않는다는 것은 실행으로 확인됐다(.moai/reports/t39/probe-upgrade-window.log 배열1 —
+  // 리스너 둘, /bot 여전히 101). ws 의 리스너 뒤에 다는 배치가 그 실측과 같다.
+  const w1: WinEntry[] = []
+  app.server.on('upgrade', (req, socket) => {
+    w1.push({
+      window: 'upgrade',
+      seq: w1.length + 1,
+      path: req.url ?? null,
+      remotePort: wsupgradeSockEnds(socket).remotePort,
+      t: Date.now(),
+    })
+  })
   await app.listen({ port: 0 })
   const port = (app.server.address() as { port: number }).port
+  wsupgradeObservations.push({ ownPort: port, w1, w2, app })
   return { app, hub, published, gateway, port, recorders, db }
 }
 
@@ -85,7 +177,67 @@ const inboxes = new WeakMap<WebSocket, Inbox>()
 
 function wsConnect(port: number, token: string): Promise<{ ws: WebSocket; welcome: any }> {
   return new Promise((resolve, reject) => {
+    // t_open — 이 접속의 ws 객체를 만들기 직전의 시각(SPEC-WSUPGRADE-001 §2 「포획 창」의
+    // 시작 사건). 끝 사건은 아래 리스너의 t_close(unexpected-response 발화)다.
+    const tOpen = Date.now()
     const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
+    // SPEC-WSUPGRADE-001 M1 — 비(非)101 응답의 원문 포획(AC-001·002). 이 리스너는 기록만 하고
+    // 아무 값도 돌려주지 않는다 — emit 이 거짓을 돌려 ws 의 abortHandshake 가 그대로 던진다
+    // (node_modules/ws/lib/websocket.js:929 · plan.md §C). 관측이 실패를 삼키지 않는다(AC-005).
+    // 기록 중 무엇이 잘못돼도 이 try 는 조용히 무시한다 — 포획 실패가 원래 실패를 가리거나
+    // 대신하지 않게 하려는 것이다.
+    ws.on('unexpected-response', (req, res) => {
+      try {
+        const tClose = Date.now()
+        const ends = wsupgradeSockEnds(res.socket)
+        // 헤더 전건 — res.rawHeaders 의 [이름, 값, ...] 을 쌍으로 옮긴다. 대소문자·중복·순서를
+        // 그대로 보존한다 — 하나도 빠뜨리지 않는 것이 AC-001 의 재는 것이다.
+        const headers: { name: string; value: string }[] = []
+        for (let i = 0; i < res.rawHeaders.length; i += 2) {
+          headers.push({ name: res.rawHeaders[i], value: res.rawHeaders[i + 1] })
+        }
+        // 본문은 지금 판독 가능한 만큼 동기로만 읽는다 — 이 리스너가 거짓을 돌려주면 ws 는
+        // 곧바로 소켓을 끊으므로(websocket.js:929 바로 아래 abortHandshake) 비동기 수집은
+        // 늦게 오는 본문을 놓친다. 루프백의 작은 404 는 헤더와 같은 세그먼트로 온다(spec.md F4).
+        const chunks: Buffer[] = []
+        for (let c = res.read(); c !== null; c = res.read()) chunks.push(c as Buffer)
+        const clientPath = req.path
+        const observation = wsupgradeObservationOf(port)
+        const windowLogs = {
+          upgrade: observation?.w1 ?? [],
+          onRequest: observation?.w2 ?? [],
+        }
+        // 귀속 — 포획된 응답 소켓의 localPort·경로·포획 창으로만 이 요청에 귀속한다(§2 「귀속」).
+        // 창 단위 개수 증감은 쓰지 않는다 — 혼입이 «자기 앱이 답했다» 쪽 거짓 양성을 내는
+        // 버린 판별자다(§5.4 셋째 행).
+        const { hits, collision } = attributeHits(windowLogs, ends.localPort, clientPath, tOpen, tClose)
+        wsupgradePersistCapture({
+          statusCode: res.statusCode,
+          statusLine: `HTTP/${res.httpVersion} ${res.statusCode} ${res.statusMessage ?? ''}`.trimEnd(),
+          headers,
+          body: Buffer.concat(chunks).toString('utf8'),
+          localAddress: ends.localAddress,
+          localPort: ends.localPort,
+          remoteAddress: ends.remoteAddress,
+          remotePort: ends.remotePort,
+          localFamily: ends.localFamily,
+          remoteFamily: ends.remoteFamily,
+          windowLogs,
+          attributionHits: hits,
+          attributionHitCount: hits.length,
+          tOpen,
+          tClose,
+          collision: collision ? '있음' : '없음',
+          portPossession: observation === undefined ? null : {
+            ownPort: port,
+            listening: observation.app.server.listening,
+            address: observation.app.server.address(),
+          },
+          capturedAt: new Date(tClose).toISOString(),
+          clientPath,
+        })
+      } catch { /* 포획·기록의 실패는 조용히 — 던짐 경로는 원래대로 간다(plan.md §C) */ }
+    })
     const inbox: Inbox = { queue: [], waiters: [] }
     inboxes.set(ws, inbox)
     // v2 핸드셰이크 (SPEC-GWAUTH-002) — hello{pub, client_nonce} → challenge 대조 → auth 서명.
