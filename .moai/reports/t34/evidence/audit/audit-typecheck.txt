@@ -1,0 +1,10 @@
+
+> typecheck
+> tsc --noEmit
+
+server EXIT=0
+
+> @minidiscord/channel@0.1.0 typecheck
+> tsc --noEmit
+
+channel EXIT=0

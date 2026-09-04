@@ -41,6 +41,8 @@ depends_on: [SPEC-CORE-001, SPEC-AUTH-001, SPEC-SSE-001, SPEC-GATEWAY-001]
       → Gateway.sendToBot → 채널 → Claude Code 에 permission_verdict 적용
 ```
 
+> 2026-09-04 개정 — 위 흐름도의 «→ Gateway.sendToBot» 은 «→ Gateway.sendToOrigin(connId, …)» 이다 — `SPEC-PERMROUTE-001` 이 판정 통로를 «요청한 접속 하나» 로 옮겼다 (REQ-PERMROUTE-004·006). 원문은 지우지 않는다.
+
 `spec-v2.md` 9장이 이 기능의 안전성 근거를 이미 정해 두었다 — "권한 릴레이는 게이트웨이 토큰 인증 위에서만 동작하므로 안전하게 켠다". 요청은 인증된 게이트웨이 연결에서만 들어오고, 판정은 로그인한 사람의 메시지에서만 나간다.
 
 이 SPEC 이 끝나면 사람이 터미널을 보지 않고도 봇의 도구 사용을 승인하거나 거절할 수 있다.
@@ -70,6 +72,8 @@ depends_on: [SPEC-CORE-001, SPEC-AUTH-001, SPEC-SSE-001, SPEC-GATEWAY-001]
 | `SPEC-SSE-001` | `SseHub.publish(roomId, event, data)` — 방 구독자에게 발행 |
 | `SPEC-GATEWAY-001` | `Gateway.setPermissionHandler`, `Gateway.sendToBot`, `ConnInfo` 타입 |
 | 카드 `t3` 의 메시지 SPEC | `POST /api/rooms/:id/messages` 라우트 — 이 SPEC 은 그 핸들러 **안에** 가로채기 한 줄을 넣는다 |
+
+> 2026-09-04 개정 — 위 표의 `SPEC-GATEWAY-001` 행: 이 SPEC 이 받아 쓰는 판정 통로는 `Gateway.sendToBot` 이 아니라 `Gateway.sendToOrigin` 이고, `ConnInfo` 에는 `connId?` 가 더해졌다 (`SPEC-PERMROUTE-001` REQ-PERMROUTE-003·004·006).
 
 게이트웨이 쪽 계약은 이미 확정돼 있고 이 SPEC 은 그것을 소비만 한다. 축약 없이 그대로 옮긴다.
 

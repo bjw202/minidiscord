@@ -1,0 +1,47 @@
+# 「창구 둘」 전제 전수 훑기 — sync 감사 1회차 잔여 위험 ① 종결 근거
+
+배경: R-1(SPEC-GATEWAY-001/spec.md:234 본문 최소 개정)이 같은 문서 안에서 「창구 둘」을
+전제하는 다른 문장을 낡게 만들 수 있다는 잔여 위험을 sync 가 공시했고, 리드가 전수 훑기로
+종결했다. 이 파일은 sync 레인이 그 훑기를 재현한 출력이다 — 재감사관은 아래 명령을 그대로
+다시 돌려 확인할 수 있다.
+
+귀속: 워크트리 .claude/worktrees/t34 · 브랜치 WT-perm-verdict-socket · HEAD dbee7b0
+      작업 트리(미커밋 sync 편집 얹힘) · 실행 2026-09-04 10:39
+
+--- 명령 ---
+$ grep -rn "창구" .moai/specs
+
+--- 출력 ---
+.moai/specs/SPEC-E2E-001/spec.md:105:- `recordSocket(ws)` 은 **서버 쪽 `WebSocket` 객체를 감싼다**(`gateway-v2.ts:108-119` 가 그 객체의 `send` 를 교체한다). 그 객체는 `createGateway` 의 `onConnection` 콜백으로만 나온다 — `grep -n "onConnection" server/src/gateway.ts` → `85`(주석: «하네스가 서버 쪽 소켓을 관측하는 **유일한** 창구»)·`87`·`103`.
+.moai/specs/SPEC-E2E-001/spec.md:217:| 11 | `recordSocket` 은 서버 쪽 소켓 전용이다 | `grep -n "onConnection" server/src/gateway.ts` → `85`(«유일한 창구» 주석)·`87`·`103`; `sed -n '47p' server/src/index.ts` → `buildServer` 는 `onConnection` 을 넘기지 않는다. §3 D1 부분 반박의 근거 |
+.moai/specs/SPEC-PERMROUTE-001/spec.md:373:| 23 | `SPEC-GATEWAY-001` (문서 둘) | **앵커 둘** — `spec.md:234`(범위 밖 절 「전송 창구와 수신 창구**만**」) · `plan.md:41`(고정 이유 표 「반환값 불리언이 … **유일한 신호**」) | 게이트웨이가 여는 창구가 둘이고, `sendToBot` 의 반환값이 배달 여부의 유일한 신호다 | 창구가 셋이 되고(`sendToOrigin`), 판정 경로의 소비자가 사라져 그 반환값이 유일한 신호가 아니다 (REQ-PERMROUTE-004·006·011) | **두 자리의 처분이 다르다.** `spec.md:234` → **본문 최소 개정(리드 R-1 처분, 2026-09-04)** — 「**만**」이 문장의 뼈대라 주석 1줄로는 본문과 주석이 서로 반대말을 하는 상태로 남는다. 계약 개정 선례(1~8행) 형식으로 **원문 무삭제 + 인용 블록**에 「창구 셋을 제공한다」를 적었다. `plan.md:41` → **주석 1줄(본문 무개정) 그대로** — 개수 열거가 아니라 표의 한 칸이고 한 줄로 참이 회복된다. **[HARD] 본문 개정은 이 한 자리로 한정한다 — 나머지 형제 자리는 주석 1줄 상한 그대로다.** **1회차 sync 감사 F-02 (나) #7·#8.** 1~4행이 `spec.md` REQ-GW-020·021 을, 10행이 `acceptance.md` 네 자리를 덮었으나 이 둘은 그 밖의 산문·표다 |
+.moai/specs/SPEC-PERMROUTE-001/progress.md:866:**회부 셋 — 올리고 처분받았다.** 수리 도중 이 레인이 판단 권한 밖이라고 본 셋을 리드에 올렸고 전부 처분이 내려왔다. (**R-1**) `SPEC-GATEWAY-001/spec.md:234` 의 「전송 창구와 수신 창구**만** 제공한다」는 주석 1줄로는 못 고친다 — 본문과 주석이 반대말을 하게 되기 때문 → **이 한 자리만 본문 최소 개정**(인용 블록·원문 보존) 허가. (**R-2**) `server/test` 의 `sendToBot` 적중 아홉(유지 회귀 5 + 이 카드가 저작한 AC-009 회귀 4) → **§6.1 부류 4 한 줄로 기록**, 새 부류를 만들지 않는다. (**R-3**) `spec.md` §7 성공의 정의 2번은 F-04 의 연쇄로 함께 거짓이 되므로 manager-spec 의 범위 밖 편집이 필요하다 → **승인**.
+.moai/specs/SPEC-PERM-001/progress.md:418:- serial: 선택 — 코딩 중심 구현의 기본값; 카드 t3 다섯 SPEC의 마지막. 선행 GATEWAY(setPermissionHandler 창구)·MSG(메시지 라우트 가로채기 지점) 산출물을 계약으로 소비
+.moai/specs/SPEC-GATEWAY-001/spec.md:33:카드 `t3` 는 마일스톤 M3 이며, 서버가 **봇을 맞이하는 창구**를 만든다. 여기까지 오면 사람 쪽 절반(인증·방·봇 초대)은 카드 `t2` 가 끝냈고, 발급된 토큰을 들고 올 상대가 없는 상태다. 이 SPEC 이 그 상대를 받는다.
+.moai/specs/SPEC-GATEWAY-001/spec.md:169:### 4.7 방 종료와 권한 릴레이 창구
+.moai/specs/SPEC-GATEWAY-001/spec.md:180:이 SPEC 은 **창구만** 만든다. 승인 요청의 상태 관리와 `permission_verdict` 의 내용을 판단하는 일은 `permissions.ts` 의 몫이며 이 SPEC 범위 밖이다.
+.moai/specs/SPEC-GATEWAY-001/spec.md:234:- `permission_verdict` 의 **내용을 판단하는 일**. 이 SPEC 은 `sendToBot` 이라는 전송 창구와 `setPermissionHandler` 라는 수신 창구만 제공한다
+.moai/specs/SPEC-GATEWAY-001/spec.md:236:> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 조항의 「**만**」이 거짓이 됐다. 개정 후 읽는 법: **이 SPEC 은 창구 셋을 제공한다** — `sendToBot`(일치 접속 전원 발신, 유지) · `sendToOrigin(connId: string, payload: object): boolean`(판정을 요청한 접속 하나에게 되돌리는 전송 창구, REQ-PERMROUTE-004 가 더했다) · `setPermissionHandler`(수신 창구). 판정 경로는 `sendToOrigin` 을 쓰며 `sendToBot` 을 부르지 않는다(REQ-PERMROUTE-006). **원문은 지우지 않는다** — 결정의 역사가 읽혀야 한다. **이 자리만 본문 최소 개정이다**(리드 R-1 처분): 「만」이 문장의 뼈대라 한 줄 주석으로는 본문과 주석이 서로 반대말을 하는 상태로 남기 때문이며, 형제 개정의 주석 1줄 상한은 나머지 자리에 그대로 적용된다.
+.moai/specs/SPEC-GATEWAY-001/progress.md:92:| REQ-GW-020 | 권한 릴레이 창구 | AC-GW-017 |
+.moai/specs/SPEC-GATEWAY-001/acceptance.md:835:### AC-GW-017 — 권한 릴레이 창구
+.moai/specs/SPEC-GWAUTH-002/progress.md:359:- **recordSocket 구축 [J-02 표면]**: `createGateway` opts 에 `onConnection?` 콜백 신설(생산 경로 무동작) — M1 정의의 «어느 끝에서» 를 서버 끝으로 고정하는 유일한 창구. `recordSocket(ws)` 는 gateway-v2.ts 에 구현: sentFrames·receivedFrames(파싱, 전선 순서) + rawSent·rawReceived(원문). 실측 `m4-record-probe.out` 6/6 PASS — 부착·양방향·순서·원문 병행 전건.
+
+--- 적중 수 ---
+$ grep -rn "창구" .moai/specs | wc -l
+      13
+
+--- 판정 ---
+「창구가 둘이다」를 전제한 살아 있는 문장: 0건.
+
+GATEWAY-001/spec.md:180 「이 SPEC 은 창구만 만든다」는 개수가 아니라 범위 서술이다
+  — 판단 로직은 permissions.ts 몫이라는 뜻이며, 창구가 셋이 되어도 참이다.
+:33 · :169 · acceptance.md:835 · progress.md:92 는 제목·표 행이라 개수를 담지 않는다.
+:234 는 R-1 으로 개정됐고 :236 이 그 개정 블록이다.
+PERM-001/progress.md:418 은 이력 한 줄이다(§6.3 「그때의 기록」 부류).
+E2E-001/spec.md:105 · :217 과 GWAUTH-002/progress.md:359 의 「유일한 창구」는
+  onConnection 콜백을 가리키는 다른 주제이며 이 카드와 무관하다.
+PERMROUTE-001/spec.md:373 · progress.md:866 은 이 카드 자신의 처분 기록이다.
+
+한계: 이 훑기는 어간 「창구」 하나에 기댄다. 같은 전제를 다른 낱말로 적은 자리
+  (예: 「메서드 둘」·「진입점 둘」)는 잡히지 않는다 — 어간이 부류를 다 덮지 못하는
+  구조적 한계이며, 이 카드가 이미 세 번 겪은 자리다(§6.1 [HARD] 참조).

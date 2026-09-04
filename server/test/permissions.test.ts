@@ -167,7 +167,8 @@ describe('permission relay', () => {
     const { app, broker, cookie } = await build()
     const { roomId, botId } = seedRoomAndBot()
     broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
-    // sendToBot가 실제로 가는지는 게이트웨이 연결이 없으므로 false(전송 실패)지만 메시지 소비 자체를 검증
+    // SPEC-PERMROUTE-001 (sync F-02 #13) — 이 요청은 소켓을 거치지 않아 대기 항목에 connId 가 없다.
+    // 판정은 (ㄴ) 「신원이 기록되지 않음」 갈래로 떨어져 아무 접속에도 배달되지 않지만, 여기서 재는 것은 메시지 소비 자체다.
     const res = await post(app, roomId, cookie, 'yes abcde')
     expect(res.json().consumed_by).toBe('permission')
     const userMsgs = db.prepare("SELECT COUNT(*) c FROM messages WHERE author_type='user'").get() as { c: number }

@@ -233,6 +233,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string }
 - `server/src/permissions.ts` — 승인 요청 상태 관리, 대기·만료, 웹 UI 승인 화면과의 왕복
 - `permission_verdict` 의 **내용을 판단하는 일**. 이 SPEC 은 `sendToBot` 이라는 전송 창구와 `setPermissionHandler` 라는 수신 창구만 제공한다
 
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 조항의 「**만**」이 거짓이 됐다. 개정 후 읽는 법: **이 SPEC 은 창구 셋을 제공한다** — `sendToBot`(일치 접속 전원 발신, 유지) · `sendToOrigin(connId: string, payload: object): boolean`(판정을 요청한 접속 하나에게 되돌리는 전송 창구, REQ-PERMROUTE-004 가 더했다) · `setPermissionHandler`(수신 창구). 판정 경로는 `sendToOrigin` 을 쓰며 `sendToBot` 을 부르지 않는다(REQ-PERMROUTE-006). **원문은 지우지 않는다** — 결정의 역사가 읽혀야 한다. **이 자리만 본문 최소 개정이다**(리드 R-1 처분): 「만」이 문장의 뼈대라 한 줄 주석으로는 본문과 주석이 서로 반대말을 하는 상태로 남기 때문이며, 형제 개정의 주석 1줄 상한은 나머지 자리에 그대로 적용된다.
+
 ### Out of Scope — 채널 플러그인 (카드 `t4`)
 
 - `channel/` 아래 어떤 파일도 만들지 않는다. MCP 채널 계약, 재접속 지수 백오프, `fetch_history` 도구 스키마

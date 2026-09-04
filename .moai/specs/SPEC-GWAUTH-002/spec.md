@@ -202,6 +202,8 @@ auth 전사      = `auth|${client_nonce}|${server_nonce}|${room_id}|${bot_id}|${
 
 **대가를 적는다.** ① 프레임 크기가 늘고 JSON 이 한 겹 중첩된다. ② 서버가 보내는 모든 경로(`welcome`·재전송(`sendStoredMessage`)·`sendToConn`(→`history_response`)·`deliver`·`sendToBot` — **넷이 아니라 다섯이다**, §8)가 봉투를 거쳐야 하며, 한 자리라도 빠뜨리면 그 프레임은 채널에서 조용히 버려진다 — `plan.md` §D 가 발신 지점을 한 함수로 모으도록 처방한다. ③ 서버 쪽 테스트 하네스가 전부 봉투를 풀어야 한다.
 
+> 2026-09-04 개정 — 위 «넷이 아니라 다섯이다» 의 다섯은 여섯이다 — `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이다.
+
 ### 2.7 순번(seq)이 없으면 무엇이 열리는가
 
 MAC 만으로는 **재생**이 열린다. 같은 소켓에서 유효한 봉투 하나를 포착한 상대는 그것을 그대로 다시 보낼 수 있고, MAC 은 여전히 맞는다. 판정 축에서 이것은 실질 위험이다 — 같은 `permission_verdict` 를 두 번 흘려보내는 것이 그 자체로 상태를 바꾼다(`channel/src/channel-server.ts` 의 발신 집합 소진 동작).
@@ -622,6 +624,7 @@ Tier M 상한(16/16)을 **넘는다.** 네 요소를 함께 다루라는 [HARD] 
 - `server/src/index.ts:34` — `Fastify({ logger: false })`. **서버가 TLS 를 종단하지 않는 자리**(§2.8.4)
 - `server/src/gateway.ts:88-108` — `handleHello`. 조회·**등록**·`welcome`·재전송 순서. 등록이 인증보다 앞서는 자리는 **`:101`**(앵커 `conns.set`)이다 — `:97` 은 타입 표기의 일부이며 1회차 감사 F-11 이 잡은 오인용이다
 - `server/src/gateway.ts` 의 **발신 지점 다섯** — `:109`(`welcome`) · `:123`(`sendStoredMessage`) · `:202`(`sendToConn` → `history_response`) · `:213`(`deliver`) · `:231`(`sendToBot`). 앵커: `grep -n 'send(ws\|sendToConn' server/src/gateway.ts`. **넷이 아니라 다섯이다**(1회차 감사 F-03)
+  > 2026-09-04 개정 — 위 «발신 지점 다섯» 은 여섯이다 — `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이다.
 - `server/src/routes-bots.ts:11-13`(`sha256Hex` 와 그 `@MX:ANCHOR`) · `:62-65`(초대 발급 — 기존 토큰 철회·평문 토큰 생성·해시 저장·응답에 평문 한 번. `:66` 이후는 초대 **목록** 라우트로 무관하다 — 1회차 감사 F-12)
 - `server/src/db.ts:31-40` — `bot_tokens` 스키마. `token_hash TEXT UNIQUE NOT NULL` 이 교체 대상이다
 - `channel/src/channel-server.ts:65`·`:158` — 발신 집합의 128 축출 (F-A8 의 기제)

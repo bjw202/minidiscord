@@ -713,6 +713,8 @@ it('never lets a non-member approve, and leaves the request for a member to answ
 })
 ```
 
+> 2026-09-04 개정 — 위 시험 «never lets a non-member approve, and leaves the request for a member to answer»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
+
 **Then** 테스트가 통과한다.
 
 **브로커 자신도 막는지 따로 잰다** — 라우트 게이트가 있으면 위 시나리오만으로는 브로커의 검사가 있는지 없는지 구별되지 않는다. 그래서 브로커를 직접 부르는 단언을 같은 파일에 둔다.
@@ -730,6 +732,8 @@ it('the broker itself refuses a non-member verdict, independent of the route gat
   expect(await nextMessage(ws)).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
 })
 ```
+
+> 2026-09-04 개정 — 위 시험 «the broker itself refuses a non-member verdict, independent of the route gate»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
 
 두 번째 단언이 대조군이며 동시에 **비멤버 시도가 대기 항목을 소모하지 않았다**는 증거다. 소모하는 구현에서는 `true` 가 나오지 않는다.
 

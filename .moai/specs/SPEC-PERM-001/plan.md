@@ -29,6 +29,8 @@ SPEC-CORE-001 → SPEC-AUTH-001 → SPEC-SSE-001 → SPEC-GATEWAY-001 → (메�
 | 카드 `t3` 메시지 SPEC | `POST /api/rooms/:id/messages` 핸들러 | 가로채기 한 갈래를 그 **안에** 넣는다 |
 | 카드 `t3` 메시지 SPEC | `registerMessageRoutes(app)` | 시그니처를 바꾸지 않는다 — 브로커는 `app` 데코레이터로 닿는다 |
 
+> 2026-09-04 개정 — 위 표의 «`sendToBot(roomId, botId, payload): boolean` \| 판정 전송. **반환값을 읽는다**» 행: 판정 전송은 `sendToOrigin(connId, payload)` 이고 반환값을 읽는 대상도 그쪽이다 — 판정 경로는 `sendToBot` 을 부르지 않는다 (`SPEC-PERMROUTE-001` REQ-PERMROUTE-004·006).
+
 선행 산출물이 아직 없으면 이 SPEC 의 어떤 테스트도 실행할 수 없다. run 단계 진입 전 확인 대상이다.
 
 ## §B 되돌리기 어려운 결정 — 대기 레지스트리의 수명
@@ -199,6 +201,8 @@ cookie: login.headers['set-cookie']![0].split(';')[0]
 1. 같은 테스트 파일에 판정 테스트를 추가한다 — 원본의 `user yes reply sends verdict to the bot and is not stored as user message`, `non-matching text is not consumed`, `yes with unknown id is not consumed (falls through as chat)`, 그리고 AC-PERM-004 / 005 / 007 / 008 / 009 / 010 / 011 / 012 의 추가 테스트. 원본의 뒤 두 테스트는 회귀 방지선으로 파일에 남지만, REQ-PERM-010 의 판정은 AC-PERM-010 의 새 테스트가 진다 — 원본 두 개는 `ok: true` 하나만 단언해 가로채기 없는 구현도 통과시킨다.
 2. **RED 확인**: `npm test -w server` → 새 단언 실패. **모듈 부재가 아니라 단언 실패임을 출력에서 확인하고 기록한다** (AC-PERM-014 전이 3).
 3. `permissions.ts` 의 `tryHandleUserReply` 를 구현한다 — 정규식 판정 → 대기 조회 → **방 대조** → 항목 제거 → `behavior` 산출 → `sendToBot` 호출과 **반환값 수신** → 결과 system 메시지 저장·발행 → `true` 반환. 정규식에 안 맞거나 항목이 없거나 방이 다르면 `false`.
+
+> 2026-09-04 개정 — 위 3번의 «`sendToBot` 호출과 **반환값 수신**» 은 «`sendToOrigin(info.connId, …)` 호출과 반환값 수신» 이다 (`SPEC-PERMROUTE-001` REQ-PERMROUTE-004·006·007).
 4. `server/src/routes-messages.ts` 의 POST 핸들러에 가로채기 한 갈래를 넣는다 — §D 2번의 자리(활성 방 확인 뒤, multipart 파싱 직후, 멘션 파싱 앞). 소비되면 `{ ok: true, consumed_by: 'permission' }` 반환. `registerMessageRoutes` 의 시그니처는 바꾸지 않는다.
 5. **GREEN 확인**: `npm test -w server` → 전체 통과. typecheck 종료 코드 `0`.
 6. **범위 경계 확인** (AC-PERM-013): `git rev-parse --verify "$(cat .moai/specs/SPEC-PERM-001/.spec-base-sha)^{commit}"` 가 종료 코드 `0` 으로 SHA 를 내는지 먼저 확인하고, 그 뒤에만 두 `git diff` 로 넘어간다. **기준 커밋 없이 `git diff` 를 쓰지 않는다** — M1 커밋 이후라 `HEAD` 기준으로는 아무것도 잡히지 않는다. **빈 출력 하나만 보고 통과로 적지도 않는다** — 기준 SHA 가 없어도 표준 출력은 비어 있다.

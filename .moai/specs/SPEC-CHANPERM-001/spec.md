@@ -210,6 +210,8 @@ Claude Code 에서 `notifications/claude/channel/permission_request` 알림이 �
 - 대기 레지스트리, system 메시지 저장·발행, `PERMISSION_REPLY_RE` 판정 파싱, `sendToBot` 호출과 전달 실패 문구
 - 게이트웨이의 `permission_request` 분기와 `setPermissionHandler` 등록
 
+> 2026-09-04 개정 — 위 목록의 «`sendToBot` 호출과 전달 실패 문구»: `SPEC-PERMROUTE-001` 이후 판정 경로는 `sendToBot` 을 부르지 않고 `sendToOrigin(connId, …)` 을 부르며(REQ-PERMROUTE-006), 전달 실패 문구는 둘로 갈렸다(REQ-PERMROUTE-007).
+
 ### Out of Scope — 서버 쪽 방 인가 (감사 F-14, 미해소)
 
 > **개정 (2026-08-29, `SPEC-ROOMAUTHZ-001` / 카드 `t11`).** 이 절의 제목과 본문 두 곳이 뒤집힌다.
