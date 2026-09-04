@@ -1,0 +1,32 @@
+modified files:
+.moai/specs/SPEC-CHANPERM-001/spec.md
+.moai/specs/SPEC-GATEWAY-001/plan.md
+.moai/specs/SPEC-GATEWAY-001/spec.md
+.moai/specs/SPEC-GWAUTH-002/acceptance.md
+.moai/specs/SPEC-GWAUTH-002/spec.md
+.moai/specs/SPEC-PERM-001/acceptance.md
+.moai/specs/SPEC-PERM-001/plan.md
+.moai/specs/SPEC-PERM-001/spec.md
+.moai/specs/SPEC-PERMROUTE-001/acceptance.md
+.moai/specs/SPEC-PERMROUTE-001/plan.md
+.moai/specs/SPEC-PERMROUTE-001/progress.md
+.moai/specs/SPEC-PERMROUTE-001/spec.md
+.moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md
+server/test/permissions.test.ts
+
+row | file | anchor | HEAD==CUR ?
+----------------------------------------------------
+11   .moai/specs/SPEC-PERM-001/plan.md          :70    **SHIFTED**
+11   .moai/specs/SPEC-PERM-001/acceptance.md    :461   **SHIFTED**
+21   .moai/specs/SPEC-PERM-001/acceptance.md    :251   same
+21   .moai/specs/SPEC-PERM-001/acceptance.md    :270   **SHIFTED**
+21   .moai/specs/SPEC-PERM-001/acceptance.md    :313   **SHIFTED**
+21   .moai/specs/SPEC-PERM-001/acceptance.md    :339   **SHIFTED**
+21   .moai/specs/SPEC-PERM-001/acceptance.md    :367   **SHIFTED**
+21   .moai/specs/SPEC-PERM-001/acceptance.md    :397   **SHIFTED**
+21   .moai/specs/SPEC-PERM-001/acceptance.md    :436   **SHIFTED**
+21   .moai/specs/SPEC-PERM-001/acceptance.md    :473   **SHIFTED**
+21   .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md :700   same
+21   .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md :726   **SHIFTED**
+----------------------------------------------------
+anchors in repair-modified files: same=2  SHIFTED=10

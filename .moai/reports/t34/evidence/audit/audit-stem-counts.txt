@@ -1,0 +1,13 @@
+=== HEAD dbee7b0 / scope 116 (ex-self) — bash ===
+ConnInfo                       31
+sendToBot                      67
+sendToConn                     27
+onGatewayRequest               47
+setPermissionHandler           35
+sendEstablished                15
+발신 지점                  19
+다섯(좁힘)                 58
+@MX:WARN                        5
+실패문구                   27
+세 템플릿                   3
+[0-9]개 메서드              2

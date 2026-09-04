@@ -1,0 +1,10 @@
+title | in acceptance.md? | doc has ws.send(permission_request)?
+delivers an allow verdict to the connected bot                 | :251   | NO
+delivers a deny verdict as deny, not as allow                  | :270   | NO
+accepts a verdict once and lets a repeat fall through as chat  | :313   | NO
+never resolves a request from a different room                 | :339   | NO
+refuses an unauthenticated verdict and leaves the request pending | :367   | NO
+falls through non-matching text and unknown ids without touching the pending request | :397   | NO
+marks an undelivered verdict differently from a delivered one  | :436   | NO
+accepts all four verdict words, normalizes case, and rejects ids containing l | :473   | NO
+same request_id in two rooms keeps both requests resolvable    | ABSENT | -

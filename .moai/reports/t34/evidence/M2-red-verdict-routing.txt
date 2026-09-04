@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34
+
+ ❯ server/test/gateway.test.ts (35 tests | 1 failed | 34 skipped) 2080ms
+     × routes the verdict to the requesting connection only (AC-PERMROUTE-003a + 003b) 2079ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  server/test/gateway.test.ts > gateway > routes the verdict to the requesting connection only (AC-PERMROUTE-003a + 003b)
+Error: timeout waiting ws message
+ ❯ Timeout._onTimeout server/test/gateway.test.ts:154:14
+    152|       const i = inbox.waiters.findIndex(w => w.timer === timer)
+    153|       if (i >= 0) inbox.waiters.splice(i, 1)
+    154|       reject(new Error('timeout waiting ws message'))
+       |              ^
+    155|     }, timeoutMs)
+    156|     inbox.waiters.push({ resolve, timer })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 34 skipped (35)
+   Start at  01:05:07
+   Duration  2.32s (transform 73ms, setup 0ms, import 164ms, tests 2.08s, environment 0ms)
+

@@ -167,7 +167,8 @@ describe('permission relay', () => {
     const { app, broker, cookie } = await build()
     const { roomId, botId } = seedRoomAndBot()
     broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
-    // sendToBot가 실제로 가는지는 게이트웨이 연결이 없으므로 false(전송 실패)지만 메시지 소비 자체를 검증
+    // SPEC-PERMROUTE-001 (sync F-02 #13) — 이 요청은 소켓을 거치지 않아 대기 항목에 connId 가 없다.
+    // 판정은 (ㄴ) 「신원이 기록되지 않음」 갈래로 떨어져 아무 접속에도 배달되지 않지만, 여기서 재는 것은 메시지 소비 자체다.
     const res = await post(app, roomId, cookie, 'yes abcde')
     expect(res.json().consumed_by).toBe('permission')
     const userMsgs = db.prepare("SELECT COUNT(*) c FROM messages WHERE author_type='user'").get() as { c: number }
@@ -189,20 +190,25 @@ describe('permission relay', () => {
   })
 
   it('delivers an allow verdict to the connected bot', async () => {
-    const { app, broker, port, cookie } = await build()
+    const { app, port, cookie } = await build()
     const { roomId, botId, token } = seedRoomAndBot()
     const ws = await wsConnect(port, token)
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // SPEC-PERMROUTE-001 (M4-7, 리드 처분) — 요청을 소켓으로 보내 대기 항목에 «살아 있는 connId» 가 실리게 한다.
+    // broker 직접 호출은 소켓을 거치지 않아 connId 가 없고, 판정이 (ㄴ) 실패 갈래로 빠져 배달 단언이 무너진다.
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))   // 등록 관측 — 대기 항목이 생긴 뒤에 답한다
     const seen = nextMessage(ws)
     await post(app, roomId, cookie, 'yes abcde')
     expect(await seen).toEqual({ type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
   })
 
   it('delivers a deny verdict as deny, not as allow', async () => {
-    const { app, broker, port, cookie } = await build()
+    const { app, port, cookie } = await build()
     const { roomId, botId, token } = seedRoomAndBot()
     const ws = await wsConnect(port, token)
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — 소켓으로 요청해 살아 있는 connId 를 싣는다 (위 시험의 주석과 같은 사유).
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
     const seen = nextMessage(ws)
     await post(app, roomId, cookie, 'no abcde')
     const v = await seen
@@ -222,10 +228,12 @@ describe('permission relay', () => {
   })
 
   it('accepts a verdict once and lets a repeat fall through as chat', async () => {
-    const { app, broker, port, cookie } = await build()
+    const { app, port, cookie } = await build()
     const { roomId, botId, token } = seedRoomAndBot()
     const ws = await wsConnect(port, token)
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — 소켓으로 요청해 살아 있는 connId 를 싣는다 (위 시험의 주석과 같은 사유).
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
     const first = nextMessage(ws)
     await post(app, roomId, cookie, 'yes abcde')
     expect((await first).behavior).toBe('allow')
@@ -239,11 +247,13 @@ describe('permission relay', () => {
   })
 
   it('never resolves a request from a different room', async () => {
-    const { app, broker, port, cookie } = await build()
+    const { app, port, cookie } = await build()
     const a = seedRoomAndBot('A', 'pm')
     const b = seedRoomAndBot('B', 'qa')
     const ws = await wsConnect(port, a.token)
-    broker.onGatewayRequest({ roomId: a.roomId, botId: a.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — 소켓으로 요청해 살아 있는 connId 를 싣는다 (위 시험의 주석과 같은 사유).
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
 
     const leaked = nextMessage(ws)
     const cross = await post(app, b.roomId, cookie, 'yes abcde')   // 방 B 에서 답한다
@@ -256,10 +266,12 @@ describe('permission relay', () => {
   })
 
   it('refuses an unauthenticated verdict and leaves the request pending', async () => {
-    const { app, broker, port, cookie } = await build()
+    const { app, port, cookie } = await build()
     const { roomId, botId, token } = seedRoomAndBot()
     const ws = await wsConnect(port, token)
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — 소켓으로 요청해 살아 있는 connId 를 싣는다 (위 시험의 주석과 같은 사유).
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
 
     const leaked = nextMessage(ws)
     const form = new FormData(); form.append('body', 'yes abcde')
@@ -273,10 +285,12 @@ describe('permission relay', () => {
   })
 
   it('falls through non-matching text and unknown ids without touching the pending request', async () => {
-    const { app, broker, port, cookie } = await build()
+    const { app, port, cookie } = await build()
     const { roomId, botId, token } = seedRoomAndBot()
     const ws = await wsConnect(port, token)
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — 소켓으로 요청해 살아 있는 connId 를 싣는다 (위 시험의 주석과 같은 사유).
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
 
     const leaked = nextMessage(ws)
     const plain = await post(app, roomId, cookie, '그냥 대화')
@@ -300,7 +314,11 @@ describe('permission relay', () => {
     const off = seedRoomAndBot('B', 'qa')
     const ws = await wsConnect(port, on.token)                       // A 의 봇만 접속
 
-    broker.onGatewayRequest({ roomId: on.roomId, botId: on.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — on 방 요청은 소켓으로 보내 살아 있는 connId 를 싣는다(성공 갈래).
+    // off 방 요청은 broker 직접 호출을 «그대로» 둔다 — 소켓 없이 만든 대기 항목(connId 부재)의 실물이며,
+    // 이 시험이 재는 것은 «성공과 실패의 문구가 다르다» 이다 (AC-013 의 «어디에도 가지 않는다» 재활용 아님).
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
     broker.onGatewayRequest({ roomId: off.roomId, botId: off.botId }, { request_id: 'fghij', tool_name: 'Bash', description: 'd', input_preview: 'p' })
     await post(app, on.roomId, cookie, 'yes abcde')
     await post(app, off.roomId, cookie, 'yes fghij')
@@ -317,11 +335,13 @@ describe('permission relay', () => {
   })
 
   it('accepts all four verdict words, normalizes case, and rejects ids containing l', async () => {
-    const { app, broker, port, cookie } = await build()
+    const { app, port, cookie } = await build()
     const { roomId, botId, token } = seedRoomAndBot()
     const ws = await wsConnect(port, token)
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'fghij', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — 소켓으로 요청해 살아 있는 connId 를 싣는다 (위 시험의 주석과 같은 사유).
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'fghij', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
 
     const bad = await post(app, roomId, cookie, 'yes abcdl')        // l 은 식별자 문자가 아니다
     expect(bad.json().consumed_by).toBeUndefined()
@@ -339,13 +359,15 @@ describe('permission relay', () => {
 
   // 두 방이 같은 request_id 를 동시에 걸어도 서로를 덮어쓰지 않고 각자 풀려야 한다 (t7 결함1)
   it('same request_id in two rooms keeps both requests resolvable', async () => {
-    const { app, broker, port, cookie } = await build()
+    const { app, port, cookie } = await build()
     const a = seedRoomAndBot('A', 'pm')
     const b = seedRoomAndBot('B', 'qa')
     const wsA = await wsConnect(port, a.token)
     const wsB = await wsConnect(port, b.token)
-    broker.onGatewayRequest({ roomId: a.roomId, botId: a.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
-    broker.onGatewayRequest({ roomId: b.roomId, botId: b.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — 소켓으로 요청해 살아 있는 connId 를 싣는다 (위 시험의 주석과 같은 사유).
+    wsA.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    wsB.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
 
     const verdictA = nextMessage(wsA)
     const resA = await post(app, a.roomId, cookie, 'yes abcde')
@@ -494,5 +516,78 @@ describe('permission relay', () => {
     expect(rows[1].body).toContain('형식에 맞지 않아 등록하지 않았습니다')   // 두 번째 등록은 거절 — 덮어쓰기가 아니다
     const res = await post(app, a.roomId, cookie, 'yes abcde')
     expect(res.json().consumed_by).toBe('permission')             // 먼저 등록한 요청이 살아 있다
+  })
+
+  // AC-PERMROUTE-006 (SPEC-PERMROUTE-001) — 세 갈래의 저장 본문이 서로 모두 달라야 하고, 실패 갈래의
+  // 원인은 «세션·접속» 쪽이어야 한다. «봇이 접속해 있지 않» 은 이제 틀린 진단이다 — 이 갈래의 가장 흔한
+  // 모양은 봇 오프라인이 아니라 요청 세션의 재접속이다 (REQ-PERMROUTE-007).
+  // 성공 두 갈래는 실제 소켓을 거쳐야 대기 항목에 connId 가 실린다 — 소켓으로 요청을 보내 등록한다.
+  it('stores three different bodies for allow, deny and broken-session verdicts', async () => {
+    const { app, port, cookie } = await build()
+    const room = seedRoomAndBot('A', 'pm')
+    // 같은 토큰의 세 소켓 — 소켓마다 connId 가 다르고 각기 하나의 요청을 낸다.
+    const allowWs = await wsConnect(port, room.token)
+    const denyWs = await wsConnect(port, room.token)
+    const brokenWs = await wsConnect(port, room.token)
+    allowWs.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    denyWs.send(JSON.stringify({ type: 'permission_request', request_id: 'fghij', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    brokenWs.send(JSON.stringify({ type: 'permission_request', request_id: 'kmnop', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 300))   // 세 대기 항목 등록 관측
+    brokenWs.close()                              // (ㄷ) — 요청 소켓이 판정 전에 끊긴다. 대기 항목은 남는다 (REQ-PERM-003)
+    await new Promise(r => setTimeout(r, 300))   // close 정리 관측 — conns 에서 지워진 뒤에 답한다
+    await post(app, room.roomId, cookie, 'yes abcde')   // 승인 성공
+    await post(app, room.roomId, cookie, 'no fghij')    // 거절 성공
+    await post(app, room.roomId, cookie, 'yes kmnop')   // 요청 세션이 끊긴 뒤의 답 — (ㄱ) 갈래
+    const bodies = (db.prepare("SELECT body FROM messages WHERE room_id=? AND author_type='system' AND body NOT LIKE '🔒%' ORDER BY id")
+      .all(room.roomId) as { body: string }[]).map(r => r.body)
+    expect(bodies).toHaveLength(3)
+    expect(bodies[0]).toContain('✅ 승인 전송됨 (abcde)')
+    expect(bodies[1]).toContain('⛔ 거절 전송됨 (fghij)')
+    expect(bodies[2]).toContain('요청한 세션이 끊겨')
+    expect(bodies[2]).not.toContain('봇이 접속해 있지 않')   // 틀린 진단 금지 (REQ-PERMROUTE-007)
+    expect(new Set(bodies).size).toBe(3)                     // 셋이 서로 모두 다르다
+  })
+
+  // AC-PERMROUTE-013 (SPEC-PERMROUTE-001) — 소켓 없이 만든 ConnInfo(connId 부재)의 갈래. 어떤 소켓에도
+  // 대신 보내지 않고(REQ-PERMROUTE-008), 방에는 «신원이 기록되지 않았다» 문구가 남는다 (REQ-PERMROUTE-007 ㄴ).
+  // 이 갈래를 재는 시험은 이것 하나다 — 배달을 단언하던 기존 시험들을 이 용도로 재활용하지 않는다 (plan M4-7).
+  it('a pending entry without connId delivers nowhere and stores the identity-missing notice', async () => {
+    const { app, broker, port, cookie } = await build()
+    const room = seedRoomAndBot('A', 'pm')
+    // 같은 (방, 봇) 에 소켓 둘 — «대신 보내기» 가 있었다면 여기서 잡힌다.
+    const a = await wsConnect(port, room.token)
+    const b = await wsConnect(port, room.token)
+    // 소켓을 거치지 않은 경로 — 선택 필드(리드 처분 §D-1)에서 실제로 가능한 모양이다.
+    broker.onGatewayRequest({ roomId: room.roomId, botId: room.botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    await post(app, room.roomId, cookie, 'yes abcde')
+    expect(await nextMessage(a)).toBeNull()   // A 에게 아무것도 오지 않는다
+    expect(await nextMessage(b)).toBeNull()   // B 도 — 어느 접속으로도 되돌리지 않는다
+    const row = db.prepare("SELECT body FROM messages WHERE room_id=? AND author_type='system' AND body NOT LIKE '🔒%'")
+      .get(room.roomId) as { body: string }
+    expect(row.body).toContain('요청한 세션의 신원이 기록되지 않아')
+    expect(row.body).not.toContain('끊겨')                       // (ㄴ) 에 (ㄱ) 의 문구를 쓰지 않는다 (감사 N-06)
+    expect(row.body).not.toContain('봇이 접속해 있지 않')
+    expect(row.body).toMatch(/전달하지 못했습니다 \(abcde\)$/)     // 꼬리 유지 — RESOLUTION_RE 결합 ([HARD])
+  })
+
+  // AC-PERMROUTE-005 (SPEC-PERMROUTE-001) — 브로드캐스트 대체가 없다. M6-0 신설(리드 처분 (가)):
+  // 004 가 게이트웨이 메서드를 직접 재는 것과 달리, 사람의 답에서 시작하는 «전 경로» 를 잰다 —
+  // 요청 소켓을 끊고 답하면 남은 소켓 0건 + 실패 안내 1행. 브로커가 실패를 sendToBot 으로 되돌아가는
+  // 구현은 이 시험에서 죽는다.
+  it('delivers nowhere and stores the broken-session notice when the requesting socket is gone (AC-PERMROUTE-005)', async () => {
+    const { app, port, cookie } = await build()
+    const room = seedRoomAndBot('A', 'pm')
+    const requester = await wsConnect(port, room.token)
+    const other = await wsConnect(port, room.token)   // 같은 (방, 봇) 의 «남은» 소켓 — 대체 발신이 있으면 여기가 받는다
+    requester.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))         // 대기 항목 등록 관측 — connId 가 실린 채로
+    requester.close()                                   // 요청 소켓만 끊는다 — 대기 항목은 남는다 (REQ-PERM-003)
+    await new Promise(r => setTimeout(r, 300))         // close 정리 관측
+    await post(app, room.roomId, cookie, 'yes abcde')
+    expect(await nextMessage(other)).toBeNull()         // 남은 소켓 0건
+    const row = db.prepare("SELECT body FROM messages WHERE room_id=? AND author_type='system' AND body NOT LIKE '🔒%'")
+      .get(room.roomId) as { body: string }
+    expect(row.body).toContain('요청한 세션이 끊겨')      // (ㄱ) 실패 안내 1행
+    expect(row.body).toMatch(/전달하지 못했습니다 \(abcde\)$/)
   })
 })

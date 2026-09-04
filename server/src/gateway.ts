@@ -17,7 +17,8 @@ export interface MessageRow {
   attachments?: { id: number; filename: string }[]
 }
 
-export interface ConnInfo { roomId: number; botId: number }
+// connId 는 선택 필드다 — 소켓 확립에서 발급되지만 소켓 없이 만들어진 ConnInfo(시험·브로커 직접 호출)는 없을 수 있다 (REQ-PERMROUTE-003, 리드 처분: 선택)
+export interface ConnInfo { roomId: number; botId: number; connId?: string }
 
 // @MX:ANCHOR: [AUTO] 태스크 간 계약 — routes-messages(다음 SPEC)·permissions(다음 카드)·routes-bots(이 SPEC) 셋이 소비하는 공개 표면
 // @MX:REASON: REQ-GW-021 이 시그니처를 글자 그대로 고정한다. 메서드 하나라도 바꾸면 소비자 세 곳이 동시에 깨진다
@@ -26,12 +27,15 @@ export interface Gateway {
   closeRoom(roomId: number): void
   isOnline(roomId: number, botId: number): boolean
   sendToBot(roomId: number, botId: number, payload: object): boolean
+  // 판정을 «요청한 접속 하나» 에게만 되돌리는 통로 — sendToConn(비공개 전원 발신)과 정반대 배달이라 이름을 빌리지 않았다 (REQ-PERMROUTE-004)
+  sendToOrigin(connId: string, payload: object): boolean
   setPermissionHandler(fn: ((info: ConnInfo, params: any) => void) | null): void
 }
 
 // 확립된 소켓의 상태 — 전부 소켓 지역이다 (plan.md §D-8). sessKey 는 이 소켓의 논스·pub·cb 에서만
 // 유도되고, seq 는 이 맵이 유일한 보관장소라 소켓 사이에서 이어지지 않는다 (REQ-GWAUTH2-010·013)
-type Established = ConnInfo & { tokenRowId: number; sessKey: Buffer; seq: number }
+// Established 는 connId 를 필수로 좁힌다 — 발급 누락이 타입에서 잡히는 비대칭 (plan.md §D-1)
+type Established = ConnInfo & { connId: string; tokenRowId: number; sessKey: Buffer; seq: number }
 // challenge 를 보낸 뒤 auth 를 기다리는 소켓의 상태 — 이 자리에는 등록 권한이 없다 (REQ-GWAUTH2-009)
 type PendingHandshake = {
   roomId: number; botId: number; tokenRowId: number
@@ -139,7 +143,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       case 'history_request': return handleHistory(info, msg)
       case 'permission_request': {
         // 등록된 핸들러가 없으면 조용히 무시한다 — 판정은 permissions.ts 의 몫 (REQ-GW-020)
-        permissionHandler?.({ roomId: info.roomId, botId: info.botId }, msg)
+        // 요청을 낸 접속의 신원을 싣는다 — 판정이 «그 접속 하나» 로 되돌아가는 근거 (REQ-PERMROUTE-002)
+        permissionHandler?.({ roomId: info.roomId, botId: info.botId, connId: info.connId }, msg)
         return
       }
     }
@@ -203,6 +208,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     if (!ok) { dropConn(ws); return }
     const conn: Established = {
       roomId: hs.roomId, botId: hs.botId, tokenRowId: hs.tokenRowId,
+      // 접속 식별자는 등록 자리 하나에서만 발급한다 (REQ-PERMROUTE-001) — 이 구성 자리가 그 하나다
+      connId: randomUUID(),
       // 세션 열쇠는 이 소켓의 논스·pub·cb 에서 유도한다 — k_srv 를 아는 상대도 논스와 cb 없이는 못 만든다 (design.md §C)
       sessKey: createHmac('sha256', hs.confirmKey)
         .update(handshakeTranscript('session', hs.clientNonce, hs.serverNonce, hs.roomId, hs.botId, hs.verifierPub, hs.cb))
@@ -258,7 +265,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
 
   // @MX:ANCHOR: [AUTO] v2 봉투 함수 — 확립 소켓이 내보내는 모든 프레임이 지나는 유일한 출구 (plan.md §D-6)
   // @MX:REASON: 한 자리라도 봉투를 빠뜨리면 그 프레임은 채널에서 조용히 버려진다 — 진단이 가장 어려운 실패 형태다.
-  // 발신 지점 다섯(welcome · sendStoredMessage 재전송 · sendToConn/history_response · deliver · sendToBot)이 전부
+  // 발신 지점 여섯(welcome · sendStoredMessage 재전송 · sendToConn/history_response · deliver · sendToBot · sendToOrigin)이 전부
   // 이 함수를 지나는가가 M2 의 덮개 대조표다. seq 는 여기서만 증가하고 payload 는 문자열 그대로 MAC 된다 (REQ-GWAUTH2-012·013)
   function sendEstablished(c: Established, ws: WebSocket, inner: object): void {
     const payload = JSON.stringify(inner)   // 서버가 만든 문자열 그대로 MAC 한다 — 정규화 규칙이 존재하지 않는다 (plan.md §D-6)
@@ -351,17 +358,16 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     },
     // 접속이 없으면 아무것도 보내지 않고 false — "오프라인이라 못 보냈다"의 유일한 신호 (REQ-GW-020)
     // 일치하는 접속 «전원» 에게 보낸다 — deliver 와 같은 갈래다 (카드 t32 §D 결함 D-5).
-    // 첫 일치에서 return 하면 같은 봇 토큰으로 여러 세션이 붙어 있을 때 판정이 요청하지 않은
-    // 소켓으로 가고, 그 채널의 emitted 집합 가드(REQ-CHANPERM-008)가 조용히 버려 승인 프롬프트가
-    // 영원히 열린 채 남는다 — 실측: 같은 (방, 봇) 에 소켓 셋(run·lead·bot)이 붙은 상태에서 재현.
-    // 전원 발신이 안전한 근거가 그 가드다: 채널은 «자기가 낸» request_id 의 판정만 세션으로 되쏘고
-    // 나머지는 버리므로, 요청하지 않은 세션에 도착한 프레임은 아무 일도 하지 않는다.
-    // @MX:WARN: [AUTO] 이 발신의 정확성이 채널 쪽 emitted 가드에 의존한다 — 가드를 지우면 판정이 남의 세션에서 실행된다
-    // @MX:SPEC: SPEC-LIVEVERIFY-001
     sendToBot(roomId, botId, payload) {
       let sent = false
       for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); sent = true }
       return sent
+    },
+    // REQ-PERMROUTE-004 — «그 connId 를 가진 살아 있는 접속 하나» 에게만 보낸다. sendEstablished 를
+    // 지나므로 봉투 규칙이 승계되고(REQ-GWAUTH2-012), 다른 어떤 접속에도 보내지 않는다(REQ-PERMROUTE-005)
+    sendToOrigin(connId, payload) {
+      for (const [ws, c] of conns) if (c.connId === connId) { sendEstablished(c, ws, payload); return true }
+      return false
     },
     setPermissionHandler(fn) { permissionHandler = fn },
   }

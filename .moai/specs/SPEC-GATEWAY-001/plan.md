@@ -41,6 +41,8 @@ SPEC-MENTION-001 → SPEC-SSE-001 → SPEC-GATEWAY-001 (이 SPEC)
 | `sendToBot(roomId, botId, payload)` | 다음 카드의 `permissions.ts` | 반환값 불리언이 "봇이 오프라인이라 못 보냈다"를 알리는 유일한 신호다 |
 | `setPermissionHandler(fn \| null)` | 다음 카드의 `permissions.ts` | `null` 로 해제 가능해야 테스트가 서로 오염되지 않는다 |
 
+> 2026-09-04 개정 — 위 표의 `sendToBot(roomId, botId, payload)` 행: `SPEC-PERMROUTE-001` 이후 다음 카드의 `permissions.ts` 는 이 메서드를 부르지 않으며(REQ-PERMROUTE-006), 배달 여부의 신호는 `sendToOrigin` 의 반환값이다 — 즉 «유일한 신호» 가 아니다. `sendToBot` 자신의 전원 발신 동작은 유지된다(REQ-PERMROUTE-011).
+
 `spec.md` REQ-GW-021 이 시그니처 전문을 담고 있다. **바꾸지 않는다.** 바꿔야 할 이유가 보이면 진행을 멈추고 보고한다.
 
 ## §C 되돌리기 어려운 결정 2 — 커서 하나로 두 가지를 한다

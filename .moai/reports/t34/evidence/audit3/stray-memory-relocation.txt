@@ -1,0 +1,14 @@
+# 잘못된 위치의 에이전트 기억 2파일 이동 — 내용 동일 확인
+
+1회차 감사관이 cwd 가 SPEC 디렉터리인 상태에서 상대 경로로 기억을 써서
+.moai/specs/SPEC-PERMROUTE-001/.claude/agent-memory/sync-auditor/ 에 생긴 자리다.
+두 레슨은 그 자리에만 있었으므로(정상 위치에 없음) 버리지 않고 옮겼다.
+
+리드 처분 (가) — 2026-09-04. 이동 전후 git hash-object 대조:
+
+파일                                                   이동전                                        이동후
+mutation-across-a-package-boundary-cannot-fail.md    1f51f8afd117417026195b436b3086ae4b94d034   1f51f8afd117417026195b436b3086ae4b94d034
+reverse-sweep-answers-a-different-question.md        4642d29226ec01d3a272f2c3e4c6fd760cc17f1b   4642d29226ec01d3a272f2c3e4c6fd760cc17f1b
+
+색인 두 줄은 .claude/agent-memory/sync-auditor/MEMORY.md 에 병합했고,
+부분 색인이던 SPEC 안 MEMORY.md 와 빈 디렉터리는 삭제했다.

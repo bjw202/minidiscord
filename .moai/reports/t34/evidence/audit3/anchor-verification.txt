@@ -1,0 +1,497 @@
+# §6.2 grep 앵커 검증 — 3회차 수리 (t34 / SPEC-PERMROUTE-001)
+
+귀속: 워크트리 .claude/worktrees/t34 · 브랜치 WT-perm-verdict-socket · HEAD dbee7b0 + 커밋되지 않은 sync 편집.
+생성 시각(UTC): 2026-09-04T02:48:46Z
+판정 규칙: 각 앵커는 현재 트리에서 정확히 1건에 적중해야 한다. 0건이거나 2건 이상이면 앵커가 아니다.
+
+명령 형식: 워크트리 루트에서 grep -nF <패턴> <파일>.
+  -F(고정 문자열)를 쓴 이유: 패턴에 ( ) | * 가 들어가고 이 환경의 grep 은 ugrep 이라 -E 에서 그 문자들이
+  정규식으로 해석돼 «mismatched (» 오류를 냈다. -F 는 BSD·GNU·ugrep 어디서나 같은 뜻이다.
+  따옴표: 패턴에 ' 가 들어가면 셸에서 큰따옴표로 감싼다.
+
+==========================================================================
+A. 전환한 앵커 전건 — 행 / 파일 / 새 grep 앵커 / 적중 수 / 적중 줄
+==========================================================================
+
+[행 3] .moai/specs/SPEC-GATEWAY-001/spec.md
+  $ grep -cF 'export interface ConnInfo' .moai/specs/SPEC-GATEWAY-001/spec.md
+  1
+  적중 줄: 193 
+  판정: PASS (정확히 1건)
+
+[행 4] .moai/specs/SPEC-GATEWAY-001/spec.md
+  $ grep -cF 'export interface Gateway' .moai/specs/SPEC-GATEWAY-001/spec.md
+  1
+  적중 줄: 194 
+  판정: PASS (정확히 1건)
+
+[행 5] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF '축약 없이 그대로 옮긴다' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 78 
+  판정: PASS (정확히 1건)
+
+[행 5] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF 'export interface ConnInfo' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 81 
+  판정: PASS (정확히 1건)
+
+[행 5] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF 'sendToBot(roomId: number' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 84 
+  판정: PASS (정확히 1건)
+
+[행 5] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF 'setPermissionHandler(fn:' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 85 
+  판정: PASS (정확히 1건)
+
+[행 6] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF 'onGatewayRequest(info: ConnInfo' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 112 
+  판정: PASS (정확히 1건)
+
+[행 7] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF '**REQ-PERM-006**' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 140 
+  판정: PASS (정확히 1건)
+
+[행 7] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF '**REQ-PERM-007**' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 143 
+  판정: PASS (정확히 1건)
+
+[행 8] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF '**REQ-PERM-009**' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 151 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/design.md
+  $ grep -cF '호출 지점 — **다섯**' .moai/specs/SPEC-GWAUTH-002/design.md
+  1
+  적중 줄: 24 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/plan.md
+  $ grep -cF '열거 자리는 전부' .moai/specs/SPEC-GWAUTH-002/plan.md
+  1
+  적중 줄: 105 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/plan.md
+  $ grep -cF '서버의 발신 지점은 넷이 아니라 다섯이다' .moai/specs/SPEC-GWAUTH-002/plan.md
+  1
+  적중 줄: 324 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/plan.md
+  $ grep -cF '등록 시점을' .moai/specs/SPEC-GWAUTH-002/plan.md
+  1
+  적중 줄: 463 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/acceptance.md
+  $ grep -cF '이 기준이 1회차 감사 F-03 을 닫는다' .moai/specs/SPEC-GWAUTH-002/acceptance.md
+  1
+  적중 줄: 776 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/acceptance.md
+  $ grep -cF '총계 7 — 형제 6' .moai/specs/SPEC-GWAUTH-002/acceptance.md
+  1
+  적중 줄: 875 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/acceptance.md
+  $ grep -cF '변이 J 는 굵은 변이' .moai/specs/SPEC-GWAUTH-002/acceptance.md
+  1
+  적중 줄: 884 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/acceptance.md
+  $ grep -cF '다섯 경로 각각에 양성 기준이 걸린다' .moai/specs/SPEC-GWAUTH-002/acceptance.md
+  1
+  적중 줄: 937 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/spec.md
+  $ grep -cF '넷이 아니라 다섯이다**, §8' .moai/specs/SPEC-GWAUTH-002/spec.md
+  1
+  적중 줄: 203 
+  판정: PASS (정확히 1건)
+
+[행 9] .moai/specs/SPEC-GWAUTH-002/spec.md
+  $ grep -cF '의 **발신 지점 다섯**' .moai/specs/SPEC-GWAUTH-002/spec.md
+  1
+  적중 줄: 626 
+  판정: PASS (정확히 1건)
+
+[행 10] .moai/specs/SPEC-GATEWAY-001/acceptance.md
+  $ grep -cF '로 호출됨' .moai/specs/SPEC-GATEWAY-001/acceptance.md
+  1
+  적중 줄: 187 
+  판정: PASS (정확히 1건)
+
+[행 10] .moai/specs/SPEC-GATEWAY-001/acceptance.md
+  $ grep -cF '다섯 관측(핸들러 1회 호출' .moai/specs/SPEC-GATEWAY-001/acceptance.md
+  1
+  적중 줄: 876 
+  판정: PASS (정확히 1건)
+
+[행 10] .moai/specs/SPEC-GATEWAY-001/acceptance.md
+  $ grep -cF 'Gateway 계약: 다섯 메서드가 전부 함수다' .moai/specs/SPEC-GATEWAY-001/acceptance.md
+  1
+  적중 줄: 893 
+  판정: PASS (정확히 1건)
+
+[행 10] .moai/specs/SPEC-GATEWAY-001/acceptance.md
+  $ grep -cF '의 다섯 메서드가 전부 함수다' .moai/specs/SPEC-GATEWAY-001/acceptance.md
+  1
+  적중 줄: 934 
+  판정: PASS (정확히 1건)
+
+[행 11] .moai/specs/SPEC-PERM-001/plan.md
+  $ grep -cF '봇 연결 없음 (승인·거절 공통)' .moai/specs/SPEC-PERM-001/plan.md
+  1
+  적중 줄: 72 
+  판정: PASS (정확히 1건)
+
+[행 11] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF '가 확정한 문구' .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 477 
+  판정: PASS (정확히 1건)
+
+[행 13] server/src/gateway.ts
+  $ grep -cF '// 발신 지점' server/src/gateway.ts
+  1
+  적중 줄: 268 
+  판정: PASS (정확히 1건)
+
+[행 15] server/test/gateway.test.ts
+  $ grep -cF '결함 D-5 — 같은 (방, 봇)' server/test/gateway.test.ts
+  1
+  적중 줄: 855 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('delivers an allow verdict to the connected bot'" server/test/permissions.test.ts
+  1
+  적중 줄: 192 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('delivers a deny verdict as deny, not as allow'" server/test/permissions.test.ts
+  1
+  적중 줄: 205 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('accepts a verdict once and lets a repeat fall through as chat'" server/test/permissions.test.ts
+  1
+  적중 줄: 230 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('never resolves a request from a different room'" server/test/permissions.test.ts
+  1
+  적중 줄: 249 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('refuses an unauthenticated verdict and leaves the request pending'" server/test/permissions.test.ts
+  1
+  적중 줄: 268 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('falls through non-matching text and unknown ids without touching the pending request'" server/test/permissions.test.ts
+  1
+  적중 줄: 287 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('marks an undelivered verdict differently from a delivered one'" server/test/permissions.test.ts
+  1
+  적중 줄: 311 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('accepts all four verdict words, normalizes case, and rejects ids containing l'" server/test/permissions.test.ts
+  1
+  적중 줄: 337 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/permissions.test.ts
+  $ grep -cF "it('same request_id in two rooms keeps both requests resolvable'" server/test/permissions.test.ts
+  1
+  적중 줄: 361 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/room-members.test.ts
+  $ grep -cF "it('never lets a non-member approve, and leaves the request for a member to answer'" server/test/room-members.test.ts
+  1
+  적중 줄: 522 
+  판정: PASS (정확히 1건)
+
+[행 18] server/test/room-members.test.ts
+  $ grep -cF "it('the broker itself refuses a non-member verdict, independent of the route gate'" server/test/room-members.test.ts
+  1
+  적중 줄: 547 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF "it('delivers an allow verdict to the connected bot'" .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 251 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF "it('delivers a deny verdict as deny, not as allow'" .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 274 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF "it('accepts a verdict once and lets a repeat fall through as chat'" .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 319 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF "it('never resolves a request from a different room'" .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 347 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF "it('refuses an unauthenticated verdict and leaves the request pending'" .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 377 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF "it('falls through non-matching text and unknown ids without touching the pending request'" .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 409 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF "it('marks an undelivered verdict differently from a delivered one'" .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 450 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF "it('accepts all four verdict words, normalizes case, and rejects ids containing l'" .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 489 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md
+  $ grep -cF "it('never lets a non-member approve, and leaves the request for a member to answer'" .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md
+  1
+  적중 줄: 695 
+  판정: PASS (정확히 1건)
+
+[행 21] .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md
+  $ grep -cF "it('the broker itself refuses a non-member verdict, independent of the route gate'" .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md
+  1
+  적중 줄: 723 
+  판정: PASS (정확히 1건)
+
+[행 22] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF '→ Gateway.sendToBot → 채널' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 41 
+  판정: PASS (정확히 1건)
+
+[행 22] .moai/specs/SPEC-PERM-001/spec.md
+  $ grep -cF 'setPermissionHandler`, `Gateway' .moai/specs/SPEC-PERM-001/spec.md
+  1
+  적중 줄: 73 
+  판정: PASS (정확히 1건)
+
+[행 22] .moai/specs/SPEC-PERM-001/plan.md
+  $ grep -cF '판정 전송. **반환값을 읽는다** (§D 3번)' .moai/specs/SPEC-PERM-001/plan.md
+  1
+  적중 줄: 24 
+  판정: PASS (정확히 1건)
+
+[행 22] .moai/specs/SPEC-PERM-001/plan.md
+  $ grep -cF '를 구현한다 — 정규식 판정' .moai/specs/SPEC-PERM-001/plan.md
+  1
+  적중 줄: 203 
+  판정: PASS (정확히 1건)
+
+[행 22] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF '호출을 빠뜨린 구현에서는' .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 264 
+  판정: PASS (정확히 1건)
+
+[행 22] .moai/specs/SPEC-PERM-001/acceptance.md
+  $ grep -cF '→ 결과 문구가 전달 실패를 밝힌다' .moai/specs/SPEC-PERM-001/acceptance.md
+  1
+  적중 줄: 563 
+  판정: PASS (정확히 1건)
+
+==========================================================================
+B. 집계
+==========================================================================
+전환 앵커 총계 55 · PASS 55 · FAIL 0
+
+구성 (자리별 귀속은 3회차 보고 Task 3 표가 적는다):
+  - 2회차 감사 G-01 이 «이번 sync 수리가 낡게 만들었다» 고 지목한 자리
+  - Task 3 전수 열거가 추가로 찾은 선재 낡음(run 단계 M-커밋이 만든 어긋남)
+
+==========================================================================
+C. 앵커가 아니라 «0건이 정답» 인 자리 — 행 13 둘째 앵커
+==========================================================================
+
+  $ grep -nF "전원 발신이 안전한 근거" server/src/gateway.ts
+  (무출력, 종료 코드 1)
+
+  행 13 의 처분은 «제거»(REQ-PERMROUTE-010)이고 M2 가 그 주석 블록을 실제로 지웠다.
+  이 0건은 낡음이 아니라 «처분이 착지했다» 는 관측이다. 전환 대상이 아니며 §6.2 행 13 이 그 뜻을 적는다.
+
+==========================================================================
+D. 이번 회차 범위 밖 — 행 14·16 (2회차 감사 G-02, 선재 낡음, ROADMAP 이관)
+==========================================================================
+
+  $ sed -n "878p" server/test/gateway.test.ts
+      await new Promise(r => setTimeout(r, 200))
+  $ sed -n "899p" server/test/gateway.test.ts
+      const room = seedRoom()
+
+  둘 다 server/test/gateway.test.ts 이고 이 sync 수리는 그 파일을 건드리지 않았다:
+  $ git diff --name-only -- server/test/gateway.test.ts
+  (무출력)
+  리드 처분에 따라 고치지 않고 §6.2 행 14·16 에 «선재·ROADMAP 이관» 을 명시만 한다.
+
+==========================================================================
+E. Task 3 — §6.2 줄 번호 앵커 전수 열거 (79자리)
+==========================================================================
+
+판정 두 축을 갈라 적는다.
+  · 유효/낡음  = 그 줄에 지금 실제로 그 행이 말하는 것이 있는가 (읽어서 내린 판단)
+  · 귀속       = 명령으로 낸 3자 대조. base 6a359f8 / HEAD dbee7b0 / 현재 트리의 같은 줄을 비교했다
+     명령: git show 6a359f8:<파일> | sed -n '<N>p'  ·  git show dbee7b0:<파일> | sed -n '<N>p'  ·  sed -n '<N>p' <파일>
+
+행   자리                                              판정      귀속                            지금 그 줄에 있는 것
+------------------------------------------------------------------------------------------------------------------------------------------------------
+1   .moai/specs/SPEC-GATEWAY-001/spec.md:174        유효      —                             **REQ-GW-020** (When — 권한 릴레이 계약)
+1   .moai/specs/SPEC-GATEWAY-001/spec.md:175        유효      —                             인증된 접속이 `permission_request` 를 보내면, 서버는 `setPermissionHandle
+1   .moai/specs/SPEC-GATEWAY-001/spec.md:176        유효      —                             `sendToBot(roomId, botId, payload)` 는 그 조합의 접속을 찾아 `payload`
+2   .moai/specs/SPEC-GATEWAY-001/spec.md:176        유효      —                             `sendToBot(roomId, botId, payload)` 는 그 조합의 접속을 찾아 `payload`
+3   .moai/specs/SPEC-GATEWAY-001/spec.md:191        낡음      선재 낡음 (run 단계 M-커밋)             attachments?: { id: number; filename: string; stored_path:
+4   .moai/specs/SPEC-GATEWAY-001/spec.md:192        낡음      선재 낡음 (run 단계 M-커밋)           }
+5   .moai/specs/SPEC-PERM-001/spec.md:74            낡음      이번 sync 수리 (G-01)             | 카드 `t3` 의 메시지 SPEC | `POST /api/rooms/:id/messages` 라우트 — 
+5   .moai/specs/SPEC-PERM-001/spec.md:77            낡음      이번 sync 수리 (G-01)             
+5   .moai/specs/SPEC-PERM-001/spec.md:80            낡음      이번 sync 수리 (G-01)             ```ts
+5   .moai/specs/SPEC-PERM-001/spec.md:81            낡음      이번 sync 수리 (G-01)             export interface ConnInfo { roomId: number; botId: number }
+6   .moai/specs/SPEC-PERM-001/spec.md:106           낡음      선재 낡음 + 이번 sync 가 재이동         
+7   .moai/specs/SPEC-PERM-001/spec.md:133           낡음      선재 낡음 + 이번 sync 가 재이동         ### 4.2 판정 해석과 소비
+7   .moai/specs/SPEC-PERM-001/spec.md:136           낡음      선재 낡음 + 이번 sync 가 재이동         `POST /api/rooms/:id/messages` 가 처리되는 동안, 방이 활성인지 확인한 직후이자 멘
+8   .moai/specs/SPEC-PERM-001/spec.md:144           낡음      선재 낡음 + 이번 sync 가 재이동         소비된 메시지의 판정어가 `n` 또는 `no` 이면, 서버는 같은 경로로 `behavior: 'deny'` 
+9   .moai/specs/SPEC-GWAUTH-002/design.md:24        유효      —                             | `server/src/gateway.ts` `send(ws, …)` 호출 지점 — **다섯** | `:1
+9   .moai/specs/SPEC-GWAUTH-002/plan.md:105         유효      —                             | 1 | 발신 경로 열거 (`sendToBot`) | 12자리 (1 낡음) | **11** | **0** 
+9   .moai/specs/SPEC-GWAUTH-002/plan.md:322         낡음      선재 낡음 (run 단계 M-커밋)           **채택**: `{ type:'env', seq, mac, payload }` 에서 `payload` 는 문
+9   .moai/specs/SPEC-GWAUTH-002/plan.md:459         낡음      선재 낡음 (run 단계 M-커밋)           관측: AC-GWAUTH2-001.
+9   .moai/specs/SPEC-GWAUTH-002/acceptance.md:776   유효      —                             **[HARD] 이 기준이 1회차 감사 F-03 을 닫는다.** 서버의 발신 경로는 **다섯**이고(`spe
+9   .moai/specs/SPEC-GWAUTH-002/acceptance.md:873   낡음      선재 낡음 (run 단계 M-커밋)           | V | 세션 열쇠 유도에서만 `cb` 를 뺀다 (`auth` 전사에는 남긴다) | **007** — 스텁
+9   .moai/specs/SPEC-GWAUTH-002/acceptance.md:880   낡음      선재 낡음 (run 단계 M-커밋)           **[M6 실측 귀속 — 2026-08-30, run 단계가 이 표의 「실측」 열을 채웠다.]** 측정 방법
+9   .moai/specs/SPEC-GWAUTH-002/spec.md:203         유효      —                             **대가를 적는다.** ① 프레임 크기가 늘고 JSON 이 한 겹 중첩된다. ② 서버가 보내는 모든 경로(`
+9   .moai/specs/SPEC-GWAUTH-002/spec.md:624         낡음      이번 sync 수리 (G-01)             - `server/src/index.ts:34` — `Fastify({ logger: false })`. *
+9   .moai/specs/SPEC-GWAUTH-002/acceptance.md:937   낡음      선재 낡음 (run 단계 M-커밋)           - **봉투가 서버의 모든 발신 경로를 지나야 한다.** 한 자리라도 빠뜨리면 그 프레임은 채널에서 **조용
+10  .moai/specs/SPEC-GATEWAY-001/acceptance.md:187  유효      —                             | AC-GW-017 | REQ-GW-020 | `relays permission_request to the
+10  .moai/specs/SPEC-GATEWAY-001/acceptance.md:873  낡음      선재 낡음 (run 단계 M-커밋)           })
+10  .moai/specs/SPEC-GATEWAY-001/acceptance.md:888  낡음      선재 낡음 (run 단계 M-커밋)             const { buildServer } = await import('../src/index.js')
+10  .moai/specs/SPEC-GATEWAY-001/acceptance.md:928  낡음      선재 낡음 (run 단계 M-커밋)             delete process.env.MINIDISCORD_DATA_DIR
+11  .moai/specs/SPEC-PERM-001/plan.md:70            낡음      이번 sync 수리 (G-01)             | 승인, 봇에 전달됨 | `✅ 승인 전송됨 (<request_id>)` |
+11  .moai/specs/SPEC-PERM-001/acceptance.md:461     낡음      이번 sync 수리 (G-01)               const delivered = db.prepare("SELECT body FROM messages WH
+11  .moai/specs/SPEC-WEBRICH-001/spec.md:230        유효      —                             판정 결과 메시지의 ID 는 `permissionResolutionId` 가 브로커의 세 결과 템플릿(`✅ 
+12  .moai/specs/SPEC-LIVEVERIFY-001/acceptance.md:140유효      —                             | 발신 지점이 **다섯**이고 배달 방식이 갈린다 — `sendToConn` 과 `deliver` 는 일치
+13  server/src/gateway.ts:261                       낡음      선재 낡음 (run 단계 M-커밋)           
+13  server/src/gateway.ts:354                       낡음      선재 낡음 (run 단계 M-커밋)               // 판정 근거는 접속의 존재이지 마지막 status 값이 아니다 (REQ-GW-013)
+13  server/src/gateway.ts:360                       낡음      선재 낡음 (run 단계 M-커밋)               // 일치하는 접속 «전원» 에게 보낸다 — deliver 와 같은 갈래다 (카드 t32 §D 결함 
+14  server/test/gateway.test.ts:833                 유효      —                                 expect(seen[0].info).toEqual({ roomId: room, botId: pm, 
+14  server/test/gateway.test.ts:878                 낡음      선재 낡음 (run 단계 M-커밋)               await new Promise(r => setTimeout(r, 200))
+15  server/test/gateway.test.ts:855                 유효      —                               // 카드 t32 §D 결함 D-5 — 같은 (방, 봇) 에 소켓이 여럿일 때 판정이 «요청한» 소켓에 
+15  server/test/gateway.test.ts:862                 낡음      선재 낡음 (run 단계 M-커밋)             // 이 시험은 second 가 낸 요청의 판정이 second 에게 되돌아오는지를 잰다.
+16  server/test/gateway.test.ts:899                 낡음      선재 낡음 (run 단계 M-커밋)               const room = seedRoom()
+17  server/test/web-rich.test.ts:19                 유효      —                             const FAILED_BODY = '⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다 (
+17  server/test/web-rich.test.ts:151                유효      —                                 const a3 = msgEl(); rich.decorate(a3, { room_id: 1, auth
+17  server/test/web-rich.test.ts:197                유효      —                                 expect(permissionResolutionId(FAILED_BODY)).toBe('zxvbn'
+18  server/test/permissions.test.ts:195             낡음      선재 낡음 + 이번 sync 가 재이동             const ws = await wsConnect(port, token)
+18  server/test/permissions.test.ts:205             낡음      선재 낡음 + 이번 sync 가 재이동           it('delivers a deny verdict as deny, not as allow', async 
+18  server/test/permissions.test.ts:228             낡음      선재 낡음 + 이번 sync 가 재이동           })
+18  server/test/permissions.test.ts:246             낡음      선재 낡음 + 이번 sync 가 재이동             expect(c.c).toBe(1)                                   //
+18  server/test/permissions.test.ts:262             낡음      선재 낡음 + 이번 sync 가 재이동         
+18  server/test/permissions.test.ts:279             낡음      선재 낡음 + 이번 sync 가 재이동             expect(anon.statusCode).toBe(401)
+18  server/test/permissions.test.ts:303             낡음      선재 낡음 + 이번 sync 가 재이동             expect(c.c).toBe(2)                                     
+18  server/test/permissions.test.ts:304             낡음      선재 낡음 + 이번 sync 가 재이동         
+18  server/test/permissions.test.ts:323             낡음      선재 낡음 + 이번 sync 가 재이동             await post(app, on.roomId, cookie, 'yes abcde')
+18  server/test/permissions.test.ts:324             낡음      선재 낡음 + 이번 sync 가 재이동             await post(app, off.roomId, cookie, 'yes fghij')
+18  server/test/permissions.test.ts:347             낡음      선재 낡음 + 이번 sync 가 재이동             expect(bad.json().consumed_by).toBeUndefined()
+18  server/test/permissions.test.ts:348             낡음      선재 낡음 + 이번 sync 가 재이동         
+18  server/test/room-members.test.ts:527            유효      —                                 // SPEC-PERMROUTE-001 (M4-7, 리드 처분) — 요청을 소켓으로 보내 대기 항목에
+18  server/test/room-members.test.ts:549            낡음      선재 낡음 (run 단계 M-커밋)               const roomId = await createRoom(app, alice.cookie)
+19  web/rich.js:62                                  유효      —                             // 양끝을 문자열 앞뒤에 고정하고 `.` 로만 앞을 채운다. 브로커의 판정 본문은 네 템플릿 모두
+20  .moai/specs/SPEC-GATEWAY-001/acceptance.md:188  유효      —                             | AC-GW-018 | REQ-GW-021, 022 | `buildServer wires the gatew
+21  .moai/specs/SPEC-PERM-001/acceptance.md:251     유효      —                             it('delivers an allow verdict to the connected bot', async (
+21  .moai/specs/SPEC-PERM-001/acceptance.md:270     낡음      이번 sync 수리 (G-01)             **Given** AC-PERM-004 와 같은 상태다.
+21  .moai/specs/SPEC-PERM-001/acceptance.md:313     낡음      이번 sync 수리 (G-01)             ### AC-PERM-007 — 판정은 1회용이다
+21  .moai/specs/SPEC-PERM-001/acceptance.md:339     낡음      이번 sync 수리 (G-01)             **Then** 테스트가 통과한다. 대기 항목을 지우지 않는 구현은 두 번째 판정을 보내므로 `toBeNul
+21  .moai/specs/SPEC-PERM-001/acceptance.md:367     낡음      이번 sync 수리 (G-01)             **Then** 테스트가 통과한다. 세 가지가 함께 관측된다 — 다른 방의 답은 소비되지 않고, 판정이 봇에
+21  .moai/specs/SPEC-PERM-001/acceptance.md:397     낡음      이번 sync 수리 (G-01)             **Then** 테스트가 통과한다. 단언의 무게는 `401` 이 아니라 **판정이 가지 않았다**는 부정 관
+21  .moai/specs/SPEC-PERM-001/acceptance.md:436     낡음      이번 sync 수리 (G-01)             마지막 두 단언이 이 기준의 존재 이유다. 앞의 두 단언만으로는 **가로채기가 통째로 없는 구현**도 통과한
+21  .moai/specs/SPEC-PERM-001/acceptance.md:473     낡음      선재 낡음 + 이번 sync 가 재이동         > 2026-09-04 개정 — 위 시험 «marks an undelivered verdict differe
+21  .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md:700유효      —                               broker.onGatewayRequest({ roomId, botId }, { request_id: '
+21  .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md:726낡음      이번 sync 수리 (G-01)               const { botId, token } = seedBot(roomId)
+22  .moai/specs/SPEC-PERM-001/spec.md:41            유효      —                                   → Gateway.sendToBot → 채널 → Claude Code 에 permission_ve
+22  .moai/specs/SPEC-PERM-001/spec.md:71            낡음      이번 sync 수리 (G-01)             | `SPEC-AUTH-001` | `requireAuth` preHandler, `md_session` 세
+22  .moai/specs/SPEC-PERM-001/plan.md:24            유효      —                             | `SPEC-GATEWAY-001` | `sendToBot(roomId, botId, payload): b
+22  .moai/specs/SPEC-PERM-001/plan.md:201           낡음      선재 낡음 + 이번 sync 가 재이동         1. 같은 테스트 파일에 판정 테스트를 추가한다 — 원본의 `user yes reply sends verdi
+22  .moai/specs/SPEC-PERM-001/acceptance.md:262     낡음      이번 sync 수리 (G-01)             > 2026-09-04 개정 — 위 시험 «delivers an allow verdict to the con
+22  .moai/specs/SPEC-PERM-001/acceptance.md:545     낡음      선재 낡음 + 이번 sync 가 재이동         | 2 (GREEN) | M1 구현 후 | `npm test -w server` 통과 + `npm run t
+23  .moai/specs/SPEC-GATEWAY-001/spec.md:234        유효      —                             - `permission_verdict` 의 **내용을 판단하는 일**. 이 SPEC 은 `sendToBot
+23  .moai/specs/SPEC-GATEWAY-001/plan.md:41         유효      —                             | `sendToBot(roomId, botId, payload)` | 다음 카드의 `permissions.
+24  .moai/specs/SPEC-CHANPERM-001/spec.md:210       유효      —                             - 대기 레지스트리, system 메시지 저장·발행, `PERMISSION_REPLY_RE` 판정 파싱, `
+25  server/test/permissions.test.ts:170             유효      —                                 // SPEC-PERMROUTE-001 (sync F-02 #13) — 이 요청은 소켓을 거치지 않아
+------------------------------------------------------------------------------------------------------------------------------------------------------
+합계 79자리 — 유효 27 · 낡음 52
+
+낡음의 귀속 내역:
+  · «이번 sync 수리 (G-01)» — 2회차 감사가 지목한 부류. 개정 주석 삽입이 밀어냈다.
+  · «선재 낡음 (run 단계 M-커밋)» — 6a359f8→dbee7b0 사이의 구현 커밋이 밀어냈다. 2회차 감사는 이 부류를 세지 않았다.
+  · «선재 낡음 + 이번 sync 가 재이동» — HEAD 시점에 이미 낡아 있었고 이번 편집이 한 번 더 밀었다.
+    2회차 감사가 «35개 전부 HEAD 에서 유효했다» 고 적은 것은 이 부류(행 18 의 열둘 등)에서 참이 아니다 —
+    감사는 «+1 이동» 만 확인했고 HEAD 시점의 내용 일치는 확인하지 않았다.
+
+전환하지 않은 낡음: 행 14 `:878` · 행 16 `:899` (2회차 감사 G-02, 리드가 ROADMAP 으로 이관 — 이번 회차 범위 밖).
+나머지 낡음은 전부 grep 앵커로 전환했다 (A 절).
+
+==========================================================================
+F. 왕복 검사 — A 절의 앵커 55건이 §6.2 본문에 그대로 실렸는가
+==========================================================================
+
+  편집한 §6.2 를 다시 읽어 A 절 목록의 각 패턴이 축자로 실려 있는지, 그리고 그 패턴이
+  현재 트리에서 여전히 정확히 1건인지를 함께 확인했다(전사 오류 방지).
+
+  검증 목록 앵커 55건
+    §6.2 본문에 그대로 실린 것: 55  · 실리지 않은 것: 0
+    현재 트리에서 정확히 1건: 55 · 아닌 것: 0
+
+  표 무결성도 함께 봤다:
+    $ awk '/^### 6.2 /,/^### 6.3 /' .moai/specs/SPEC-PERMROUTE-001/spec.md | grep -cE '^\| [0-9]+ \|'
+    25
+    (편집 전과 같은 25 — 행이 늘거나 줄지 않았다)
+    데이터 행마다 이스케이프되지 않은 | 가 정확히 7개인지 확인: 이상 0건

@@ -1,0 +1,34 @@
+=== content-NEW hit lines (r2 not in r1) ===
+[ConnInfo] .moai/specs/SPEC-PERM-001/spec.md::> 2026-09-04 개정 — 위 표의 `SPEC-GATEWAY-001` 행: 이 SPEC 이 받아 쓰는 판정 통로는 `Gateway.sendToBot` 이 아니라 `Gateway.sendToOrigin` 이고, `ConnInfo` 에는 `connId?` 가 더해졌다 (`SPEC-PERMRO
+[onGatewayRequest] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «accepts a verdict once and lets a repeat fall through as chat»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … }
+[onGatewayRequest] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «accepts all four verdict words, normalizes case, and rejects ids containing l»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permissi
+[onGatewayRequest] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «delivers a deny verdict as deny, not as allow»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC
+[onGatewayRequest] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «delivers an allow verdict to the connected bot»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPE
+[onGatewayRequest] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «falls through non-matching text and unknown ids without touching the pending request»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'p
+[onGatewayRequest] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «marks an undelivered verdict differently from a delivered one»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … }
+[onGatewayRequest] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «never resolves a request from a different room»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPE
+[onGatewayRequest] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «refuses an unauthenticated verdict and leaves the request pending»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request',
+[onGatewayRequest] .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «never lets a non-member approve, and leaves the request for a member to answer»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'pe
+[onGatewayRequest] .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md::> 2026-09-04 개정 — 위 시험 «the broker itself refuses a non-member verdict, independent of the route gate»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'per
+[sendToBot] .moai/specs/SPEC-CHANPERM-001/spec.md::> 2026-09-04 개정 — 위 목록의 «`sendToBot` 호출과 전달 실패 문구»: `SPEC-PERMROUTE-001` 이후 판정 경로는 `sendToBot` 을 부르지 않고 `sendToOrigin(connId, …)` 을 부르며(REQ-PERMROUTE-006), 전달 
+[sendToBot] .moai/specs/SPEC-GATEWAY-001/plan.md::> 2026-09-04 개정 — 위 표의 `sendToBot(roomId, botId, payload)` 행: `SPEC-PERMROUTE-001` 이후 다음 카드의 `permissions.ts` 는 이 메서드를 부르지 않으며(REQ-PERMROUTE-006), 배달 여부의 신호는 `s
+[sendToBot] .moai/specs/SPEC-GATEWAY-001/spec.md::> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 조항의 「**만**」이 거짓이 됐다. 개정 후 읽는 법: **이 SPEC 은 창구 셋을 제공한다** — `sendToBot`(일치 접속 전원 발신, 유지) · `sendToOrigin(connId: st
+[sendToBot] .moai/specs/SPEC-PERM-001/acceptance.md::> 2026-09-04 개정 — 위 문단의 판별자 «`sendToBot` 호출을 빠뜨린 구현» 은 이제 «`sendToOrigin` 호출을 빠뜨린 구현» 이다 (`SPEC-PERMROUTE-001` REQ-PERMROUTE-004·006). `seen` 이 `null` 이라 `to
+[sendToBot] .moai/specs/SPEC-PERM-001/plan.md::> 2026-09-04 개정 — 위 3번의 «`sendToBot` 호출과 **반환값 수신**» 은 «`sendToOrigin(info.connId, …)` 호출과 반환값 수신» 이다 (`SPEC-PERMROUTE-001` REQ-PERMROUTE-004·006·007).
+[sendToBot] .moai/specs/SPEC-PERM-001/plan.md::> 2026-09-04 개정 — 위 표의 «`sendToBot(roomId, botId, payload): boolean` \| 판정 전송. **반환값을 읽는다**» 행: 판정 전송은 `sendToOrigin(connId, payload)` 이고 반환값을 읽는 대상도 그쪽이다 — 판정 경로는
+[sendToBot] .moai/specs/SPEC-PERM-001/spec.md::> 2026-09-04 개정 — 위 표의 `SPEC-GATEWAY-001` 행: 이 SPEC 이 받아 쓰는 판정 통로는 `Gateway.sendToBot` 이 아니라 `Gateway.sendToOrigin` 이고, `ConnInfo` 에는 `connId?` 가 더해졌다 (`SPEC-PERMR
+[sendToBot] .moai/specs/SPEC-PERM-001/spec.md::> 2026-09-04 개정 — 위 흐름도의 «→ Gateway.sendToBot» 은 «→ Gateway.sendToOrigin(connId, …)» 이다 — `SPEC-PERMROUTE-001` 이 판정 통로를 «요청한 접속 하나» 로 옮겼다 (REQ-PERMROUTE-004·006). 
+[setPermissionHandler] .moai/specs/SPEC-GATEWAY-001/spec.md::> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 조항의 「**만**」이 거짓이 됐다. 개정 후 읽는 법: **이 SPEC 은 창구 셋을 제공한다** — `sendToBot`(일치 접속 전원 발신, 유지) · `sendToOrigin
+[개메서드] .moai/specs/SPEC-GATEWAY-001/acceptance.md::> 2026-09-04 개정 — 위 표의 AC-GW-018 행: «5개 메서드» 는 이제 여섯이다 — `sendToOrigin` 이 더해졌다(`SPEC-PERMROUTE-001` REQ-PERMROUTE-004).
+[개메서드] .moai/specs/SPEC-GATEWAY-001/acceptance.md::| AC-GW-018 | REQ-GW-021, 022 | `buildServer wires the gateway, archive hook and invite online flag` | `app.gateway` 5개 메서드, 보관이 소켓을 끊음, 초대 목록 `online` 이 접속 상태
+[다섯] .moai/specs/SPEC-GWAUTH-002/acceptance.md::  > 2026-09-04 개정 — 위 «다섯 경로 각각에 양성 기준» 의 다섯은 여섯이다 — `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이며, 그 경로의 양성 기준은 이 SPEC 밖에 있다.
+[다섯] .moai/specs/SPEC-GWAUTH-002/spec.md::  > 2026-09-04 개정 — 위 «발신 지점 다섯» 은 여섯이다 — `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이다.
+[다섯] .moai/specs/SPEC-GWAUTH-002/spec.md::> 2026-09-04 개정 — 위 «넷이 아니라 다섯이다» 의 다섯은 여섯이다 — `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이다.
+[발신 지점] .moai/specs/SPEC-GWAUTH-002/acceptance.md::  > 2026-09-04 개정 — 위 «다섯 경로 각각에 양성 기준» 의 다섯은 여섯이다 — `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이며, 그 경로의 양성 기준은 이 SPEC 밖에 있다.
+[발신 지점] .moai/specs/SPEC-GWAUTH-002/spec.md::  > 2026-09-04 개정 — 위 «발신 지점 다섯» 은 여섯이다 — `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이다.
+[발신 지점] .moai/specs/SPEC-GWAUTH-002/spec.md::> 2026-09-04 개정 — 위 «넷이 아니라 다섯이다» 의 다섯은 여섯이다 — `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이다.
+
+=== content-GONE hit lines (r1 not in r2) ===
+[N개메서드] .moai/specs/SPEC-GATEWAY-001/acceptance.md::> 2026-09-04 개정 — 위 표의 AC-GW-018 행: «5개 메서드» 는 이제 여섯이다 — `sendToOrigin` 이 더해졌다(`SPEC-PERMROUTE-001` REQ-PERMROUTE-004).
+[N개메서드] .moai/specs/SPEC-GATEWAY-001/acceptance.md::| AC-GW-018 | REQ-GW-021, 022 | `buildServer wires the gateway, archive hook and invite online flag` | `app.gateway` 5개 메서드, 보관이 소켓을 끊음, 초대 목록 `online` 이 접속 상
+[sendToBot] server/test/permissions.test.ts::    // sendToBot가 실제로 가는지는 게이트웨이 연결이 없으므로 false(전송 실패)지만 메시지 소비 자체를 검증

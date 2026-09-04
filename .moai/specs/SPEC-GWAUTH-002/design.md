@@ -22,6 +22,8 @@
 | `server/src/gateway.ts:88-108` | `handleHello` — 해시 조회 → **`conns.set()` 등록**(**`:101`**) → `welcome` → 재전송 | **등록을 `auth` 검증 통과 시점으로 옮긴다.** 지금은 등록이 인증보다 앞선다 |
 | `server/src/gateway.ts:106-107` | `if (typeof nonce === 'string') welcome.proof = createHmac('sha256', keyHex)…` | `challenge` 프레임으로 분리 |
 | `server/src/gateway.ts` `send(ws, …)` 호출 지점 — **다섯** | `:109` `welcome` · `:123` `sendStoredMessage` · **`:202` `sendToConn`(→ `history_response`, 호출자 `:194` `handleHistory`)** · `:213` `deliver` · `:231` `sendToBot` | **확립 소켓용 발신 함수 하나로 모은다**(`plan.md` §D-6). **다섯 자리 전부** |
+
+> 2026-09-04 개정 — 위 표의 «send(ws, …) 호출 지점 — 다섯» 행: `SPEC-PERMROUTE-001` 이후 `sendToOrigin` 이 여섯째 발신 지점이다.
 | `server/src/index.ts:34` | `Fastify({ logger: false })` — **서버가 TLS 를 종단하지 않는다.** `server/src/*.ts` 에 `https`·인증서 설정 0건 | **손대지 않는다**(REQ-GWAUTH2-018 의 네 파일 밖). 채널 바인딩이 오늘 서지 않는 이유가 이 한 줄이다(`spec.md` §2.8.4) |
 | `channel/src/index.ts:29-39` | `isTransportAllowed` — **루프백에만 평문 `ws:` 허용**, 그 밖에는 `wss:` 요구 | **손대지 않는다.** 바인딩이 서지 않는 평문 연결이 루프백으로 한정되는 근거(`spec.md` §2.8.5) |
 | `server/src/routes-bots.ts:11-13` | `sha256Hex` + 그것을 지키는 `@MX:ANCHOR` | `bot_tokens` 가 더는 쓰지 않는다. 소비자 열거는 `plan.md` §C 3번 |
