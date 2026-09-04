@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import { openDb, type Db } from '../src/db.js'
-import { registerAuthRoutes, requireAuth } from '../src/auth.js'
+import { registerAuthRoutes, requireAuth, USERNAME_MAX_LENGTH } from '../src/auth.js'
 
 let dir: string
 let db: Db
@@ -85,6 +85,47 @@ describe('auth', () => {
     }
     const c = db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }
     expect(c.c).toBe(0)
+  })
+
+  // t33: 상한이 없으면 2만 바이트 이름이 그대로 저장된다 — 길이·글자 상한을 한 자리에서 잰다
+  it('rejects over-long and malformed usernames, accepts a normal one', async () => {
+    const app = await build()
+    const rejected = [
+      'a'.repeat(20000),                              // 재현 사례: 2만 글자
+      'a'.repeat(USERNAME_MAX_LENGTH + 1),            // 경계 바로 바깥
+      'bad\u0000name',                                // 제어문자 NUL (C0)
+      'bad\u009fname',                               // 제어문자 (C1)
+      ' alice',                                       // 앞 공백
+      'alice ',                                       // 뒤 공백
+    ]
+    for (const username of rejected) {
+      const res = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username, password: 'pw123456' } })
+      expect(res.statusCode, `username length ${username.length}`).toBe(400)
+    }
+    expect((db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }).c).toBe(0)
+
+    // 경계 안쪽과 평범한 이름은 그대로 통과해야 한다 — 상한이 정상 가입을 막지 않는지 확인
+    for (const username of ['a'.repeat(USERNAME_MAX_LENGTH), 'alice', '홍길동']) {
+      const res = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username, password: 'pw123456' } })
+      expect(res.statusCode, username).toBe(201)
+    }
+    expect((db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }).c).toBe(3)
+  })
+
+  // t33 F2 (sync 감사): C0/C1 만 막으면 유니코드 형식 문자·줄 구분자가 이름 안으로 들어온다.
+  // 셋 다 «보이지 않으면서 표시를 흔드는» 문자이고 위치는 이름 내부다 — 앞뒤 공백 검사로는 잡히지 않는다.
+  it('rejects invisible format and line-separator characters inside the name', async () => {
+    const app = await build()
+    const rejected = [
+      'ali\u202Ece',   // U+202E RIGHT-TO-LEFT OVERRIDE — 뒤 글자의 표시 방향을 뒤집는다
+      'ali\u200Bce',   // U+200B ZERO WIDTH SPACE — 폭 0. 'alice' 와 화면상 구분되지 않는 다른 계정이 된다
+      'ali\u2028ce',   // U+2028 LINE SEPARATOR — 로그·표시를 줄 단위로 쪼갠다
+    ]
+    for (const username of rejected) {
+      const res = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username, password: 'pw123456' } })
+      expect(res.statusCode, JSON.stringify(username)).toBe(400)
+    }
+    expect((db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }).c).toBe(0)
   })
 
   it('sets an httpOnly lax session cookie', async () => {

@@ -10,8 +10,9 @@ type RoomRow = { id: number; name: string; status: string; created_at: string; a
 // @MX:REASON: opts.onArchive 훅 계약(보관 커밋 직후 방 id 로 1회 호출)은 이후 게이트웨이 카드가 연결 끊기에 쓴다. 시그니처 변경은 소비자 전부를 깨뜨린다
 export function registerRoomRoutes(app: FastifyInstance, opts?: { onArchive?: (roomId: number) => void }): void {
   // 목록은 호출자가 멤버인 방만 담는다 (REQ-ROOMAUTHZ-011) — 남의 방이 보이면 존재가 샌다.
-  // 봉투 {active, archived} 는 SPEC-ROOM-001 그대로 둔다. 술어의 아홉 호출부 중 목록은 상태 코드로
-  // 방향이 드러나지 않아 AC-ROOMAUTHZ-017 의 sweep 이 아니라 AC-ROOMAUTHZ-011 이 잰다
+  // 봉투 {active, archived} 는 SPEC-ROOM-001 그대로 둔다. 목록은 술어의 여덟 호출부에 들지 않고 여기서
+  // 인라인 SQL 로 같은 조건을 적는다. 상태 코드로 방향이 드러나지 않아 AC-ROOMAUTHZ-017 의 sweep 이
+  // 아니라 AC-ROOMAUTHZ-011 이 잰다
   app.get('/api/rooms', { preHandler: [requireAuth] }, async req => {
     const rows = req.server.db.prepare(
       `SELECT id, name, status, created_at, archived_at FROM rooms
@@ -43,7 +44,7 @@ export function registerRoomRoutes(app: FastifyInstance, opts?: { onArchive?: (r
   })
 
   // 초대 — 멤버십 게이트(requireRoomMember)가 방 상태 검사보다 앞선다 (순서 계약, plan.md §B).
-  // 비멤버는 보관 여부를 못 보고 같은 404 로 끝난다. 이 라우트는 술어의 아홉 호출부 중 하나다
+  // 비멤버는 보관 여부를 못 보고 같은 404 로 끝난다. 이 라우트는 술어의 여덟 호출부 중 하나다
   app.post('/api/rooms/:id/members', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
     const id = Number((req.params as { id: string }).id)
     const { user_id } = req.body as { user_id?: number }
