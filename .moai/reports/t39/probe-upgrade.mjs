@@ -1,4 +1,4 @@
-// 탐침(커밋하지 않음): upgrade 리스너가 없는 http 서버에 WebSocket 업그레이드 요청을 보내면 무엇이 오는가.
+// 탐침(증거로 커밋됨): upgrade 리스너가 없는 http 서버에 WebSocket 업그레이드 요청을 보내면 무엇이 오는가.
 import http from 'node:http'
 import net from 'node:net'
 

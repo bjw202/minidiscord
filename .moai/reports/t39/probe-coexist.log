@@ -1,0 +1,4 @@
+타앱(게이트웨이 없음) : {"address":"127.0.0.1","family":"IPv4","port":60971}
+내앱(게이트웨이 있음)  : {"address":"::1","family":"IPv6","port":60971}
+*** 상태 404 본문 {"message":"Route GET:/bot not found","error":"Not Found","statusCode":404}
+    server 헤더: (없음)
