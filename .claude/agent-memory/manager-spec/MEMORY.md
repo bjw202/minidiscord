@@ -12,3 +12,4 @@
 - [A line-pinned check breaks itself](feedback_line-pinned-check-breaks-itself.md) — `sed -n '75p'` was falsified by the HISTORY row the same pass had to add; report the literal AND the anchored reading
 - [Re-derive when scope widens](feedback_rederive-when-scope-widens.md) — an amended scope decision voids the old enumeration; recount from scratch and say when the total is unchanged
 - [A forwardable transcript excludes no relay](feedback_forwardable-transcript.md) — nonces stop forgery and replay, not forwarding; bind the transport into the transcript AND the KDF, or disclose the residual
+- [A line pointer is a count in disguise](feedback_line-pointers-are-counts-in-disguise.md) — `file:line` citations decay silently and can even confirm the wrong item; use content-matched grep anchors and prove each hits exactly 1

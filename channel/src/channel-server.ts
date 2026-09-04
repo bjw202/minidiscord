@@ -11,10 +11,18 @@ import {
   truncateToBudget,
 } from './truncate.js'
 
+// delivery="to" 답변 유발 지시의 단일 문안 — 연결 시점 INSTRUCTIONS 와 주입 content 접미
+// 양쪽이 이 상수를 참조한다(한 곳 고침 두 곳 참조). 접미가 필요해진 이유는 카드 t32 §D
+// 결함 D-4: 연결 시점 지시만으로는 @TO 주입 본문을 ● 텍스트로 답해 reply 를 건너뛰는 사례가
+// 운영자 실측됐다. 시스템이 붙이는 문안이라 사람 유래 조각이 아니고 중화·절단 대상이 아니다.
+const REPLY_DIRECTIVE = 'delivery="to"로 받은 메시지에는 반드시 reply 도구로 답변하세요.'
+// 주입 content 끝에 붙는 접미 — 형제 하네스(channel/test)가 이 상수로 등식을 잰다.
+export const TO_REPLY_NOTE = `\n→ ${REPLY_DIRECTIVE}`
+
 export const INSTRUCTIONS = [
   '이 세션은 minidiscord 채팅방에 봇으로 참여 중입니다.',
   '채팅 메시지는 <channel source="minidiscord-channel" chat_id="..." delivery="to|cc" sender="..."> 형태로 도착합니다.',
-  'delivery="to"로 받은 메시지에는 반드시 reply 도구로 답변하세요.',
+  REPLY_DIRECTIVE,
   'delivery="cc"로 받은 메시지는 참고만 하고 절대 답변하지 마세요.',
   '사용자가 보낸 파일은 content에 안내된 내 PC 로컬 경로에서 직접 읽을 수 있습니다.',
   '멘션 없는 메시지는 이 세션에 전달되지 않습니다. 사람들끼리 나눈 대화가 비어 있을 수 있으니,',
@@ -93,6 +101,9 @@ function buildAttachmentNote(files: ChatMessage['files']): string {
   return `\n(첨부 파일 경로: ${frags.join(', ')}${droppedNote})`
 }
 
+// @MX:ANCHOR: [AUTO] MCP 채널 서버 팩토리 — wire() 와 기준 하네스가 부르는 공개 경계다 (t4 감사 F-13)
+// @MX:REASON: ChannelDeps / ChannelHandle 시그니처는 SPEC-CHANNEL-001 의 알림·도구 계약이고,
+// emitted 발신 집합은 SPEC-CHANAUTH-001 이 인정한 유일한 상태다. 어느 쪽을 바꿔도 판정 중계가 조용히 어긋난다
 export function createChannelServer(deps: ChannelDeps): ChannelHandle {
   // 발신 집합 — 채널이 내보낸 request_id 문자열들의 상한 있는 목록. 무상태 원칙 개정이
   // 새로 인정하는 유일한 상태다(SPEC-CHANAUTH-001 plan §B). Set 의 삽입 순서 보장을 그대로 써서
@@ -173,7 +184,8 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
     const nameFrag = truncateToBudget(neutralizeEnvelope(msg.author_name), MAX_NAME_BYTES)
     const bodyFrag = truncateToBudget(neutralizeEnvelope(msg.body), MAX_BODY_BYTES)
     const fileNote = buildAttachmentNote(msg.files)
-    const content = `[${nameFrag}] ${bodyFrag}${fileNote}`
+    // delivery="to" 주입에는 답변 유발 접미가 붙는다 — cc 는 답변 금지라 붙지 않는다 (카드 t32 §D 결함 D-4).
+    const content = `[${nameFrag}] ${bodyFrag}${fileNote}${msg.delivery === 'to' ? TO_REPLY_NOTE : ''}`
     await mcp.notification({
       method: 'notifications/claude/channel',
       params: {

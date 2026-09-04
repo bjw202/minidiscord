@@ -79,6 +79,9 @@ function channelBinding(sock: unknown): string {
   }
 }
 
+// @MX:ANCHOR: [AUTO] 게이트웨이 클라이언트 팩토리 — wire() 와 기준 하네스 여럿이 부르는 공개 경계다 (t4 감사 F-13)
+// @MX:REASON: GatewayClientOpts / GatewayClient 시그니처는 SPEC-CHANWIRE-001 과 SPEC-GWAUTH-002 가 함께 고정한다.
+// 콜백 이름 하나만 바뀌어도 wire() 의 배선과 v2 악수를 재는 기준이 통째로 깨진다
 export function createGatewayClient(input: GatewayClientOpts): GatewayClient {
   const opts = input
   let socket: WebSocket | null = null

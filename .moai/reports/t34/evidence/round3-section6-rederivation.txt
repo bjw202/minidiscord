@@ -1,0 +1,261 @@
+# SPEC-PERMROUTE-001 §6 재도출 실측 — plan 3회차 수리
+#
+# 워크트리 : .claude/worktrees/t34
+# 브랜치   : WT-perm-verdict-socket
+# HEAD     : 6a359f8
+# 트리 상태: git status --short -- server/ channel/ → 빈 출력 (읽기 전용 명령만 사용)
+#
+# 이 파일은 spec.md §6.1 어간 표의 재현 장치다. 표의 수는 전부 아래 명령의 출력이며,
+# 재현되지 않는 수는 표에서 지웠다.
+
+================================================================================
+0. 범위 목록 생성
+================================================================================
+
+$ ls .moai/specs/*/{spec,plan,acceptance,design,research}.md \
+     server/src/*.ts server/test/*.ts channel/src/*.ts > scope-all.txt
+$ wc -l < scope-all.txt
+     117
+
+$ grep -v 'SPEC-PERMROUTE-001' scope-all.txt > scope-ex-self.txt
+$ wc -l < scope-ex-self.txt
+     114
+
+목록 사본: t34-scope-all.txt · t34-scope-ex-self.txt (같은 디렉터리)
+
+[4회차 정정] 그 두 사본은 4회차가 web/*.js 를 범위에 넣으면서 재생성했으므로 지금은
+119 / 116 을 담고 있다 — 위의 117 / 114 를 재현하지 않는다. 3회차의 117 / 114 를
+재현하려면 위의 ls 명령에서 web/*.js 를 빼고 다시 돌린다. 4회차의 명령·출력 전문은
+같은 디렉터리의 round4-section6-web-scope.txt 에 있다.
+
+자기 제외의 이유: 이 SPEC 자신의 세 문서가 형제를 인용할 때마다 적중이 늘어,
+「형제 문서에 무엇이 있는가」를 재지 못하게 된다. 2회차 감사 N-03a 가
+「자기 제외로 세면서 그 사실을 적지 않았다」를 지적했다.
+
+================================================================================
+1. 어간별 적중 — 자기 제외 114 파일 기준 (F=$(cat scope-ex-self.txt))
+================================================================================
+
+$ grep -n -- 'ConnInfo' $F | wc -l
+25
+$ grep -n -- 'sendToBot' $F | wc -l
+60
+$ grep -n -- 'sendToConn' $F | wc -l
+26
+$ grep -n -- 'onGatewayRequest' $F | wc -l
+58
+$ grep -n -- 'setPermissionHandler' $F | wc -l
+32
+$ grep -n -- 'sendEstablished' $F | wc -l
+13
+$ grep -n -- '발신 지점' $F | wc -l
+11
+$ grep -n -- '@MX:WARN' $F | wc -l
+6
+$ grep -n -- '다섯' $F | grep -E '발신|메서드|경로|Gateway|send' | wc -l
+55
+$ grep -nE '전달하지 못했습니다|접속해 있지|FAILED_BODY' $F | wc -l
+15
+
+--------------------------------------------------------------------------------
+0.2.0 표와의 대조 — 어긋난 셋
+--------------------------------------------------------------------------------
+
+  어간                 0.2.0 이 적은 값   3회차 실측   판정
+  ConnInfo                    25             25       일치
+  sendToBot                   48             60       어긋남 (2회차 감사 N-03a)
+  sendToConn                  26             26       일치
+  onGatewayRequest            58             58       일치
+  setPermissionHandler        32             32       일치
+  sendEstablished             13             13       일치
+  발신 지점                   11             11       일치
+  @MX:WARN                     6              6       일치
+  다섯 (좁힘)                 48             55       어긋남 (초판은 돌릴 명령이 없었다)
+  실패 문구                   13             15       어긋남 (3회차가 찾음 — 감사 미지적)
+
+「다섯」의 초판 어간은 「(발신·메서드·경로·Gateway·send 동반 줄)」이라는 괄호 설명이라
+재현 명령이 존재하지 않았다. 위 grep 파이프가 그 자리를 채운다.
+「실패 문구」의 초판 어간은 `접속해 있지`·`FAILED_BODY` 둘이었고, 그 둘만으로는
+줄임표 인용 자리를 놓친다 — `전달하지 못했습니다` 를 더해 15가 됐다.
+
+================================================================================
+2. 자기 포함 대조 — 자기 제외가 필요함을 보이는 값
+================================================================================
+
+$ grep -n -- 'ConnInfo' $(cat scope-all.txt) | wc -l
+57
+$ grep -n -- 'sendToBot' $(cat scope-all.txt) | wc -l
+106
+$ grep -n -- 'sendToConn' $(cat scope-all.txt) | wc -l
+33
+$ grep -n -- 'onGatewayRequest' $(cat scope-all.txt) | wc -l
+65
+
+자기를 포함하면 sendToBot 하나가 60 → 106 으로 뛴다. 표가 재는 것은
+「형제 문서에 남은 진술」이므로 자기 제외가 옳고, 그 사실을 §6.1 에 명시했다.
+
+================================================================================
+3. `발신 지점` 11 적중의 전수 분포 (N-03b)
+================================================================================
+
+$ grep -n -- '발신 지점' $F
+
+SPEC-GWAUTH-002/plan.md:214
+SPEC-GWAUTH-002/plan.md:322
+SPEC-GWAUTH-002/acceptance.md:931
+SPEC-GWAUTH-002/spec.md:203
+SPEC-GWAUTH-002/spec.md:624
+SPEC-LIVEVERIFY-001/acceptance.md:140
+SPEC-LIVEVERIFY-001/acceptance.md:154
+SPEC-LIVEVERIFY-001/acceptance.md:160
+SPEC-LIVEVERIFY-001/spec.md:30
+SPEC-LIVEVERIFY-001/spec.md:156
+server/src/gateway.ts:261
+
+= GWAUTH-002 5 + LIVEVERIFY-001 5 + 생산 코드 1 = 11
+
+초판 분류란은 「GWAUTH-002 열거 · gateway.ts:261」 둘만 적어 LIVEVERIFY-001 다섯을
+통째로 떨어뜨렸다. 갈래 나눔은 spec.md §6.1 의 표에 있다.
+
+================================================================================
+4. §6.2 앵커 재해소 — 인용문 grep (산술 아님)
+================================================================================
+
+$ grep -n 'roomId, botId }, 그 메시지' SPEC-GATEWAY-001/spec.md
+175:  (REQ-GW-020 본문. 조항 머리는 :174)
+$ grep -n 'sendToBot(roomId, botId, payload)' SPEC-GATEWAY-001/spec.md
+176:
+$ grep -n 'export interface ConnInfo' SPEC-GATEWAY-001/spec.md
+191:
+$ grep -n 'export interface Gateway' SPEC-GATEWAY-001/spec.md
+192:
+$ grep -n '축약 없이' SPEC-PERM-001/spec.md
+74:                                  ← 초판 :75 는 한 줄 어긋남 (N-07)
+$ grep -n 'onGatewayRequest(info' SPEC-PERM-001/spec.md
+106:
+$ grep -n '^\*\*REQ-PERM-006\|^\*\*REQ-PERM-007\|^\*\*REQ-PERM-009' SPEC-PERM-001/spec.md
+132: 135: 141:                       ← 인용 본문은 :133 :136 :144 (전부 일치)
+$ sed -n '187p;873p;888p;928p' SPEC-GATEWAY-001/acceptance.md
+  네 자리 전부 실재 — 인자 모양·「다섯 관측」·「다섯 메서드」·「다섯 메서드」
+$ GWAUTH-002 앵커 일곱 (design.md:24 · plan.md:105·322·459 · acceptance.md:776·873·880)
+  일곱 전부 실재하고 전부 「다섯」 계열 진술을 담는다 (전문 확인)
+
+$ grep -n '전원 발신이 안전한 근거' server/src/gateway.ts
+357:
+$ sed -n '350,362p' server/src/gateway.ts
+350:      return false
+351:    },
+352:    // 접속이 없으면 아무것도 보내지 않고 false — "오프라인이라 못 보냈다"의 유일한 신호 (REQ-GW-020)
+353:    // 일치하는 접속 «전원» 에게 보낸다 — deliver 와 같은 갈래다 (카드 t32 §D 결함 D-5).
+354:    // 첫 일치에서 return 하면 같은 봇 토큰으로 여러 세션이 붙어 있을 때 판정이 요청하지 않은
+355:    // 소켓으로 가고, 그 채널의 emitted 집합 가드(REQ-CHANPERM-008)가 조용히 버려 승인 프롬프트가
+356:    // 영원히 열린 채 남는다 — 실측: 같은 (방, 봇) 에 소켓 셋(run·lead·bot)이 붙은 상태에서 재현.
+357:    // 전원 발신이 안전한 근거가 그 가드다: 채널은 «자기가 낸» request_id 의 판정만 세션으로 되쏘고
+358:    // 나머지는 버리므로, 요청하지 않은 세션에 도착한 프레임은 아무 일도 하지 않는다.
+359:    // @MX:WARN: [AUTO] 이 발신의 정확성이 채널 쪽 emitted 가드에 의존한다 — ...
+360:    // @MX:SPEC: SPEC-LIVEVERIFY-001
+361:    sendToBot(roomId, botId, payload) {
+362:      let sent = false
+
+→ 제거 범위는 :353-360 이다. 초판의 :352-359 는 양끝이 한 줄씩 어긋났다.
+  :352 는 sendToBot 의 false 가 무엇을 뜻하는지 적은 계약 주석이고 이 카드 이후에도 참이다.
+  :360 의 @MX:SPEC 은 :359 의 @MX:WARN 과 한 짝이라 함께 지운다.
+
+$ sed -n '833p;878p;899p' server/test/gateway.test.ts
+833:    expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+878:    expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+899:    // Gateway 계약: 다섯 메서드가 전부 함수다 (REQ-GW-021)
+$ sed -n '19p;151p;197p' server/test/web-rich.test.ts
+19:const FAILED_BODY = '⚠️ 봇이 접속해 있지 않아 판정을 전달하지 못했습니다 (zxvbn)'
+151:    const a3 = msgEl(); rich.decorate(a3, { ... body: FAILED_BODY })
+197:    expect(permissionResolutionId(FAILED_BODY)).toBe('zxvbn')
+
+앵커 전건이 해소된다. 어긋난 것은 위 둘(:75→:74, :352-359→:353-360)뿐이다.
+
+================================================================================
+5. §6.2 11행 — 실패 문구 축자 복제 세 자리의 재검증 (N-04)
+================================================================================
+
+$ grep -rn '접속해 있지' .moai/specs/SPEC-WEBRICH-001/
+.moai/specs/SPEC-WEBRICH-001/plan.md:234:| 8 | 봇이 접속해 있지 않을 때 승인을 누르면
+    `⚠️` 결과가 오고 요청은 사라진다 | Low | 서버 설계대로다(...) |
+
+→ 축자 복제가 아니라 위험 표의 동작 산문이고, 봇이 실제로 오프라인이면
+  이 SPEC 이후에도 참이다. 11행에서 뺀다. (2회차 감사 N-04 확인)
+
+$ sed -n '70p' .moai/specs/SPEC-PERM-001/plan.md
+| 봇 연결 없음 (승인·거절 공통) | `⚠️ 봇이 접속해 있지 않아 판정을 전달하지 못했습니다 (<request_id>)` |
+→ 축자 복제 맞음. 11행에 남는다.
+
+$ sed -n '461p' .moai/specs/SPEC-PERM-001/acceptance.md
+... `plan.md` §C 가 확정한 문구(`⚠️ 봇이 접속해 있지 않아 판정을 전달하지 못했습니다
+(<request_id>)`)의 핵심 어절을 직접 잰다.
+→ 축자 인용 맞음. 11행에 남는다.
+
+셋 중 하나가 틀렸으므로 어간을 넓혀 집합 전체를 다시 열었다:
+
+$ grep -n '전달하지 못했습니다' $F
+SPEC-CHANPERM-001/spec.md:124   → 「⚠️ 전달하지 못했습니다」 줄임표 인용, 꼬리 유지 → 거짓 아님
+SPEC-PERM-001/plan.md:70        → 축자 복제 (11행)
+SPEC-PERM-001/acceptance.md:452 → toContain('전달하지 못했습니다') 시험 코드 인용, 꼬리 유지 → 초록 유지
+SPEC-PERM-001/acceptance.md:461 → 축자 인용 (11행)
+SPEC-WEBRICH-001/spec.md:230    → 「⚠️ … 판정을 전달하지 못했습니다 (…)」 ← 새 문구에서
+                                   「판정을」이 앞으로 빠져 이어진 문자열로 남지 않음 (11행에 추가)
+SPEC-WEBRICH-001/acceptance.md:615 → 「⚠️ … 전달하지 못했습니다 (id)」 줄임표, 꼬리 유지 → 거짓 아님
+server/src/permissions.ts:102   → 생산 문자열. 이 카드가 직접 고치는 코드 (§6.2 대상 아님)
+server/test/permissions.test.ts:313 → toContain 양성 단언, 꼬리 유지 → 초록 유지
+server/test/web-rich.test.ts:19 → FAILED_BODY 상수 (17행)
+
+--------------------------------------------------------------------------------
+살아 있는 코드 결합 — 3회차가 이 재검증 중에 찾음
+--------------------------------------------------------------------------------
+
+$ grep -n 'RESOLUTION_RE =' web/rich.js
+67:const RESOLUTION_RE = /^.*(?:승인 전송됨|거절 전송됨|전달하지 못했습니다) \(([a-km-z]{5})\)$/
+
+화면 파서가 이모지·앞부분을 쓰지 않고 꼬리 「전달하지 못했습니다 (<5글자 id>)」만으로
+판정 결과 메시지를 인식한다. 새 실패 문구가 그 꼬리를 끊으면 permissionResolutionId 가
+null 을 돌려주고 이미 끝난 요청에 버튼이 되살아난다 (SPEC-WEBRICH-001 REQ-WEBRICH-010).
+→ REQ-PERMROUTE-007 에 [HARD] 제약으로, plan.md §D-3 에 근거와 함께 실었다.
+
+================================================================================
+6. AC-PERMROUTE-014 의 세 명령 — 착지 전 나무 출력 (REQ-PERMROUTE-009)
+================================================================================
+
+$ sed -n '/^export interface PermissionBroker {/,/^}/p' server/src/permissions.ts | grep -cE '^  [a-zA-Z_]+\('
+2
+$ sed -n '/^export interface Gateway {/,/^}/p' server/src/gateway.ts | grep -cE '^  [a-zA-Z_]+\('
+5
+$ sed -n "/ws.on('close'/,/})/p" server/src/gateway.ts | grep -icE 'permission|broker|pending'
+0
+$ sed -n '/function dropConn/,/^  }/p' server/src/gateway.ts | grep -icE 'permission|broker|pending'
+0
+
+착지 후 기대값: 2 / 6 / 0 / 0. Gateway 메서드만 5 → 6 으로 바뀐다.
+
+================================================================================
+7. 형제 시험 자리 — 2회차 감사 14 자리의 실재 확인 (실행 아님)
+================================================================================
+
+$ grep -n 'onGatewayRequest' server/test/permissions.test.ts server/test/room-members.test.ts
+
+감사가 지목한 14 자리가 전부 실재함을 확인했다:
+  permissions.test.ts : 195 205 228 246 262 279 303 304 323 324 347 348  (12)
+  room-members.test.ts: 527 549                                          (2)
+
+[HARD] 이것은 «그 자리가 존재한다» 의 확인일 뿐 «그 자리가 붉어진다» 의 확인이 아니다.
+구현이 없으므로 실행으로 확인할 방법이 없고, 14 는 2회차 감사관의 읽기 추론값이며
+감사관 스스로 그 보고서 §6 Gaps 에 그렇게 공시했다. run 이 실측한다.
+
+================================================================================
+8. 이 재도출 자신의 미검증 (Gaps)
+================================================================================
+
+- 형제 시험이 실행으로 붉어지는 자리 수(14)를 실행으로 확인하지 못했다. 구현 부재.
+- §D-1 의 필수 갈래 typecheck(30자리)를 다시 돌리지 않았다. 나무를 더럽히지 않기 위해
+  스크래치 편집을 재현하지 않았고, 기존 증거 파일
+  (D1-connid-required-typecheck.txt)의 값을 그대로 인용했다.
+- 「다섯」 좁힘 grep 의 55 는 새 명령의 첫 측정값이다. 0.2.0 의 48 과 대조할 수
+  있는 동일 명령이 존재하지 않으므로, 「48이 틀렸다」가 아니라 「48은 재현 불가였다」가
+  정확한 서술이다.
+- 읽기 전용 명령만 실행했다. 시작·종료 모두 git status --short -- server/ channel/ 빈 출력.

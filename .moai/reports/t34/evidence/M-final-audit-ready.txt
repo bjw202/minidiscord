@@ -1,0 +1,17 @@
+=== AC-PERMROUTE-007 import 훑기 (통과 = 0건·exit 1):
+exit: 1
+=== AC-PERMROUTE-009 (가) gateway.ts 밖 적중 (통과 = 무출력·exit 1):
+server/src/permissions.ts:99:      // REQ-PERMROUTE-006 — 판정은 «요청한 접속 하나» 로만 되돌아간다. 전원 발신(sendToBot)은 판정 경로에서 부르지 않는다
+exit: 0
+=== AC-PERMROUTE-009 (나) gateway.ts 안 선언·구현 (통과 = 2행):
+29:  sendToBot(roomId: number, botId: number, payload: object): boolean
+361:    sendToBot(roomId, botId, payload) {
+=== AC-PERMROUTE-014 네 명령:
+2
+6
+0
+0
+=== AC-PERMROUTE-008 channel diff:
+(빈 출력 = 통과)
+=== AC-PERMROUTE-009 (가) 재실행 (수리 후 — 통과 = 무출력·exit 1):
+exit: 1

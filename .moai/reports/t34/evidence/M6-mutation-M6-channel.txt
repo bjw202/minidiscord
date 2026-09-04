@@ -1,0 +1,155 @@
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/channel
+
+ ❯ test/permission-relay.test.ts (14 tests | 4 failed) 1498ms
+     × relays a verdict only for an id it actually emitted, exactly once 106ms
+     × a verdict for an id the channel never emitted is not relayed 53ms
+     × an emitted id is consumed on first relay; a replayed verdict is dropped 156ms
+     × the emitted-id set is capped at 128 and evicts oldest first 107ms
+ ❯ test/transport-auth.test.ts (30 tests | 1 failed) 67533ms
+     × the entry point closes a rejected socket, says one line on stderr and nothing on stdout 4514ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/permission-relay.test.ts > permission relay > relays a verdict only for an id it actually emitted, exactly once
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "method": "notifications/claude/channel/permission",
++     "params": {
++       "behavior": "allow",
++       "request_id": "zzzzz",
++     },
++   },
++ ]
+
+ ❯ test/permission-relay.test.ts:248:22
+    246|     handle.handlePermissionVerdict({ request_id: 'zzzzz', behavior: 'a…
+    247|     await tick()
+    248|     expect(verdicts).toEqual([])                         // 한 건도 나가지 않…
+       |                      ^
+    249|
+    250|     handle.handlePermissionVerdict({ request_id: 'abcde', behavior: 'a…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/permission-relay.test.ts > permission relay > a verdict for an id the channel never emitted is not relayed
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "method": "notifications/claude/channel/permission",
++     "params": {
++       "behavior": "allow",
++       "request_id": "zzzzz",
++     },
++   },
++ ]
+
+ ❯ test/permission-relay.test.ts:335:22
+    333|     await tick()
+    334|
+    335|     expect(verdicts).toEqual([])       // 한 건도 나가지 않는다
+       |                      ^
+    336|     expect(requests).toEqual([])       // 발신한 적도 없다 (전제 확인)
+    337|     expect(await unhandled()).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/permission-relay.test.ts > permission relay > an emitted id is consumed on first relay; a replayed verdict is dropped
+AssertionError: expected [ { request_id: 'aaaaa', …(1) }, …(1) ] to deeply equal [ { request_id: 'aaaaa', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+      "behavior": "deny",
+      "request_id": "aaaaa",
+    },
++   {
++     "behavior": "allow",
++     "request_id": "aaaaa",
++   },
+  ]
+
+ ❯ test/permission-relay.test.ts:363:41
+    361|     await tick()
+    362|
+    363|     expect(verdicts.map(v => v.params)).toEqual([{ request_id: 'aaaaa'…
+       |                                         ^
+    364|
+    365|     // 소진이 릴레이 전체를 막은 것이 아님을 새 발신으로 확인한다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/permission-relay.test.ts > permission relay > the emitted-id set is capped at 128 and evicts oldest first
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "method": "notifications/claude/channel/permission",
++     "params": {
++       "behavior": "allow",
++       "request_id": "req-0000",
++     },
++   },
++ ]
+
+ ❯ test/permission-relay.test.ts:393:22
+    391|     handle.handlePermissionVerdict({ request_id: id(0), behavior: 'all…
+    392|     await tick()
+    393|     expect(verdicts).toEqual([])
+       |                      ^
+    394|
+    395|     handle.handlePermissionVerdict({ request_id: id(128), behavior: 'a…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/transport-auth.test.ts > transport auth > the entry point closes a rejected socket, says one line on stderr and nothing on stdout
+Error: waitFor timeout: 거절 뒤 재접속
+ ❯ waitFor test/transport-auth.test.ts:280:37
+    278|   const t0 = Date.now()
+    279|   while (!pred()) {
+    280|     if (Date.now() - t0 > ms) throw new Error(`waitFor timeout: ${labe…
+       |                                     ^
+    281|     await new Promise(r => setTimeout(r, 10))
+    282|   }
+ ❯ test/transport-auth.test.ts:917:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  2 failed | 5 passed (7)
+      Tests  5 failed | 121 passed (126)
+   Start at  07:46:59
+   Duration  67.76s (transform 322ms, setup 0ms, import 991ms, tests 72.61s, environment 0ms)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/channel
+npm error workspace @minidiscord/channel@0.1.0
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/channel
+npm error command failed
+npm error command sh -c vitest run

@@ -520,11 +520,14 @@ describe('room membership gates', () => {
   // AC-ROOMAUTHZ-012 시나리오 1 — 비멤버의 yes 는 소비되지 않고, 대기 항목은 멤버의 몫으로 남는다.
   // 이것이 .moai/reports/t4/sync-audit.md §F-14 를 직접 재는 기준이다
   it('never lets a non-member approve, and leaves the request for a member to answer', async () => {
-    const { app, broker, port, alice, mallory } = await build()
+    const { app, port, alice, mallory } = await build()
     const roomId = await createRoom(app, alice.cookie)
     const { botId, token } = seedBot(roomId)
     const ws = await wsConnect(port, token)
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // SPEC-PERMROUTE-001 (M4-7, 리드 처분) — 요청을 소켓으로 보내 대기 항목에 «살아 있는 connId» 가 실리게 한다.
+    // broker 직접 호출은 connId 가 없어 (ㄴ) 실패 갈래로 빠져 멤버의 판정이 봇에 도달하지 않는다.
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
 
     // 부정 사례 — mallory 는 방 밖에서 승인 코드를 알고 있다고 가정한다
     const seen = nextMessage(ws)
@@ -546,7 +549,10 @@ describe('room membership gates', () => {
     const roomId = await createRoom(app, alice.cookie)
     const { botId, token } = seedBot(roomId)
     const ws = await wsConnect(port, token)
-    broker.onGatewayRequest({ roomId, botId }, { request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' })
+    // M4-7 — 등록은 소켓으로(살아 있는 connId), 비멤버·멤버 판정은 tryHandleUserReply 직접 호출로.
+    // 이 시험의 본체는 «브로커 자신의 비멤버 차단» 이고, 마지막 단언은 «멤버의 판정이 봇에 도달한다» 다.
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 200))
 
     expect(broker.tryHandleUserReply(roomId, mallory.id, 'yes abcde')).toBe(false)   // 비멤버
     expect(broker.tryHandleUserReply(roomId, alice.id, 'yes abcde')).toBe(true)      // 멤버 — 대기 항목이 살아 있었다

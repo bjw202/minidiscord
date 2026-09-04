@@ -13,6 +13,8 @@
 <body>
   <!-- 인증 화면 — 로그인과 회원가입을 한 패널에 둔다 -->
   <section id="auth-view">
+    <!-- 서버가 준 오류 문구가 여기 뜬다 — 화면은 인증 뷰에 머문다 (REQ-WEBSHELL-008) -->
+    <p id="auth-error" hidden></p>
     <form id="login-form">
       <h1>minidiscord</h1>
       <label for="login-username">사용자 이름</label>
@@ -29,8 +31,6 @@
       <input id="reg-password" type="password" autocomplete="new-password">
       <button type="submit">회원가입</button>
     </form>
-    <!-- 서버가 준 오류 문구가 여기 뜬다 — 화면은 인증 뷰에 머문다 (REQ-WEBSHELL-008) -->
-    <p id="auth-error" hidden></p>
   </section>
 
   <!-- 메인 화면: 사이드바 + 채팅. 채팅 내용물는 형제 SPEC(SPEC-WEBCHAT-001) 소유다 -->
@@ -66,8 +66,12 @@
         <!-- 멘션 자동완성 드롭다운 — 토큰이 감지될 때만 보인다 (REQ-WEBCHAT-009) -->
         <div id="autocomplete" hidden></div>
         <textarea id="msg-input" rows="1" placeholder="메시지 보내기"></textarea>
-        <!-- 파일 첨부의 결합은 SPEC-WEBRICH-001 몫이다 — 이 SPEC 은 자리만 둔다 (REQ-WEBCHAT-001) -->
+        <!-- 파일 첨부 — 카드 t32 결함 D-7. 자리(#file-input)는 REQ-WEBCHAT-001 이 두었으나
+             그것을 여는 UI 와 전송 결합을 어느 SPEC 도 소유하지 않아 사람이 파일을 올릴 수 없었다.
+             label[for] 은 스크립트 없이 파일 선택창을 연다 — 여는 코드를 따로 두지 않는다. -->
         <input id="file-input" type="file" hidden>
+        <label id="attach-btn" for="file-input" role="button" tabindex="0" title="파일 첨부">📎</label>
+        <span id="file-chosen"></span>
         <button id="send-btn" type="button">보내기</button>
       </footer>
     </main>

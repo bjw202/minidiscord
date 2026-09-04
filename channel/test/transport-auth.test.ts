@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 // isTransportAllowed 는 M2 가 새로 내보내는 판정 함수, resolveUrl 은 그 비회귀를 재는 형제 계약이다.
 import { wire, isTransportAllowed, resolveUrl } from '../src/index.js'
+import { TO_REPLY_NOTE } from '../src/channel-server.js'
 // SPEC-BOTSTAB-001 M4a — 상한 상수는 truncate 모듈에서 읽는다 (§F — 테스트에 상한 숫자를 복제하지 않는다).
 // M3 가 상한을 건 뒤 content 등식은 «상한 이하» 에서만 성립하므로, 각 등식 옆에 파생 경계를 나란히 둔다.
 import { MAX_BODY_BYTES, MAX_NAME_BYTES } from '../src/truncate.js'
@@ -425,7 +426,7 @@ describe('transport auth', () => {
 
     expect(verdicts.map(v => v.params)).toEqual([{ request_id: 'abcde', behavior: 'allow' }])
     expect(notes.length).toBe(1)
-    expect(notes[0].params.content).toBe('[alice] 안녕')
+    expect(notes[0].params.content).toBe('[alice] 안녕' + TO_REPLY_NOTE) // 등식에 시스템 답변 유발 접미 포함 (카드 t32 §D 결함 D-4, 리드 결정 (A) 2026-09-03)
     // SPEC-BOTSTAB-001 M4a — content 등식은 «상한 이하» 에서만 참이다 (형제 증인 자리,
     // spec.md §3.3 — SPEC-CHANINJECT-001 acceptance.md:33 이 이름을 적어 둔 곳). 경계를 나란히 단언한다.
     expect(Buffer.byteLength(notes[0].params.content, 'utf8')).toBeLessThanOrEqual(

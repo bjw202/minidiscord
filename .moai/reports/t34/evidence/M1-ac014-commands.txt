@@ -1,0 +1,9 @@
+=== AC-PERMROUTE-014 (four commands, verbatim) ===
+$ sed -n '/^export interface PermissionBroker {/,/^}/p' server/src/permissions.ts | grep -cE '^  [a-zA-Z_]+\('
+2
+$ sed -n '/^export interface Gateway {/,/^}/p' server/src/gateway.ts | grep -cE '^  [a-zA-Z_]+\('
+6
+$ sed -n "/ws.on('close'/,/})/p" server/src/gateway.ts | grep -icE 'permission|broker|pending'
+0
+$ sed -n '/function dropConn/,/^  }/p' server/src/gateway.ts | grep -icE 'permission|broker|pending'
+0

@@ -259,7 +259,11 @@ it('delivers an allow verdict to the connected bot', async () => {
 })
 ```
 
+> 2026-09-04 개정 — 위 시험 «delivers an allow verdict to the connected bot»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
+
 **Then** 테스트가 통과한다. 관측되는 것은 **봇 소켓이 실제로 받은 payload 전체**다 — 브로커가 `true` 를 돌려주었다거나 예외가 없었다는 것이 아니다. `sendToBot` 호출을 빠뜨린 구현에서는 `seen` 이 `null` 이라 `toEqual` 이 실패한다.
+
+> 2026-09-04 개정 — 위 문단의 판별자 «`sendToBot` 호출을 빠뜨린 구현» 은 이제 «`sendToOrigin` 호출을 빠뜨린 구현» 이다 (`SPEC-PERMROUTE-001` REQ-PERMROUTE-004·006). `seen` 이 `null` 이라 `toEqual` 이 실패한다는 판별 방식 자체는 그대로다.
 
 ### AC-PERM-005 — 거절 판정이 거절로서 도달한다
 
@@ -280,6 +284,8 @@ it('delivers a deny verdict as deny, not as allow', async () => {
   expect(v.request_id).toBe('abcde')
 })
 ```
+
+> 2026-09-04 개정 — 위 시험 «delivers a deny verdict as deny, not as allow»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
 
 **Then** 테스트가 통과한다. `behavior` 값을 **직접** 단언하는 것이 이 기준의 존재 이유다. "판정이 도착했다"만 보는 기준은 판정어를 아예 읽지 않는 구현도 통과시킨다 — 승인이 되어야 할 자리에서 거절이, 거절이 되어야 할 자리에서 승인이 나가도 조용하다. 이 SPEC 에서 가장 비싼 오작동이라 기준을 따로 세웠다.
 
@@ -328,6 +334,8 @@ it('accepts a verdict once and lets a repeat fall through as chat', async () => 
 })
 ```
 
+> 2026-09-04 개정 — 위 시험 «accepts a verdict once and lets a repeat fall through as chat»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
+
 **Then** 테스트가 통과한다. 대기 항목을 지우지 않는 구현은 두 번째 판정을 보내므로 `toBeNull()` 에서 걸리고, 저장 행 수도 `0` 이 되어 두 번 걸린다.
 
 ### AC-PERM-008 — 다른 방의 답은 판정이 되지 않는다
@@ -353,6 +361,8 @@ it('never resolves a request from a different room', async () => {
   expect((await proper).behavior).toBe('allow')
 })
 ```
+
+> 2026-09-04 개정 — 위 시험 «never resolves a request from a different room»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
 
 **Then** 테스트가 통과한다. 세 가지가 함께 관측된다 — 다른 방의 답은 소비되지 않고, 판정이 봇에 **가지 않으며**, 그 실패가 대기 항목을 소모하지도 않아 원래 방에서 여전히 판정할 수 있다.
 
@@ -381,6 +391,8 @@ it('refuses an unauthenticated verdict and leaves the request pending', async ()
   expect((await proper).behavior).toBe('allow')
 })
 ```
+
+> 2026-09-04 개정 — 위 시험 «refuses an unauthenticated verdict and leaves the request pending»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
 
 **Then** 테스트가 통과한다. 단언의 무게는 `401` 이 아니라 **판정이 가지 않았다**는 부정 관측에 있다. 가로채기를 `requireAuth` 앞에 두거나 라우트 밖으로 빼면 상태 코드는 그대로여도 판정이 새어 나가는데, `toBeNull()` 이 그것을 잡는다.
 
@@ -416,6 +428,8 @@ it('falls through non-matching text and unknown ids without touching the pending
   expect((await seen).behavior).toBe('allow')
 })
 ```
+
+> 2026-09-04 개정 — 위 시험 «falls through non-matching text and unknown ids without touching the pending request»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
 
 **Then** 테스트가 통과한다. 네 가지가 함께 관측된다 — 두 텍스트 모두 소비되지 않고, 어느 쪽도 판정을 봇에 보내지 않았으며, 둘 다 대화로 **저장됐고**, 그러고도 진짜 판정이 여전히 성립한다.
 
@@ -456,9 +470,13 @@ it('marks an undelivered verdict differently from a delivered one', async () => 
 })
 ```
 
+> 2026-09-04 개정 — 위 시험 «marks an undelivered verdict differently from a delivered one»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
+
 **Then** 테스트가 통과한다. 세 가지가 관측된다 — 전달된 판정과 전달되지 못한 판정의 결과 문구가 `request_id` 를 맞춘 뒤에도 **서로 다르고**, 실패 쪽 본문이 실패를 뜻하는 표식을 **양성으로** 담으며, 전달 실패였더라도 대기 항목은 이미 소모되어 재시도가 소비되지 않는다.
 
 `toContain('전달하지 못했습니다')` 가 양성 단언이다. "성공 문구와 다르다"만으로는 실패 쪽 문구가 무엇이든 — 빈 문자열이든, 사람이 읽고 실패인지 알 수 없는 문구든 — 통과한다. `plan.md` §C 가 확정한 문구(`⚠️ 봇이 접속해 있지 않아 판정을 전달하지 못했습니다 (<request_id>)`)의 핵심 어절을 직접 잰다.
+
+> 2026-09-04 개정 — 위 문단이 인용한 «확정된 문구» 는 `SPEC-PERMROUTE-001` REQ-PERMROUTE-007 이 바꿨다 — 실패 문구는 이제 «⚠️ 요청한 세션이 끊겨 판정을 전달하지 못했습니다 …» 와 «⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다 …» 둘이다. 핵심 어절 «전달하지 못했습니다» 는 새 문구에도 남아 이 기준의 양성 단언은 계속 성립한다. 원문은 지우지 않는다.
 
 `sendToBot` 의 반환값을 버리는 원본 구현은 두 문구가 같아져 첫 단언에서 걸린다. `spec.md` REQ-PERM-009 가 원본에서 의도적으로 벗어난 자리이며 근거는 `plan.md` §D 3번에 있다.
 
@@ -489,6 +507,8 @@ it('accepts all four verdict words, normalizes case, and rejects ids containing 
   expect(await deny).toEqual({ type: 'permission_verdict', request_id: 'fghij', behavior: 'deny' })
 })
 ```
+
+> 2026-09-04 개정 — 위 시험 «accepts all four verdict words, normalizes case, and rejects ids containing l»: 실물 시험은 M4-7 로 소켓 등록(`ws.send({ type: 'permission_request', … })`)을 거친다 — `SPEC-PERMROUTE-001` 이후 `broker.onGatewayRequest({ roomId, botId }, …)` 직접 호출은 `connId` 가 없어 판정이 REQ-PERMROUTE-007 (ㄴ) 갈래로 빠지고 «테스트가 통과한다» 가 무너진다. 본문은 지우지도 고치지도 않는다.
 
 **Then** 테스트가 통과한다. `text.startsWith('yes ')` 같은 구현은 `Y` 갈래에서, `l` 을 허용하도록 정규식을 완화한 구현은 첫 갈래에서 걸린다. 전달된 `request_id` 가 소문자로 정규화됐다는 것도 함께 관측된다 — 대문자 그대로 보내면 봇 쪽이 자기 요청을 못 알아본다.
 
@@ -541,6 +561,8 @@ git diff --name-only "$SHA" -- server/src
 | 보관된 방에 온 답 | 라우트가 활성 방 확인에서 먼저 걸러 `403`. 가로채기까지 오지 않는다 | 미검증 — 라우트 소유 SPEC 의 기존 동작 |
 | 서버 재시작 후 답 | 대기 레지스트리가 비어 있어 소비되지 않고 대화로 저장된다 (REQ-PERM-003 수용) | AC-PERM-010 (모르는 ID 갈래와 같은 경로) |
 | 봇이 판정 직전에 끊긴다 | `sendToBot` 이 `false` → 결과 문구가 전달 실패를 밝힌다 | AC-PERM-011 |
+
+> 2026-09-04 개정 — 위 표의 «봇이 판정 직전에 끊긴다» 행: 실패 갈래가 둘로 갈렸다 — `sendToOrigin` 의 `false`(요청한 접속이 살아 있지 않음)와 대기 항목의 `connId` 부재이며, 문구도 그에 따라 둘이다 (`SPEC-PERMROUTE-001` REQ-PERMROUTE-007).
 
 ## 품질 게이트
 

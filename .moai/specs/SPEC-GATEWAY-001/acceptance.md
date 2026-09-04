@@ -187,6 +187,9 @@ function closedPromise(ws: WebSocket): Promise<void> {
 | AC-GW-017 | REQ-GW-020 | `relays permission_request to the handler and sendToBot reports delivery` | 핸들러가 `{roomId, botId}` 로 호출됨, `sendToBot` 이 온라인 `true`/오프라인 `false` |
 | AC-GW-018 | REQ-GW-021, 022 | `buildServer wires the gateway, archive hook and invite online flag` | `app.gateway` 5개 메서드, 보관이 소켓을 끊음, 초대 목록 `online` 이 접속 상태를 따라감 |
 | AC-GW-019 | REQ-GW-023 | (테스트 아님 — 명령 네 개) | `gateway.ts` 존재(형제 SPEC 파일은 관측 대상 아님), 기준 SHA 확인 종료 코드 `0`, `db.ts` diff 빈 출력, 변경 파일 정확히 세 줄 |
+
+> 2026-09-04 개정 — 위 표의 AC-GW-017 행: 핸들러는 이제 `{roomId, botId, connId}` 로 호출된다(`SPEC-PERMROUTE-001` REQ-PERMROUTE-002).
+> 2026-09-04 개정 — 위 표의 AC-GW-018 행: «5개 메서드» 는 이제 여섯이다 — `sendToOrigin` 이 더해졌다(`SPEC-PERMROUTE-001` REQ-PERMROUTE-004).
 | AC-GW-020 | RED→GREEN 전이 | (테스트 아님 — 전이 관측) | 네 전이가 순서대로 관측됨 |
 
 ---
@@ -872,6 +875,8 @@ it('relays permission_request to the handler and sendToBot reports delivery', as
 
 **Then** `✓ … > relays permission_request to the handler and sendToBot reports delivery` 줄이 나타나고, 다섯 관측(핸들러 1회 호출·`ConnInfo` 일치·온라인 `true`+도착·오프라인 `false`+무전송·해제 후 무호출)이 모두 성립한다.
 
+> 2026-09-04 개정 — 위 «다섯 관측» 의 «`ConnInfo` 일치» 는 이제 `connId` 를 포함한 모양이다(`SPEC-PERMROUTE-001` REQ-PERMROUTE-002).
+
 ### AC-GW-018 — 조립: `buildServer` 배선과 초대 목록의 `online`
 
 **Given** `buildServer()` 로 띄운 실제 서버와 로그인한 사용자가 있다.
@@ -886,6 +891,7 @@ it('buildServer wires the gateway, archive hook and invite online flag', async (
   const port = (app.server.address() as { port: number }).port
 
   // Gateway 계약: 다섯 메서드가 전부 함수다 (REQ-GW-021)
+  // 2026-09-04 개정: SPEC-PERMROUTE-001 이 sendToOrigin 을 여섯째 메서드로 더했다 — 위 «다섯» 은 이제 여섯이다.
   const gw = (app as any).gateway
   for (const m of ['deliver', 'closeRoom', 'isOnline', 'sendToBot', 'setPermissionHandler']) {
     expect(typeof gw[m]).toBe('function')
@@ -929,6 +935,8 @@ it('buildServer wires the gateway, archive hook and invite online flag', async (
 2. 같은 초대 목록 라우트가 접속 **전** `false`, 접속 **후** `true` 를 낸다 — 상수를 배제하는 분별이며, `SPEC-BOT-001` 이 남겨 둔 자리가 실제로 채워졌다는 유일한 증거다
 3. `online` 이 여전히 불리언이다 (SQLite 정수 `0`/`1` 이 새지 않는다)
 4. HTTP 보관 요청이 그 방 소켓을 끊는다 — `onArchive` 훅이 실제로 연결됐다 (REQ-GW-022)
+
+> 2026-09-04 개정 — 위 목록 1번의 «다섯 메서드»: `SPEC-PERMROUTE-001` 이 `sendToOrigin` 을 여섯째로 더했다 (REQ-GW-021 개정).
 
 `typeof` 만 검사하고 값 변화를 보지 않으면 `online: false` 를 그대로 둔 구현이 통과한다. 2번이 그 구멍을 막는다.
 

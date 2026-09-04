@@ -1,0 +1,71 @@
+> **[HARD] 처분 (나) 이전 실행 — 낡은 증거.** 이 출력은 M2 커밋(2708a7a) «이전» 의 트리에서 나온 것으로 2 failed | 209 passed 를 담는다 — 파일 이름(«green»)과 어긋난다(리드 판독 defect, 비차단). 처분 (나) 이후 초록 회복의 실측은 `M2-full-suite-green-after-m4-1.txt`(211 passed, 같은 커밋 트리·run 직접 실행)로 대체한다. 기록 보존을 위해 삭제하지 않는다.
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+
+ ❯ test/gateway.test.ts (35 tests | 2 failed) 7340ms
+     × relays permission_request to the handler and sendToBot reports delivery 219ms
+     × routes a permission verdict to the socket that requested it when several sockets share one bot 212ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > relays permission_request to the handler and sendToBot reports delivery
+AssertionError: expected { roomId: 1, botId: 1, …(1) } to deeply equal { roomId: 1, botId: 1 }
+
+- Expected
++ Received
+
+  {
+    "botId": 1,
++   "connId": "e1e059f2-9183-422e-84c9-d1f499cedd59",
+    "roomId": 1,
+  }
+
+ ❯ test/gateway.test.ts:833:26
+    831|     await new Promise(r => setTimeout(r, 200))
+    832|     expect(seen).toHaveLength(1)
+    833|     expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+       |                          ^
+    834|     expect(seen[0].params.request_id).toBe('p1')
+    835|     expect(seen[0].params.tool_name).toBe('Bash')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/gateway.test.ts > gateway > routes a permission verdict to the socket that requested it when several sockets share one bot
+AssertionError: expected { roomId: 1, botId: 1, …(1) } to deeply equal { roomId: 1, botId: 1 }
+
+- Expected
++ Received
+
+  {
+    "botId": 1,
++   "connId": "5e06be84-c28c-4f16-a748-d2304cbe4713",
+    "roomId": 1,
+  }
+
+ ❯ test/gateway.test.ts:878:26
+    876|     await new Promise(r => setTimeout(r, 200))
+    877|     expect(seen).toHaveLength(1)
+    878|     expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+       |                          ^
+    879|
+    880|     expect(gateway.sendToBot(room, pm, { type: 'permission_verdict', r…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 16 passed (17)
+      Tests  2 failed | 209 passed (211)
+   Start at  01:06:09
+   Duration  7.76s (transform 1.02s, setup 0ms, import 3.02s, tests 24.20s, environment 1.45s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t34/server
+npm error command failed
+npm error command sh -c vitest run

@@ -1,0 +1,45 @@
+row | file | anchor | HEAD vs CUR
+--------------------------------------------------------------
+1    .moai/specs/SPEC-GATEWAY-001/spec.md         :020   same
+1    .moai/specs/SPEC-GATEWAY-001/spec.md         :174   same
+1    .moai/specs/SPEC-GATEWAY-001/spec.md         :176   same
+2    .moai/specs/SPEC-GATEWAY-001/spec.md         :020   same
+2    .moai/specs/SPEC-GATEWAY-001/spec.md         :176   same
+3    .moai/specs/SPEC-GATEWAY-001/spec.md         :021   same
+3    .moai/specs/SPEC-GATEWAY-001/spec.md         :191   same
+4    .moai/specs/SPEC-GATEWAY-001/spec.md         :021   same
+4    .moai/specs/SPEC-GATEWAY-001/spec.md         :192   same
+5    .moai/specs/SPEC-PERM-001/spec.md            :3     same
+5    .moai/specs/SPEC-PERM-001/spec.md            :74    SHIFTED
+5    .moai/specs/SPEC-PERM-001/spec.md            :77    SHIFTED
+5    .moai/specs/SPEC-PERM-001/spec.md            :80    SHIFTED
+5    .moai/specs/SPEC-PERM-001/spec.md            :81    SHIFTED
+5    .moai/specs/SPEC-PERM-001/spec.md            :2     same
+5    .moai/specs/SPEC-PERM-001/spec.md            :07    same
+5    .moai/specs/SPEC-PERM-001/spec.md            :1     same
+5    .moai/specs/SPEC-PERM-001/spec.md            :75    same
+5    .moai/specs/SPEC-PERM-001/spec.md            :001   same
+6    .moai/specs/SPEC-PERM-001/spec.md            :004   same
+6    .moai/specs/SPEC-PERM-001/spec.md            :106   SHIFTED
+7    .moai/specs/SPEC-PERM-001/spec.md            :006   same
+7    .moai/specs/SPEC-PERM-001/spec.md            :133   SHIFTED
+7    .moai/specs/SPEC-PERM-001/spec.md            :007   same
+7    .moai/specs/SPEC-PERM-001/spec.md            :136   SHIFTED
+8    .moai/specs/SPEC-PERM-001/spec.md            :009   same
+8    .moai/specs/SPEC-PERM-001/spec.md            :144   SHIFTED
+11   .moai/specs/SPEC-PERM-001/plan.md            :70    SHIFTED
+11   .moai/specs/SPEC-PERM-001/acceptance.md      :461   SHIFTED
+21   .moai/specs/SPEC-PERM-001/acceptance.md      :251   same
+21   .moai/specs/SPEC-PERM-001/acceptance.md      :270   SHIFTED
+21   .moai/specs/SPEC-PERM-001/acceptance.md      :313   SHIFTED
+21   .moai/specs/SPEC-PERM-001/acceptance.md      :339   SHIFTED
+21   .moai/specs/SPEC-PERM-001/acceptance.md      :367   SHIFTED
+21   .moai/specs/SPEC-PERM-001/acceptance.md      :397   SHIFTED
+21   .moai/specs/SPEC-PERM-001/acceptance.md      :436   SHIFTED
+21   .moai/specs/SPEC-PERM-001/acceptance.md      :473   SHIFTED
+21   .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md :700   same
+21   .moai/specs/SPEC-ROOMAUTHZ-001/acceptance.md :726   SHIFTED
+24   .moai/specs/SPEC-CHANPERM-001/spec.md        :210   same
+25   server/test/permissions.test.ts              :170   SHIFTED
+--------------------------------------------------------------
+TOTAL anchors located in repair-modified files: 41   same=22   SHIFTED=19

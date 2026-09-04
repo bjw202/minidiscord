@@ -17,7 +17,8 @@ export interface MessageRow {
   attachments?: { id: number; filename: string }[]
 }
 
-export interface ConnInfo { roomId: number; botId: number }
+// connId 는 선택 필드다 — 소켓 확립에서 발급되지만 소켓 없이 만들어진 ConnInfo(시험·브로커 직접 호출)는 없을 수 있다 (REQ-PERMROUTE-003, 리드 처분: 선택)
+export interface ConnInfo { roomId: number; botId: number; connId?: string }
 
 // @MX:ANCHOR: [AUTO] 태스크 간 계약 — routes-messages(다음 SPEC)·permissions(다음 카드)·routes-bots(이 SPEC) 셋이 소비하는 공개 표면
 // @MX:REASON: REQ-GW-021 이 시그니처를 글자 그대로 고정한다. 메서드 하나라도 바꾸면 소비자 세 곳이 동시에 깨진다
@@ -26,12 +27,15 @@ export interface Gateway {
   closeRoom(roomId: number): void
   isOnline(roomId: number, botId: number): boolean
   sendToBot(roomId: number, botId: number, payload: object): boolean
+  // 판정을 «요청한 접속 하나» 에게만 되돌리는 통로 — sendToConn(비공개 전원 발신)과 정반대 배달이라 이름을 빌리지 않았다 (REQ-PERMROUTE-004)
+  sendToOrigin(connId: string, payload: object): boolean
   setPermissionHandler(fn: ((info: ConnInfo, params: any) => void) | null): void
 }
 
 // 확립된 소켓의 상태 — 전부 소켓 지역이다 (plan.md §D-8). sessKey 는 이 소켓의 논스·pub·cb 에서만
 // 유도되고, seq 는 이 맵이 유일한 보관장소라 소켓 사이에서 이어지지 않는다 (REQ-GWAUTH2-010·013)
-type Established = ConnInfo & { tokenRowId: number; sessKey: Buffer; seq: number }
+// Established 는 connId 를 필수로 좁힌다 — 발급 누락이 타입에서 잡히는 비대칭 (plan.md §D-1)
+type Established = ConnInfo & { connId: string; tokenRowId: number; sessKey: Buffer; seq: number }
 // challenge 를 보낸 뒤 auth 를 기다리는 소켓의 상태 — 이 자리에는 등록 권한이 없다 (REQ-GWAUTH2-009)
 type PendingHandshake = {
   roomId: number; botId: number; tokenRowId: number
@@ -139,7 +143,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       case 'history_request': return handleHistory(info, msg)
       case 'permission_request': {
         // 등록된 핸들러가 없으면 조용히 무시한다 — 판정은 permissions.ts 의 몫 (REQ-GW-020)
-        permissionHandler?.({ roomId: info.roomId, botId: info.botId }, msg)
+        // 요청을 낸 접속의 신원을 싣는다 — 판정이 «그 접속 하나» 로 되돌아가는 근거 (REQ-PERMROUTE-002)
+        permissionHandler?.({ roomId: info.roomId, botId: info.botId, connId: info.connId }, msg)
         return
       }
     }
@@ -203,6 +208,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     if (!ok) { dropConn(ws); return }
     const conn: Established = {
       roomId: hs.roomId, botId: hs.botId, tokenRowId: hs.tokenRowId,
+      // 접속 식별자는 등록 자리 하나에서만 발급한다 (REQ-PERMROUTE-001) — 이 구성 자리가 그 하나다
+      connId: randomUUID(),
       // 세션 열쇠는 이 소켓의 논스·pub·cb 에서 유도한다 — k_srv 를 아는 상대도 논스와 cb 없이는 못 만든다 (design.md §C)
       sessKey: createHmac('sha256', hs.confirmKey)
         .update(handshakeTranscript('session', hs.clientNonce, hs.serverNonce, hs.roomId, hs.botId, hs.verifierPub, hs.cb))
@@ -224,13 +231,18 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     }
   }
 
+  // [HARD] 봇 프레임의 local_path 는 절대 경로다 (카드 t32 결함 D-8). attachments.stored_path 는
+  // config.dataDir 기본값 './data' 때문에 상대 경로로 저장되는데, 봇 세션의 cwd 는 서버와 다르므로
+  // 그대로 넘기면 풀리지 않는다. DB 값은 손대지 않는다 — 내려받기 봉인(routes-messages.ts REQ-MSG-009)이
+  // 이미 resolve() 로 비교하므로 저장 형태를 바꾸면 그쪽 계약이 함께 움직인다.
+  // 채우는 자리는 여기와 deliver 둘이다 — 한쪽만 고치면 다른 쪽이 조용히 상대 경로를 넘긴다.
   function sendStoredMessage(c: Established, ws: WebSocket, m: any): void {
     const attachments = db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(m.id) as any[]
     sendEstablished(c, ws, {
       type: 'message', id: m.id, body: m.body,
       author_name: authorName(m),
       delivery: m.delivery,
-      files: attachments.map(a => ({ name: a.filename, local_path: a.stored_path })),
+      files: attachments.map(a => ({ name: a.filename, local_path: resolve(a.stored_path) })),
     })
   }
 
@@ -253,7 +265,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
 
   // @MX:ANCHOR: [AUTO] v2 봉투 함수 — 확립 소켓이 내보내는 모든 프레임이 지나는 유일한 출구 (plan.md §D-6)
   // @MX:REASON: 한 자리라도 봉투를 빠뜨리면 그 프레임은 채널에서 조용히 버려진다 — 진단이 가장 어려운 실패 형태다.
-  // 발신 지점 다섯(welcome · sendStoredMessage 재전송 · sendToConn/history_response · deliver · sendToBot)이 전부
+  // 발신 지점 여섯(welcome · sendStoredMessage 재전송 · sendToConn/history_response · deliver · sendToBot · sendToOrigin)이 전부
   // 이 함수를 지나는가가 M2 의 덮개 대조표다. seq 는 여기서만 증가하고 payload 는 문자열 그대로 MAC 된다 (REQ-GWAUTH2-012·013)
   function sendEstablished(c: Established, ws: WebSocket, inner: object): void {
     const payload = JSON.stringify(inner)   // 서버가 만든 문자열 그대로 MAC 한다 — 정규화 규칙이 존재하지 않는다 (plan.md §D-6)
@@ -330,7 +342,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
         if (!tr) continue
         sendEstablished(c, ws, {
           type: 'message', id: msg.id, body: msg.body, author_name: msg.author_name, delivery: tr.delivery,
-          files: attachments.map(a => ({ name: a.filename, local_path: a.stored_path })),
+          files: attachments.map(a => ({ name: a.filename, local_path: resolve(a.stored_path) })),
         })
         db.prepare('UPDATE bot_tokens SET last_delivered_id = ? WHERE id = ?').run(msg.id, c.tokenRowId)
       }
@@ -345,8 +357,16 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       return false
     },
     // 접속이 없으면 아무것도 보내지 않고 false — "오프라인이라 못 보냈다"의 유일한 신호 (REQ-GW-020)
+    // 일치하는 접속 «전원» 에게 보낸다 — deliver 와 같은 갈래다 (카드 t32 §D 결함 D-5).
     sendToBot(roomId, botId, payload) {
-      for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); return true }
+      let sent = false
+      for (const [ws, c] of conns) if (c.roomId === roomId && c.botId === botId) { sendEstablished(c, ws, payload); sent = true }
+      return sent
+    },
+    // REQ-PERMROUTE-004 — «그 connId 를 가진 살아 있는 접속 하나» 에게만 보낸다. sendEstablished 를
+    // 지나므로 봉투 규칙이 승계되고(REQ-GWAUTH2-012), 다른 어떤 접속에도 보내지 않는다(REQ-PERMROUTE-005)
+    sendToOrigin(connId, payload) {
+      for (const [ws, c] of conns) if (c.connId === connId) { sendEstablished(c, ws, payload); return true }
       return false
     },
     setPermissionHandler(fn) { permissionHandler = fn },

@@ -175,6 +175,8 @@ SPEC-AUTH-001 → SPEC-ROOM-001 → SPEC-BOT-001  →  SPEC-MENTION-001
 인증된 접속이 `permission_request` 를 보내면, 서버는 `setPermissionHandler` 로 등록된 함수를 `({ roomId, botId }, 그 메시지)` 로 호출해야 한다. 등록된 함수가 없으면 조용히 무시한다.
 `sendToBot(roomId, botId, payload)` 는 그 조합의 접속을 찾아 `payload` 를 보내고 `true` 를, 접속이 없으면 아무것도 보내지 않고 `false` 를 돌려줘야 한다.
 
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 조항의 두 자리가 개정됐다. (1) 핸들러 호출은 `({ roomId, botId, connId }, 그 메시지)` 이다 — `connId` 는 요청을 낸 접속의 불투명 식별자로, REQ-PERMROUTE-002 가 더했다. (2) 판정을 되돌리는 통로는 `sendToOrigin(connId: string, payload: object): boolean` 이다 — `sendToBot` 은 일치 접속 전원 발신으로 남되, 착지 뒤 판정 경로의 생산 호출자는 0 이 된다(REQ-PERMROUTE-006·011). 원문은 지우지 않는다 — 결정의 역사가 읽혀야 한다.
+
 이 SPEC 은 **창구만** 만든다. 승인 요청의 상태 관리와 `permission_verdict` 의 내용을 판단하는 일은 `permissions.ts` 의 몫이며 이 SPEC 범위 밖이다.
 
 ### 4.8 태스크 간 계약 (시그니처 고정)
@@ -198,6 +200,8 @@ export interface Gateway {
 }
 export function createGateway(app: FastifyInstance, opts: { uploadsDir: string }): Gateway
 ```
+
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 코드 블록의 두 자리가 개정됐다 — `ConnInfo` 에 `connId?: string` 선택 필드가 더해지고(REQ-PERMROUTE-003), `Gateway` 에 `sendToOrigin(connId: string, payload: object): boolean` 이 여섯째 메서드로 더해진다(REQ-PERMROUTE-004). 원문은 지우지 않는다.
 
 **REQ-GW-022** (When — 조립)
 `buildServer` 는 허브 데코레이트 뒤에 `createGateway(app, { uploadsDir: config.uploadsDir })` 를 호출해 `app.gateway` 로 데코레이트하고, `registerRoomRoutes(app, { onArchive: roomId => gateway.closeRoom(roomId) })` 로 보관 훅을 연결해야 한다. 또한 `GET /api/rooms/:id/invites` 의 `online` 필드는 상수 `false` 가 아니라 `gateway.isOnline(roomId, bot_id)` 의 결과여야 한다 — `SPEC-BOT-001` 이 "실제 판정은 카드 `t3` 게이트웨이가 채운다"고 남겨 둔 자리다.
@@ -228,6 +232,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string }
 
 - `server/src/permissions.ts` — 승인 요청 상태 관리, 대기·만료, 웹 UI 승인 화면과의 왕복
 - `permission_verdict` 의 **내용을 판단하는 일**. 이 SPEC 은 `sendToBot` 이라는 전송 창구와 `setPermissionHandler` 라는 수신 창구만 제공한다
+
+> **개정 (2026-09-04, `SPEC-PERMROUTE-001`).** 위 조항의 「**만**」이 거짓이 됐다. 개정 후 읽는 법: **이 SPEC 은 창구 셋을 제공한다** — `sendToBot`(일치 접속 전원 발신, 유지) · `sendToOrigin(connId: string, payload: object): boolean`(판정을 요청한 접속 하나에게 되돌리는 전송 창구, REQ-PERMROUTE-004 가 더했다) · `setPermissionHandler`(수신 창구). 판정 경로는 `sendToOrigin` 을 쓰며 `sendToBot` 을 부르지 않는다(REQ-PERMROUTE-006). **원문은 지우지 않는다** — 결정의 역사가 읽혀야 한다. **이 자리만 본문 최소 개정이다**(리드 R-1 처분): 「만」이 문장의 뼈대라 한 줄 주석으로는 본문과 주석이 서로 반대말을 하는 상태로 남기 때문이며, 형제 개정의 주석 1줄 상한은 나머지 자리에 그대로 적용된다.
 
 ### Out of Scope — 채널 플러그인 (카드 `t4`)
 

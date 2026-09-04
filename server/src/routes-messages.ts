@@ -28,7 +28,7 @@ const MIME: Record<string, string> = {
 // @MX:REASON: registerMessageRoutes(app: FastifyInstance): void 시그니처는 REQ-MSG-015 가 글자 그대로 고정한다. 게이트웨이는 req.server.gateway 데코레이터로만 접근한다(순환 참조 금지, spec.md §6)
 export function registerMessageRoutes(app: FastifyInstance): void {
   // 멤버십 게이트가 preHandler 로 방 검사·multipart 소비보다 앞선다 (순서 계약, plan.md §B).
-  // 뒤에 두면 비멤버가 409(보관됨)를 받아 방 실재가 샌다. 이 라우트는 술어의 아홉 호출부 중 하나다
+  // 뒤에 두면 비멤버가 409(보관됨)를 받아 방 실재가 샌다. 이 라우트는 술어의 여덟 호출부 중 하나다
   app.post('/api/rooms/:id/messages', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
     const db = req.server.db
     const roomId = Number((req.params as { id: string }).id)

@@ -229,6 +229,8 @@ system 메시지 본문에서 `request_id` 를 뽑을 때, 구현은 `SPEC-PERM-
 
 판정 결과 메시지의 ID 는 `permissionResolutionId` 가 브로커의 세 결과 템플릿(`✅ 승인 전송됨 (…)`·`⛔ 거절 전송됨 (…)`·`⚠️ … 판정을 전달하지 못했습니다 (…)`)에서 뽑는다.
 
+> 2026-09-04 개정 — 브로커가 내보내는 결과 본문은 `SPEC-PERMROUTE-001` 이 실패 문구를 둘로 갈라 **넷**이 됐다 (✅·⛔·«세션이 끊겨…» ⚠️·«신원이 기록되지 않아…» ⚠️). `RESOLUTION_RE` 가 인식하는 갈래는 두 실패가 꼬리를 공유하므로 셋 그대로다.
+
 **REQ-WEBRICH-011** (Unwanted — shall not)
 구현은 `author_type` 이 `system` 이 아닌 메시지, 또는 `permissionRequestId` 가 `null` 을 돌려주는 system 메시지에 승인·거절 버튼을 붙여서는 안 된다.
 

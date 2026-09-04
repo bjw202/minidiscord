@@ -1,0 +1,16 @@
+scope-all =      119
+scope-ex-self =      116
+web in ex-self = 2
+--- stem counts (round2) ---
+ConnInfo               32
+sendToBot              74
+sendToConn             27
+onGatewayRequest       57
+setPermissionHandler   36
+sendEstablished        15
+발신 지점          22
+다섯(좁힘)         61
+@MX:WARN               5
+실패문구           27
+세템플릿           3
+[0-9]개메서드      2

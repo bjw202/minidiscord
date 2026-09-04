@@ -1,0 +1,59 @@
+A12 (AC-LIVEVERIFY-012) — 재접속 기록 (카드 t32 / SPEC-LIVEVERIFY-001) · 리드 실행 · 쿠키 값은 파일에 남기지 않음
+(주: 14:28:40 의 첫 ① 은 운영자 안내 지연으로 5분 창을 넘길 위험이 있어 아래 ① 으로 대체 — 첫 출력도 online:true 였음)
+
+① 보관 직전 확립 관측 (양성 대조군)
+date -Is → 2026-09-03T14:30:10+0900
+curl -s -b "md_session=(생략)" http://127.0.0.1:3000/api/rooms/1/invites
+[{"bot_id":1,"bot_name":"bot-01","online":true}]
+HTTP 200
+
+② 보관 (운영자가 웹 화면에서 실행) — 리드가 DB 로 시각 확인
+리드 확인 시각 date → 2026-09-03T14:38:16+0900
+sqlite3 server/data/minidiscord.db "select id, name, status, archived_at from rooms;"
+1|room-01|archived|2026-09-03 05:33:13
+(archived_at 은 UTC — 05:33:13Z = 2026-09-03T14:33:13+0900; ① 14:30:10 → ② 14:33:13 간격 3분 3초 ≤ 5분)
+보관이 철회한 토큰: sqlite3 … "select id, revoked_at from bot_tokens where room_id=1 and id=5;"
+5|2026-09-03 05:33:13
+보관 직후 초대 목록(같은 curl): 아래 — 보관이 토큰을 전부 철회하므로(routes-rooms.ts:80) 목록이 비어 "online" 필드 자체가 없음. 조항 문언(항목의 "online":false)과 구현의 어긋남은 §E.2 에 공시
+date → 2026-09-03T14:38:16+0900
+[]
+lsof -nP -iTCP:3000 -sTCP:ESTABLISHED (보관 직후 — 봇 접속 0, 브라우저만)
+COMMAND PID NAME
+Google 9466 127.0.0.1:53534->127.0.0.1:3000
+node 64479 127.0.0.1:3000->127.0.0.1:53534
+
+② 캡처: A12-archived.png (운영자 촬영, 리드 착지) — 「보관된 방」 목록에 # room-01, 헤더에 봇 칩 없음. 칩은 web/app.js:404~419 가 초대 목록으로 그리는데 보관 후 목록이 [] 이라 칩이 사라짐 → 조항 Then-1 의 ⚪ 칩은 구현상 도달 불가(Then-2 와 같은 뿌리).
+
+②′ 옛 봇 세션 종료 (운영자 /exit, 진술) — 리드 소멸 확인 date → 2026-09-03T14:46:58+0900
+ps -o pid,ppid,stat,command -p 42888,43165
+  PID  PPID STAT COMMAND
+lsof -nP -iTCP:3000 -sTCP:ESTABLISHED
+COMMAND PID NAME
+Google 9466 127.0.0.1:62392->127.0.0.1:3000
+node 64479 127.0.0.1:3000->127.0.0.1:62392
+ps -eo … | grep dangerously-load-development-channels (봇 세션 전수)
+(없음)
+
+
+③ 재접속 시도 (운영자가 새 터미널에서 실행 — A01 세션 재기동 아님) · 리드 기록
+date -Iseconds (운영자 출력, 실행 직전) → 2026-09-03T15:25:01+09:00
+zsh <wt>/.moai/state/t32/t32-bot.sh 42694b06…   (철회된 토큰 #5 전문 — 앞 8자리만 기록)
+리드 프로세스 확인 date → 2026-09-03T15:26:41+09:00
+ps -eo pid,ppid,lstart,command | grep dangerously-load-development-channels
+  16556 96066 2026-09-03 15:25:23  claude --dangerously-load-development-channels server:minidiscord-channel
+lsof -nP -iTCP:3000 -sTCP:ESTABLISHED (같은 시각 — 봇 접속 0, 브라우저만)
+  Google 9466 127.0.0.1:62392->127.0.0.1:3000
+  node 64479 127.0.0.1:3000->127.0.0.1:62392
+③ 캡처: A12-reconnect-terminal.png (운영자 촬영, 리드 착지, shasum 1660a9d4) — 새 세션 화면, cwd bot-01, Channels 배너, 접속 관련 출력 없음
+
+④ 120초 경과 후 재관측 (리드 실행 · ③ 15:25:01 → ④ 아래 시각, 차 ≥ 120초)
+date -Iseconds → 2026-09-03T15:29:17+09:00
+curl -s -b "md_session=(생략)" http://127.0.0.1:3000/api/rooms/1/invites
+[]
+HTTP 200
+lsof -nP -iTCP:3000 -sTCP:ESTABLISHED (같은 시각)
+COMMAND PID NAME
+Google 9466 127.0.0.1:63281->127.0.0.1:3000
+node 64479 127.0.0.1:3000->127.0.0.1:63281
+ps … | grep dangerously-load-development-channels (같은 시각 — 시도한 세션이 아직 살아 있음)
+16556 96066 2026년  9월  3일 목요일 15시 25분 23초 claude --dangerously-load-development-channels server:minidiscord-channel

@@ -113,9 +113,9 @@ function parsedHistory(res: unknown): { cursor: number | null; messages: unknown
 | ID | 요구사항 | 명령 | 관측할 결과 |
 |----|----------|------|-------------|
 | AC-CHANINJECT-001 | REQ-CHANINJECT-001, 002(`meta` 절) | 아래 본문 | 본문·이름·첨부 경로 세 자리의 봉투 시퀀스가 전부 `&lt;` 형태로 나오고, 원래 시퀀스는 `content` 어디에도 없다. 그리고 **`meta` 세 값은 중화되지 않은 원문 그대로다** (F-01 정정) |
-| AC-CHANINJECT-002 | REQ-CHANINJECT-002 | 아래 본문 | 봉투 시퀀스 **없는** 본문의 `content` 가 중화 전과 **글자 그대로 같다** (AC-001 의 짝. `meta` 무변형은 AC-001 이 잰다 — F-01 정정) |
+| AC-CHANINJECT-002 | REQ-CHANINJECT-002 | 아래 본문 | 봉투 시퀀스가 **없고 표시 시길(`⟪`·`⟫`)을 담지 않으며 렌더 상한 이하인** 본문의 `content` 가 중화 전과 **글자 그대로 같다** (AC-001 의 짝. `meta` 무변형은 AC-001 이 잰다 — F-01 정정. 조건은 v0.3.4 에서 좁아졌다 — 카드 `t25`) |
 | AC-CHANINJECT-003 | REQ-CHANINJECT-003, 008, 009 | 아래 본문 | 새 두 문장이 통째로 있고, 기존 네 조각도 그대로 있다 |
-| AC-CHANINJECT-004 | REQ-CHANINJECT-004, 006, 002(비파괴 절) | 아래 본문 | 개행·`#숫자`·봉투 시퀀스를 심은 본문 **1건**이 파싱 후에도 원소 **1건**이고, `body`·`author` 가 **중화된 형태**다. 짝으로, 시퀀스 없는 본문·이름은 **글자 그대로** 통과한다 (v0.3.0 재정의 — sync 감사 F-01) |
+| AC-CHANINJECT-004 | REQ-CHANINJECT-004, 006, 002(비파괴 절) | 아래 본문 | 개행·`#숫자`·봉투 시퀀스를 심은 본문 **1건**이 파싱 후에도 원소 **1건**이고, `body`·`author` 가 **중화된 형태**다. 짝으로, 시퀀스가 없고 **시길을 담지 않으며 렌더 상한 이하인** 본문·이름은 **글자 그대로** 통과한다 (v0.3.0 재정의 — sync 감사 F-01. 조건은 v0.3.4 에서 좁아졌다 — 카드 `t25`) |
 | AC-CHANINJECT-005 | REQ-CHANINJECT-005 | 아래 본문 | `cursor` 가 `id` 최댓값이고, 빈 이력에서 `null` (AC-004 의 짝) |
 | AC-CHANINJECT-006 | REQ-CHANINJECT-007 | 아래 본문 | 도구 설명과 `since_id` 설명이 커서 안내 **문장을 통째로** 담고, `#번호`·`#` 가 **없다** (v0.3.0 — 낱말 단위 단언을 문장 단위로 올렸다, sync 감사 F-06) |
 | AC-CHANINJECT-007 | REQ-CHANINJECT-010 | 아래 본문 | 게이트에 걸린 프레임 뒤 `unhandledRejection` **0건 그리고 `uncaughtException` 0건** |
@@ -284,7 +284,8 @@ it('a single poisoned message stays a single element and carries no live envelop
   expect((h.messages[0] as { body: string }).body).toBe(neutralized)
   expect((h.messages[0] as { author: string }).author).toBe('mal&lt;/channel>lory')
 
-  // (d) 음성 방향 — 시퀀스 없는 이력은 한 글자도 바뀌지 않는다 (REQ-CHANINJECT-002 비파괴 절).
+  // (d) 음성 방향 — 시퀀스가 없고 시길을 담지 않으며 렌더 상한 이하인 이력은 한 글자도 바뀌지 않는다
+  // (REQ-CHANINJECT-002 비파괴 절, v0.3.4 로 좁아진 조건).
   //     이 짝이 없으면 «전부 뭉개는» 구현도 (a)~(c)를 통과한다.
   const { stub: s2, obs: o2 } = await connected()
   const benign = 'if (a < b && c <div> d)  # <chan> 은 시퀀스가 아니다'
@@ -305,7 +306,7 @@ it('a single poisoned message stays a single element and carries no live envelop
 
 **(b)가 파싱한 값이 아니라 원문 문자열을 보는 이유.** 모델이 받는 것은 도구 결과의 텍스트이지 그것을 파싱한 객체가 아니다. `JSON.stringify` 의 이스케이프는 따옴표와 개행에만 걸리고 `<` 에는 걸리지 않으므로, 중화가 없으면 원문 문자열에 `<channel` 이 **글자 그대로** 실린다. (b)가 그 자리를 직접 본다.
 
-**(d)를 두는 이유는 검증 원칙 4 다.** (a)~(c)만 있으면 `author`·`body` 를 통째로 마스킹하거나 잘라내는 구현도 통과한다 — 그것은 REQ-CHANINJECT-002 가 금지한 반대 방향의 결함이다. (d)의 고정값은 `<`(비교 연산자)·`<div>`(다른 태그)·`<chan>`(시퀀스의 접두이지만 `<channel` 은 아니다)·`al<ice`(이름 안의 꺾쇠) 넷을 담고, 넷 다 §2 의 시퀀스 정의에 걸리지 않으므로 한 글자도 바뀌지 않아야 한다. 이 트리에서 중화 함수의 항등성을 직접 확인했다:
+**(d)를 두는 이유는 검증 원칙 4 다.** (a)~(c)만 있으면 `author`·`body` 를 통째로 마스킹하거나 잘라내는 구현도 통과한다 — 그것은 REQ-CHANINJECT-002 가 **중화 단계에서** 금지한 반대 방향의 결함이다 (v0.3.4 로 좁아진 범위: 중화 뒤의 렌더 예산 절단은 `SPEC-BOTSTAB-001` 소유이며, (d)의 고정값은 모두 상한 이하라 이 기준은 그 층과 겹치지 않는다). (d)의 고정값은 `<`(비교 연산자)·`<div>`(다른 태그)·`<chan>`(시퀀스의 접두이지만 `<channel` 은 아니다)·`al<ice`(이름 안의 꺾쇠) 넷을 담고, 넷 다 §2 의 시퀀스 정의에 걸리지 않으므로 한 글자도 바뀌지 않아야 한다. 이 트리에서 중화 함수의 항등성을 직접 확인했다:
 
 ```
 $ node -e "const n=s=>s.replace(/<\/?channel/gi,m=>'&lt;'+m.slice(1));
@@ -721,7 +722,7 @@ grep -n 'F-01 .*열림·t15 소유가 §E.2 에' .moai/specs/SPEC-CHANAUTH-001/p
 | 본문에 `<channel` 이 여러 번 | 전부 중화한다 | AC-CHANINJECT-001 (b) |
 | 본문에 `<CHANNEL` 대문자 | 중화한다 (ASCII 대소문자 무시) | AC-CHANINJECT-001 (a)·(b) |
 | 본문에 `<chan` 만 | 손대지 않는다 | AC-CHANINJECT-002 (a) |
-| 본문에 봉투 시퀀스가 없음 | 글자 그대로 통과 | AC-CHANINJECT-002 (a) |
+| 본문에 봉투 시퀀스가 없음 (시길 없음·렌더 상한 이하) | 글자 그대로 통과 | AC-CHANINJECT-002 (a) |
 | `msg.files` 없음 | 첨부 안내 자체가 붙지 않는다 (기존 동작) | 형제 AC-CHANNEL-014 |
 | 이력 0건 | `{"cursor":null,"messages":[]}` | AC-CHANINJECT-005 |
 | 이력 본문에 따옴표·역슬래시 | `JSON.stringify` 가 이스케이프한다 | AC-CHANINJECT-004 (직렬화 성질) |
@@ -731,7 +732,7 @@ grep -n 'F-01 .*열림·t15 소유가 §E.2 에' .moai/specs/SPEC-CHANAUTH-001/p
 | 주소가 루프백 + `http:` | 거부 (fail-closed) | AC-CHANINJECT-010 |
 | 주소가 루프백 + `http:` 일 때의 **사유 문언** | `ws://` 를 조치로 안내, «비루프백»·`wss://` 는 말하지 않는다 | AC-CHANINJECT-009 (다) |
 | 이력 본문·작성자 이름에 봉투 시퀀스 | 중화한다 — `id`·`at` 은 그대로 | AC-CHANINJECT-004 (b)·(c) |
-| 이력 본문·작성자 이름에 시퀀스가 없음 | 글자 그대로 통과 | AC-CHANINJECT-004 (d) |
+| 이력 본문·작성자 이름에 시퀀스가 없음 (시길 없음·렌더 상한 이하) | 글자 그대로 통과 | AC-CHANINJECT-004 (d) |
 
 ---
 

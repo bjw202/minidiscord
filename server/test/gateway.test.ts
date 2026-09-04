@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, isAbsolute, resolve } from 'node:path'
 import { createHash, createHmac, randomBytes, sign, timingSafeEqual } from 'node:crypto'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
@@ -830,7 +830,7 @@ describe('gateway', () => {
     ws.send(JSON.stringify({ type: 'permission_request', request_id: 'p1', tool_name: 'Bash', description: '설치', input_preview: 'npm i' }))
     await new Promise(r => setTimeout(r, 200))
     expect(seen).toHaveLength(1)
-    expect(seen[0].info).toEqual({ roomId: room, botId: pm })
+    expect(seen[0].info).toEqual({ roomId: room, botId: pm, connId: expect.any(String) })
     expect(seen[0].params.request_id).toBe('p1')
     expect(seen[0].params.tool_name).toBe('Bash')
 
@@ -852,6 +852,173 @@ describe('gateway', () => {
     await app.close()
   })
 
+  // 카드 t32 §D 결함 D-5 — 같은 (방, 봇) 에 소켓이 여럿일 때 판정이 «요청한» 소켓에 닿아야 한다.
+  // 실측 배경(이력): 같은 봇 토큰으로 세 세션(run 레인·lead·봇)이 동시에 붙어 있었고, 방에는 «✅ 승인
+  // 전송됨» 이 떴는데 봇 터미널의 승인 프롬프트가 닫히지 않았다. 당시 sendToBot 은 첫 일치 소켓에서
+  // return 했고 판정이 요청하지 않은 소켓으로 갔으며, 채널 쪽 emitted 집합 가드(REQ-CHANPERM-008)가
+  // 그 판정을 조용히 버려 아무 데서도 오류가 나지 않았다. deliver 는 같은 조건에서 전원에게 보낸다 —
+  // 두 발신 지점의 갈래가 어긋난 것이 뿌리다.
+  // 지금의 배선(SPEC-PERMROUTE-001): 판정은 sendToOrigin 으로 «요청한 접속 하나» 에게만 되돌아간다 —
+  // 이 시험은 second 가 낸 요청의 판정이 second 에게 되돌아오는지를 잰다.
+  it('routes a permission verdict to the socket that requested it when several sockets share one bot', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+
+    // 같은 초대 토큰으로 두 소켓 — 먼저 붙은 것이 «요청하지 않은» 쪽이다.
+    const first = await wsConnect(port, token)
+    const second = await wsConnect(port, token)
+
+    const seen: { info: any; params: any }[] = []
+    gateway.setPermissionHandler((info, params) => seen.push({ info, params }))
+
+    // 요청은 두 번째 소켓이 낸다.
+    second.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'mepzy', tool_name: 'fetch_history', description: '이력 조회', input_preview: '{}' }))
+    await new Promise(r => setTimeout(r, 200))
+    expect(seen).toHaveLength(1)
+    expect(seen[0].info).toEqual({ roomId: room, botId: pm, connId: expect.any(String) })
+
+    expect(gateway.sendToBot(room, pm, { type: 'permission_verdict', request_id: 'mepzy', behavior: 'allow' })).toBe(true)
+
+    // [HARD] 요청한 소켓이 판정을 받는다. 첫 소켓만 받고 끝나면 봇의 프롬프트는 영원히 열려 있다.
+    const verdict = await nextMessage(second.ws)
+    expect(verdict).toEqual({ type: 'permission_verdict', request_id: 'mepzy', behavior: 'allow' })
+
+    first.ws.close()
+    second.ws.close()
+    await app.close()
+  })
+
+  // SPEC-PERMROUTE-001 — 판정은 «요청한 접속 하나» 에게만 되돌아온다 (M2 RED 먼저).
+  // 이전 배선(sendToBot 전원 발신)은 요청하지 않은 소켓에도 판정을 뿌렸고 채널의 emitted 집합 가드가
+  // 조용히 버렸다 (카드 t32 D-5). sendToOrigin 배선이 지어지기 전까지 이 시험은 붉다 — 브로커 대행
+  // 핸들러가 sendToOrigin 을 부르므로, 스텁(false) 상태에서는 B 의 수신 대기가 시간 초과로 떨어진다.
+  it('routes the verdict to the requesting connection only (AC-PERMROUTE-003a + 003b)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+
+    // 같은 초대 토큰으로 두 소켓 — 먼저 붙은 A 가 «요청하지 않은» 쪽, 나중에 붙은 B 가 요청자다.
+    const a = await wsConnect(port, token)
+    const b = await wsConnect(port, token)
+
+    // 브로커 대행: 핸들러는 요청한 접속의 connId 를 받아 곧바로 sendToOrigin 으로 되돌린다 —
+    // 착지 후 생산 배선(permissions.ts)이 취할 모양 그대로다.
+    gateway.setPermissionHandler((info, params) => {
+      gateway.sendToOrigin(info.connId as string, { type: 'permission_verdict', request_id: params.request_id, behavior: 'allow' })
+    })
+
+    // 요청은 B 가 낸다.
+    b.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'prr1a', tool_name: 'Bash', description: '설치', input_preview: 'npm i' }))
+
+    // AC-PERMROUTE-003a — 요청한 소켓이 판정 프레임을 정확히 1건 받는다.
+    const verdict = await nextMessage(b.ws)
+    expect(verdict).toEqual({ type: 'permission_verdict', request_id: 'prr1a', behavior: 'allow' })
+
+    // [HARD] AC-PERMROUTE-003b — B 에 도착을 관측한 «뒤에» A 의 수집함을 센다. «아직 안 온 것»과
+    // «오지 않는 것»을 갈라 내기 위한 순서다 (acceptance.md AC-003b 관측 방법).
+    await expectNoMessage(a.ws)
+
+    a.ws.close()
+    b.ws.close()
+    await app.close()
+  })
+
+  // AC-PERMROUTE-009 회귀 (SPEC-PERMROUTE-001) — sendToBot 은 일치하는 접속 «전원» 에게 보내는 동작을
+  // 유지한다 (REQ-PERMROUTE-011). 착지 뒤 생산 호출자는 0 이지만 첫 일치 return 로의 되돌림은 D-5 의
+  // 뿌리를 미래 호출자에게 되살린다 — A·B 둘 다 도착과 true 반환을 여기서 잰다 (리드 M2 판독 지시).
+  it('sendToBot still reaches every matching connection and reports true (AC-PERMROUTE-009)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+    const a = await wsConnect(port, token)
+    const b = await wsConnect(port, token)
+
+    expect(gateway.sendToBot(room, pm, { type: 'ping' })).toBe(true)
+    expect(await nextMessage(a.ws)).toEqual({ type: 'ping' })
+    expect(await nextMessage(b.ws)).toEqual({ type: 'ping' })
+
+    a.ws.close()
+    b.ws.close()
+    await app.close()
+  })
+
+  // AC-PERMROUTE-001 (SPEC-PERMROUTE-001) — 접속마다 하나, 사는 동안 하나. M6-0 신설(리드 처분 (가)):
+  // 같은 접속의 두 요청은 같은 connId, 다른 접속은 다른 connId — 한쪽만 재면 «매번 새 값» 과 «모두 같은
+  // 상수» 중 하나가 통과하므로 두 절반을 한 시험에 둔다.
+  it('issues one stable connId per connection, distinct across connections (AC-PERMROUTE-001)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+    const a = await wsConnect(port, token)
+    const b = await wsConnect(port, token)
+
+    const infos: any[] = []
+    gateway.setPermissionHandler(info => infos.push(info))
+
+    a.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    a.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'fghij', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    b.ws.send(JSON.stringify({ type: 'permission_request', request_id: 'kmnop', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 300))
+
+    expect(infos).toHaveLength(3)
+    expect(infos[0].connId).toBe(infos[1].connId)      // 같은 접속 — 사는 동안 하나
+    expect(infos[2].connId).not.toBe(infos[0].connId)  // 다른 접속 — 서로 다르다
+
+    a.ws.close()
+    b.ws.close()
+    await app.close()
+  })
+
+  // AC-PERMROUTE-002 (SPEC-PERMROUTE-001) — 요청한 접속의 신원이 핸들러까지 온다. M6-0 신설(리드 처분 (가)).
+  // connId 값은 실행마다 다르므로 roomId·botId 는 값으로, connId 는 존재·타입으로 잰다 (acceptance.md).
+  it('delivers the requesting connection identity to the handler (AC-PERMROUTE-002)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+    const { ws } = await wsConnect(port, token)
+
+    const infos: any[] = []
+    gateway.setPermissionHandler(info => infos.push(info))
+
+    ws.send(JSON.stringify({ type: 'permission_request', request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await new Promise(r => setTimeout(r, 300))
+
+    expect(infos).toHaveLength(1)
+    expect(infos[0].roomId).toBe(room)
+    expect(infos[0].botId).toBe(pm)
+    expect(typeof infos[0].connId).toBe('string')
+    expect((infos[0].connId as string).length).toBeGreaterThan(0)   // 비어 있지 않은 문자열
+
+    ws.close()
+    await app.close()
+  })
+
+  // AC-PERMROUTE-004 (SPEC-PERMROUTE-001) — 살아 있지 않은 신원으로는 아무 데도 가지 않는다. M6-0 신설(리드 처분 (가)).
+  // 반환값만 재면 «false 를 돌려주면서 그래도 보낸다» 가 통과하므로 양쪽 소켓의 0건을 함께 잰다.
+  it('returns false and delivers nowhere for a connId no connection owns (AC-PERMROUTE-004)', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+    const a = await wsConnect(port, token)
+    const b = await wsConnect(port, token)
+
+    const sent = gateway.sendToOrigin('zzzzz-dead-connid', { type: 'permission_verdict', request_id: 'abcde', behavior: 'allow' })
+    expect(sent).toBe(false)
+    await expectNoMessage(a.ws)
+    await expectNoMessage(b.ws)
+
+    a.ws.close()
+    b.ws.close()
+    await app.close()
+  })
+
   // AC-GW-018 — 조립: buildServer 배선과 초대 목록의 online
   it('buildServer wires the gateway, archive hook and invite online flag', async () => {
     process.env.MINIDISCORD_DATA_DIR = join(dir, 'srv')
@@ -860,9 +1027,9 @@ describe('gateway', () => {
     await app.listen({ port: 0 })
     const port = (app.server.address() as { port: number }).port
 
-    // Gateway 계약: 다섯 메서드가 전부 함수다 (REQ-GW-021)
+    // Gateway 계약: 여섯 메서드가 전부 함수다 (REQ-GW-021 — SPEC-PERMROUTE-001 이 sendToOrigin 을 더했다)
     const gw = (app as any).gateway
-    for (const m of ['deliver', 'closeRoom', 'isOnline', 'sendToBot', 'setPermissionHandler']) {
+    for (const m of ['deliver', 'closeRoom', 'isOnline', 'sendToBot', 'sendToOrigin', 'setPermissionHandler']) {
       expect(typeof gw[m]).toBe('function')
     }
 
@@ -1257,6 +1424,68 @@ describe('AC-GWAUTH2 server side', () => {
     // 소켓을 끊고 다시 붙는다 — 커서가 앞서 있으므로 새 재전송 세 개를 심어 «같은 관측» 을 반복한다
     seedTargets('둘째 접속 재전송')
     expect(await seqsOf()).toEqual([1, 2, 3, 4])   // 소켓 사이에서 이어지지 않는다
+    await app.close()
+  })
+})
+
+// ── 결함 D-8 (카드 t32) — 봇에 넘기는 local_path 는 절대 경로여야 한다 ──────
+// config.dataDir 기본이 './data'(상대)라 attachments.stored_path 가 상대 경로로 저장된다.
+// 그 값을 그대로 봇 프레임에 실으면, 봇 세션의 cwd 가 서버와 다르므로 경로가 풀리지 않는다.
+// 실측(카드 t32 A06): 봇이 Read 하나로 끝날 자리에서 Bash find 를 먼저 써 승인 왕복이 둘이 됐다
+// (evidence/D01-defect-register-silent.txt §26).
+//
+// [HARD] local_path 를 채우는 자리는 **둘**이다 — deliver(실시간 배달)와
+// sendStoredMessage(재접속 시 밀린 것 재생). 한쪽만 고치면 다른 쪽이 조용히 상대 경로를 넘긴다.
+// 기존 첨부 기준들이 이 결함을 놓친 이유는 전부 **절대 경로**를 심어 두었기 때문이다.
+describe('D-8 absolute local_path in bot frames', () => {
+  // 실제 저장 형태를 그대로 재현한다 — 절대 경로를 심으면 이 기준은 공허해진다
+  const REL = join('data', 'uploads', 'ffffffff-0000-note.txt')
+
+  it('deliver hands an absolute local_path even when stored_path is relative', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const { ws } = await wsConnect(port, invite(room, pm))
+
+    const msgId = db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', '봐줘')")
+      .run(room, ).lastInsertRowid as number
+    db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, 3, ?)')
+      .run(msgId, 'note.txt', REL, 'text/plain')
+    const row = db.prepare('SELECT * FROM messages WHERE id=?').get(msgId) as any
+
+    gateway.deliver(room, { ...row, author_name: 'alice' }, [{ botId: pm, delivery: 'to' }])
+    const msg = await nextMessage(ws)
+
+    expect(msg.files).toHaveLength(1)
+    expect(isAbsolute(msg.files[0].local_path)).toBe(true)
+    expect(msg.files[0].local_path).toBe(resolve(REL))
+    expect(msg.files[0].name).toBe('note.txt')
+
+    ws.close()
+    await app.close()
+  })
+
+  it('the replay path hands an absolute local_path too', async () => {
+    const { app, port } = await build()
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    const token = invite(room, pm)
+
+    const msgId = db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'user', '밀린 것')")
+      .run(room).lastInsertRowid as number
+    db.prepare('INSERT INTO message_targets (message_id, bot_id, delivery) VALUES (?, ?, ?)').run(msgId, pm, 'to')
+    db.prepare('INSERT INTO attachments (message_id, filename, stored_path, size, mime) VALUES (?, ?, ?, 3, ?)')
+      .run(msgId, 'note.txt', REL, 'text/plain')
+
+    const { ws } = await wsConnect(port, token)
+    const replay = await nextMessage(ws)
+
+    expect(replay.id).toBe(msgId)
+    expect(replay.files).toHaveLength(1)
+    expect(isAbsolute(replay.files[0].local_path)).toBe(true)
+    expect(replay.files[0].local_path).toBe(resolve(REL))
+
+    ws.close()
     await app.close()
   })
 })

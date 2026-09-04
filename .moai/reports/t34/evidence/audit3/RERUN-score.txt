@@ -1,0 +1,2 @@
+sum of w/s = 1.148593
+weighted harmonic mean = 0.8706

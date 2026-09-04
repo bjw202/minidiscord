@@ -16,7 +16,7 @@ const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web')
 // 손으로 발명하지 않고 실측값을 옮겨 적었다. 서버 템플릿(permissions.ts)이 바뀌면 골격 A 부터 운다.
 const REQUEST_BODY = '🔒 봇이 도구 사용 승인을 요청합니다: Bash\ncommand 를 실행합니다\ngit commit --amend --no-edit\n승인하려면 "yes nmjkh", 거절하려면 "no nmjkh" 라고 답해주세요.'
 const RESOLVED_BODY = '✅ 승인 전송됨 (nmjkh)'
-const FAILED_BODY = '⚠️ 봇이 접속해 있지 않아 판정을 전달하지 못했습니다 (zxvbn)'
+const FAILED_BODY = '⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다 (zxvbn)'
 
 function ctx(api = vi.fn().mockResolvedValue({ ok: true })) {
   return { api, rich: createRichContext({ api, doc: document }) }

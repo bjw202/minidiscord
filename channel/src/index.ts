@@ -39,6 +39,9 @@ export function isTransportAllowed(url: string): boolean {
   return u.protocol === 'wss:'
 }
 
+// @MX:ANCHOR: [AUTO] 채널 진입점의 조립 지점 — 여섯 기준 파일이 이 함수 하나로 전체 배선을 세운다 (t4 감사 F-13)
+// @MX:REASON: 두 팩토리를 잇는 순서와 콜백 갈래(TO -> working, cc 무시)가 여기 한 곳에만 있다.
+// 반환 모양 { channel, gw } 를 바꾸면 채널 기준 전부가 한꺼번에 죽는다
 export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClient } {
   // 두 클로저는 서로를 참조하지만 호출은 gw.start() 이후에만 일어난다 — 선언 순서는 안전하다 (plan.md §D 7번).
   const gw = createGatewayClient({
