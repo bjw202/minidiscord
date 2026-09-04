@@ -1,0 +1,574 @@
+﻿2026-09-04T04:55:28.3716633Z Current runner version: '2.337.0'
+2026-09-04T04:55:28.3762165Z ##[group]Runner Image Provisioner
+2026-09-04T04:55:28.3763097Z Hosted Compute Agent
+2026-09-04T04:55:28.3763875Z Version: 20260828.587
+2026-09-04T04:55:28.3764460Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+2026-09-04T04:55:28.3765288Z Build Date: 2026-08-28T16:44:25Z
+2026-09-04T04:55:28.3765976Z Worker ID: {8821b87e-0ef9-40dc-b768-0e7834bea7c3}
+2026-09-04T04:55:28.3766721Z Azure Region: centralus
+2026-09-04T04:55:28.3767256Z ##[endgroup]
+2026-09-04T04:55:28.3768653Z ##[group]Operating System
+2026-09-04T04:55:28.3769357Z Ubuntu
+2026-09-04T04:55:28.3769857Z 24.04.4
+2026-09-04T04:55:28.3770359Z LTS
+2026-09-04T04:55:28.3770839Z ##[endgroup]
+2026-09-04T04:55:28.3771337Z ##[group]Runner Image
+2026-09-04T04:55:28.3772398Z Image: ubuntu-24.04
+2026-09-04T04:55:28.3772963Z Version: 20260831.293.1
+2026-09-04T04:55:28.3794850Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260831.293/images/ubuntu/Ubuntu2404-Readme.md
+2026-09-04T04:55:28.3796402Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260831.293
+2026-09-04T04:55:28.3797322Z ##[endgroup]
+2026-09-04T04:55:28.3798426Z ##[group]GITHUB_TOKEN Permissions
+2026-09-04T04:55:28.3800753Z Contents: read
+2026-09-04T04:55:28.3801277Z Metadata: read
+2026-09-04T04:55:28.3801930Z ##[endgroup]
+2026-09-04T04:55:28.3804520Z Secret source: Actions
+2026-09-04T04:55:28.3805916Z Prepare workflow directory
+2026-09-04T04:55:28.4304224Z Prepare all required actions
+2026-09-04T04:55:28.4417372Z Getting action download info
+2026-09-04T04:55:28.6909403Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-09-04T04:55:29.0142598Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-09-04T04:55:29.2625435Z Complete job name: test
+2026-09-04T04:55:29.3151677Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-04T04:55:29.3158566Z ##[group]Run actions/checkout@v4
+2026-09-04T04:55:29.3159194Z with:
+2026-09-04T04:55:29.3159727Z   repository: bjw202/minidiscord
+2026-09-04T04:55:29.3162983Z   token: ***
+2026-09-04T04:55:29.3163696Z   ssh-strict: true
+2026-09-04T04:55:29.3164237Z   ssh-user: git
+2026-09-04T04:55:29.3164711Z   persist-credentials: true
+2026-09-04T04:55:29.3165218Z   clean: true
+2026-09-04T04:55:29.3165645Z   sparse-checkout-cone-mode: true
+2026-09-04T04:55:29.3166121Z   fetch-depth: 1
+2026-09-04T04:55:29.3166581Z   fetch-tags: false
+2026-09-04T04:55:29.3167012Z   show-progress: true
+2026-09-04T04:55:29.3167482Z   lfs: false
+2026-09-04T04:55:29.3168016Z   submodules: false
+2026-09-04T04:55:29.3168630Z   set-safe-directory: true
+2026-09-04T04:55:29.3169110Z   allow-unsafe-pr-checkout: false
+2026-09-04T04:55:29.3169808Z ##[endgroup]
+2026-09-04T04:55:29.4632597Z Syncing repository: bjw202/minidiscord
+2026-09-04T04:55:29.4635625Z ##[group]Getting Git version info
+2026-09-04T04:55:29.4636756Z Working directory is '/home/runner/work/minidiscord/minidiscord'
+2026-09-04T04:55:29.4638365Z [command]/usr/bin/git version
+2026-09-04T04:55:29.5435939Z git version 2.55.0
+2026-09-04T04:55:29.5452112Z ##[endgroup]
+2026-09-04T04:55:29.5464834Z Temporarily overriding HOME='/home/runner/work/_temp/fd4481bd-21bf-4b6a-bf9b-c793b9fea1b3' before making global git config changes
+2026-09-04T04:55:29.5466766Z Adding repository directory to the temporary git global config as a safe directory
+2026-09-04T04:55:29.5470468Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/minidiscord/minidiscord
+2026-09-04T04:55:29.5569482Z Deleting the contents of '/home/runner/work/minidiscord/minidiscord'
+2026-09-04T04:55:29.5570796Z ##[group]Initializing the repository
+2026-09-04T04:55:29.5571919Z [command]/usr/bin/git init /home/runner/work/minidiscord/minidiscord
+2026-09-04T04:55:29.5616172Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-09-04T04:55:29.5618869Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-09-04T04:55:29.5619975Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-09-04T04:55:29.5620825Z hint: call:
+2026-09-04T04:55:29.5621453Z hint:
+2026-09-04T04:55:29.5622176Z hint: 	git config --global init.defaultBranch <name>
+2026-09-04T04:55:29.5622954Z hint:
+2026-09-04T04:55:29.5624039Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-09-04T04:55:29.5625270Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-09-04T04:55:29.5630929Z hint:
+2026-09-04T04:55:29.5631875Z hint: 	git branch -m <name>
+2026-09-04T04:55:29.5632851Z hint:
+2026-09-04T04:55:29.5634094Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-09-04T04:55:29.5635519Z Initialized empty Git repository in /home/runner/work/minidiscord/minidiscord/.git/
+2026-09-04T04:55:29.5638005Z [command]/usr/bin/git remote add origin https://github.com/bjw202/minidiscord
+2026-09-04T04:55:29.5670702Z ##[endgroup]
+2026-09-04T04:55:29.5671729Z ##[group]Disabling automatic garbage collection
+2026-09-04T04:55:29.5672510Z [command]/usr/bin/git config --local gc.auto 0
+2026-09-04T04:55:29.5700750Z ##[endgroup]
+2026-09-04T04:55:29.5701804Z ##[group]Setting up auth
+2026-09-04T04:55:29.5703101Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-09-04T04:55:29.5726446Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-09-04T04:55:29.6075327Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-09-04T04:55:29.6078692Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-09-04T04:55:29.6174220Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-09-04T04:55:29.6197537Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-09-04T04:55:29.6334180Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-09-04T04:55:29.6357524Z ##[endgroup]
+2026-09-04T04:55:29.6359184Z ##[group]Fetching the repository
+2026-09-04T04:55:29.6365958Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a4893780d390fbf9315f6ace89b65b4027c95312:refs/remotes/origin/WT-spec-triage-merge
+2026-09-04T04:55:31.5246793Z From https://github.com/bjw202/minidiscord
+2026-09-04T04:55:31.5248793Z  * [new ref]         a4893780d390fbf9315f6ace89b65b4027c95312 -> origin/WT-spec-triage-merge
+2026-09-04T04:55:31.5253438Z ##[endgroup]
+2026-09-04T04:55:31.5254695Z ##[group]Determining the checkout info
+2026-09-04T04:55:31.5255738Z ##[endgroup]
+2026-09-04T04:55:31.5256431Z [command]/usr/bin/git sparse-checkout disable
+2026-09-04T04:55:31.5301657Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-09-04T04:55:31.5338079Z ##[group]Checking out the ref
+2026-09-04T04:55:31.5338960Z [command]/usr/bin/git checkout --progress --force -B WT-spec-triage-merge refs/remotes/origin/WT-spec-triage-merge
+2026-09-04T04:55:31.7983483Z Switched to a new branch 'WT-spec-triage-merge'
+2026-09-04T04:55:31.7996439Z branch 'WT-spec-triage-merge' set up to track 'origin/WT-spec-triage-merge'.
+2026-09-04T04:55:31.8006572Z ##[endgroup]
+2026-09-04T04:55:31.8049114Z [command]/usr/bin/git log -1 --format=%H
+2026-09-04T04:55:31.8074058Z a4893780d390fbf9315f6ace89b65b4027c95312
+2026-09-04T04:55:31.8300218Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-04T04:55:31.8301573Z ##[group]Run actions/setup-node@v4
+2026-09-04T04:55:31.8301828Z with:
+2026-09-04T04:55:31.8302046Z   node-version-file: .nvmrc
+2026-09-04T04:55:31.8302344Z   cache: npm
+2026-09-04T04:55:31.8302580Z   always-auth: false
+2026-09-04T04:55:31.8302824Z   check-latest: false
+2026-09-04T04:55:31.8304986Z   token: ***
+2026-09-04T04:55:31.8305192Z ##[endgroup]
+2026-09-04T04:55:31.9297888Z Resolved .nvmrc as 24
+2026-09-04T04:55:31.9331536Z Found in cache @ /opt/hostedtoolcache/node/24.20.0/x64
+2026-09-04T04:55:31.9333503Z (node:1914) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-09-04T04:55:31.9334753Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-09-04T04:55:31.9336168Z ##[group]Environment details
+2026-09-04T04:55:32.6422605Z node: v24.20.0
+2026-09-04T04:55:32.6423923Z npm: 11.19.0
+2026-09-04T04:55:32.6434864Z yarn: 1.22.22
+2026-09-04T04:55:32.6457352Z ##[endgroup]
+2026-09-04T04:55:32.6494477Z [command]/opt/hostedtoolcache/node/24.20.0/x64/bin/npm config get cache
+2026-09-04T04:55:33.0545711Z /home/runner/.npm
+2026-09-04T04:55:33.2974940Z Cache hit for: node-cache-Linux-x64-npm-a642e4cff980372c1f042bbc4bcf02c2c4dda416a523546d106b4bdc85fef936
+2026-09-04T04:55:33.3120673Z (node:1914) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-09-04T04:55:34.2229773Z Received 63675770 of 63675770 (100.0%), 78.1 MBs/sec
+2026-09-04T04:55:34.2230671Z Cache Size: ~61 MB (63675770 B)
+2026-09-04T04:55:34.2307699Z [command]/usr/bin/tar -xf /home/runner/work/_temp/99be0cb1-6fca-4865-8e19-bf6f2cbf3899/cache.tzst -P -C /home/runner/work/minidiscord/minidiscord --use-compress-program unzstd
+2026-09-04T04:55:34.3901642Z Cache restored successfully
+2026-09-04T04:55:34.3929799Z Cache restored from key: node-cache-Linux-x64-npm-a642e4cff980372c1f042bbc4bcf02c2c4dda416a523546d106b4bdc85fef936
+2026-09-04T04:55:34.4061919Z ##[group]Run npm ci
+2026-09-04T04:55:34.4062256Z [36;1mnpm ci[0m
+2026-09-04T04:55:34.4303030Z shell: /usr/bin/bash -e {0}
+2026-09-04T04:55:34.4303582Z ##[endgroup]
+2026-09-04T04:59:25.0844048Z 
+2026-09-04T04:59:25.0874830Z added 270 packages, and audited 273 packages in 4m
+2026-09-04T04:59:25.0875973Z npm warn install-scripts 2 packages have install scripts not yet covered by allowScripts:
+2026-09-04T04:59:25.0876731Z npm warn install-scripts   better-sqlite3@13.0.3 (install: node-gyp rebuild)
+2026-09-04T04:59:25.0877393Z npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+2026-09-04T04:59:25.0878024Z npm warn install-scripts
+2026-09-04T04:59:25.0878787Z npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+2026-09-04T04:59:25.0879804Z 
+2026-09-04T04:59:25.0880114Z 90 packages are looking for funding
+2026-09-04T04:59:25.0880475Z   run `npm fund` for details
+2026-09-04T04:59:25.0880693Z 
+2026-09-04T04:59:25.0881070Z 1 moderate severity vulnerability
+2026-09-04T04:59:25.0881248Z 
+2026-09-04T04:59:25.0881435Z To address all issues, run:
+2026-09-04T04:59:25.0881770Z   npm audit fix
+2026-09-04T04:59:25.0881958Z 
+2026-09-04T04:59:25.0882124Z Run `npm audit` for details.
+2026-09-04T04:59:25.1087128Z ##[group]Run npm run typecheck -w server
+2026-09-04T04:59:25.1087461Z [36;1mnpm run typecheck -w server[0m
+2026-09-04T04:59:25.1107810Z shell: /usr/bin/bash -e {0}
+2026-09-04T04:59:25.1108107Z ##[endgroup]
+2026-09-04T04:59:25.1953631Z 
+2026-09-04T04:59:25.1954243Z > typecheck
+2026-09-04T04:59:25.1954627Z > tsc --noEmit
+2026-09-04T04:59:25.1954812Z 
+2026-09-04T04:59:26.1364770Z ##[group]Run npm run typecheck -w channel
+2026-09-04T04:59:26.1365271Z [36;1mnpm run typecheck -w channel[0m
+2026-09-04T04:59:26.1383821Z shell: /usr/bin/bash -e {0}
+2026-09-04T04:59:26.1384097Z ##[endgroup]
+2026-09-04T04:59:26.2282319Z 
+2026-09-04T04:59:26.2283448Z > @minidiscord/channel@0.1.0 typecheck
+2026-09-04T04:59:26.2284248Z > tsc --noEmit
+2026-09-04T04:59:26.2284779Z 
+2026-09-04T04:59:26.4754819Z ##[group]Run npm test
+2026-09-04T04:59:26.4755133Z [36;1mnpm test[0m
+2026-09-04T04:59:26.4773624Z shell: /usr/bin/bash -e {0}
+2026-09-04T04:59:26.4773910Z ##[endgroup]
+2026-09-04T04:59:26.5522394Z 
+2026-09-04T04:59:26.5523112Z > test
+2026-09-04T04:59:26.5524128Z > npm test --workspaces --if-present
+2026-09-04T04:59:26.5524572Z 
+2026-09-04T04:59:26.6397703Z 
+2026-09-04T04:59:26.6398834Z > test
+2026-09-04T04:59:26.6399444Z > vitest run
+2026-09-04T04:59:26.6399952Z 
+2026-09-04T04:59:27.1033802Z 
+2026-09-04T04:59:27.1038658Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/home/runner/work/minidiscord/minidiscord/server[39m
+2026-09-04T04:59:27.1062371Z 
+2026-09-04T04:59:39.0872312Z [90mstderr[2m | test/gateway.test.ts[2m > [22m[2mAC-GWAUTH2 server side[2m > [22m[2ma signature made for another handshake is refused
+2026-09-04T04:59:39.0883599Z [22m[39m[dbg010 b] sig1 ok
+2026-09-04T04:59:39.0923578Z 
+2026-09-04T04:59:39.4308346Z  [32m✓[39m test/gateway.test.ts [2m([22m[2m34 tests[22m[2m)[22m[33m 12011[2mms[22m[39m
+2026-09-04T04:59:39.4325749Z      [33m[2m✓[22m[39m replays only missed messages targeted at that bot and advances the cursor [33m 462[2mms[22m[39m
+2026-09-04T04:59:39.4326609Z      [33m[2m✓[22m[39m never redelivers a message after reconnect [33m 844[2mms[22m[39m
+2026-09-04T04:59:39.4331714Z      [33m[2m✓[22m[39m deliver reaches only targeted bots in that room and moves only their cursor [33m 1303[2mms[22m[39m
+2026-09-04T04:59:39.4344668Z      [33m[2m✓[22m[39m deliver carries per-bot delivery and the message attachments [33m 511[2mms[22m[39m
+2026-09-04T04:59:39.4367869Z      [33m[2m✓[22m[39m stores bot_message, copies files into uploadsDir and publishes to the hub [33m 330[2mms[22m[39m
+2026-09-04T04:59:39.4368976Z      [33m[2m✓[22m[39m bot_message skips only the missing attachment [33m 460[2mms[22m[39m
+2026-09-04T04:59:39.4370059Z      [33m[2m✓[22m[39m bot_message refuses a local_path outside botFilesDir while still attaching one inside [33m 412[2mms[22m[39m
+2026-09-04T04:59:39.4375765Z      [33m[2m✓[22m[39m bot_message refuses a symlink inside botFilesDir that points outside it [33m 476[2mms[22m[39m
+2026-09-04T04:59:39.4384409Z      [33m[2m✓[22m[39m never publishes stored_path on the hub frame for a bot attachment [33m 324[2mms[22m[39m
+2026-09-04T04:59:39.4399744Z      [33m[2m✓[22m[39m bot_message attaches nothing at all when botFilesDir is unset [33m 347[2mms[22m[39m
+2026-09-04T04:59:39.4403346Z      [33m[2m✓[22m[39m bot_message refuses a sibling directory whose path merely prefixes botFilesDir [33m 404[2mms[22m[39m
+2026-09-04T04:59:39.4404744Z      [33m[2m✓[22m[39m status publishes bot_status for working and idle only [33m 657[2mms[22m[39m
+2026-09-04T04:59:39.4405674Z      [33m[2m✓[22m[39m isOnline follows the connection, per room and bot [33m 311[2mms[22m[39m
+2026-09-04T04:59:39.4406627Z      [33m[2m✓[22m[39m history_response goes only to the requesting bot [33m 775[2mms[22m[39m
+2026-09-04T04:59:39.4407695Z      [33m[2m✓[22m[39m closeRoom disconnects only that room [33m 306[2mms[22m[39m
+2026-09-04T04:59:39.4413597Z      [33m[2m✓[22m[39m relays permission_request to the handler and sendToBot reports delivery [33m 962[2mms[22m[39m
+2026-09-04T04:59:39.4414851Z      [33m[2m✓[22m[39m buildServer wires the gateway, archive hook and invite online flag [33m 442[2mms[22m[39m
+2026-09-04T04:59:39.4415812Z      [33m[2m✓[22m[39m no frame in either direction carries the token, the private key or the confirm key [33m 538[2mms[22m[39m
+2026-09-04T04:59:39.4417201Z      [33m[2m✓[22m[39m a client holding only what the database stores cannot register as the bot [33m 485[2mms[22m[39m
+2026-09-04T04:59:39.4418343Z      [33m[2m✓[22m[39m a signature made for another handshake is refused [33m 320[2mms[22m[39m
+2026-09-04T04:59:45.6669455Z  [32m✓[39m test/room-members.test.ts [2m([22m[2m21 tests[22m[2m)[22m[33m 6037[2mms[22m[39m
+2026-09-04T04:59:45.6673544Z      [33m[2m✓[22m[39m refuses an invitation from a non-member while a member can still invite [33m 309[2mms[22m[39m
+2026-09-04T04:59:45.6674862Z      [33m[2m✓[22m[39m never lets a non-member approve, and leaves the request for a member to answer [33m 1637[2mms[22m[39m
+2026-09-04T04:59:45.6675999Z      [33m[2m✓[22m[39m the broker itself refuses a non-member verdict, independent of the route gate [33m 360[2mms[22m[39m
+2026-09-04T04:59:45.6698335Z      [33m[2m✓[22m[39m gives a non-member byte-identical answers for missing, active and archived rooms [33m 330[2mms[22m[39m
+2026-09-04T04:59:45.6699655Z      [33m[2m✓[22m[39m moves every gated route together for one person, before and after the invitation [33m 313[2mms[22m[39m
+2026-09-04T04:59:45.6713678Z      [33m[2m✓[22m[39m leaves the bot gateway path untouched by room membership [33m 410[2mms[22m[39m
+2026-09-04T04:59:46.4171747Z  [32m✓[39m test/web-chat.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 211[2mms[22m[39m
+2026-09-04T04:59:59.5058977Z  [32m✓[39m test/permissions.test.ts [2m([22m[2m24 tests[22m[2m)[22m[33m 12904[2mms[22m[39m
+2026-09-04T04:59:59.5060181Z      [33m[2m✓[22m[39m gateway request creates a system message in the room [33m 395[2mms[22m[39m
+2026-09-04T04:59:59.5060865Z      [33m[2m✓[22m[39m system message carries all four parts and both reply forms [33m 593[2mms[22m[39m
+2026-09-04T04:59:59.5061733Z      [33m[2m✓[22m[39m user yes reply sends verdict to the bot and is not stored as user message [33m 454[2mms[22m[39m
+2026-09-04T04:59:59.5062521Z      [33m[2m✓[22m[39m yes with unknown id is not consumed (falls through as chat) [33m 325[2mms[22m[39m
+2026-09-04T04:59:59.5063478Z      [33m[2m✓[22m[39m delivers an allow verdict to the connected bot [33m 596[2mms[22m[39m
+2026-09-04T04:59:59.5064181Z      [33m[2m✓[22m[39m delivers a deny verdict as deny, not as allow [33m 319[2mms[22m[39m
+2026-09-04T04:59:59.5064870Z      [33m[2m✓[22m[39m accepts a verdict once and lets a repeat fall through as chat [33m 1643[2mms[22m[39m
+2026-09-04T04:59:59.5065689Z      [33m[2m✓[22m[39m never resolves a request from a different room [33m 1580[2mms[22m[39m
+2026-09-04T04:59:59.5066504Z      [33m[2m✓[22m[39m refuses an unauthenticated verdict and leaves the request pending [33m 1577[2mms[22m[39m
+2026-09-04T04:59:59.5068300Z      [33m[2m✓[22m[39m falls through non-matching text and unknown ids without touching the pending request [33m 1648[2mms[22m[39m
+2026-09-04T04:59:59.5069303Z      [33m[2m✓[22m[39m accepts all four verdict words, normalizes case, and rejects ids containing l [33m 743[2mms[22m[39m
+2026-09-04T04:59:59.5070199Z      [33m[2m✓[22m[39m bot text cannot inject the bot-content marker [33m 449[2mms[22m[39m
+2026-09-04T04:59:59.5071118Z      [33m[2m✓[22m[39m the rejection notice never echoes bot text outside the id charset [33m 374[2mms[22m[39m
+2026-09-04T05:00:00.6400522Z  [32m✓[39m test/web-shell.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 621[2mms[22m[39m
+2026-09-04T05:00:03.3898714Z  [32m✓[39m test/messages.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 2568[2mms[22m[39m
+2026-09-04T05:00:03.3906798Z      [33m[2m✓[22m[39m refuses to store an upload outside the uploads directory [33m 397[2mms[22m[39m
+2026-09-04T05:00:07.9385702Z  [32m✓[39m test/rooms-bots.test.ts [2m([22m[2m21 tests[22m[2m)[22m[33m 4380[2mms[22m[39m
+2026-09-04T05:00:07.9387086Z      [33m[2m✓[22m[39m command carries env vars, the dev flag and the configured port [33m 349[2mms[22m[39m
+2026-09-04T05:00:07.9440824Z      [33m[2m✓[22m[39m lists invites without token [33m 340[2mms[22m[39m
+2026-09-04T05:00:07.9442892Z      [33m[2m✓[22m[39m never exposes the issued token again [33m 547[2mms[22m[39m
+2026-09-04T05:00:07.9446076Z      [33m[2m✓[22m[39m online is a boolean false, not the integer 0 [33m 473[2mms[22m[39m
+2026-09-04T05:00:07.9464941Z      [33m[2m✓[22m[39m revoking an invite is idempotent [33m 341[2mms[22m[39m
+2026-09-04T05:00:07.9465993Z    [33m[2m✓[22m[39m buildServer registers room and bot routes behind requireAuth [33m 546[2mms[22m[39m
+2026-09-04T05:00:08.4427889Z [90mstdout[2m | test/web-permission-contract.test.ts[2m > [22m[2mdumps the real broker bodies shared with skeleton B
+2026-09-04T05:00:08.4445179Z [22m[39mWEBSHARED_REQUEST_BODY="🔒 봇이 도구 사용 승인을 요청합니다: Bash\n│ command 를 실행합니다\n│ git commit --amend --no-edit\n승인하려면 \"yes nmjkh\", 거절하려면 \"no nmjkh\" 라고 답해주세요."
+2026-09-04T05:00:08.4454731Z WEBSHARED_RESOLVED_BODY="✅ 승인 전송됨 (nmjkh)"
+2026-09-04T05:00:08.4455880Z WEBSHARED_FAILED_BODY="⚠️ 봇이 접속해 있지 않아 판정을 전달하지 못했습니다 (zxvbn)"
+2026-09-04T05:00:08.4457670Z 
+2026-09-04T05:00:09.9490261Z  [32m✓[39m test/web-permission-contract.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1833[2mms[22m[39m
+2026-09-04T05:00:09.9492474Z    [33m[2m✓[22m[39m dumps the real broker bodies shared with skeleton B [33m 336[2mms[22m[39m
+2026-09-04T05:00:09.9494017Z      [33m[2m✓[22m[39m AC-001 delivers an approve verdict to the bot with the exact request_id [33m 435[2mms[22m[39m
+2026-09-04T05:00:09.9504705Z      [33m[2m✓[22m[39m AC-002 delivers a deny verdict [33m 480[2mms[22m[39m
+2026-09-04T05:00:09.9505775Z      [33m[2m✓[22m[39m AC-003 extracts the real request_id even when the preview contains lookalike runs [33m 511[2mms[22m[39m
+2026-09-04T05:00:10.5343811Z  [32m✓[39m test/web-rich.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+2026-09-04T05:00:12.5934626Z  [32m✓[39m test/sse.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 1912[2mms[22m[39m
+2026-09-04T05:00:12.5935995Z      [33m[2m✓[22m[39m never leaks another room event into this room stream [33m 559[2mms[22m[39m
+2026-09-04T05:00:12.5936780Z      [33m[2m✓[22m[39m wires the hub and the events route into buildServer [33m 332[2mms[22m[39m
+2026-09-04T05:00:15.7082771Z  [32m✓[39m test/auth.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 2971[2mms[22m[39m
+2026-09-04T05:00:15.7084307Z      [33m[2m✓[22m[39m registers a user [33m 305[2mms[22m[39m
+2026-09-04T05:00:15.7088748Z      [33m[2m✓[22m[39m rejects over-long and malformed usernames, accepts a normal one [33m 433[2mms[22m[39m
+2026-09-04T05:00:15.7095018Z      [33m[2m✓[22m[39m sets an httpOnly lax session cookie [33m 412[2mms[22m[39m
+2026-09-04T05:00:15.7096003Z      [33m[2m✓[22m[39m logout invalidates the session [33m 548[2mms[22m[39m
+2026-09-04T05:00:16.7621292Z  [32m✓[39m test/restart-persistence.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 846[2mms[22m[39m
+2026-09-04T05:00:16.7622421Z      [33m[2m✓[22m[39m 재시작 이후 무관한 메시지를 더 써도 같은 세 동일성이 다시 성립한다 (AC-E2E-010) [33m 554[2mms[22m[39m
+2026-09-04T05:00:16.8567732Z web-visual: Playwright 부재로 시각 단언 skip — 로컬에서 npm test 로 관측할 것 (playwright 미설치 — npx 캐시(~/.npm/_npx)가 없다. npx playwright 로 한 번 실행해 캐시를 만들어라)
+2026-09-04T05:00:16.8589597Z  [2m[90m↓[39m[22m test/web-visual.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+2026-09-04T05:00:16.9579415Z  [32m✓[39m test/config.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+2026-09-04T05:00:17.0525029Z  [32m✓[39m test/mention.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+2026-09-04T05:00:17.4703631Z  [32m✓[39m test/db.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 317[2mms[22m[39m
+2026-09-04T05:00:17.9313472Z  [32m✓[39m test/health.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 273[2mms[22m[39m
+2026-09-04T05:00:17.9356963Z 
+2026-09-04T05:00:17.9361311Z [2m Test Files [22m [1m[32m16 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (17)[39m
+2026-09-04T05:00:17.9363529Z [2m      Tests [22m [1m[32m211 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (212)[39m
+2026-09-04T05:00:17.9364513Z [2m   Start at [22m 04:59:27
+2026-09-04T05:00:17.9365604Z [2m   Duration [22m 50.83s[2m (transform 425ms, setup 0ms, import 1.09s, tests 46.94s, environment 1.24s)[22m
+2026-09-04T05:00:17.9366226Z 
+2026-09-04T05:00:17.9556159Z 
+2026-09-04T05:00:17.9557196Z > @minidiscord/channel@0.1.0 pretest
+2026-09-04T05:00:17.9564722Z > tsc
+2026-09-04T05:00:17.9565019Z 
+2026-09-04T05:00:18.2220594Z 
+2026-09-04T05:00:18.2221744Z > @minidiscord/channel@0.1.0 test
+2026-09-04T05:00:18.2222320Z > vitest run
+2026-09-04T05:00:18.2222548Z 
+2026-09-04T05:00:18.4698481Z 
+2026-09-04T05:00:18.4715367Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/home/runner/work/minidiscord/minidiscord/channel[39m
+2026-09-04T05:00:18.4733574Z 
+2026-09-04T05:00:19.2388995Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2mafter welcome, the same two frames reach the session exactly once each
+2026-09-04T05:00:19.2389911Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:00:19.2390144Z 
+2026-09-04T05:00:21.0964247Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma history_response before welcome resolves nothing; after welcome it resolves
+2026-09-04T05:00:21.0965222Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:00:21.0965486Z 
+2026-09-04T05:00:21.1221701Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2msession establishment does not survive a reconnect
+2026-09-04T05:00:21.1222916Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:00:21.1223434Z 
+2026-09-04T05:00:25.6900102Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma rogue that reads the hello cannot forge a challenge from what it read (hmac-pub)
+2026-09-04T05:00:25.6902320Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:25.6903477Z 
+2026-09-04T05:00:26.1375491Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce)
+2026-09-04T05:00:26.1377367Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:26.1378048Z 
+2026-09-04T05:00:26.5825169Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma rogue that reads the hello cannot forge a challenge from what it read (sha256-pub)
+2026-09-04T05:00:26.5826783Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:26.5827153Z 
+2026-09-04T05:00:27.0272298Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma rogue that reads the hello cannot forge a challenge from what it read (pub)
+2026-09-04T05:00:27.0273531Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:27.0273842Z 
+2026-09-04T05:00:28.3133405Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma challenge from a stub that holds the confirm key establishes the session
+2026-09-04T05:00:28.3134320Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:00:28.3134583Z 
+2026-09-04T05:00:28.7284532Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2mno auth signature leaves the channel before the server has proved itself
+2026-09-04T05:00:28.7285779Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:28.7286277Z 
+2026-09-04T05:00:29.5534295Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2mboth nonces are regenerated per socket and a replayed challenge is refused
+2026-09-04T05:00:29.5535692Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:00:29.5536012Z 
+2026-09-04T05:00:30.6105945Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (wrong)
+2026-09-04T05:00:30.6107646Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:30.6116733Z 
+2026-09-04T05:00:32.1029641Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (short)
+2026-09-04T05:00:32.1030925Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:33.5925738Z 
+2026-09-04T05:00:33.5927167Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (omit)
+2026-09-04T05:00:33.5928996Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:33.5929399Z 
+2026-09-04T05:00:35.0872232Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (other-room)
+2026-09-04T05:00:35.0873989Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:35.0874570Z 
+2026-09-04T05:00:36.5787280Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (bad-nonce)
+2026-09-04T05:00:36.5789504Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:36.5790297Z 
+2026-09-04T05:00:38.0748566Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma malformed or wrong-length proof is refused without throwing (pipe-nonce)
+2026-09-04T05:00:38.0750252Z [22m[39mminidiscord-channel: challenge 를 거절한다 — 서버 증명이 형식 또는 값 대조를 통과하지 못해 세션을 확립하지 않고 소켓을 닫는다
+2026-09-04T05:00:38.0751438Z 
+2026-09-04T05:00:39.5391216Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2man envelope with a broken mac, and a frame with no envelope, are both dropped
+2026-09-04T05:00:39.5392666Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:00:39.5393098Z 
+2026-09-04T05:00:39.9637345Z [90mstderr[2m | test/transport-auth.test.ts[2m > [22m[2mtransport auth[2m > [22m[2ma replayed envelope is dropped because its sequence has already been used
+2026-09-04T05:00:39.9638466Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:00:39.9638820Z 
+2026-09-04T05:01:25.3796180Z  [31m❯[39m test/transport-auth.test.ts [2m([22m[2m30 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 66576[2mms[22m[39m
+2026-09-04T05:01:25.3799657Z      [33m[2m✓[22m[39m an endpoint that never sends welcome cannot inject a verdict or a chat message [33m 430[2mms[22m[39m
+2026-09-04T05:01:25.3804502Z      [33m[2m✓[22m[39m after welcome, the same two frames reach the session exactly once each [33m 438[2mms[22m[39m
+2026-09-04T05:01:25.3805757Z      [33m[2m✓[22m[39m a history_response before welcome resolves nothing; after welcome it resolves [33m 1448[2mms[22m[39m
+2026-09-04T05:01:25.3806831Z      [33m[2m✓[22m[39m session establishment does not survive a reconnect [33m 1425[2mms[22m[39m
+2026-09-04T05:01:25.3807708Z      [33m[2m✓[22m[39m gated frames leave no unhandled rejection and do not stop the client [33m 817[2mms[22m[39m
+2026-09-04T05:01:25.3808865Z      [33m[2m✓[22m[39m a gated frame raises neither an unhandled rejection nor an uncaught exception [33m 867[2mms[22m[39m
+2026-09-04T05:01:25.3809816Z      [32m✓[39m imports no filesystem module anywhere under channel/src[32m 1[2mms[22m[39m
+2026-09-04T05:01:25.3810825Z      [32m✓[39m decides transport by scheme and host in every branch, loopback included[32m 0[2mms[22m[39m
+2026-09-04T05:01:25.3811707Z      [33m[2m✓[22m[39m the entry point refuses a plaintext remote and connects otherwise [33m 683[2mms[22m[39m
+2026-09-04T05:01:25.3815134Z      [32m✓[39m keeps bracketed IPv6 loopback working after the unreachable bare ::1 entry is dropped[32m 3[2mms[22m[39m
+2026-09-04T05:01:25.3816769Z      [33m[2m✓[22m[39m refuses an unparseable address, stays alive, says nothing on stdout, and explains truthfully [33m 726[2mms[22m[39m
+2026-09-04T05:01:25.3817894Z      [32m✓[39m hello carries exactly a pub and a client nonce, and no plaintext token[32m 16[2mms[22m[39m
+2026-09-04T05:01:25.3834749Z      [33m[2m✓[22m[39m a rogue that reads the hello cannot forge a challenge from what it read (hmac-pub) [33m 447[2mms[22m[39m
+2026-09-04T05:01:25.3854883Z      [33m[2m✓[22m[39m a rogue that reads the hello cannot forge a challenge from what it read (hmac-nonce) [33m 446[2mms[22m[39m
+2026-09-04T05:01:25.3868122Z      [33m[2m✓[22m[39m a rogue that reads the hello cannot forge a challenge from what it read (sha256-pub) [33m 445[2mms[22m[39m
+2026-09-04T05:01:25.3885086Z      [33m[2m✓[22m[39m a rogue that reads the hello cannot forge a challenge from what it read (pub) [33m 444[2mms[22m[39m
+2026-09-04T05:01:25.3906680Z      [33m[2m✓[22m[39m a rogue that reads the hello cannot forge a challenge from what it read (oracle) [33m 842[2mms[22m[39m
+2026-09-04T05:01:25.3907862Z      [33m[2m✓[22m[39m a challenge from a stub that holds the confirm key establishes the session [33m 445[2mms[22m[39m
+2026-09-04T05:01:25.3914808Z      [33m[2m✓[22m[39m no auth signature leaves the channel before the server has proved itself [33m 824[2mms[22m[39m
+2026-09-04T05:01:25.3916148Z [31m     [31m×[31m both nonces are regenerated per socket and a replayed challenge is refused[39m[33m 1027[2mms[22m[39m
+2026-09-04T05:01:25.3917300Z      [33m[2m✓[22m[39m a malformed or wrong-length proof is refused without throwing (wrong) [33m 1492[2mms[22m[39m
+2026-09-04T05:01:25.3918469Z      [33m[2m✓[22m[39m a malformed or wrong-length proof is refused without throwing (short) [33m 1491[2mms[22m[39m
+2026-09-04T05:01:25.3919437Z      [33m[2m✓[22m[39m a malformed or wrong-length proof is refused without throwing (omit) [33m 1493[2mms[22m[39m
+2026-09-04T05:01:25.3920342Z      [33m[2m✓[22m[39m a malformed or wrong-length proof is refused without throwing (other-room) [33m 1492[2mms[22m[39m
+2026-09-04T05:01:25.3921418Z      [33m[2m✓[22m[39m a malformed or wrong-length proof is refused without throwing (bad-nonce) [33m 1496[2mms[22m[39m
+2026-09-04T05:01:25.3922408Z      [33m[2m✓[22m[39m a malformed or wrong-length proof is refused without throwing (pipe-nonce) [33m 1494[2mms[22m[39m
+2026-09-04T05:01:25.3924011Z      [33m[2m✓[22m[39m an envelope with a broken mac, and a frame with no envelope, are both dropped [33m 425[2mms[22m[39m
+2026-09-04T05:01:25.3925030Z      [32m✓[39m a replayed envelope is dropped because its sequence has already been used[32m 33[2mms[22m[39m
+2026-09-04T05:01:25.3926232Z      [33m[2m✓[22m[39m the three gates are separate: each mutation breaks a different set [33m 43825[2mms[22m[39m
+2026-09-04T05:01:25.3927370Z      [33m[2m✓[22m[39m the entry point closes a rejected socket, says one line on stderr and nothing on stdout [33m 1559[2mms[22m[39m
+2026-09-04T05:01:25.6478573Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mgateway message becomes exactly one session notification
+2026-09-04T05:01:25.6479840Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:25.6480227Z 
+2026-09-04T05:01:25.6753912Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mcc message is delivered but raises no working status
+2026-09-04T05:01:25.6754955Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:25.6755217Z 
+2026-09-04T05:01:25.9093803Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma TO delivery carries the reply-invoking system suffix in its content
+2026-09-04T05:01:25.9095289Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:25.9095561Z 
+2026-09-04T05:01:25.9336584Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma CC delivery carries no reply-invoking suffix
+2026-09-04T05:01:25.9337654Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:25.9337915Z 
+2026-09-04T05:01:25.9568854Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma TO message reports working to the gateway
+2026-09-04T05:01:25.9569994Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:25.9570394Z 
+2026-09-04T05:01:25.9800851Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mreply tool sends a bot_message with mapped file paths
+2026-09-04T05:01:25.9801962Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:25.9802301Z 
+2026-09-04T05:01:26.0146428Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2midle status follows the bot_message, not precedes it
+2026-09-04T05:01:26.0147315Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.0147817Z 
+2026-09-04T05:01:26.0363495Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mfetch_history forwards since_id and limit verbatim
+2026-09-04T05:01:26.0364527Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.0365473Z 
+2026-09-04T05:01:26.0502937Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mhistory renders as one structured JSON document
+2026-09-04T05:01:26.0504060Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.0504343Z 
+2026-09-04T05:01:26.0644613Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mempty history renders the same JSON shape with a null cursor
+2026-09-04T05:01:26.0645708Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.0645994Z 
+2026-09-04T05:01:26.0753398Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma single poisoned message stays a single element and carries no live envelope sequence
+2026-09-04T05:01:26.0754623Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.0754983Z 
+2026-09-04T05:01:26.0873239Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma single poisoned message stays a single element and carries no live envelope sequence
+2026-09-04T05:01:26.0874407Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.0874735Z 
+2026-09-04T05:01:26.1002493Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mderives the cursor from ids only, never from body text, and nulls it when empty
+2026-09-04T05:01:26.1003755Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.1004098Z 
+2026-09-04T05:01:26.1123013Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mderives the cursor from ids only, never from body text, and nulls it when empty
+2026-09-04T05:01:26.1124170Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.1124677Z 
+2026-09-04T05:01:26.2726717Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma chat message with no MCP peer raises no unhandled rejection
+2026-09-04T05:01:26.2727807Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:26.2728448Z 
+2026-09-04T05:01:27.1044379Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mhistory result stays under the total byte limit and carries the truncation marker (AC-BOTSTAB-007)
+2026-09-04T05:01:27.1046047Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.1047199Z 
+2026-09-04T05:01:27.1184782Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma truncated history derives the cursor from the kept ids only, dropping the newest first (AC-BOTSTAB-008)
+2026-09-04T05:01:27.1186060Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.1187022Z 
+2026-09-04T05:01:27.1352448Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mempty history passes through untouched — cursor null, empty messages (E-1)
+2026-09-04T05:01:27.1353761Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.1354897Z 
+2026-09-04T05:01:27.1466002Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2man element whose author alone exceeds the limits still survives with a progressing cursor (E-12, AC-BOTSTAB-007 ㉢ family)
+2026-09-04T05:01:27.1467275Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.1468181Z 
+2026-09-04T05:01:27.1596560Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2ma flood where the huge-author element is the oldest keeps every element and progresses the cursor (E-12 flood)
+2026-09-04T05:01:27.1597620Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.1598560Z 
+2026-09-04T05:01:27.1720121Z [90mstderr[2m | test/index-wiring.test.ts[2m > [22m[2mchannel wiring[2m > [22m[2mhistory wiring neutralizes before it truncates (AC-LIVEVERIFY-015)
+2026-09-04T05:01:27.1721127Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.1722170Z 
+2026-09-04T05:01:27.1844586Z  [32m✓[39m test/index-wiring.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 1551[2mms[22m[39m
+2026-09-04T05:01:27.1845579Z      [33m[2m✓[22m[39m the built artifact speaks MCP; the token gates only the gateway [33m 598[2mms[22m[39m
+2026-09-04T05:01:27.4550390Z  [32m✓[39m test/channel-server.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+2026-09-04T05:01:27.6001805Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2msends hello with the verifier pub as the very first frame
+2026-09-04T05:01:27.6002758Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6003030Z 
+2026-09-04T05:01:27.6124134Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mpasses the welcome frame through untouched, extra fields included
+2026-09-04T05:01:27.6125171Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6125553Z 
+2026-09-04T05:01:27.6207302Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mpasses the message frame through untouched, files and delivery included
+2026-09-04T05:01:27.6208511Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6208901Z 
+2026-09-04T05:01:27.6316506Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mpasses a deny verdict through as deny
+2026-09-04T05:01:27.6317669Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6318635Z 
+2026-09-04T05:01:27.6430206Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mroutes by type only — an unknown frame reaches no callback
+2026-09-04T05:01:27.6431383Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6431865Z 
+2026-09-04T05:01:27.6542020Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2msurvives frames whose callback was not provided
+2026-09-04T05:01:27.6543097Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6543602Z 
+2026-09-04T05:01:27.6654949Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mdrops a malformed frame and keeps processing the next valid one
+2026-09-04T05:01:27.6655850Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6656294Z 
+2026-09-04T05:01:27.6814788Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2msends only while open, and reports it truthfully
+2026-09-04T05:01:27.6816094Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6816491Z 
+2026-09-04T05:01:27.6975772Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mputs every history parameter on the frame top level, since_id included
+2026-09-04T05:01:27.6976639Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.6976865Z 
+2026-09-04T05:01:27.7084948Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mmatches responses by rid, not by arrival order
+2026-09-04T05:01:27.7085922Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7086210Z 
+2026-09-04T05:01:27.7193713Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mrejects a history request at 10 seconds, not before
+2026-09-04T05:01:27.7194867Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7195160Z 
+2026-09-04T05:01:27.7282001Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mfails a history request immediately when not connected, and recovers after connecting
+2026-09-04T05:01:27.7283411Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7283759Z 
+2026-09-04T05:01:27.7356995Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mwaits then reconnects to the replaced opts.url and says hello again
+2026-09-04T05:01:27.7358109Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7358507Z 
+2026-09-04T05:01:27.7414161Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mwaits then reconnects to the replaced opts.url and says hello again
+2026-09-04T05:01:27.7415175Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7416265Z 
+2026-09-04T05:01:27.7814576Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mresets the backoff to 1000 after a successful connection
+2026-09-04T05:01:27.7834509Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7835308Z 
+2026-09-04T05:01:27.7836372Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mresets the backoff to 1000 after a successful connection
+2026-09-04T05:01:27.7837555Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7838028Z 
+2026-09-04T05:01:27.7935008Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mdoes not enter the retry path when close arrives after stop()
+2026-09-04T05:01:27.7936014Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7936385Z 
+2026-09-04T05:01:27.7979442Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mdoes not enter the retry path when close arrives after stop()
+2026-09-04T05:01:27.7980413Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.7981275Z 
+2026-09-04T05:01:27.8097819Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mdoes not open a new connection when stop() lands during the backoff wait
+2026-09-04T05:01:27.8099016Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.8099488Z 
+2026-09-04T05:01:27.8268779Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mreconnects exactly once when stop() is not called
+2026-09-04T05:01:27.8270550Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.8271168Z 
+2026-09-04T05:01:27.8324276Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mreconnects exactly once when stop() is not called
+2026-09-04T05:01:27.8326484Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.8326815Z 
+2026-09-04T05:01:27.8376182Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mthe no-new-connection predicate fails for a replica that omits the stopped check
+2026-09-04T05:01:27.8376981Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.8377433Z 
+2026-09-04T05:01:27.8729260Z [90mstderr[2m | test/gateway-client.test.ts[2m > [22m[2mgateway client[2m > [22m[2mpasses a welcome envelope through untouched, extra fields included (AC-GWAUTH2-020 나)
+2026-09-04T05:01:27.8730259Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:27.8730746Z 
+2026-09-04T05:01:27.8795716Z  [32m✓[39m test/gateway-client.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 291[2mms[22m[39m
+2026-09-04T05:01:28.2873537Z [90mstderr[2m | test/gateway-mutual-auth.test.ts[2m > [22m[2mgateway mutual auth[2m > [22m[2mthe real server and the real channel agree end to end, envelope included
+2026-09-04T05:01:28.2874672Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:28.2874941Z 
+2026-09-04T05:01:28.3705308Z [90mstderr[2m | test/gateway-mutual-auth.test.ts[2m > [22m[2mgateway mutual auth[2m > [22m[2ma relaying man in the middle passes the handshake and still injects nothing
+2026-09-04T05:01:28.3706168Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:28.3706590Z 
+2026-09-04T05:01:28.9156600Z [90mstderr[2m | test/gateway-mutual-auth.test.ts[2m > [22m[2mgateway mutual auth[2m > [22m[2ma history response from the real server arrives inside an envelope and resolves
+2026-09-04T05:01:28.9157740Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:28.9158052Z 
+2026-09-04T05:01:30.4374550Z  [32m✓[39m test/gateway-mutual-auth.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 2289[2mms[22m[39m
+2026-09-04T05:01:30.4375846Z      [33m[2m✓[22m[39m a relaying man in the middle passes the handshake and still injects nothing [33m 493[2mms[22m[39m
+2026-09-04T05:01:30.4376939Z      [33m[2m✓[22m[39m a real relay terminating tls on both sides cannot take over the bot session [33m 1201[2mms[22m[39m
+2026-09-04T05:01:31.9076781Z [90mstderr[2m | test/permission-relay.test.ts[2m > [22m[2mpermission relay[2m > [22m[2mwire relays a request out to the gateway and a verdict back to Claude Code
+2026-09-04T05:01:31.9077979Z [22m[39mminidiscord-channel: 이 연결은 채널 바인딩이 없다(unbound) — 중계형 중간자가 배제되지 않는다
+2026-09-04T05:01:31.9078633Z 
+2026-09-04T05:01:32.6367787Z  [32m✓[39m test/permission-relay.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 1984[2mms[22m[39m
+2026-09-04T05:01:32.6385485Z      [33m[2m✓[22m[39m relays a verdict only for an id it actually emitted, exactly once [33m 355[2mms[22m[39m
+2026-09-04T05:01:32.8743000Z  [32m✓[39m test/truncate.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+2026-09-04T05:01:32.8783714Z 
+2026-09-04T05:01:32.8794856Z [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+2026-09-04T05:01:32.8795475Z 
+2026-09-04T05:01:32.8829372Z [41m[1m FAIL [22m[49m test/transport-auth.test.ts[2m > [22mtransport auth[2m > [22mboth nonces are regenerated per socket and a replayed challenge is refused
+2026-09-04T05:01:32.8844939Z [31m[1mAssertionError[22m: expected '81cd789471c39a22e2f49d33e9025cfff9590…' not to be '81cd789471c39a22e2f49d33e9025cfff9590…' // Object.is equality[39m
+2026-09-04T05:01:32.8854102Z [36m [2m❯[22m test/transport-auth.test.ts:[2m744:24[22m[39m
+2026-09-04T05:01:32.8915085Z     [90m742|[39m     [35mawait[39m [34mwaitFor[39m(() [33m=>[39m stub[33m.[39m[34mconnections[39m() [33m===[39m [34m2[39m[33m,[39m [32m'재접속'[39m[33m,[39m [34m4500[39m)
+2026-09-04T05:01:32.8915825Z 
+2026-09-04T05:01:32.8933393Z [2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[90m (7)[39m
+2026-09-04T05:01:32.8934641Z     [90m743|[39m     [35mconst[39m nonce2 [33m=[39m stub[33m.[39m[34mnonceSeen[39m()
+2026-09-04T05:01:32.8956089Z [2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m125 passed[39m[22m[90m (126)[39m
+2026-09-04T05:01:32.8957608Z     [90m744|[39m     expect(nonce2).not.toBe(nonce1)        // client_nonce 는 소켓마다 새로 만…
+2026-09-04T05:01:32.8958312Z [2m   Start at [22m 05:00:18
+2026-09-04T05:01:32.8965065Z     [90m   |[39m                        [31m^[39m
+2026-09-04T05:01:32.8969884Z     [90m745|[39m     stub.push({ type: 'message', id: 2, author_name: 'alice', delivery…
+2026-09-04T05:01:32.8971028Z [2m   Duration [22m 74.40s[2m (transform 248ms, setup 0ms, import 965ms, tests 72.78s, environment 0ms)[22m
+2026-09-04T05:01:32.8978825Z 
+2026-09-04T05:01:32.8984250Z     [90m746|[39m     stub.push({ type: 'permission_verdict', request_id: 'abcde', behav…
+2026-09-04T05:01:32.8985163Z 
+2026-09-04T05:01:32.9010082Z ##[error]AssertionError: expected '81cd789471c39a22e2f49d33e9025cfff9590…' not to be '81cd789471c39a22e2f49d33e9025cfff9590…' // Object.is equality
+ ❯ test/transport-auth.test.ts:744:24
+
+
+2026-09-04T05:01:32.9019525Z 
+2026-09-04T05:01:32.9020137Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+2026-09-04T05:01:32.9020396Z 
+2026-09-04T05:01:32.9122339Z npm error Lifecycle script `test` failed with error:
+2026-09-04T05:01:32.9127759Z npm error code 1
+2026-09-04T05:01:32.9128296Z npm error path /home/runner/work/minidiscord/minidiscord/channel
+2026-09-04T05:01:32.9128933Z npm error workspace @minidiscord/channel@0.1.0
+2026-09-04T05:01:32.9129429Z npm error location /home/runner/work/minidiscord/minidiscord/channel
+2026-09-04T05:01:32.9129969Z npm error command failed
+2026-09-04T05:01:32.9160092Z npm error command sh -c vitest run
+2026-09-04T05:01:32.9249423Z ##[error]Process completed with exit code 1.
+2026-09-04T05:01:32.9369908Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-04T05:01:32.9370795Z Post job cleanup.
+2026-09-04T05:01:33.0134435Z [command]/usr/bin/git version
+2026-09-04T05:01:33.0203950Z git version 2.55.0
+2026-09-04T05:01:33.0269017Z Temporarily overriding HOME='/home/runner/work/_temp/4929dc36-53f3-4769-8501-3f7a0ed230af' before making global git config changes
+2026-09-04T05:01:33.0290947Z Adding repository directory to the temporary git global config as a safe directory
+2026-09-04T05:01:33.0314100Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/minidiscord/minidiscord
+2026-09-04T05:01:33.0366446Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-09-04T05:01:33.0496914Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-09-04T05:01:33.0974246Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-09-04T05:01:33.1014069Z http.https://github.com/.extraheader
+2026-09-04T05:01:33.1054205Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-09-04T05:01:33.1155334Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-09-04T05:01:33.1613822Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-09-04T05:01:33.1661365Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-09-04T05:01:33.2019258Z Cleaning up orphan processes
+2026-09-04T05:01:33.2220895Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
