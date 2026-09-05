@@ -1,0 +1,30 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
+
+ ❯ test/wsupgrade-judgment.test.ts (8 tests | 1 failed) 4ms
+     × 네 조합이 네 이름으로 사상되고, (0,0) 은 PASS 가 아니라 미관측이다 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/wsupgrade-judgment.test.ts > SPEC-WSUPGRADE-001 세 갈래 사상 (AC-009) > 네 조합이 네 이름으로 사상되고, (0,0) 은 PASS 가 아니라 미관측이다
+AssertionError: expected 'PASS' to be '미관측' // Object.is equality
+
+Expected: "미관측"
+Received: "PASS"
+
+ ❯ test/wsupgrade-judgment.test.ts:117:38
+    115|     expect(classifyComparison(1, 0)).toBe('병렬에서만 실패')
+    116|     expect(classifyComparison(3, 2)).toBe('항상 실패')
+    117|     expect(classifyComparison(0, 0)).toBe('미관측')   // REQ-WSUPGRADE-00…
+       |                                      ^
+    118|     expect(classifyComparison(0, 1)).toBe('뒤집힘')   // 예상 밖을 이름 없는 통에 접…
+    119|     expect(new Set([
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  20:42:45
+   Duration  118ms (transform 31ms, setup 0ms, import 38ms, tests 4ms, environment 0ms)
+

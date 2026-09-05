@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
+
+ ❯ test/gateway.test.ts (39 tests | 1 failed | 38 skipped) 76ms
+     × history_request applies limit before since_id, speaker, since and until 75ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until
+Error: Unexpected server response: 400
+ ❯ IncomingMessage.finish test/gateway.test.ts:245:26
+    243|         // abortHandshake 의 정리를 모방한다 — 재수립은 try 밖에 두어 포획이 실패해도 실패는 세워진…
+    244|         res.socket.destroy()
+    245|         ws.emit('error', new Error(`Unexpected server response: ${res.…
+       |                          ^
+    246|       }
+    247|       res.on('data', c => chunks.push(c as Buffer))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 17 skipped (18)
+      Tests  1 failed | 227 skipped (228)
+   Start at  18:35:19
+   Duration  1.07s (transform 1.09s, setup 0ms, import 2.88s, tests 76ms, environment 1.49s)
+

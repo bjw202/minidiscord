@@ -1,0 +1,47 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
+
+ ❯ test/wsupgrade-judgment.test.ts (8 tests | 2 failed) 5ms
+     × 다섯 합성 입력을 서로 다른 다섯 이름으로 가른다 3ms
+     × content-type 이 json 이어도 본문 모양이 Fastify 가 아니면 미분류다 — 모양으로 가른다 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/wsupgrade-judgment.test.ts > SPEC-WSUPGRADE-001 지문표 (AC-003) > 다섯 합성 입력을 서로 다른 다섯 이름으로 가른다
+AssertionError: expected 'Fastify 기본 404' to be '맨 http.createServer' // Object.is equality
+
+Expected: "맨 http.createServer"
+Received: "Fastify 기본 404"
+
+ ❯ test/wsupgrade-judgment.test.ts:52:31
+     50|     expect(fingerprint(ws400)).toBe('ws WebSocketServer (경로 미스)')
+     51|     expect(fingerprint(fastify)).toBe('Fastify 기본 404')
+     52|     expect(fingerprint(bare)).toBe('맨 http.createServer')
+       |                               ^
+     53|     expect(fingerprint(html)).toBe('정적·Vite 계열 서버')
+     54|     expect(fingerprint(other)).toBe('미분류')   // 추측한 이름을 내면 실패다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/wsupgrade-judgment.test.ts > SPEC-WSUPGRADE-001 지문표 (AC-003) > content-type 이 json 이어도 본문 모양이 Fastify 가 아니면 미분류다 — 모양으로 가른다
+AssertionError: expected 'Fastify 기본 404' to be '미분류' // Object.is equality
+
+Expected: "미분류"
+Received: "Fastify 기본 404"
+
+ ❯ test/wsupgrade-judgment.test.ts:62:37
+     60|   it('content-type 이 json 이어도 본문 모양이 Fastify 가 아니면 미분류다 — 모양으로 가른다', (…
+     61|     const notFastify = synth({ statusCode: 404, headers: [{ name: 'con…
+     62|     expect(fingerprint(notFastify)).toBe('미분류')
+       |                                     ^
+     63|   })
+     64| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 passed (8)
+   Start at  20:34:38
+   Duration  94ms (transform 16ms, setup 0ms, import 23ms, tests 5ms, environment 0ms)
+

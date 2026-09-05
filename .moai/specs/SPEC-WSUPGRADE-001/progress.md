@@ -128,18 +128,30 @@ kickoff_approval: "칸반 카드 t39 run 디스패치(리드, 2026-09-05)로 pla
 - **§7 미검증 목록 갱신은 하지 않았다** — SPEC 본문 수정은 run 단계 금지(manager-develop 소유권 경계). 이월 항목 넷: 포획 0건 · 팔 축의 갭((ㄱ)) · AC-005 기준 실패와 plan.md §C 기제 오류 · 하네스 삼킴 관측(리스너 존재가 던짐 경로를 지운다). sync 단계에서 manager-spec 이 반영해야 한다.
 - **수리를 제안하지 않았다** — 후속 씨앗은 verdict.md §5 까지다.
 
+### 3회차 — 하네스 수리 (b7f22d0) · M6 복제 · M3 재실행 · M4 재실행 · M5 최종 (§D-2 종결 회차)
+
+- **하네스 수리(커밋 `b7f22d0`, 1회차 CRITERION-FAILURE 의 닫힘)** — `unexpected-response` 리스너가 기록 뒤 **관측된 상태 코드를 실은 응답자 오류로 실패를 스스로 세운다**(REQ-004 개정본 — ws 는 리스너 존재만으로 abortHandshake 를 건너뛴다). 본문은 `end` 까지 모아 온전히 기록(동기 판독은 본문이 별도 세그먼트로 올 때 빈 본문을 남김 — 실측 `m4/ac005-repair/`), 거짓 기제 주석 두 자리 정정. 트리거 실측: 포획 1건 · 시험 failed · «Unexpected server response: 400» 76ms.
+- **M6 복제 — 포획 0건 / 시행 20** (`m6/summary.txt`): rc=0 20행·captures=0 20행. **양성 증거** — 시행당 t0·t1: 80초 1회·81초 14회·82초 5회(무효 ~1초 실행과 같은 exit 0 이 아님). 1회 시도 무효 기록은 `m6/summary-invalid-root-path.txt` 로 보존·판정 입력에서 제외. **상한 `p ≤ 13.9%`(95% 단측) — «나무 환경의 gate 구성» 한정**(§7-15 차3 미종결; «닫혔다» 수준 p ≤ 1% 에는 161회 필요).
+- **M3 재실행** (`m3r2/`): 병렬 20/20 PASS · 직렬 20/20 PASS · 포획 0건 → §5.5 `미관측`(PASS 아님). 1회차 (ㄱ) 판독 불변 — 이 팔 설계에는 원 조건(같은 포트를 쥔 다른 앱)이 없다.
+- **M4 변이 재실행 — 14 기준 전부 실걸이, CRITERION-FAILURE 0건** (`m4r2/mutations-round3.md` 행렬): AC-001(리스너 삭제·헤더 빈 배열) · AC-002 네 아변형(각자 필드 FAIL + AC-004 동반 붕괴 재실측) · AC-003(상수 true·catch-all) · AC-004(보유 비교 삭제 RED · (2) H-1/H-3 근거 없음 미관측 유지 — 이빨 재실측 `ac004-teeth.txt`) · **AC-005 재설계 이빨** — 반대 방향 변이 둘이 **서로 다른 조항**에서 RED: 삼킴(재수립만 삭제) → 조항 (3) RED(«Test timed out»), 은폐(리스너 삭제) → 조항 (1) RED(포획 0건). 1회차가 샌 자리가 이제 잡힌다 — `ac005-{baseline,primary,aux}-verdict.txt` · AC-006(xtrace 차집합 1·dot 실실행 2·손작성 2종 거절) · AC-007(깨끗한 트리 333개 0적중·부하 1줄 RED·복원 0; 보조 넷은 1회차 인용) · AC-008(329개 0적중·변이 줄 RED·복원 0; 보조 둘 1회차 인용) · AC-009((0,0)→PASS·(0,1) 접기 RED) · AC-010(세 조항 각각 RED — awk 0→1 실측) · AC-011(m3r2 양팔 20/20 PASS·12회 RED·부풀리기 RED) · AC-012(변이 커밋 `d9150aa` → 1줄 RED → revert `843c22f` → 0줄) · **AC-013 공허 통과 — 리드 지시문대로 두 조항 분리 기록**: 시행 수 조항 통과(20행), 정지 규칙 조항은 **전제 불성실**(포획 0건이라 «첫 포획 이후 지속»을 잴 사건 없음) — **AC-013 의 중심 물음은 이번 실행으로 행해지지 않았고 이빨은 변이에서만 확인**(본 변이 조기 정지 → 양쪽 RED, 보조 마지막 줄 포획 → PASS — 정지 규칙을 잰다는 실측) · AC-014(단독 실행 후 captures 부재 PASS·미리 만들기 변이 RED·트리거 실행 갈래는 전제 불성실로 적용 안 됨 명시).
+- **M5 최종 판정** — `verdict.md` 3회차 판본: 세 기록 전부 `미관측`(PASS 아님)·**§D-2 로 카드 종결** — «이 비용대에서는 여기까지», 남는 표집은 REQ-013 상시 관측자(수리된 하네스가 스위트에 상주). 수리 설계 없음.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_status: audit-ready
-run_complete_at: 2026-09-05
-captures: 0                    # 20+20회 포획 0건 — 명시(침묵은 통과가 아니다)
-comparison_verdict: 미관측     # Mp=0·Ms=0 → §5.5 — PASS 아님, 카드 열린 채
-head_at_record: 6965bec        # 기록 시점 HEAD(AC-012 변이 복원 커밋) — 기록 커밋은 이후 착지
-ac_matrix: "11 PASS + 1 기준실패(AC-005 — 기준이 변이를 잡지 못함, 블로커 보고)"
-next_round_proposal: "워크스페이스 동시 실행 축 — 병렬 팔 moai gate / 직렬 팔 워크스페이스 순차 (제안 전용, SPEC §B 소유는 manager-spec)"
-verdict_record: .moai/reports/t39/verdict.md
-mutation_record: .moai/reports/t39/m4/mutations.md
+run_complete_at: 2026-09-05        # 3회차 최종 — §D-2 종결 규약(운영자 확정)으로 카드 닫음
+round: 3                           # 최종 회차 — 결과와 무관하게 종결(§D-2)
+captures: 0                        # 복제 0/20 + 병렬 0/20 + 직렬 0/20 — 명시(침묵은 통과가 아니다)
+replication_trials: 20             # moai gate 고정 20회·중도 정지 없음(시행당 80~82초 양성 증거)
+comparison_verdict: 미관측         # Mp=0·Ms=0 → §5.5 — PASS 아님
+ceiling: "p ≤ 13.9% (95% 단측) — 나무 환경의 gate 구성에 한정(§7-15 차3 미종결)"
+termination: "§D-2 — 남는 표집은 REQ-013 상시 관측자로(비용 0·하네스 b7f22d0 상주)"
+ac_matrix: "14 기준 전부 변이 실걸이 — CRITERION-FAILURE 0건(1회차 AC-005 기준 실패는 재설계+하네스 수리로 닫힘)"
+ac013_verdict: "(1) 시행 수 20 PASS / (2) 정지 규칙 전제 불성실(포획 0건) — 공허 통과·이빨은 m4r2 변이에서만 실측"
+head_at_record: 843c22f            # 기록 시점 HEAD(AC-012 변이 복원 커밋) — 기록 커밋은 이후 착지
+verdict_record: .moai/reports/t39/verdict.md          # 3회차 최종 판본
+mutation_record: .moai/reports/t39/m4r2/mutations-round3.md
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal

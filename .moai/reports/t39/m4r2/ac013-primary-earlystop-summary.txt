@@ -1,0 +1,6 @@
+trial=1 rc=0 captures=0 t0=1788578488 t1=1788578569
+trial=2 rc=0 captures=0 t0=1788578569 t1=1788578651
+trial=3 rc=0 captures=0 t0=1788578651 t1=1788578732
+trial=4 rc=0 captures=0 t0=1788578732 t1=1788578814
+trial=5 rc=0 captures=1 t0=1788578814 t1=1788578894
+DONE

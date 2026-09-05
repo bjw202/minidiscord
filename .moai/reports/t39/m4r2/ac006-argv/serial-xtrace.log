@@ -1,0 +1,2 @@
++ cd /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
++ npx vitest run --no-file-parallelism

@@ -1,0 +1,1 @@
+RECORD-JUDGE: PASS (.moai/reports/t39/m4r2/ac001-baseline-capture.json --trigger)

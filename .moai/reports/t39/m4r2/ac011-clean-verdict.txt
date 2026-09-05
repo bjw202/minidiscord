@@ -1,0 +1,3 @@
+parallel: trials=20 PASS=20 FAIL=0 기타=0 N+M=20
+serial:   trials=20 PASS=20 FAIL=0 기타=0 N+M=20
+AC-011: PASS — 두 팔 모두 시행 수 20 · N+M=20

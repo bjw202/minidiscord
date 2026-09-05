@@ -1,0 +1,4 @@
+AC-013 판정 — .moai/reports/t39/m4r2/ac013-primary-earlystop-summary.txt
+  시행 수: 5 (조항 (1) FAIL)
+  마지막 포획 시행: 5 · 마지막 시행: 5 (조항 (2) FAIL)
+AC-013: RED — 어긋난 조항: (1) (2)
