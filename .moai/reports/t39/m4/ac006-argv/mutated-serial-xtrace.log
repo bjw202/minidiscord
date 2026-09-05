@@ -1,0 +1,5 @@
++ cd server
++ npx vitest run --no-file-parallelism --reporter=dot
+stderr | test/gateway.test.ts > AC-GWAUTH2 server side > a signature made for another handshake is refused
+[dbg010 b] sig1 ok
+

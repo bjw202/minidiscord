@@ -1,0 +1,2 @@
+RECORD-JUDGE: FAIL (.moai/reports/t39/m4r2/ac001-aux-capture.json --trigger)
+  - AC-001 headers 전건 누락 또는 빈 배열

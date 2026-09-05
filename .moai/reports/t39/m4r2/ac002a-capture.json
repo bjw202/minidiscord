@@ -1,0 +1,53 @@
+{
+  "statusCode": 400,
+  "statusLine": "HTTP/1.1 400 Bad Request",
+  "headers": [
+    {
+      "name": "Connection",
+      "value": "close"
+    },
+    {
+      "name": "Content-Type",
+      "value": "text/html"
+    },
+    {
+      "name": "Content-Length",
+      "value": "11"
+    }
+  ],
+  "body": "Bad Request",
+  "localAddress": "127.0.0.1",
+  "localPort": 51203,
+  "remoteAddress": "127.0.0.1",
+  "remotePort": 51202,
+  "localFamily": "IPv4",
+  "remoteFamily": "IPv4",
+  "windowLogs": {
+    "upgrade": [
+      {
+        "window": "upgrade",
+        "seq": 1,
+        "path": "/nope",
+        "remotePort": 51203,
+        "t": 1788599105546
+      }
+    ],
+    "onRequest": []
+  },
+  "attributionHits": [],
+  "attributionHitCount": 1,
+  "tOpen": 1788599105543,
+  "tClose": 1788599105546,
+  "collision": "없음",
+  "portPossession": {
+    "ownPort": 51202,
+    "listening": true,
+    "address": {
+      "address": "::1",
+      "family": "IPv6",
+      "port": 51202
+    }
+  },
+  "capturedAt": "2026-09-05T09:05:05.546Z",
+  "clientPath": "/nope"
+}

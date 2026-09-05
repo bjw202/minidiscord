@@ -1,0 +1,4 @@
+[
+  { "branch": "H-3", "kind": "capture", "path": ".moai/reports/t39/m4r2/ac002a-capture.json" },
+  { "branch": "H-1", "kind": "probe", "path": ".moai/reports/t39/m4r2/no-such-probe-output.log" }
+]

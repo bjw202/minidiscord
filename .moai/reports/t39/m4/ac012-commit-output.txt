@@ -1,0 +1,2 @@
+[WT-server-404 52a8b60] test(SPEC-WSUPGRADE-001): AC-012 변이 — 생산 코드 한 줄 커밋 (곧 reset 으로 되돌림, card t39)
+ 1 file changed, 1 insertion(+), 1 deletion(-)

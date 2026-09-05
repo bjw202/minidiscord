@@ -1,0 +1,30 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
+
+ ❯ test/wsupgrade-judgment.test.ts (8 tests | 1 failed) 4ms
+     × 적중 0 + 포트 보유 → H-2 (㉰) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/wsupgrade-judgment.test.ts > SPEC-WSUPGRADE-001 2차 판정 (AC-004 (1)) > 적중 0 + 포트 보유 → H-2 (㉰)
+AssertionError: expected 'H-1' to be 'H-2' // Object.is equality
+
+Expected: "H-2"
+Received: "H-1"
+
+ ❯ test/wsupgrade-judgment.test.ts:92:38
+     90|
+     91|   it('적중 0 + 포트 보유 → H-2 (㉰)', () => {
+     92|     expect(secondVerdict(fastify())).toBe('H-2')
+       |                                      ^
+     93|   })
+     94|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  20:35:18
+   Duration  98ms (transform 24ms, setup 0ms, import 31ms, tests 4ms, environment 0ms)
+

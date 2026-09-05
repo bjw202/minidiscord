@@ -1,0 +1,2 @@
++ cd server
++ npx vitest run

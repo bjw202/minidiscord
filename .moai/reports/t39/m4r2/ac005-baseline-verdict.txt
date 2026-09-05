@@ -1,0 +1,6 @@
+AC-005 판정 — .moai/reports/t39/m4r2/ac001-trigger-baseline.log
+  실패 메시지: Error: Unexpected server response: 400
+(1) 포획 기록 존재(1건 이상): PASS
+(2) 대상 시험 failed: PASS
+(3) 실패가 관측 코드를 실은 응답자 오류(시간 초과 아님): PASS
+AC-005: PASS — 세 조항 모두 성립

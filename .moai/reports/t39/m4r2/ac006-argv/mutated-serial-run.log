@@ -1,0 +1,15 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
+
+··················································································································································stdout | test/web-permission-contract.test.ts > dumps the real broker bodies shared with skeleton B
+WEBSHARED_REQUEST_BODY="🔒 봇이 도구 사용 승인을 요청합니다: Bash\n│ command 를 실행합니다\n│ git commit --amend --no-edit\n승인하려면 \"yes nmjkh\", 거절하려면 \"no nmjkh\" 라고 답해주세요."
+WEBSHARED_RESOLVED_BODY="✅ 승인 전송됨 (nmjkh)"
+WEBSHARED_FAILED_BODY="⚠️ 요청한 세션의 신원이 기록되지 않아 판정을 전달하지 못했습니다 (zxvbn)"
+
+··················································································
+
+ Test Files  18 passed (18)
+      Tests  228 passed (228)
+   Start at  20:40:09
+   Duration  35.02s (transform 205ms, setup 0ms, import 1.20s, tests 32.01s, environment 842ms)
+

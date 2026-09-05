@@ -1,0 +1,5 @@
+배열 A (타앱 선점)      : 바인드 OK | 응답 {"status":404,"body":"{\"message\":\"Route GET:/bot not found\",\"error\":\"Not Found\",\"statusCode\":404}"}
+  카운터 0 -> 0 | 증감 0 | 보유 {"listening":true,"port":53188,"own":53188}
+배열 B (자기 앱이 응답) : 응답 {"status":404,"body":"{\"message\":\"Route GET:/nope not found\",\"error\":\"Not Found\",\"statusCode\":404}"}
+  카운터 0 -> 1 | 증감 1 | 보유 {"listening":true,"port":53190,"own":53190}
+배열 C (자기 앱 /bot)   : 응답 {"status":101} | 카운터 증감 0

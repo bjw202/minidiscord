@@ -1,0 +1,4 @@
+AC-013 판정 — .moai/reports/t39/m4r2/ac013-aux-capture-last-summary.txt
+  시행 수: 20 (조항 (1) PASS)
+  마지막 포획 시행: 20 · 마지막 시행: 20 (조항 (2) PASS)
+AC-013: PASS — 두 조항 모두 성립

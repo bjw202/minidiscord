@@ -21,4 +21,7 @@
 - [고친 라운드가 새 축에 그 부류를 재생산한다](fix-round-reproduces-class-in-its-new-axis.md) — 처방은 옛 행에만 적용되고 신설 행은 처방 이전 형태로 태어난다; 자진 신고는 정직함의 증거이지 수정의 증거가 아니다 (t6 3회차, 2026-08-31)
 - [감사관의 처방도 불가능할 수 있다](auditor-prescription-can-be-impossible.md) — 지적은 옳았으나 처방한 도구가 프로세스 경계를 못 넘었다; 방향만 주고 기제는 맡길 것 (t6 1→2회차, 2026-08-31)
 - [어간 훑기가 불변식 문장을 놓친다](stem-sweep-misses-the-invariant.md) — 바뀌는 심볼의 어간에는 「발신 지점 다섯」 같은 개수·전칭 문장이 안 걸려 형제 SPEC 하나가 통째로 표에서 빠졌다 (t34 1회차, 2026-09-03)
+- [판별자의 정의역이 도달 불가다](discriminator-domain-is-unreachable.md) — 합성 입력 셋을 셋으로 가르니 기준은 초록인데, 그 입력 둘이 실물에서 결코 발생하지 않아 세 갈래가 한 점으로 붕괴 (t39 1회차, 2026-09-04)
+- [판정표가 자기 절의 분업 정의를 어긴다](decision-table-ignores-its-own-division-of-labour.md) — 「창1은 A, 창2는 B를 답한다」고 정의해 놓고 표는 「창1 또는 창2 → B」로 사상; 선언지로 묶인 팔을 의심할 것 (t39 3회차, 2026-09-04)
+- [관측 창이 포획된 그 요청을 못 본다](observation-window-never-sees-the-captured-request.md) — 판별력은 얻었는데 귀속이 없어 한 팔이 혼입으로만 발화하고, 그 거짓 양성이 스스로를 도달성 근거로 인증 (t39 2회차, 2026-09-04)
 - [수리가 바꾼 개수가 자기 훑기 밖에서 거짓을 만든다](repair-changed-count-falsifies-outside-its-own-sweep.md) — 셋→넷으로 움직인 수를 잡는 어간이 없고, 수리가 새로 찾은 결합 파일(`web/`)은 범위 목록 밖 (t34 3회차, 2026-09-03)

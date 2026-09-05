@@ -1,0 +1,2 @@
+RECORD-JUDGE: FAIL (.moai/reports/t39/captures/capture-2026-09-05T01-42-33-413Z-1.json --trigger)
+  - AC-002 tOpen/tClose 누락

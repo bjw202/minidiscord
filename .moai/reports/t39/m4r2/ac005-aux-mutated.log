@@ -1,0 +1,20 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
+
+ ❯ test/gateway.test.ts (39 tests | 1 failed | 38 skipped) 73ms
+     × history_request applies limit before since_id, speaker, since and until 72ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until
+Error: Unexpected server response: 400
+ ❯ ClientRequest.<anonymous> ../../../../node_modules/ws/lib/websocket.js:930:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 17 skipped (18)
+      Tests  1 failed | 227 skipped (228)
+   Start at  20:38:30
+   Duration  1.02s (transform 1.10s, setup 0ms, import 2.80s, tests 73ms, environment 1.30s)
+

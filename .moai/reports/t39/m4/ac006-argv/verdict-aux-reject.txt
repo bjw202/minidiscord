@@ -1,0 +1,1 @@
+PROVENANCE-FAIL[parallel]: 실행 문맥(+ cd …/server)이 없다 — 스위트를 띄운 셸의 자취가 아니다: .moai/reports/t39/m4/ac006-argv/hand-typed-xtrace-like.log

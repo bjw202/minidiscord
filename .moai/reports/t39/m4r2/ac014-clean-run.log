@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
+
+
+ Test Files  1 passed | 17 skipped (18)
+      Tests  1 passed | 227 skipped (228)
+   Start at  20:48:47
+   Duration  968ms (transform 1.21s, setup 0ms, import 3.37s, tests 112ms, environment 1.25s)
+
