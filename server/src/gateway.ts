@@ -1,4 +1,5 @@
 // 봇 게이트웨이: 채널 플러그인의 WebSocket 접속 창구 (spec 6장)
+// AC-012 변이 주석 — 곧 revert 로 되돌린다(card t39 3회차)
 // v2 상호 인증 (SPEC-GWAUTH-002): hello{pub, client_nonce} → challenge → auth → 봉투(env) welcome.
 // 서버는 한 번도 평문 토큰을 본 적 없는 검증자(verifier_pub)로 조회하고, 저장한 server_confirm_key 로
 // 자신을 증명하며, 확립 이후 내보내는 모든 프레임을 봉투에 담는다.
