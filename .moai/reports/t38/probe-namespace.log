@@ -1,0 +1,11 @@
+A1 alice 가입: 201
+A2 alice 재가입(같은 이름): 409
+A3 mallory 가입: 201
+B1 봇 이름 alice(실제 사용자와 동일): 201 {"id":1,"name":"alice","description":""}
+B2 봇 이름 시스템(권한 이벤트 발신자): 201 {"id":2,"name":"시스템","description":""}
+B3 봇 이름 10000자: 201 len=10000
+B4 봇 이름 alice+제로폭: 201 codepoints=61,6c,69,63,65,200b
+B5 봇 이름 제어문자 U+0001 포함: 201 codepoints=62,6f,1,62
+C1 username 33자 가입: 400
+C2 username 제어문자 가입: 400
+C3 봇 이름 alice 재생성: 409
