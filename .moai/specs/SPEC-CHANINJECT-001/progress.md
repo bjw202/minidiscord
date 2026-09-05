@@ -745,7 +745,12 @@ docs_synced:
   - "progress.md 머리 표 «현재 상태» 행 — in-progress v0.3.1 → completed v0.4.0, 끊긴 t16 포인터 정정"
 
 carry_over:                       # 리드 판정 대기 — 이 카드가 손대지 않았다
+  # CO-1·CO-3·CO-4 는 kind: 관측 이다 — 「할 일」이 아니라 「하지 않기로 정한 일」의 기록이다.
+  # 리드 처분(2026-09-05): 처음에는 CO-1 을 목록에서 빼라 했으나 뒤집었다. 근거 — 규칙이 막는 것은
+  # completed 형제의 본문 편집이지 장부 기재가 아니며, 같은 결함 부류를 frontmatter 축(OD-4)에서는
+  # 올리고 본문 축에서는 지우는 것이 비일관이다. kind 로 갈라 적으면 「할 일 아님」이 형태로 선다.
   - id: CO-1
+    kind: 관측
     where: ".moai/specs/SPEC-BOTSTAB-001/spec.md:306"
     what: "형제 SPEC 이 셋째 통로의 종결 소유를 여전히 카드 `t16` 으로 적고 있다. t16 은 큐에 없으므로 이 포인터도 끊겨 있다"
     why_untouched: "형제 SPEC 본문이고 이 카드의 범위 밖이다. 리드에게 물었고 판정을 기다린다"
