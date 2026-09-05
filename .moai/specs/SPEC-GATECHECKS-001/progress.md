@@ -90,7 +90,7 @@ $ grep -c 'RUN  v.*/channel$' gate-failtest.err  → 1
 | AC-GATECHECKS-006 | PASS | ci.yml 대비 origin/main 차이 빈 출력 · `ci.yml:27` 그대로 |
 | AC-GATECHECKS-007 | PASS | 앵커 셋 각 1건 · `merge-base --is-ancestor` YES |
 | AC-GATECHECKS-008 | PASS | SPEC-PERMROUTE-001 대비 origin/main 차이 빈 출력 |
-| AC-GATECHECKS-009 | PASS | 적중 25 · (가)23 · (나)2 · **미분류 0** (`evidence/run/AC009-classification.txt`) |
+| AC-GATECHECKS-009 | PASS | 적중 25 · (가)23 · (나)2 · **미분류 0** — **§E.2 작성 시점 귀속** (`evidence/run/AC009-classification.txt`). 그 명령의 훑기 범위가 `SPEC-GATECHECKS-001/*.md` 전부라 이 행 자신이 범위 안이고, 지금 다시 돌리면 적중이 하나 늘어 **26** 이 된다 — 늘어난 자리가 이 행이다. §5 의 「계수는 시점에 귀속된다」가 여기서도 성립한다 |
 | AC-GATECHECKS-010 | PASS | `pretest` = `"npm run typecheck"` · 키 1개 · OD-1 처분값과 글자 단위 일치 |
 
 ### 코드 변경 전부
@@ -109,4 +109,99 @@ $ grep -c 'RUN  v.*/channel$' gate-failtest.err  → 1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+**상태: sync 완료. 이 단계는 열린 위험·미검증 항목을 하나도 닫지 않았다.**
+
+### sync 가 만든 것
+
+| 산출물 | 내용 |
+|---|---|
+| `CHANGELOG.md` | `[Unreleased]` 맨 위에 카드 `t40` 항목 1건. 중심 측정(G2/G3 RC 1 대 0)과 t41 경계, 열어 둔 항목 넷을 함께 적었다 |
+| `README.md` | 검사 표 아래 문단 1개 추가 — `npm test` 가 server 타입 검사도 돈다는 것과 `channel` 과 훅 모양이 다른 이유 |
+| `spec.md` frontmatter | `version 0.2.0 → 0.3.0` · `status in-progress → completed` · `updated 2026-09-06` + HISTORY 행 1건 |
+| `progress.md` | 이 §E.4 |
+
+`spec.md` §1~§8 본문 · `plan.md` · `acceptance.md` 는 **한 글자도 고치지 않았다**(둘은 frontmatter 자체가 없다).
+
+### 열린 항목 계수 — HEAD `da38362` 귀속
+
+명령과 출력을 축자로 적는다. **대조군을 함께 둔다** — 안 맞는 패턴도 `0` 을 내므로, 같은 형태의 없는 표지가 `0` 을 내고 실제 표지는 0 아닌 값을 내는 것을 함께 보여야 `0` 이 「없다」의 뜻이 된다.
+
+```
+$ S=.moai/specs/SPEC-GATECHECKS-001/spec.md
+$ grep -cF '[열림]'   "$S"   → 4
+$ grep -cF '[미검증]' "$S"   → 4
+$ grep -cF '[기록]'   "$S"   → 1
+
+[대조군 — 없어야 하는 표지]
+$ grep -cF '[해결됨]' "$S"   → 0
+$ grep -cF '[종결]'   "$S"   → 0
+```
+
+`grep -F` 를 쓴다. `[열림]` 을 그냥 `grep` 에 주면 대괄호가 문자 부류로 읽혀 다른 것을 센다.
+
+**같은 수가 커밋된 `da38362` 에서도 나온다.** 이 sync 회차가 `spec.md` 에 HISTORY 한 행을 더했으므로 작업 트리와 HEAD 를 갈라서 확인했다 — HEAD 사본을 떠서 같은 명령을 돌려도 4 · 4 · 1 · 0 이다. 그래서 그 HISTORY 행에는 표지 문자열을 옮겨 적지 않았다. 적었다면 그 행이 스스로 세 수를 5 · 5 · 2 로 올렸을 것이고(실제로 한 번 그렇게 됐다가 되돌렸다), 그것이 `spec.md` §6 이 경고하는 자기 참조다.
+
+이 넷·넷·하나는 §E.3 이 「그대로 열림」이라 적은 것과 **같은 집합**이다. sync 는 여기에서 아무것도 빼지 않았고 아무것도 「해결」로 옮기지 않았다. §E.3 이 run 단계에서 새로 만든 미검증(`--passWithNoTests` 가 워크스페이스 스크립트까지 전달되는지)도 그대로 열려 있다 — t41 소관.
+
+### 이 회차에 다시 확인한 사실
+
+```
+$ grep -n 'pretest' server/package.json channel/package.json
+  server/package.json:7:    "pretest": "npm run typecheck",
+  channel/package.json:12:    "pretest": "tsc",
+$ sed -n '27p' .github/workflows/ci.yml
+        - run: npm run typecheck -w server
+$ ls -d server/dist
+  ls: server/dist: No such file or directory
+$ git diff --stat origin/main -- server/package.json
+   server/package.json | 1 +
+   1 file changed, 1 insertion(+)
+$ cat .moai/reports/t40/evidence/run/G2-forward.exit  → exit=1
+$ cat .moai/reports/t40/evidence/run/G3-reverse.exit  → exit=0
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-GATECHECKS-001/acceptance.md | sort -u | wc -l  → 10
+$ grep -c 'SPEC-GATECHECKS-001' CHANGELOG.md  → 0   (기재 전 · 중복 방지 확인)
+```
+
+AC 10건은 §E.2 의 기준별 결과표 10행과 일치한다.
+
+### sync 가 재지 않은 것
+
+- **게이트를 다시 돌리지 않았다.** RC 1 대 0 은 run 회차의 `.exit` 파일을 **읽은** 값이고, 이 sync 회차가 새로 측정한 값이 아니다. 이 단계의 변경은 문서뿐이라 게이트 결과를 바꿀 수 없다고 판단했으나, 그 판단 자체는 실행으로 확인하지 않았다.
+- **`npm test` 도 돌리지 않았다.** 스위트 전체는 CI 의 몫이다.
+- **`spec.md` §6 의 계수 다섯을 다시 세지 않았다.** §5 가 적은 대로 그 값들은 시점에 매달려 있고, 이 sync 가 `CHANGELOG.md`·`README.md`·`spec.md`·`progress.md` 를 늘렸으므로 §6 의 명령을 지금 다시 돌리면 **다른 수가 나온다**. §6 의 수는 각각 자기 시점에 귀속된 기록이고, 이 회차는 그것을 갱신하지 않는다.
+- **계획 감사 점수를 이 트리에서 재지 않았다.** §5 의 열린 항목 그대로다.
+
+### sync 감사 후 교정 3건 (비차단 발견)
+
+감사 보고서 `.moai/reports/t40/sync-audit.md` — **PASS 0.897** (Tier M 통과선 0.80) · **차단 0건** · 비차단 6건.
+그중 셋을 이 회차에서 닫았다. 각 발견은 감사 보고를 받은 뒤 **직접 명령을 다시 걸어** 확인하고 고쳤다.
+
+| 발견 | 자리 | 교정 |
+|---|---|---|
+| F-N1 | `CHANGELOG.md` | 「표류가 **구조적으로** 생기지 않습니다」는 과대주장이었다. 이름 붙은 스크립트가 막는 것은 **명령 본문**의 표류뿐이고, `pretest` 줄이나 `ci.yml:27` 자체를 지우면 두 자리는 다시 갈라진다. 범위를 명시하는 문장으로 바꿨다 |
+| F-N3 | `CHANGELOG.md` | 열어 둔 항목 목록이 `spec.md` §5 의 `[기록]` 항목(감사 루브릭에 사실 정확성 자리가 없음 → 카드 `t42`)을 빠뜨렸다. `grep -c 't42' CHANGELOG.md` → **0** 이었다. 항목을 더했다 |
+| F-N4 | 이 파일 §E.2 AC-009 행 | 「적중 25」가 시점 없이 단독으로 서 있었다. 그 명령의 훑기 범위가 `SPEC-GATECHECKS-001/*.md` 전부이고 그 행 자신이 범위 안이라, 지금 다시 돌리면 **26** 이다. 시점 귀속을 붙였다 |
+
+**F-N4 교정 자체는 계수 중립이었다 — 그러나 이 교정 기록이 다시 계수를 움직였다.**
+
+교정 직전과 직후에 같은 명령을 돌려 **둘 다 26** 을 얻었다. 교정문에 훑기 패턴이 잡는 수를 새로 넣지 않았으므로 그 교정은 중립이었다. 두 값은 각각 그 시점에 귀속된 관측이다.
+
+**그러나 이 절을 쓰자 값이 다시 움직였다.** 이 절은 훑기 패턴을 축자로 인용하므로 스스로 범위 안의 적중이 된다 — 「무엇이 계수를 움직이는가」를 설명하는 문장이 그 자체로 계수를 움직인 것이다. 실제로 이 절의 초고와 정정본은 서로 다른 값을 냈다.
+
+**그래서 이 절은 현재 값을 숫자로 적지 않는다.** 여기에 적는 순간 그 숫자는 그 문장 자신을 세지 못한 낡은 값이 되고, 다음 편집 한 번에 다시 틀린다. 값이 필요하면 그때 명령을 돌린다:
+
+```
+$ grep -rnE '(^|[^0-9.])(21|23|25|28|32|37|46|53)([^0-9.]|$)' .moai/specs/SPEC-GATECHECKS-001/*.md | wc -l
+```
+
+이것은 실수가 아니라 `spec.md` §5·§6 이 열린 위험으로 적어 둔 성질의 재현이다. **어떤 계수도 시점 없이 인용하지 않는다** — 그리고 자기 자신을 세는 계수는 아예 고정값으로 적지 않는다.
+
+### 감사가 남긴 비차단 3건 — 닫지 않는다
+
+- **F-N2** `spec.md:62`·`:216` — §2 가 「`server` 에는 `pretest` 가 없다」를 현재형으로 말해, 같은 트리의 `README.md` 와 시제가 어긋난다. **본문 편집이라 sync 소관이 아니다**(§2 는 수리 이전의 실측 기록이고 `spec.md` 본문 소유는 plan 단계에 있다). 리드에 보고한다.
+- **F-N5** `evidence/ac009-widened-classification.txt` — 앵커판 `run/AC009-classification.txt` 에 대체됐으나 그 표시가 없다. 증거 파일은 그때의 판단 근거이므로 지우지 않는다.
+- **F-N6** `channel/package.json:12`(`pretest: tsc`) 대 `ci.yml:28`(`npm run typecheck -w channel` → `--noEmit`) — channel 쪽은 두 자리가 **다른 명령**이다. 이 카드가 만든 것이 아니고(선재) server 만이 이 카드의 범위다. 열린 채로 보고한다.
+
+### 감사 자신이 적은 갭 여섯
+
+게이트 미실행(G-1 — AC-001/002/005 의 RC 는 run 회차 `.exit` 를 **읽은** 값) · 전체 스위트 미실행(G-2) · 이 저장소에 린터·커버리지 도구 부재로 Craft 두 축 기계 측정 불가(G-3, 건너뛴 검사를 PASS 로 세지 않음) · `.exit` 가 실제 실행 산물이라는 것을 파일 밖 출처로 확인 불가(G-4) · plan-audit-2 비차단 미해결 다섯 중 둘만 표본 확인(G-5) · `--passWithNoTests` 전달 여부(G-6, t41). **이 여섯도 닫지 않는다.**

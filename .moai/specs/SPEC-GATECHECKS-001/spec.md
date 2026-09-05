@@ -1,8 +1,8 @@
 ---
 id: SPEC-GATECHECKS-001
 title: "품질 게이트에 건네는 검사 목록 — server 타입 검사를 npm test 안으로 들인다"
-version: "0.2.0"
-status: in-progress
+version: "0.3.0"
+status: completed
 created: 2026-09-06
 updated: 2026-09-06
 author: manager-spec
@@ -22,6 +22,7 @@ related_specs: [SPEC-PERMROUTE-001, SPEC-WSUPGRADE-001]
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 0.3.0 | 2026-09-06 | **sync 단계 완료 · SPEC 종결(`in-progress` → `completed`).** 코드 변경 없음 — 이 회차가 실어 보내는 것은 `CHANGELOG.md` 의 카드 `t40` 항목, `README.md` 의 검사 목록 설명 한 문단, 그리고 이 종결 기록뿐이다. **§5 의 열린 위험 넷과 미검증 넷은 하나도 닫지 않았고**, 계수와 대조군을 `progress.md` §E.4 에 HEAD `da38362` 귀속으로 축자로 남겼다(열림 4 · 미검증 4 · 기록 1 · 대조군 0 — 이 행이 스스로 그 수를 움직이지 않도록 표지 문자열은 여기에 옮겨 적지 않는다). §1~§8 본문 · `plan.md` · `acceptance.md` 는 불변이다. | manager-docs |
 | 0.2.0 | 2026-09-06 | **run 단계 완료 · AC 10/10 PASS.** 코드 편집은 `server/package.json` 1줄(`"pretest": "npm run typecheck"`). 중심 측정은 같은 회차·같은 트리의 G2/G3 쌍 — 그 한 줄만 다른 두 트리가 RC **1** 과 **0** 으로 갈렸다(계획 단계 같은 주입은 RC=0 이었다). 리드 이월 넷을 닫았다: 장난감 워크스페이스 전제의 귀속을 이 저장소 실측 축자(`evidence/run/G2-forward.err`)로 대체 · AC-001 정방향을 실제로 세움 · AC-003 을 추론에서 관측으로 · AC-010 을 글자 단위로 확인. §5 의 열린 위험과 미검증은 **하나도 닫지 않았고**, run 이 새 미검증 하나를 더했다(`--passWithNoTests` 경고가 이 저장소에서도 찍힘 — 전달 여부 미측정, t41 소관). | lane-2 |
 | 0.1.0 | 2026-09-06 | 최초 작성. 카드 t40 의 재현 보고(`.moai/reports/t40/reproduction.md` @`05fef76`)를 근거로 범위를 **A + C** 로 확정하고 B 를 t41 로 분리한 상태에서 작성. 카드가 세운 두 갈래를 실측이 반증했으므로 **세 번째 모양 ㉰** 를 §2 에 명시한다. C 는 **편집 0줄 종결**이고 그 잔여 위험은 §5 에 **열린 채로** 남긴다. | manager-spec |
 
