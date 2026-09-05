@@ -45,8 +45,8 @@ test/t40-typeerror.probe.ts(4,44): error TS2322: Type 'string' is not assignable
 
  Test Files  7 passed (7)
       Tests  126 passed (126)
-   Start at  02:20:44
-   Duration  65.73s (transform 461ms, setup 0ms, import 1.36s, tests 70.93s, environment 0ms)
+   Start at  02:34:58
+   Duration  65.16s (transform 457ms, setup 0ms, import 1.25s, tests 70.36s, environment 0ms)
           
    ERROR  
           

@@ -30,7 +30,9 @@
 
 ## §E.2 Run-phase Evidence
 
-원본 출력 전부: `.moai/reports/t40/evidence/run/`. 아래 RC·바이트·경과는 그 파일들에서 나온 값이다.
+원본 출력 전부: `.moai/reports/t40/evidence/run/`. 아래 바이트·경과는 그 파일들에서 나온 값이고, **RC 는 각 실행의 `.exit` 파일에 축자로 있다** — `G1-precondition4.exit` · `G2-forward.exit` · `G3-reverse.exit` · `G4-regression.exit` · `AC001-typecheck.exit`.
+
+> **[교정 · 리드 지적]** 초판은 RC 를 이 산문에만 적었다. 그것은 이 SPEC 이 OD-2 를 (a) 로 닫은 바로 그 이유 — 「인용 대상 RC 가 어떤 증거 파일에도 없으면 미귀속 인용이 된다」 — 를 스스로 어긴 것이다. 네 팔을 **같은 트리에서 다시 떠서** `echo "exit=$?"` 를 파일로 남겼다. 재실행은 원 측정을 재현했다: `G2-forward.err` 는 **1813바이트로 동일**하고, 차이는 vitest 의 `Start at` 시각과 `Duration` 두 줄뿐이다.
 
 ### 게이트 실행 넷 (같은 회차 · 같은 트리)
 
@@ -62,7 +64,19 @@ test/t40-typeerror.probe.ts(4,44): error TS2322: Type 'string' is not assignable
 
 ### 덤 — 장난감으로만 재던 전제가 이 저장소에서 관측됐다
 
-G2 의 같은 출력이 `plan.md` §B 의 두 주장을 실물로 세운다: server 의 `vitest` 실행 줄이 **없고**(pretest 가 막았다), `channel` 은 **126개 시험을 끝까지 돌았다**. 리드 이월 ①(귀속 보강)을 이것으로 닫았다 — `plan.md` §B 의 인용이 이제 `evidence/run/G2-forward.err` 를 가리킨다. 장난감 측정 자체는 **요약으로만 남은 기록**으로 유지한다(지우면 그때의 판단 근거가 사라진다).
+G2 의 같은 출력이 `plan.md` §B 의 두 주장을 실물로 세운다. **부재를 보이는 명령은 무엇이 없는지를 스스로 가려야 하므로**(리드 지적), 워크스페이스를 이름으로 다는 `RUN v…` 배너로 잰다 — `evidence/run/AC003-vitest-discriminator.txt`:
+
+```
+[G2 · 수리 후 · 타입오류 2건]
+$ grep -c 'RUN  v.*/server$'  G2-forward.err   → 0    ← server 는 vitest 를 돌지 않았다
+$ grep -c 'RUN  v.*/channel$' G2-forward.err   → 1    ← channel 은 돌았다
+
+[대조군 · 계획 단계 시험실패 출력 · 수리 전]
+$ grep -c 'RUN  v.*/server$'  gate-failtest.err  → 1  ← 같은 패턴이 server 를 찾아낸다
+$ grep -c 'RUN  v.*/channel$' gate-failtest.err  → 1
+```
+
+**대조군이 이 부재를 증거로 만든다.** 안 맞는 패턴도 `0` 을 내므로, 패턴이 server 를 **찾을 수 있음**을 먼저 보여야 `0` 이 「없다」의 뜻이 된다. 초판의 `grep -c vitest` 는 적중 **1** 을 낼 뿐 그 하나가 server 것인지 channel 것인지 가르지 못했다. 리드 이월 ①(귀속 보강)을 이것으로 닫았다 — `plan.md` §B 의 인용이 이제 `evidence/run/G2-forward.err` 를 가리킨다. 장난감 측정 자체는 **요약으로만 남은 기록**으로 유지한다(지우면 그때의 판단 근거가 사라진다).
 
 ### 기준별 결과
 
@@ -70,7 +84,7 @@ G2 의 같은 출력이 `plan.md` §B 의 두 주장을 실물로 세운다: ser
 |---|---|---|
 | AC-GATECHECKS-001 ★ | **PASS** (양팔) | 정방향 G2 RC=1 · 역변이 G3 RC=0 |
 | AC-GATECHECKS-002 | PASS | G4 RC=0 · 82.58초 (대역 안) |
-| AC-GATECHECKS-003 | **PASS (관측)** | `G2-forward.err` 의 `error TS2322` 2건 + 실패 사슬 |
+| AC-GATECHECKS-003 | **PASS (관측)** | `G2-forward.err` 의 `error TS2322` 2건 + 실패 사슬 + 워크스페이스 판별(`AC003-vitest-discriminator.txt`, 대조군 동반) |
 | AC-GATECHECKS-004 | PASS | `test -d server/dist` → 부재 (`PASS: no emit`) |
 | AC-GATECHECKS-005 | PASS (양방향) | 오류 있음 1/1(G2) · 오류 없음 0/0(G4) |
 | AC-GATECHECKS-006 | PASS | ci.yml 대비 origin/main 차이 빈 출력 · `ci.yml:27` 그대로 |
