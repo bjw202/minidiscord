@@ -7,6 +7,7 @@
 .claude/agent-memory/plan-auditor/discriminator-domain-is-unreachable.md
 .claude/agent-memory/plan-auditor/MEMORY.md
 .claude/agent-memory/plan-auditor/observation-window-never-sees-the-captured-request.md
+.moai/logs/trace-739ede37-3adc-4ebf-8a43-6ef27a5e4a7a.jsonl
 .moai/logs/trace-e627ad19-621a-413a-93b1-f88a7d17d0ff.jsonl
 .moai/logs/trace-f025f6d7-b281-4e33-a74a-1c06ec604e13.jsonl
 .moai/reports/t39/audit2-probe-discriminator.log
@@ -128,6 +129,7 @@
 .moai/reports/t39/m4/ac008-aux-word-verdict.txt
 .moai/reports/t39/m4/ac008-clean-hits.txt
 .moai/reports/t39/m4/ac008-clean-verdict.txt
+.moai/reports/t39/m4/ac008-final-verdict.txt
 .moai/reports/t39/m4/ac008-hits-no-plan.txt
 .moai/reports/t39/m4/ac008-hits-token.txt
 .moai/reports/t39/m4/ac008-hits-word.txt
@@ -152,6 +154,7 @@
 .moai/reports/t39/m4/ac012-red-output.txt
 .moai/reports/t39/m4/ac012-restored-output.txt
 .moai/reports/t39/m4/ac012-revert-output.txt
+.moai/reports/t39/m4/final-commit-output.txt
 .moai/reports/t39/m4/judge-record.mjs
 .moai/reports/t39/m4/mutations.md
 .moai/reports/t39/m4/post-restore-sanity.log
@@ -171,6 +174,7 @@
 .moai/reports/t39/plan-audit-2.md
 .moai/reports/t39/plan-audit-3.md
 .moai/reports/t39/plan-audit.md
+.moai/reports/t39/plan-round2-findings.md
 .moai/reports/t39/probe-coexist.log
 .moai/reports/t39/probe-coexist.mjs
 .moai/reports/t39/probe-upgrade-window.log
@@ -184,6 +188,7 @@
 .moai/specs/SPEC-WSUPGRADE-001/spec.md
 .moai/state/config-cache.json
 .moai/state/context-usage.json
+.moai/state/github/counts.json
 server/test/gateway.test.ts
 server/test/wsupgrade-judgment.test.ts
 server/test/wsupgrade-judgment.ts

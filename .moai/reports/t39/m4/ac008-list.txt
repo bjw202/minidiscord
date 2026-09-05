@@ -1,3 +1,6 @@
+.moai/specs/SPEC-WSUPGRADE-001/.moai/state/config-cache.json
+.moai/specs/SPEC-WSUPGRADE-001/.moai/state/github/counts.json
+.moai/specs/SPEC-WSUPGRADE-001/.moai/state/context-usage.json
 .moai/specs/SPEC-WSUPGRADE-001/progress.md
 .moai/specs/SPEC-WSUPGRADE-001/plan.md
 .moai/specs/SPEC-WSUPGRADE-001/spec.md
@@ -139,6 +142,7 @@
 .moai/reports/t39/m4/mutations.md
 .moai/reports/t39/m4/ac011-aux-sum-verdict.txt
 .moai/reports/t39/m4/ac004-main-mutated.log
+.moai/reports/t39/m4/final-commit-output.txt
 .moai/reports/t39/m4/serial-12x-5.log
 .moai/reports/t39/m4/serial-12x-7.log
 .moai/reports/t39/m4/ac007-main-mutated-verdict.txt
@@ -162,6 +166,7 @@
 .moai/reports/t39/m4/ac006-argv/mutated-serial-run.log
 .moai/reports/t39/m4/ac007-clean-verdict.txt
 .moai/reports/t39/m4/serial-12x-6.log
+.moai/reports/t39/plan-round2-findings.md
 .moai/reports/t39/probe-coexist.mjs
 .moai/reports/t39/audit2-probe-discriminator.mjs
 .moai/reports/t39/audit2-probe-h3arm.log
