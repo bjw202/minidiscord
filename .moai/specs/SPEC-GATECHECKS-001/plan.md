@@ -68,6 +68,33 @@ stderr: npm error workspace pkga@1.0.0 / npm error Lifecycle script `test` faile
 
 두 가지가 함께 확인됐다 — **① pretest 실패는 그 워크스페이스의 test 를 막고 전체 RC 를 1 로 만든다. ② 다른 워크스페이스는 계속 돈다**(첫 실패에서 멈추지 않는다).
 
+**[귀속 보강 — run 단계]** 위 장난감 측정은 **원본 출력이 보존되지 않았고 요약으로만 남아 있다**(1·2회차 계획 감사가 「의존은 안전하나 귀속은 기준 미달」로 지목). run 단계에서 **같은 기제를 이 저장소에서 직접 관측**했고, 그 출력은 축자로 보존된다 — `.moai/reports/t40/evidence/run/G2-forward.err`. 관련 부분 축자:
+
+```
+npm error Lifecycle script `typecheck` failed with error:
+npm error workspace @minidiscord/server
+npm error command sh -c tsc --noEmit
+npm error Lifecycle script `test` failed with error:
+npm error command sh -c npm run typecheck
+
+> pretest
+> npm run typecheck
+> typecheck
+> tsc --noEmit
+
+test/t40-typeerror.probe.ts(3,7): error TS2322: Type 'string' is not assignable to type 'number'.
+test/t40-typeerror.probe.ts(4,44): error TS2322: Type 'string' is not assignable to type 'number'.
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+> @minidiscord/channel@0.1.0 test
+> vitest run
+ Test Files  7 passed (7)
+      Tests  126 passed (126)
+```
+
+이 한 출력이 ①과 ②를 **둘 다** 세운다: server 의 `vitest` 실행 줄이 **없고**(pretest 가 막았다) 게이트 RC 는 **1** 이며, `channel` 은 126개 시험을 **끝까지 돌았다**. 장난감 측정보다 강한 증거이므로 이후의 인용은 이 파일을 가리킨다. 장난감 측정 자체는 **요약으로만 남은 기록**으로 위에 유지한다 — 지우면 그때의 판단 근거가 사라진다.
+
 부수 관측 하나: 같은 실행에서 npm 이 `npm warn Unknown cli config "--passWithNoTests"` 를 냈다. **이 카드 범위 밖**이며 §5 에 미검증으로 기록했다.
 
 ---
