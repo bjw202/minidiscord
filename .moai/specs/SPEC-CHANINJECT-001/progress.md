@@ -12,7 +12,7 @@
 | 결합 개정 | `SPEC-CHANNEL-001` v0.3.0 · `SPEC-CHANWIRE-001` v0.4.0 · `SPEC-CHANCLIENT-001` v0.5.0 · `SPEC-CHANAUTH-001` v0.4.0 — 전부 이 카드 plan 단계에서 적용 |
 | 인계 카드 | `t15` — 전송 계층 상대의 신원(사칭 채팅 주입 · 이력 오염 · 판정 주입의 잔여 절반 · F-A8) · `t11` — 서버 쪽 방 인가(감사 F-14) |
 | 계획 감사 | 1회차 `.moai/reports/t10/plan-audit.md` — **FAIL(0.75 < Tier M 0.80)**, 차단 8건 · 비차단 5건. 교정 대장 `.moai/reports/t10/plan-done-2.md` (F-01~F-13 전건 처리), 2회차 판정 대기 |
-| 현재 상태 | **`in-progress`** v0.3.1 (개정) — sync 재감사 3차 **PASS 86.3** 수령, 마감 정리 중. 경위: plan(2회차 감사 PASS 0.86) → run(M1~M3 착지, 70/70) → sync 라운드 1 마감(`beb726c`, 한때 `completed` v0.2.0) → **sync 감사 1차 FAIL 79.7**(차단 2건) → SPEC 개정 v0.3.0 + `completed → in-progress` amendment(`a12bc0c`) → run 재진입 M4 착지(`04e1403`, 차단 2건 코드 종결) → sync 라운드 2 문서 정정 착지(`f5421d1`) → **재감사 2차 FAIL 85.7**(신규 차단 G-01 — 봉투 통로가 셋이고 셋째 `meta.sender` 열림) → G-01 문언 축소 + G-02·G-03·G-05 정정(`a97669b`) + SPEC v0.3.1 개정(`fe7e23c`, plan 레인) → **재감사 3차 PASS 86.3**(차단 0건, 비차단 5건 전부 문서). 셋째 통로와 G-04 는 카드 `t16` 소유 |
+| 현재 상태 | **`completed`** v0.4.0 — 카드 `t38` 이 셋째 통로의 서술을 정정하고 그 잔여를 수용한 뒤 이 SPEC 을 닫았다. 경위: plan(2회차 감사 PASS 0.86) → run(M1~M3 착지, 70/70) → sync 라운드 1 마감(`beb726c`, 한때 `completed` v0.2.0) → **sync 감사 1차 FAIL 79.7**(차단 2건) → SPEC 개정 v0.3.0 + `completed → in-progress` amendment(`a12bc0c`) → run 재진입 M4 착지(`04e1403`, 차단 2건 코드 종결) → sync 라운드 2 문서 정정 착지(`f5421d1`) → **재감사 2차 FAIL 85.7**(신규 차단 G-01 — 봉투 통로가 셋이고 셋째 `meta.sender` 열림) → G-01 문언 축소 + G-02·G-03·G-05 정정(`a97669b`) + SPEC v0.3.1 개정(`fe7e23c`, plan 레인) → **재감사 3차 PASS 86.3**(차단 0건, 비차단 5건 전부 문서) → v0.3.2·v0.3.3(카드 `t15` 인계 포인터 정정)·v0.3.4(카드 `t25` 렌더 예산 조항 축소) → **카드 `t38` v0.4.0 개정 전용 마감** — 셋째 통로의 위험을 봉투 탈출에서 **신원 사칭**으로 정정하고, 도달성을 실측한 뒤 **운영자 판단(2026-09-05)으로 잔여를 수용**, `in-progress → completed`. 셋째 통로의 종결 소유로 적혀 있던 후속 카드 **`t16` 은 큐에서 사라져 포인터가 끊겼고, 그 자리를 `t38` 과 `.moai/reports/t38/` 이 잇는다.** 상세는 아래 §E.5 |
 
 ---
 
@@ -676,6 +676,110 @@ residual_risk:
   - "Consistency 72 는 임계 미만이다 — must-pass 가 아니어서 판정을 뒤집지 않았지만, 그 사유인 R3-01·02·03 은 «장부의 시제가 사실보다 뒤처진다» 는 한 부류의 네 번째 재현이다. 방향은 반대다(안전을 부풀리는 것이 아니라 닫힌 것을 열렸다고 적는 쪽) — 그래서 비차단이지만, 재발 자체가 신호다"
   - "이 부류를 재는 자동 기준이 없다 — 장부의 시제는 회귀 스위트 밖이고, 다음 라운드가 같은 자리를 다시 뒤처지게 두어도 테스트는 초록이다"
   - "브랜치를 푸시하지 않았다 — 원격이 없어 이 워크트리가 브랜치의 유일 사본이다. 워크트리 처분은 병합 뒤로 미뤄야 한다"
+```
+
+---
+
+## §E.5 Sync-phase Audit-Ready Signal (카드 `t38` — 개정 전용 마감)
+
+앞의 §E.4 세 라운드는 **카드 `t10`** 의 것이고 그때의 사실을 그때대로 적은 기록이다 — 이 절은 그것을 고치지 않는다. 이 절은 **카드 `t38`** 이 한 일만 적는다.
+
+```yaml
+sync_status: amendment-only-close
+sync_complete_at: 2026-09-05
+spec_id: SPEC-CHANINJECT-001
+card: t38
+branch: WT-sender-identity
+worktree: .claude/worktrees/t38
+baseline_sha: 7881f40           # = origin/main, 이 카드의 기준
+code_change_lines: 0            # git diff --stat 7881f40..HEAD -- server/ channel/ → 빈 출력
+
+nature: |
+  개정 전용 카드다. run 단계가 없다 — 세울 코드가 없기 때문이다.
+  산출물은 셋뿐이다: (1) 위협 모형과 도달성 실측 기록, (2) spec.md 의 서술 정정,
+  (3) status 종결. 요구사항 15건·수용 기준 14건은 개수도 내용도 그대로다.
+
+verdict: accepted-residual        # NOT «닫지 못한 위험» — 닫지 않기로 한 판단이다
+operator_ruling:
+  at: 2026-09-05
+  verbatim: "이렇게 엄밀할 필요도 없다. 사람, 봇 모두 공존하고 아는 사람 몇 명만 쓸거다."
+  reading: |
+    「고치지 못했다」가 아니라 「고치지 않기로 정했다」이다. 근거는 운영 환경이다 —
+    아는 사람 몇 명이 쓰는 배치이고, 사람과 봇의 공존이 설계 의도다. 그 배치에서
+    이름공간이 갈라져 있는 것은 결함이 아니다.
+
+reopening_trigger: |
+  배치가 「아는 사람 몇 명」 밖으로 나가는 순간 — 방 참가자가 서로 모르는 사이가 되거나,
+  초대가 넓어지거나, 이 서버가 조직 밖에 노출되는 순간 — 수용의 근거가 사라지므로
+  이 판정을 다시 연다. 그때 무엇이 열려 있는지는 threat-model.md §4 를 읽으면 되고
+  다시 재지 않아도 된다. 새로 재야 할 것은 아래 unmeasured 의 (가)·(나)다.
+
+unmeasured:                       # 이 수용이 기대고 있는 넷 — 재면 판단이 바뀔 수 있는 순서대로
+  - "(가) 모델이 실제로 속는지 — 실측은 「meta.sender 에 남의 이름을 넣을 수 있다」까지다. 그 값을 받은 세션이 실제로 권위를 옮겨 주는지는 이 트리에서 관측되지 않았다 (threat-model.md §5-1)"
+  - "(나) 운영자 이름이 실제로 특권을 갖는지 — 「다른 참가자의 권위를 얻는다」는 운용 관행에 대한 서술이고 기계로 재지 않았다 (§5-3)"
+  - "(다) 끝에서 끝까지의 전달 — 탐침이 확인한 것은 봇 «생성» 까지다. 그 봇이 방에 초대되어 실제로 meta.sender 로 채널 세션에 도달하는 전 구간은 코드로 읽었을 뿐 돌리지 않았다 (§5-2)"
+  - "(라) 실행 환경 — 탐침이 「나무의 소스 + 주 체크아웃의 패키지」 혼합 환경에서 돌았다. 「효과 동일」은 추론이지 측정한 동치가 아니다 (§5-4)"
+
+evidence:
+  - .moai/reports/t38/threat-model.md          # 위협 모형 전문 · §7 판정
+  - .moai/reports/t38/probe-namespace.mts      # app.inject 탐침 — 포트 미개방·배경 프로세스 없음
+  - .moai/reports/t38/probe-namespace.log      # 실행 기록 (B1~B5 201 · C1·C2 400 · C3 409)
+
+self_verification:                # 이 sync 가 이 트리에서 직접 돌린 것만 적는다
+  code_change: "PASS — git diff --stat 7881f40..HEAD -- server/ channel/ 빈 출력. 코드 0줄"
+  req_count:   "PASS — 15, 기준선과 일치 (grep -oE 'REQ-CHANINJECT-[0-9]+' spec.md | sort -u | wc -l, HEAD 와 git show 7881f40: 양쪽 15)"
+  ac_count:    "PASS — 14, 기준선과 일치 (같은 명령을 acceptance.md 에, 양쪽 14)"
+  acceptance_untouched: "PASS — git diff 7881f40..HEAD -- acceptance.md 빈 출력"
+  test_suite:  "미실행 — 코드가 0줄이라 돌릴 회귀가 없다. 부재를 통과로 읽지 않는다"
+
+frontmatter_status_transitions:
+  spec.md:       "in-progress → completed (v0.4.0, updated 2026-09-05) — plan 레인이 커밋 9fd5d46 에서 착지시켰고 이 sync 는 관측만 했다"
+  plan.md:       "해당 없음 — 이 문서에 YAML frontmatter 가 없다"
+  acceptance.md: "해당 없음 — 이 문서에 YAML frontmatter 가 없다"
+  progress.md:   "해당 없음 — 이 문서에 YAML frontmatter 가 없다. 머리 표 «현재 상태» 행으로 대신 갱신했다"
+
+docs_synced:
+  - "CHANGELOG.md [Unreleased] — 카드 t38 항목 신설"
+  - "README.md:232 — 셋째 통로 서술을 탈출에서 신원 사칭으로 정정, t16 → t38 포인터 재연결, 수용 처분 명시"
+  - "README.md:242 — 배포 경고 목록의 «t16-b(sender 중화)» 포인터를 t38 로 잇고 수용 처분 표시"
+  - "progress.md 머리 표 «현재 상태» 행 — in-progress v0.3.1 → completed v0.4.0, 끊긴 t16 포인터 정정"
+
+carry_over:                       # 리드 판정 대기 — 이 카드가 손대지 않았다
+  # CO-1·CO-3·CO-4 는 kind: 관측 이다 — 「할 일」이 아니라 「하지 않기로 정한 일」의 기록이다.
+  # 리드 처분(2026-09-05): 처음에는 CO-1 을 목록에서 빼라 했으나 뒤집었다. 근거 — 규칙이 막는 것은
+  # completed 형제의 본문 편집이지 장부 기재가 아니며, 같은 결함 부류를 frontmatter 축(OD-4)에서는
+  # 올리고 본문 축에서는 지우는 것이 비일관이다. kind 로 갈라 적으면 「할 일 아님」이 형태로 선다.
+  - id: CO-1
+    kind: 관측
+    where: ".moai/specs/SPEC-BOTSTAB-001/spec.md:306"
+    what: "형제 SPEC 이 셋째 통로의 종결 소유를 여전히 카드 `t16` 으로 적고 있다. t16 은 큐에 없으므로 이 포인터도 끊겨 있다"
+    why_untouched: "형제 SPEC 본문이고 이 카드의 범위 밖이다. 리드에게 물었고 판정을 기다린다"
+  - id: CO-2
+    where: "SPEC-CHANPERM-001:16 · SPEC-CHANWIRE-001:16 · SPEC-CHANNEL-001:16 · SPEC-CHANCLIENT-001:17 의 frontmatter followup_cards"
+    what: "네 형제 SPEC 의 frontmatter 가 사라진 카드를 후속으로 들고 있다 — 앞 셋은 [t15, t16, t20], CHANCLIENT 은 +t23. 가리키는 카드 넷 다 큐에 없다(현재 큐 t35·t38·t40)"
+    why_untouched: "형제 frontmatter 이고, 리드 처분(2026-09-05)은 «t16 만 떼지 말고 필드 전체를 이월»이다. ROADMAP 후속 후보 OD-4 로 올렸다"
+    correction: "이 항목의 첫 판본은 세 파일만 적었다 — SPEC-CHANNEL-001 이 빠져 있었고 t38 sync 감사 F1 이 잡았다. 뿌리는 sync 의 훑기가 자른 출력(head -20)을 전건으로 읽은 것이다. 전건 명령: grep -rln 'followup_cards.*t16' .moai/specs/"
+  - id: CO-3
+    kind: 관측
+    where: ".moai/specs/SPEC-LIVEVERIFY-001/spec.md:228"
+    what: "그 행은 README.md:242 의 원문을 인용하며 「배치 규약 — 이미 옳다」로 판정해 두었다. 이 카드가 README:242 를 고쳤으므로 그 인용이 낡았다 — 즉 이 카드 자신이 만든 낡음이다(t38 sync 감사 F2)"
+    why_untouched: "그 SPEC 은 status: completed 다. completed-spec-semantics.md 가 완결 SPEC 본문의 형제 개정을 금지하므로 고치지 않는다 — CO-1 과 같은 근거다. 이월이 아니라 관측으로 남긴다"
+  - id: CO-4
+    kind: 관측
+    where: ".moai/specs/SPEC-GWAUTH-002/spec.md:559"
+    what: "셋째 통로의 소유를 여전히 카드 t10·t16 으로 적는다"
+    why_untouched: "그 SPEC 도 status: completed — CO-1·CO-3 과 같은 근거로 고치지 않는다"
+
+gaps:
+  - "린트를 돌리지 않았다 — channel 워크스페이스에 린트 스크립트가 없다. §E.4 세 라운드 공통의 한계가 그대로다"
+  - "테스트 스위트를 돌리지 않았다 — 코드 변경이 0줄이라 회귀 대상이 없다. 「돌리지 않았다」이지 「통과했다」가 아니다"
+  - "형제 SPEC 전수 훑기는 sync 감사가 했다 — sync 자신의 훑기는 자른 출력을 전건으로 읽어 세 자리만 셌고, 감사가 최소 여섯(CO-1·CO-2 네 파일·CO-3·CO-4)을 세워 반증했다. 그 반증 뒤에도 어간 셋(탈출·t16·낡은 줄 인용)으로만 훑었으므로 다른 어간의 자리는 여전히 미확인이다"
+  - "위 unmeasured 넷은 이 카드에서 하나도 재지 않았다 — 수용이 그 넷 위에 서 있다는 사실을 적었을 뿐이다"
+
+residual_risk:
+  - "수용의 근거가 «환경» 이므로 환경이 바뀌면 근거가 조용히 사라진다. 코드는 그대로인데 전제만 바뀌는 형태라, 이 변화를 잡아 주는 기계 기준이 없다 — reopening_trigger 를 사람이 읽고 판단해야 한다"
+  - "REQ-CHANINJECT-002 의 「meta 는 정직한 출처」 근거가 meta 세 값에 고르게 적용되지 않는다(chat_id·delivery 는 서버가 정하고 sender 는 사용자가 고른다). 조항을 바꾸지 않았으므로, 나중에 누가 그 조항을 근거로 들 때 spec.md §5 의 ⑤ 문단을 함께 읽어야 한다"
+  - "브랜치를 푸시하지 않았다 — 이 워크트리가 브랜치의 유일 사본이다. 워크트리 처분은 병합 뒤로 미뤄야 한다"
 ```
 
 ## §F Phase 4 Mode Selection

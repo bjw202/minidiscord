@@ -129,3 +129,4 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아요. M3까지
 | # | 항목 | 무엇을 정해야 하나 |
 |---|---|---|
 | OD-3 | `SPEC-CHANAUTH-001` 오독 방지 | 본문 일부가 현재형으로 거짓 — 현재 구동 조건은 `SPEC-GWAUTH-002`(`REQ-GWAUTH2-017`)다. 오독 방지 포인터를 어디에 어떻게 넣을지 |
+| OD-4 | SPEC frontmatter 의 `followup_cards` 가 사라진 카드를 가리킨다 | **네 파일**이 그 필드를 들고 있다 — `SPEC-CHANPERM-001:16` · `SPEC-CHANWIRE-001:16` · `SPEC-CHANNEL-001:16` 이 `[t15, t16, t20]`, `SPEC-CHANCLIENT-001:17` 이 `[t15, t16, t20, t23]`. 가리키는 카드 넷 다 큐에 없다(현재 큐: t35·t38·t40). (목록은 `grep -rln 'followup_cards.*t16' .moai/specs/` 전건이며, 이 항목의 첫 판본이 셋만 적어 t38 sync 감사 F1 이 넷째를 잡았다 — 자른 출력을 전건으로 읽은 결함.) 낡은 것은 `t16` 하나가 아니라 **필드 전체**이므로 하나만 떼면 나머지가 같은 결함으로 남는다. 정할 것: 닫힌 카드 id 를 지울 것인가, 이력으로 둘 것인가 — `completed-spec-semantics.md` 가 본문에 답한 물음과 같지만 **frontmatter 는 본문이 아니라 메타데이터**라 답이 다를 수 있다 (카드 `t38` sync 이월, 2026-09-05) |

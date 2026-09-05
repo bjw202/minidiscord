@@ -11,3 +11,4 @@
 - [문서에 실린 명령이 조용히 0 을 낸다](documented-command-can-return-a-silent-zero.md) — zsh 는 `$F` 를 낱말 분리하지 않아 훑기 전체가 종료 코드 0·빈 출력; 인용된 명령은 인용된 형태 그대로 돌려 볼 것 (t34 H-01)
 - [형제 기준이 기준 하나를 공허하게 만든다](sibling-criterion-makes-a-criterion-vacuous.md) — 사전 상태 0 을 통과해도, 같은 범위에 형제 기준의 의무 편집이 같은 어간을 심으면 그 줄을 지워도 초록이다 (t6 AC-E2E-014 ㉠)
 - [대체값이 이분 판정을 뒤집는다](fallback-value-flips-the-binary-judgment.md) — 내가 권고한 `?? 0` 이 「필드 있고 안 비었으면 통과」를 통과시켰을 것; 수리 권고 전에 기준의 통과 조건부터 (t39 2회차, 2026-09-05)
+- [「이미 옳다」 딱지가 붙은 인용은 훑기를 빠져나간다](quoted-canon-labeled-correct-escapes-sweeps.md) — t38: README:242 수정이 LIVEVERIFY:228 의 정본 인용을 낡게 했는데 그 칸엔 「이미 옳다」가 적혀 있었다; 훑기 근거와 결론은 따로 판정 (2026-09-06)
