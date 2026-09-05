@@ -1,4 +1,4 @@
-// 봇 게이트웨이: 채널 플러그인의 WebSocket 접속 창구 (spec 6장)
+// AC-WSUPGRADE-012 변이 커밋 — 생산 코드 한 줄 (M4 변이 창, 곧 reset 으로 되돌림)
 // v2 상호 인증 (SPEC-GWAUTH-002): hello{pub, client_nonce} → challenge → auth → 봉투(env) welcome.
 // 서버는 한 번도 평문 토큰을 본 적 없는 검증자(verifier_pub)로 조회하고, 저장한 server_confirm_key 로
 // 자신을 증명하며, 확립 이후 내보내는 모든 프레임을 봉투에 담는다.
