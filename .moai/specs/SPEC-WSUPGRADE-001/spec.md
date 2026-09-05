@@ -2,7 +2,7 @@
 id: SPEC-WSUPGRADE-001
 title: "병렬 실행 전용 HTTP 404 의 응답자 규명 — 관측 설계 (수리 아님)"
 version: "0.7.0"
-status: in-progress
+status: completed
 created: 2026-09-04
 updated: 2026-09-05
 author: manager-spec

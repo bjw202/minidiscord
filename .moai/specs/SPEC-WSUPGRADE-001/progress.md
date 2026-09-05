@@ -156,4 +156,58 @@ mutation_record: .moai/reports/t39/m4r2/mutations-round3.md
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-05
+sync_commit_sha: pending-backfill-sync          # 커밋이 자기 해시를 알 수 없다 — 착지 뒤 후속 커밋에서 채운다
+head_at_sync_entry: facce4b                     # sync 진입 시점 HEAD(3회차 증거 보존 커밋)
+baseline: 620af7a
+worktree: .claude/worktrees/t39 (WT-server-404) # 미푸시 — 이 나무가 이 작업의 유일한 사본
+
+spec_kind: investigation                        # 규명 카드 — 수리 설계 없음(REQ-WSUPGRADE-010)
+production_code_lines: 0                        # git diff --stat 620af7a..HEAD -- server/src channel/src → 무출력(sync 단계 재확인)
+shipped_files:                                  # 이 카드가 실어 보내는 것은 시험 하네스 셋뿐이다
+  - server/test/gateway.test.ts                 # +174 — 비(非)101 업그레이드 응답 상시 관측자(REQ-WSUPGRADE-013)
+  - server/test/wsupgrade-judgment.ts           # +188 — 지문표·2차 판정·세 갈래 사상(순수 함수)
+  - server/test/wsupgrade-judgment.test.ts      # +123 — 위 판정 모듈의 합성 입력 시험
+
+suite_verification:                             # sync 단계에서 직접 실행해 관측한 값(전달받은 값이 아니다)
+  command: "unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && cd <worktree>/server && npx vitest run"
+  observed: "Test Files  18 passed (18) / Tests  228 passed (228)"
+  exit_code: 0
+  captures_dir_after_run: absent                # ls .moai/reports/t39/captures → No such file or directory (AC-014 평상시 비용 0)
+
+terminal_state: 미관측                           # PASS 아님 — 침묵은 통과가 아니다(REQ-008·AC-009)
+trials_total: 60                                # 복제 20 + 병렬 20 + 직렬 20
+captures_total: 0
+  # m6/summary.txt: trial 20행 전원 rc=0·captures=0 (시행당 80~82초 — 무효 실행이 아니라는 양성 증거)
+  # m3r2/summary.txt: 병렬 P1~P20 PASS · 직렬 S1~S20 PASS · 포획 0건
+ceiling: "p ≤ 13.9% (95% 단측)"
+ceiling_scope: "나무 환경의 gate 구성에 한정 — 주 체크아웃 구성에 대한 상한이 아니다(spec.md §7-15 차3 미종결)"
+ceiling_not: "«닫혔다» 수준(p ≤ 1%)에는 161회가 필요하다(spec.md §5.6)"
+termination: "plan.md §D-2 — 3회차 뒤 결과와 무관하게 종결(운영자 확정 2026-09-05). 남는 표집은 REQ-WSUPGRADE-013 상시 관측자가 비용 0으로 이어받는다"
+
+ac_matrix: "14 기준 전부 변이 실걸이 — CRITERION-FAILURE 0건 (1회차 AC-005 기준 실패는 v0.6.0 재설계 + 하네스 수리 b7f22d0 으로 닫힘)"
+ac013_hollow_pass:                              # 리드 지시대로 두 조항을 갈라 적는다
+  clause_1_trial_count: PASS                    # m6/summary.txt trial 행 정확히 20, 중도 종료 흔적 없음
+  clause_2_stop_rule: premise-unmet             # 포획 0건이라 «첫 포획 이후 지속»을 잴 사건이 없다 — 중심 물음은 이번 실행으로 행해지지 않았다
+  teeth_source: .moai/reports/t39/m4r2/mutations-round3.md   # 이 기준의 이빨은 변이에서만 실측됐다
+
+b12_self_test_a: "사전 훑기 grep -c 'SPEC-WSUPGRADE-001' CHANGELOG.md → 0 (중복 항목 없음, 배출 진행)"
+b12_self_test_b: "AC 수 대조 — acceptance.md 의 정식 식별자 AC-WSUPGRADE-001~014 = 14건, CHANGELOG 서술과 일치(짧은 형태 AC-001~014 는 같은 기준의 본문 약칭)"
+b12_self_test_c: "CHANGELOG 가 이름 대는 경로 전건 ls 확인 — gateway.test.ts · wsupgrade-judgment.ts · wsupgrade-judgment.test.ts · verdict.md 모두 실재"
+
+changelog_entry_position: "CHANGELOG.md [Unreleased] 최상단 — 카드 t34 항목 앞(최신 우선 관례)"
+readme_touched: false                           # 이 카드는 명령·동작·사용자 표면을 하나도 더하지 않는다. README 「문서」 목록은 SPEC 전수 목록이 아니라 선별 목록이며(디스크의 27개 중 15개만 등재) 누락이 관례다
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (updated: 2026-09-05)"
+  plan.md: n/a                                  # frontmatter 없음(본문이 # 제목으로 시작)
+  acceptance.md: n/a                            # frontmatter 없음
+  progress.md: n/a                              # frontmatter 없음
+canary_compliance_check: n/a                    # 이 SPEC 은 자기 sync 가 시험할 전방 정책을 정의하지 않는다
+
+carry_over:                                     # 이 단계에서 SPEC 본문에 반영하지 않았다 — 본문 소유권은 manager-spec
+  - "spec.md §7 미검증 목록 갱신(3회차 신규 넷: 복제 상한과 나무 한정 · AC-013 공허 통과 · AC-005 재설계 이빨 실측 · 차3 미종결)"
+  - "§B 팔 축의 갭 — 서버 안 파일 병렬성만 가르는 설계에 원 조건(같은 포트를 쥔 다른 앱과의 경합)이 없다"
+verdict_record: .moai/reports/t39/verdict.md    # 3회차 최종 판본
+```
