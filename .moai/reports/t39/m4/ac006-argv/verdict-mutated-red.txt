@@ -1,0 +1,4 @@
+parallel-argv: npx vitest run
+serial-argv:   npx vitest run --no-file-parallelism --reporter=dot
+symmetric-difference: 2 tokens [	--no-file-parallelism 	--reporter=dot ]
+AC-006: RED — 차이가 1 이 아니다(0=같음, 2 이상=스위치 외 차이)

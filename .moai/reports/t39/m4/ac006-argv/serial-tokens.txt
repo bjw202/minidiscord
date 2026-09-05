@@ -1,0 +1,4 @@
+--no-file-parallelism
+npx
+run
+vitest

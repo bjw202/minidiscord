@@ -1,0 +1,4 @@
+[
+  { "branch": "H-2", "kind": "probe", "path": ".moai/reports/t39/probe-coexist.log" },
+  { "branch": "H-2", "kind": "probe", "path": ".moai/reports/t39/probe-upgrade-window.log" }
+]

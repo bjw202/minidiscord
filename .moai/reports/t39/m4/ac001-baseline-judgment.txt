@@ -1,0 +1,1 @@
+RECORD-JUDGE: PASS (.moai/reports/t39/captures/capture-2026-09-05T01-39-14-888Z-1.json --trigger)

@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t39/server
+
+ ❯ test/gateway.test.ts (39 tests | 1 failed | 38 skipped) 5015ms
+     × history_request applies limit before since_id, speaker, since and until 5014ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/gateway.test.ts > gateway > history_request applies limit before since_id, speaker, since and until
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/gateway.test.ts:866:3
+    864|
+    865|   // AC-GW-013 — limit 은 필터보다 먼저, 선택 필터 셋은 각각 걸러 낸다
+    866|   it('history_request applies limit before since_id, speaker, since an…
+       |   ^
+    867|     const { app, port } = await build()
+    868|     const room = seedRoom(), pm = seedBot('pm')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 17 skipped (18)
+      Tests  1 failed | 227 skipped (228)
+   Start at  10:43:50
+   Duration  5.34s (transform 892ms, setup 0ms, import 2.78s, tests 5.02s, environment 1.39s)
+

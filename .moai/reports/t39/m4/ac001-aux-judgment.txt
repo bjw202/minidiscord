@@ -1,0 +1,2 @@
+RECORD-JUDGE: FAIL (../.moai/reports/t39/captures/capture-2026-09-05T01-40-37-879Z-1.json --trigger)
+  - AC-001 headers 전건 누락 또는 빈 배열

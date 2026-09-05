@@ -1,0 +1,9 @@
+H-1: 도달성 근거 없음
+H-2: 도달성 근거 없음
+H-3: 도달성 근거 없음
+기각된 근거 주장:
+  - H-1: 경로가 존재하지 않는다 — .moai/reports/t39/probe-does-not-exist.log
+  - H-3: 귀속 적중 항목이 없는 포획 기록(창 단위 개수만 있는 모양) — 혼입 위험, 근거 아님(acceptance AC-004 (가)) — .moai/reports/t39/m4/tmp/count-only-capture.json
+---
+(2) 도달성 근거가 있는 갈래: 0/3
+판정: 미관측 — 포획 0건일 때의 처분(acceptance AC-004)

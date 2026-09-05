@@ -1,0 +1,4 @@
+parallel-argv: npx vitest run
+serial-argv:   npx vitest run --no-file-parallelism
+symmetric-difference: 1 tokens [	--no-file-parallelism ]
+AC-006: PASS — 차이가 단일 스위치 토큰 하나다

@@ -1,0 +1,2 @@
+RECORD-JUDGE: FAIL (.moai/reports/t39/captures/capture-2026-09-05T01-43-03-805Z-1.json --trigger)
+  - AC-002 포트 보유 상태 null — 트리거된 자기 앱 포획인데 보유 상태가 기록되지 않았다
