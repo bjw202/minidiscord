@@ -181,13 +181,24 @@ function wsConnect(port: number, token: string): Promise<{ ws: WebSocket; welcom
     // 시작 사건). 끝 사건은 아래 리스너의 t_close(unexpected-response 발화)다.
     const tOpen = Date.now()
     const ws = new WebSocket(`ws://127.0.0.1:${port}/bot`)
-    // SPEC-WSUPGRADE-001 M1 — 비(非)101 응답의 원문 포획(AC-001·002). 이 리스너는 기록만 하고
-    // 아무 값도 돌려주지 않는다 — emit 이 거짓을 돌려 ws 의 abortHandshake 가 그대로 던진다
-    // (node_modules/ws/lib/websocket.js:929 · plan.md §C). 관측이 실패를 삼키지 않는다(AC-005).
-    // 기록 중 무엇이 잘못돼도 이 try 는 조용히 무시한다 — 포획 실패가 원래 실패를 가리거나
-    // 대신하지 않게 하려는 것이다.
+    // SPEC-WSUPGRADE-001 M1 — 비(非)101 응답의 원문 포획(AC-001·002). ws 는 unexpected-response
+    // 리스너가 존재하기만 하면 abortHandshake 를 건너뛴다 — EventEmitter.emit 은 리스너의
+    // 반환값과 무관하게 리스너가 하나라도 있으면 참을 돌린다(websocket.js:929 · SPEC-WSUPGRADE-001
+    // §7-12 실측). 그러므로 기록만 하는 리스너로는 던짐이 살아나지 않고, 이 리스너는 기록 뒤
+    // 스스로 실패를 다시 세운다(아래 재수립 — REQ-004·AC-005). 기록 중 무엇이 잘못돼도 try 는
+    // 조용히 무시한다 — 포획 실패가 실패 재수립을 가리지 않게 하려는 것이다.
     ws.on('unexpected-response', (req, res) => {
-      try {
+      // 본문을 끝까지 모은 뒤 기록하고 재수립한다 — 동기 판독은 본문이 헤더 뒤 별도 세그먼트로
+      // 올 때 빈 본문을 남긴다(실측: ws 의 400 이 Content-Length: 11 인데 body 가 "" 로 잡혔다).
+      // 응답은 Connection: close + Content-Length 로 오므로 end 가 온다 — 소켓이 먼저 끊기는
+      // 쪽(서버가 중간에 끊는 실패)에 대비해 error·close 폴백을 두고, 기록+재수립은 정확히
+      // 한 번만 한다.
+      const chunks: Buffer[] = []
+      let settled = false
+      const finish = () => {
+        if (settled) return
+        settled = true
+        try {
         const tClose = Date.now()
         const ends = wsupgradeSockEnds(res.socket)
         // 헤더 전건 — res.rawHeaders 의 [이름, 값, ...] 을 쌍으로 옮긴다. 대소문자·중복·순서를
@@ -196,11 +207,8 @@ function wsConnect(port: number, token: string): Promise<{ ws: WebSocket; welcom
         for (let i = 0; i < res.rawHeaders.length; i += 2) {
           headers.push({ name: res.rawHeaders[i], value: res.rawHeaders[i + 1] })
         }
-        // 본문은 지금 판독 가능한 만큼 동기로만 읽는다 — 이 리스너가 거짓을 돌려주면 ws 는
-        // 곧바로 소켓을 끊으므로(websocket.js:929 바로 아래 abortHandshake) 비동기 수집은
-        // 늦게 오는 본문을 놓친다. 루프백의 작은 404 는 헤더와 같은 세그먼트로 온다(spec.md F4).
-        const chunks: Buffer[] = []
-        for (let c = res.read(); c !== null; c = res.read()) chunks.push(c as Buffer)
+        // 본문 chunks 는 리스너 위의 data 수집이 이미 모았다 — end 까지 기다린 것이므로
+        // Content-Length 길이만큼 온전하다(AC-001 «본문 전체»).
         const clientPath = req.path
         const observation = wsupgradeObservationOf(port)
         const windowLogs = {
@@ -236,7 +244,19 @@ function wsConnect(port: number, token: string): Promise<{ ws: WebSocket; welcom
           capturedAt: new Date(tClose).toISOString(),
           clientPath,
         })
-      } catch { /* 포획·기록의 실패는 조용히 — 던짐 경로는 원래대로 간다(plan.md §C) */ }
+        } catch { /* 포획·기록의 실패는 조용히 — 실패 재수립은 아래에서 어느 쪽이든 한다 */ }
+        // 실패 재수립(REQ-004·AC-005) — 기록 뒤 관측된 상태 코드를 실은 응답자 오류로 직접 세운다.
+        // ws 는 리스너 존재만으로 abortHandshake 를 건너뛰므로(위 주석) 값 돌려주기로는 던짐이
+        // 살아나지 않는다. 이 재수립이 없으면 접속이 매달려 시험 실패가 5초 시간 초과로 바뀌고,
+        // 그것이 1회차 AC-005 기준 실패의 정확한 모양이었다(m4/mutations.md §5). 소켓 파기는 원
+        // abortHandshake 의 정리를 모방한다 — 재수립은 try 밖에 두어 포획이 실패해도 실패는 세워진다.
+        res.socket.destroy()
+        ws.emit('error', new Error(`Unexpected server response: ${res.statusCode}`))
+      }
+      res.on('data', c => chunks.push(c as Buffer))
+      res.on('end', finish)
+      res.on('error', finish)
+      res.on('close', finish)
     })
     const inbox: Inbox = { queue: [], waiters: [] }
     inboxes.set(ws, inbox)
