@@ -1,0 +1,21 @@
+# AC-LIVEENV-007 — 토큰 소재 목록이 전건이고 실행된다
+# head=5edd97f
+$ scripts/live-env.sh token-sweep
+site=global_claude_json cmd=python3-json:~/.claude.json:mcpServers.minidiscord-channel.env hits=0
+site=session_cmdline cmd=grep:MINIDISCORD_TOKEN:셸 이력 hits=14
+site=proc_env cmd=ps-eww:봇 세션 프로세스 환경 hits=1
+site=project_mcp_json cmd=grep:MINIDISCORD_TOKEN:.mcp.json hits=0
+site=bot_mcp_json cmd=grep:MINIDISCORD_TOKEN:bot-01/.mcp.json hits=0
+site=settings_env cmd=python3-json:.claude/settings.json:env hits=0
+site=shell_rc cmd=grep-l:MINIDISCORD_TOKEN:셸 기동 파일 셋 hits=0
+site=db_bot_tokens cmd=sqlite3:bot_tokens:평문 열 부재 hits=0
+site=invite_response cmd=POST:/api/rooms/:id/invites:응답 1회 hits=0
+site=token_file cmd=test-f:data/live-env/token hits=1
+site=evidence_files cmd=grep-rEl:64자 hex:evidence/ hits=0
+site=tracked_repo_files cmd=git-grep-lE:64자 hex:추적 파일 hits=36
+# ① 개수 — 진단용
+# 훑기의 site= 줄 수: 12
+# spec.md §7 표의 행 수: 12
+# ② 이름 집합 — 판정. comm -3 출력이 비어야 통과다
+# comm -3 출력 줄 수: 0
+VERDICT=PASS (이름 집합이 같다)

@@ -2,7 +2,7 @@
 id: SPEC-LIVEENV-001
 title: "라이브 검증 환경을 코드로 — 워크트리 고정 기동·토큰 소재 목록·증거 추출기·가짜 채널 예행"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-06
 updated: 2026-09-06
 author: manager-spec

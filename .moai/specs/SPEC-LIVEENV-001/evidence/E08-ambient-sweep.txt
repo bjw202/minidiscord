@@ -1,0 +1,16 @@
+# AC-LIVEENV-008 — 상시 소재의 평문 토큰이 0건이다
+# head=5edd97f
+# ~/.claude.json 수정 시각 (실행 전): 1788630392
+$ scripts/live-env.sh token-sweep --ambient
+site=global_claude_json cmd=python3-json:~/.claude.json:mcpServers.minidiscord-channel.env hits=0
+site=project_mcp_json cmd=grep:MINIDISCORD_TOKEN:.mcp.json hits=0
+site=bot_mcp_json cmd=grep:MINIDISCORD_TOKEN:bot-01/.mcp.json hits=0
+site=settings_env cmd=python3-json:.claude/settings.json:env hits=0
+site=shell_rc cmd=grep-l:MINIDISCORD_TOKEN:셸 기동 파일 셋 hits=0
+site=tracked_repo_files cmd=git-grep-lE:64자 hex:추적 파일 hits=36
+$ scripts/live-env.sh status   # 양성 대조군 — 그 시각의 principal 줄
+principal=pm:api=false:conn=0 measured=yes
+# ~/.claude.json 수정 시각 (실행 후): 1788630396
+# 두 값이 같으면 이 카드가 그 파일을 편집하지 않았다는 뜻이다.
+# [실측 · 미결] tracked_repo_files 의 적중은 이 카드 이전부터 0 이 아니다 —
+#   전부 정당한 SHA-256(매니페스트·검증 증거·변이 기록)이며 토큰이 아니다.
