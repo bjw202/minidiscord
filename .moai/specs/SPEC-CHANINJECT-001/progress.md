@@ -750,14 +750,25 @@ carry_over:                       # 리드 판정 대기 — 이 카드가 손�
     what: "형제 SPEC 이 셋째 통로의 종결 소유를 여전히 카드 `t16` 으로 적고 있다. t16 은 큐에 없으므로 이 포인터도 끊겨 있다"
     why_untouched: "형제 SPEC 본문이고 이 카드의 범위 밖이다. 리드에게 물었고 판정을 기다린다"
   - id: CO-2
-    where: "SPEC-CHANPERM-001 · SPEC-CHANWIRE-001 · SPEC-CHANCLIENT-001 의 frontmatter followup_cards: [t15, t16, t20]"
-    what: "세 형제 SPEC 의 frontmatter 가 사라진 카드 t16 을 후속으로 들고 있다"
-    why_untouched: "같은 이유 — 형제 frontmatter 이고 리드 판정 대기다"
+    where: "SPEC-CHANPERM-001:16 · SPEC-CHANWIRE-001:16 · SPEC-CHANNEL-001:16 · SPEC-CHANCLIENT-001:17 의 frontmatter followup_cards"
+    what: "네 형제 SPEC 의 frontmatter 가 사라진 카드를 후속으로 들고 있다 — 앞 셋은 [t15, t16, t20], CHANCLIENT 은 +t23. 가리키는 카드 넷 다 큐에 없다(현재 큐 t35·t38·t40)"
+    why_untouched: "형제 frontmatter 이고, 리드 처분(2026-09-05)은 «t16 만 떼지 말고 필드 전체를 이월»이다. ROADMAP 후속 후보 OD-4 로 올렸다"
+    correction: "이 항목의 첫 판본은 세 파일만 적었다 — SPEC-CHANNEL-001 이 빠져 있었고 t38 sync 감사 F1 이 잡았다. 뿌리는 sync 의 훑기가 자른 출력(head -20)을 전건으로 읽은 것이다. 전건 명령: grep -rln 'followup_cards.*t16' .moai/specs/"
+  - id: CO-3
+    kind: 관측
+    where: ".moai/specs/SPEC-LIVEVERIFY-001/spec.md:228"
+    what: "그 행은 README.md:242 의 원문을 인용하며 「배치 규약 — 이미 옳다」로 판정해 두었다. 이 카드가 README:242 를 고쳤으므로 그 인용이 낡았다 — 즉 이 카드 자신이 만든 낡음이다(t38 sync 감사 F2)"
+    why_untouched: "그 SPEC 은 status: completed 다. completed-spec-semantics.md 가 완결 SPEC 본문의 형제 개정을 금지하므로 고치지 않는다 — CO-1 과 같은 근거다. 이월이 아니라 관측으로 남긴다"
+  - id: CO-4
+    kind: 관측
+    where: ".moai/specs/SPEC-GWAUTH-002/spec.md:559"
+    what: "셋째 통로의 소유를 여전히 카드 t10·t16 으로 적는다"
+    why_untouched: "그 SPEC 도 status: completed — CO-1·CO-3 과 같은 근거로 고치지 않는다"
 
 gaps:
   - "린트를 돌리지 않았다 — channel 워크스페이스에 린트 스크립트가 없다. §E.4 세 라운드 공통의 한계가 그대로다"
   - "테스트 스위트를 돌리지 않았다 — 코드 변경이 0줄이라 회귀 대상이 없다. 「돌리지 않았다」이지 「통과했다」가 아니다"
-  - "형제 SPEC 문서 전수를 훑지 않았다 — CO-1·CO-2 두 자리는 리드가 지목해 준 것이고, 그 밖에 끊긴 t16 포인터가 더 있는지 세지 않았다"
+  - "형제 SPEC 전수 훑기는 sync 감사가 했다 — sync 자신의 훑기는 자른 출력을 전건으로 읽어 세 자리만 셌고, 감사가 최소 여섯(CO-1·CO-2 네 파일·CO-3·CO-4)을 세워 반증했다. 그 반증 뒤에도 어간 셋(탈출·t16·낡은 줄 인용)으로만 훑었으므로 다른 어간의 자리는 여전히 미확인이다"
   - "위 unmeasured 넷은 이 카드에서 하나도 재지 않았다 — 수용이 그 넷 위에 서 있다는 사실을 적었을 뿐이다"
 
 residual_risk:
