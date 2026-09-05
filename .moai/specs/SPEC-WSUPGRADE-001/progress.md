@@ -159,7 +159,7 @@ mutation_record: .moai/reports/t39/m4r2/mutations-round3.md
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-09-05
-sync_commit_sha: pending-backfill-sync          # 커밋이 자기 해시를 알 수 없다 — 착지 뒤 후속 커밋에서 채운다
+sync_commit_sha: 0540b5d                        # 문서 마감 커밋. 이 줄과 아래 typecheck·감사 항목은 뒤따른 마감 커밋이 채웠다
 head_at_sync_entry: facce4b                     # sync 진입 시점 HEAD(3회차 증거 보존 커밋)
 baseline: 620af7a
 worktree: .claude/worktrees/t39 (WT-server-404) # 미푸시 — 이 나무가 이 작업의 유일한 사본
@@ -176,6 +176,13 @@ suite_verification:                             # sync 단계에서 직접 실�
   observed: "Test Files  18 passed (18) / Tests  228 passed (228)"
   exit_code: 0
   captures_dir_after_run: absent                # ls .moai/reports/t39/captures → No such file or directory (AC-014 평상시 비용 0)
+
+typecheck_verification:                         # sync 감사 F1(차단) 수리 뒤 직접 실행해 관측한 값
+  command: "unset MOAI_KANBAN … && cd <worktree>/server && npx tsc --noEmit"
+  before_repair: "오류 2건 — gateway.test.ts(223,11) TS2322 · wsupgrade-judgment.test.ts(104,26) TS2345 (둘 다 이 카드 저작 — git blame 71307ca·8f421f3)"
+  after_repair: "무출력 (rc=0)"
+  repair: "statusCode 는 as number 로 좁히고 대체값을 심지 않았다(?? 0 은 존재하지 않는 상태 코드를 기록에 심으므로 기각) · collision 리터럴에 as const"
+  suite_after_repair: "Test Files 18 passed (18) / Tests 228 passed (228)"
 
 terminal_state: 미관측                           # PASS 아님 — 침묵은 통과가 아니다(REQ-008·AC-009)
 trials_total: 60                                # 복제 20 + 병렬 20 + 직렬 20
@@ -209,5 +216,16 @@ canary_compliance_check: n/a                    # 이 SPEC 은 자기 sync 가 �
 carry_over:                                     # 이 단계에서 SPEC 본문에 반영하지 않았다 — 본문 소유권은 manager-spec
   - "spec.md §7 미검증 목록 갱신(3회차 신규 넷: 복제 상한과 나무 한정 · AC-013 공허 통과 · AC-005 재설계 이빨 실측 · 차3 미종결)"
   - "§B 팔 축의 갭 — 서버 안 파일 병렬성만 가르는 설계에 원 조건(같은 포트를 쥔 다른 앱과의 경합)이 없다"
+sync_audit_rounds:
+  - iteration: 1
+    verdict: FAIL
+    score: 0.859                                # 통과선 0.80(Tier M) 을 넘었으나 차단 결함 F1 하나로 FAIL
+    threshold: 0.80
+    report: .moai/reports/t39/sync-audit.md
+    dimensions: "Functionality 90 / Security 92 / Craft 72(FAIL) / Consistency 88"
+    blocking: "F1 — 실어 보내는 시험 파일 둘의 타입 오류 2건(moai gate 가 잡지 못함 · 상시 관측자라 불결한 채 굳는다)"
+    repaired_in: "이 마감 커밋 — 위 typecheck_verification 참조"
+    non_blocking: "F2 AC-014 전제 문구 · F3 관측 경계 과장 · F4 §E.2 M1 반증된 기제 무표시 · F5 본문 수집 상한 없음 · F6 포획 자리가 닫히는 카드에 묶임 · F7 gate 로그 0바이트 · F8 자리 수 11 vs 12"
+
 verdict_record: .moai/reports/t39/verdict.md    # 3회차 최종 판본
 ```

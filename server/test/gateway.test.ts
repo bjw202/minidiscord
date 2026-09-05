@@ -220,7 +220,11 @@ function wsConnect(port: number, token: string): Promise<{ ws: WebSocket; welcom
         // 버린 판별자다(§5.4 셋째 행).
         const { hits, collision } = attributeHits(windowLogs, ends.localPort, clientPath, tOpen, tClose)
         wsupgradePersistCapture({
-          statusCode: res.statusCode,
+          // node 의 IncomingMessage 는 서버 요청과 클라이언트 응답이 한 타입이라 statusCode 가
+          // optional 이다. 이 사건은 상태 줄이 파싱된 뒤에만 발화하므로 여기서는 반드시 값이 있다.
+          // 값을 지어내지 않는다(?? 0 같은 대체값 금지) — 만에 하나 없으면 그대로 빠지고
+          // AC-001 의 이분 판정이 «상태 코드 없음» 으로 실패로 잡는다.
+          statusCode: res.statusCode as number,
           statusLine: `HTTP/${res.httpVersion} ${res.statusCode} ${res.statusMessage ?? ''}`.trimEnd(),
           headers,
           body: Buffer.concat(chunks).toString('utf8'),

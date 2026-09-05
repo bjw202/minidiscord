@@ -100,7 +100,7 @@ describe('SPEC-WSUPGRADE-001 2차 판정 (AC-004 (1))', () => {
     const unreadable = { ...fastify(), localPort: null }
     expect(secondVerdict(unreadable)).toBe('미분류')
     // 충돌 — 같은 remotePort·경로 후보가 둘 이상이면 귀속은 성립하지 않은 것으로 다룬다(§2 「귀속」).
-    const collided = { ...fastify(), attributionHits: [hit('upgrade'), hit('upgrade')], attributionHitCount: 2, collision: '있음' }
+    const collided = { ...fastify(), attributionHits: [hit('upgrade'), hit('upgrade')], attributionHitCount: 2, collision: '있음' as const }
     expect(secondVerdict(collided)).toBe('미분류')
   })
 
