@@ -213,7 +213,17 @@ frontmatter_status_transitions:
   progress.md: n/a                              # frontmatter 없음
 canary_compliance_check: n/a                    # 이 SPEC 은 자기 sync 가 시험할 전방 정책을 정의하지 않는다
 
+ci_verification:                                # PR #4 head 에서 직접 관측
+  pr: 4
+  head: d4da5f48817702aa812338292585ee590c8cf4ed
+  checks: "test pass · test pass (gh pr checks 4)"
+  typecheck_ran_in_ci: true                     # gh run view 33967813656 --log 에 「Run npm run typecheck -w server」 단계 실재 · conclusion success
+  coderabbit: "미연결 — /commits/<head>/status 가 state pending · statuses [] · 컨텍스트 0개(t36·t37 과 같은 근거로 운영자 면제)"
+
 carry_over:                                     # 이 단계에서 SPEC 본문에 반영하지 않았다 — 본문 소유권은 manager-spec
+  - "[미검증 후보] 「moai gate 가 type-check 를 빠뜨린다」 — 감사관이 gate 를 1회 돌려 «타입 오류 2건이 서 있는데 rc=0» 을 관측했다. 그러나 리드도 sync 도 이것을 재현하지 않았다. 도구 결함으로 확정하지 말 것(리드 지시 2026-09-05). 당장의 위험은 CI 가 덮는다 — ci.yml:27 이 typecheck 를 돌고 PR #4 에서 실행이 확인됐다"
+  - "[F5 Low] 포획 본문 수집에 명시적 상한이 없다 — end/error/close 폴백만 있어 헤더만 보내고 끝내지도 끊지도 않는 응답자에서는 vitest 5초 타임아웃에 의존한다"
+  - "[F3 Medium] 상시 관측자의 실제 경계는 wsConnect 한 자리 — 설계는 리드 처분(A-1=(a))이 맞고, 고칠 것은 REQ-013·AC-014 의 «적힌 경계»가 실제보다 넓게 읽히는 것이다"
   - "spec.md §7 미검증 목록 갱신(3회차 신규 넷: 복제 상한과 나무 한정 · AC-013 공허 통과 · AC-005 재설계 이빨 실측 · 차3 미종결)"
   - "§B 팔 축의 갭 — 서버 안 파일 병렬성만 가르는 설계에 원 조건(같은 포트를 쥔 다른 앱과의 경합)이 없다"
 sync_audit_rounds:
