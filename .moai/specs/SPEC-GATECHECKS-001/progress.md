@@ -14,7 +14,7 @@
 | REQ | 9 (REQ-GATECHECKS-001 ~ REQ-GATECHECKS-009) |
 | AC | 9 (AC-GATECHECKS-001 ~ AC-GATECHECKS-009) |
 | 변별 변이를 진 기준 | **AC-GATECHECKS-001** (역변이 필수) |
-| 미결 결정 | **없음** — OD-1=(a) · OD-2=(a) 로 리드 처분 7 종결(2026-09-05). 남은 미결은 §run 이월 셋(귀속 보강 · AC-001 정방향 · AC-003 확정) |
+| 미결 결정 | **없음** — OD-1=(a) · OD-2=(a) 로 리드 처분 7 종결(2026-09-05). 남은 미결은 §run 이월 셋(귀속 보강 · AC-GATECHECKS-001 정방향 · AC-GATECHECKS-003 확정) |
 | 코드 편집 예정 | `server/package.json` **1줄** |
 | 범위 밖 | B(`.git_hooks` 래퍼) · 게이트 종료 코드 → 카드 t41 |
 

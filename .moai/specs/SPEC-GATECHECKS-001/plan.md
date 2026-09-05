@@ -34,8 +34,9 @@
 **[처분] (a) 같은 회차·같은 트리로 확정한다** (리드 처분 7, 2026-09-05).
 작성자가 든 이유(양쪽 팔이 같은 회차에서 나와야 한다)보다 **강한 이유**가 감사에서 나왔다:
 (b) 가 인용하려는 역변이 RC=0 이 **어떤 증거 파일에도 남아 있지 않다** — `gate-typeerror.out` 과
-`gate-typeerror.err` 는 둘 다 0바이트이고, RC 값은 재현 보고서의 **산문에만** 있다(리드가 앞 회차에
-직접 확인). 따라서 (b) 는 미귀속 값 인용이 되며 `verification-claim-integrity.md` §2 를 어긴다.
+`gate-typeerror.err` 는 둘 다 0바이트이고, RC 값은 재현 보고서의 **산문에만** 있다(1회차 계획 감사
+`.moai/reports/t40/plan-audit.md` §OD-2 가 확인. 리드도 같은 관측을 보고했으나 이 SPEC 이 검증한
+것은 감사 쪽이다). 따라서 (b) 는 미귀속 값 인용이 되며 `verification-claim-integrity.md` §2 를 어긴다.
 
 ---
 
@@ -81,7 +82,7 @@ stderr: npm error workspace pkga@1.0.0 / npm error Lifecycle script `test` faile
 
 `server/test/` 에 타입 오류 2건 주입 → `npm run typecheck -w server` 로 주입이 실제 타입 오류임을 확인(RC=1) → `moai gate` 측정 → stderr 보존.
 
-### M3 — AC-GATECHECKS-001 역변이 (OD-2=(a) 인 경우)
+### M3 — AC-GATECHECKS-001 역변이 (OD-2=(a) 확정 — 필수 단계)
 
 같은 주입 상태에서 `pretest` 줄만 제거 → `moai gate` 측정(기대 RC=0) → `pretest` 복원 → 주입 제거 → `npm run typecheck -w server` 가 RC=0 으로 돌아옴을 확인.
 
