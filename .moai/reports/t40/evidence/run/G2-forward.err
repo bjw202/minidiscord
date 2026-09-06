@@ -1,0 +1,54 @@
+quality gate failed: npm test
+
+npm warn Unknown cli config "--passWithNoTests". This will stop working in the next major version of npm.
+npm warn Unknown env config "passwithnotests". This will stop working in the next major version of npm.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t40/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t40/server
+npm error command failed
+npm error command sh -c tsc --noEmit
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t40/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t40/server
+npm error command failed
+npm error command sh -c npm run typecheck
+
+
+> test
+> npm test --workspaces --if-present --passWithNoTests
+
+
+> pretest
+> npm run typecheck
+
+
+> typecheck
+> tsc --noEmit
+
+test/t40-typeerror.probe.ts(3,7): error TS2322: Type 'string' is not assignable to type 'number'.
+test/t40-typeerror.probe.ts(4,44): error TS2322: Type 'string' is not assignable to type 'number'.
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t40/channel
+
+
+ Test Files  7 passed (7)
+      Tests  126 passed (126)
+   Start at  02:34:58
+   Duration  65.16s (transform 457ms, setup 0ms, import 1.25s, tests 70.36s, environment 0ms)
+          
+   ERROR  
+          
+  Quality gate failed.                                                                                                
+

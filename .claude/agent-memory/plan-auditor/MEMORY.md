@@ -24,4 +24,7 @@
 - [판별자의 정의역이 도달 불가다](discriminator-domain-is-unreachable.md) — 합성 입력 셋을 셋으로 가르니 기준은 초록인데, 그 입력 둘이 실물에서 결코 발생하지 않아 세 갈래가 한 점으로 붕괴 (t39 1회차, 2026-09-04)
 - [판정표가 자기 절의 분업 정의를 어긴다](decision-table-ignores-its-own-division-of-labour.md) — 「창1은 A, 창2는 B를 답한다」고 정의해 놓고 표는 「창1 또는 창2 → B」로 사상; 선언지로 묶인 팔을 의심할 것 (t39 3회차, 2026-09-04)
 - [관측 창이 포획된 그 요청을 못 본다](observation-window-never-sees-the-captured-request.md) — 판별력은 얻었는데 귀속이 없어 한 팔이 혼입으로만 발화하고, 그 거짓 양성이 스스로를 도달성 근거로 인증 (t39 2회차, 2026-09-04)
+- [기준의 명령이 자기 Then 절보다 좁다](criterion-command-narrower-than-its-then.md) — t40 AC-009: 값 목록에 46 이 빠지고 「자리」 접미가 맨 숫자를 놓쳐, 강제하려던 [HARD] 위반을 못 잡음 (t40 1회차, 2026-09-06)
+- [SPEC 이 출처의 추론을 사실로 굳힌다](spec-hardens-its-sources-inference.md) — t40: 보고서의 「…라면 0바이트」 조건부가 spec.md 에서 「바이트 단위로 같다」로 승격, 실측은 416 대 0 (t40 1회차, 2026-09-06)
 - [수리가 바꾼 개수가 자기 훑기 밖에서 거짓을 만든다](repair-changed-count-falsifies-outside-its-own-sweep.md) — 셋→넷으로 움직인 수를 잡는 어간이 없고, 수리가 새로 찾은 결합 파일(`web/`)은 범위 목록 밖 (t34 3회차, 2026-09-03)
+- [루브릭에 사실 정확성 칸이 없다](rubric-has-no-cell-for-factual-accuracy.md) — 네 차원은 문서의 형태만 재므로 과대주장은 Clarity 에서 깎지 말고 blocking 으로; 점수 칸 없는 검사 여덟은 관측이고 의도/누락은 미규명(MP-5·6·7 은 명시, 이 여섯은 아님) (t42, 2026-09-06)

@@ -1,0 +1,7 @@
+=== 판별 명령 · G2 (수리 후 · 타입오류 2건) ===
+server vitest 실행 = 0
+channel vitest 실행 = 1
+
+=== 대조군 · 계획 단계 시험실패 (수리 전 · server vitest 가 돌던 때) ===
+server vitest 실행 = 1
+channel vitest 실행 = 1

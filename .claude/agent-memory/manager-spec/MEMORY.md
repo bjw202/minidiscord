@@ -18,3 +18,4 @@
 - [A line pointer is a count in disguise](feedback_line-pointers-are-counts-in-disguise.md) — `file:line` citations decay silently and can even confirm the wrong item; use content-matched grep anchors and prove each hits exactly 1
 - [A criterion never checks its own domain](feedback_criterion-never-checks-its-own-domain.md) — synthetic inputs proved the mapping while two of three could never occur; pair every mapping check with per-branch reachability evidence
 - [Mechanism reproduced is not what happened](feedback_mechanism-reproduced-is-not-what-happened.md) — a probe that recreates the signature raises a branch to "possible", never to "the answer"; keep untested branches marked untested, not disproven
+- [A bare filename inherits a neighbor's directory](feedback_bare-filename-inherits-a-neighbors-directory.md) — a path cited without its directory read as sharing its neighbors'; the wrong location inflated a closure argument from two sites to three

@@ -1,0 +1,26 @@
+
+  Run the MoAI-ADK quality gate outside the PreToolUse 5s budget.                                                       
+                                                                                                                        
+  Invoked by the git pre-commit hook (installed via 'moai init' / 'moai update')                                        
+  to enforce vet / lint / test at commit time. Runs in the user's shell, so the                                         
+  full step budget (vet 30s + lint 60s + test 120s per .moai/config/sections/gate.yaml)                                 
+  is available — unlike the PreToolUse hook path which is silently dropped after 5s.                                    
+                                                                                                                        
+  Exit code 0: gate passed (or no recognized language toolchain detected).                                              
+  Exit code 1: gate failed; diagnostic output on stderr.                                                                
+                                                                                                                        
+  Project directory resolution priority:                                                                                
+    1. $CLAUDE_PROJECT_DIR (when invoked from inside Claude Code)                                                       
+    2. current working directory                                                                                        
+                                                                                                                        
+  Go build tags are read from .moai/config/build-tags (first non-comment non-blank                                      
+  line) when present, mirroring the PreToolUse gate path.                                                               
+         
+  USAGE  
+         
+    moai gate [--flags]  
+         
+  FLAGS  
+         
+    -h --help  Help for gate
+

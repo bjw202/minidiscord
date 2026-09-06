@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "pretest": "npm run typecheck",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
