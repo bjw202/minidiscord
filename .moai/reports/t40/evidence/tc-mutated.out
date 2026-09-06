@@ -1,0 +1,13 @@
+
+> typecheck
+> tsc --noEmit
+
+test/t40-typeerror.probe.ts(2,7): error TS2322: Type 'string' is not assignable to type 'number'.
+test/t40-typeerror.probe.ts(3,44): error TS2322: Type 'string' is not assignable to type 'number'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t40/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t40/server
+npm error command failed
+npm error command sh -c tsc --noEmit
