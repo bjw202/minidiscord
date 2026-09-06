@@ -1,0 +1,3 @@
+control  (4 dims, 4 judges): {"verdict":"PASS","harmonic_mean":0.8999999999999999}
+mutation (5 dims, 4 judges): {"verdict":"INCOMPLETE","missing":["Rigor"]}
+repaired (5 dims, 5 judges): {"verdict":"PASS","harmonic_mean":0.9}
