@@ -1,0 +1,67 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server
+
+# 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달
+Error: in prepare, file is not a database (26)
+Error: in prepare, file is not a database (26)
+Error: in prepare, file is not a database (26)
+unmeasured_path=e3_transcript_candidates_multiple (2개 후보)
+candidate=/var/folders/y4/3w12s_ns7c32yh937159cj440000gn/T/live-extract-V5SV5B/a.jsonl
+candidate=/var/folders/y4/3w12s_ns7c32yh937159cj440000gn/T/live-extract-V5SV5B/b.jsonl
+unmeasured_path=e2_approval_pending (채널 도구 왕복 짝이 0건)
+# 대화 기록 후보가 없다 — ㉠ 표면 미도달
+# 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달
+# 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달
+live-extract: Playwright 모듈/브라우저 캐시 부재로 방 화면 캡처를 건너뛴다 — 이 항은 UNMEASURED 다
+ ❯ test/live-extract.test.ts (58 tests | 2 failed) 82ms
+     × e5 갈래가 전역 항목을 실을 때 토큰 전문이 남지 않는다 — B3 수리를 고정한다 5ms
+     × 실행 중 전역 항목의 내용이 바뀌면 귀속을 포기하고 e5 를 적는다 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/live-extract.test.ts > 토큰 마스킹 — 산출물 어디에도 전문이 없다 > e5 갈래가 전역 항목을 실을 때 토큰 전문이 남지 않는다 — B3 수리를 고정한다
+AssertionError: expected '# 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달\n' to contain 'unmeasured_path=e5_global_entry_chang…'
+
+- Expected
++ Received
+
+- unmeasured_path=e5_global_entry_changed
++ # 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달
++
+
+ ❯ test/live-extract.test.ts:213:19
+    211|     expect(code).toBe(EXIT_UNMEASURED)
+    212|     const notes = readFileSync(path.join(out, 'extract-notes.txt'), 'u…
+    213|     expect(notes).toContain('unmeasured_path=e5_global_entry_changed')…
+       |                   ^
+    214|     expect(notes).toContain(token.slice(0, 8) + '…(가림)')              …
+    215|     expect(notes).not.toContain(token)   // [핵심] 수리를 되돌리면 전문이 남아 이 줄이 …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/live-extract.test.ts > runExtract — 닿지 못한 표면의 산출은 만들지 않는다 > 실행 중 전역 항목의 내용이 바뀌면 귀속을 포기하고 e5 를 적는다
+AssertionError: expected '# 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달\n' to contain 'unmeasured_path=e5_global_entry_chang…'
+
+- Expected
++ Received
+
+- unmeasured_path=e5_global_entry_changed
++ # 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달
++
+
+ ❯ test/live-extract.test.ts:623:19
+    621|     expect(code).toBe(EXIT_UNMEASURED)
+    622|     const notes = readFileSync(path.join(out, 'extract-notes.txt'), 'u…
+    623|     expect(notes).toContain('unmeasured_path=e5_global_entry_changed')
+       |                   ^
+    624|     expect(notes).toContain('entry_before=(파일 없음)')
+    625|     expect(notes).toContain('entry_after=(항목 없음)')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 56 passed (58)
+   Start at  00:26:48
+   Duration  209ms (transform 40ms, setup 0ms, import 57ms, tests 82ms, environment 0ms)
+

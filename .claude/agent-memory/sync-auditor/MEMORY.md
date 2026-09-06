@@ -24,3 +24,4 @@
 - [결함은 기준에 대고 역방향으로 훑는다](a-finding-must-be-swept-against-the-criteria.md) — t35 가 「추출기는 항상 2」를 적고도 그 값을 [HARD] 판별자로 쓰는 AC-013 이 상수가 됐다는 데 안 닿음 (2026-09-06)
 - [「못 한다」는 관측이고 증거를 진다](an-impossibility-claim-carries-evidence.md) — t35 5회차: 「이 수리는 시험으로 못 잡는다」의 [HARD] 이유가 같은 파일 400줄 아래의 이음매로 반증됨; 반증은 같은 파일에서 먼저 찾을 것 (2026-09-07)
 - [채점 모드가 어느 루브릭 규칙이 걸리는지 정한다](scoring-mode-decides-which-rubric-rule-binds.md) — 「앵커만 합법·보간 금지」는 계층형 규칙; hierarchical 0건이면 {n}/100 이 형식이고 앵커는 보정용 (t35 5회차)
+- [요구된 수리는 절반만 집행된다](a-required-repair-is-usually-half-executed.md) — t35 6회차: B1 의 진리값 넷은 닫혔고 같은 요구의 줄 인용 일곱은 그대로; 개폐표에 「부분 폐쇄」 칸을 둘 것 (2026-09-07)
