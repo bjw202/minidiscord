@@ -12,3 +12,4 @@
 - [형제 기준이 기준 하나를 공허하게 만든다](sibling-criterion-makes-a-criterion-vacuous.md) — 사전 상태 0 을 통과해도, 같은 범위에 형제 기준의 의무 편집이 같은 어간을 심으면 그 줄을 지워도 초록이다 (t6 AC-E2E-014 ㉠)
 - [대체값이 이분 판정을 뒤집는다](fallback-value-flips-the-binary-judgment.md) — 내가 권고한 `?? 0` 이 「필드 있고 안 비었으면 통과」를 통과시켰을 것; 수리 권고 전에 기준의 통과 조건부터 (t39 2회차, 2026-09-05)
 - [「이미 옳다」 딱지가 붙은 인용은 훑기를 빠져나간다](quoted-canon-labeled-correct-escapes-sweeps.md) — t38: README:242 수정이 LIVEVERIFY:228 의 정본 인용을 낡게 했는데 그 칸엔 「이미 옳다」가 적혀 있었다; 훑기 근거와 결론은 따로 판정 (2026-09-06)
+- [동결 인용이 엉뚱한 주장을 따라갔다](frozen-citation-followed-the-wrong-claim.md) — 헌법 §12 Mechanism 3 은 필수 통과 방화벽만 얼리고 차원 목록은 안 얼림; 넷을 지키는 건 결합이며 「이름만 늘려 보는」 변이는 판별력이 없다 (t42, 2026-09-06)

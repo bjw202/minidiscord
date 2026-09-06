@@ -27,3 +27,4 @@
 - [기준의 명령이 자기 Then 절보다 좁다](criterion-command-narrower-than-its-then.md) — t40 AC-009: 값 목록에 46 이 빠지고 「자리」 접미가 맨 숫자를 놓쳐, 강제하려던 [HARD] 위반을 못 잡음 (t40 1회차, 2026-09-06)
 - [SPEC 이 출처의 추론을 사실로 굳힌다](spec-hardens-its-sources-inference.md) — t40: 보고서의 「…라면 0바이트」 조건부가 spec.md 에서 「바이트 단위로 같다」로 승격, 실측은 416 대 0 (t40 1회차, 2026-09-06)
 - [수리가 바꾼 개수가 자기 훑기 밖에서 거짓을 만든다](repair-changed-count-falsifies-outside-its-own-sweep.md) — 셋→넷으로 움직인 수를 잡는 어간이 없고, 수리가 새로 찾은 결합 파일(`web/`)은 범위 목록 밖 (t34 3회차, 2026-09-03)
+- [루브릭에 사실 정확성 칸이 없다](rubric-has-no-cell-for-factual-accuracy.md) — 네 차원은 문서의 형태만 재므로 과대주장은 Clarity 에서 깎지 말고 blocking 으로; 점수 칸 없는 검사 여덟은 관측이고 의도/누락은 미규명(MP-5·6·7 은 명시, 이 여섯은 아님) (t42, 2026-09-06)

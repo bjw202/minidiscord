@@ -251,3 +251,87 @@ $ find .claude -type f \( -name '*.md' -o -name '*.js' -o -name '*.sh' -o -name 
 2. **`--dry-run --templates-only` 도 돌리지 않았습니다.** 플래그가 "without modifying the filesystem" 이라고 적지만 그 진술 자체가 미검증이고, 유일 사본에서 시험할 만한 가치보다 위험이 큽니다. 안전한 사본이 있으면 이것이 8.5-1 을 닫는 관측입니다.
 3. **덮어쓰기인지 3방향 병합인지 확정하지 못했습니다.** `moai update --verbose` 도움말은 "3-way merge fallback notices" 를 언급하고 `constitution.md:94` 는 「user file is preserved」 경로를 적는 반면, `skill-authoring.md:364` 는 「overwrites … lost」라고 [HARD] 로 적습니다. **두 진술이 겹치는 자리를 규명하지 못했습니다.** 제 제안은 더 나쁜 쪽(덮어쓰기)을 가정합니다 — 병합이더라도 새 파일을 쓰는 쪽이 손해가 없기 때문입니다.
 4. **새 규약 파일이 감사관에게 실제로 적재되는지 재현하지 않았습니다.** 근거는 t37 선례와 `paths:` 규약이며, 적재를 관측하지는 않았습니다.
+
+---
+
+## 9. 착지 — 처분 21·22 집행 결과
+
+### 9.1 방향을 튼 핵심 근거 (리드 지시로 눈에 띄게 적음)
+
+이 카드는 원래 `plan-auditor.md` · `sync-auditor.md` · `default.md` 본문을 고칠 계획이었습니다. 그것을 그만둔 근거는 **한 문장으로 서는 관측**입니다:
+
+> **`.claude/agents/moai/` 아래는 이 저장소에서 한 건도 어긋나 있지 않고, 제 편집이 첫 표류가 됩니다.**
+
+매니페스트 등재분 전부를 디스크 해시와 대조했을 때 어긋난 것은 여덟이고, 그중 일곱은 `.moai/config/sections/*.yaml` 여섯 + `.gitignore` — 원래 사용자가 정하는 자리입니다. **문서는 정확히 하나뿐입니다:** `.claude/rules/moai/workflow/spec-workflow.md`(card t37 `aef8108`).
+
+즉 이 저장소는 템플릿 관리 문서를 사실상 건드리지 않고 살아 왔고, 감사관 정의 파일은 완전히 원본 그대로입니다. 그 영역에 첫 표류를 만들면서 **되돌아올 때 조용히 사라질 정정**을 심는 것이 이 카드가 피한 결과입니다.
+
+계수는 HEAD 귀속입니다. 그리고 이 회차가 `.claude/` 아래에 파일을 더했으므로 **값을 그대로 인용하지 말고 명령을 다시 돌리십시오**:
+
+```
+$ jq -r '.files | to_entries[] | .key' .moai/manifest.json > /tmp/mf.txt
+$ while IFS= read -r f; do [ -f "$f" ] || continue
+    real=$(shasum -a 256 "$f" | awk '{print $1}')
+    rec=$(jq -r --arg f "$f" '.files[$f].current_hash' .moai/manifest.json | sed 's/^sha256://')
+    [ "$real" = "$rec" ] || echo "$f"
+  done < /tmp/mf.txt
+```
+
+### 9.2 착지한 것 셋
+
+| 산출물 | 무엇이 들어갔나 |
+|---|---|
+| `.claude/rules/moai/core/audit-rubric-scope.md` (신규) | 항목 1·2·3·4 전부. §1 계정 넷 · §2 동결 인용 반증 + 결합 실측 · §3 집계식 자리 · §4 점수 칸 없는 여덟을 (a)관측/(b)미결/(c)대조 로 나눠 적음 · §5 상류 자리 셋 · §6 열린 미검증 셋 |
+| `.claude/agent-memory/plan-auditor/rubric-has-no-cell-for-factual-accuracy.md` (신규) | 과대주장을 Clarity 에서 깎지 말 것 + 여덟의 (a)(b)(c) + 조화평균 + 죽은 표 |
+| `.claude/agent-memory/sync-auditor/frozen-citation-followed-the-wrong-claim.md` (신규) | 동결 인용 반증 + 「이름만 늘려 보는」 변이가 판별력 없다는 함정 |
+
+각 디렉터리의 `MEMORY.md` 에 색인 한 줄씩 더했습니다.
+
+**규약 파일은 `paths: ".moai/specs/**,.moai/reports/**"` 로 한정했습니다** — 감사가 SPEC 산출물이나 감사 보고서를 읽고 쓸 때만 적재되고, 항상 적재되는 표면에는 들어가지 않습니다. t37 선례와 같은 형태입니다.
+
+### 9.3 템플릿 관리 파일을 하나도 안 건드렸음 — 실측
+
+```
+$ git status --short
+ M .claude/agent-memory/plan-auditor/MEMORY.md
+ M .claude/agent-memory/sync-auditor/MEMORY.md
+?? .claude/agent-memory/plan-auditor/rubric-has-no-cell-for-factual-accuracy.md
+?? .claude/agent-memory/sync-auditor/frozen-citation-followed-the-wrong-claim.md
+?? .claude/rules/moai/core/audit-rubric-scope.md
+```
+다섯 자리 각각을 매니페스트에 조회한 결과 **전부 `absent`** 입니다 — `moai update` 가 덮을 대상이 없습니다.
+
+인용 앵커는 전수 검사했습니다. 규약 파일이 쓰는 앵커 20개를 `grep -cF` 로 대조해 전부 1건 이상(`never be silently absorbed…` 만 2건 — MP-5·MP-6 둘)을 확인했고, **하나가 틀려 고쳤습니다**: `M3 Rubric Anchoring` → 실제 제목은 `M3: Rubric Anchoring`. 줄 번호 대신 앵커로 인용한 이유는 템플릿이 갱신되면 줄이 밀리기 때문입니다.
+
+### 9.4 상류에 낼 자리 (여기서 고치지 않음 — 적기만 함)
+
+| 자리 | 무엇을 |
+|---|---|
+| `sync-auditor.md` § Scoring Model (앵커: "The dimension enum is FROZEN") | 차원 목록 동결 주장 한 문장 |
+| `plan-auditor.md` | 집계식 자리를 가리키는 한 줄 + 점수 칸 없는 여덟을 적는 한 절 |
+| `default.md` § D7/D8 Plan-Phase Dimensions | 죽은 표 한 개 |
+
+### 9.5 부수 관측 — agent-memory 형식이 규약과 어긋납니다 (수리 안 함)
+
+`moai-memory.md` § Agent Memory Taxonomy 는 frontmatter 를 평평한 `type:` 으로 적으라 하고, CLAUDE.md §9 는 memory 파일을 항상 영어로 쓰라고 합니다. **그런데 이 저장소의 실제 관행은 둘 다 다릅니다:**
+
+```
+$ grep -l "^metadata:" .claude/agent-memory/*/*.md | wc -l              → 중첩 metadata: 형태
+$ grep -lE "^type: (user|feedback|project|reference)" .claude/agent-memory/*/*.md | wc -l  → 평평한 type: 형태
+$ grep -lP '[\x{AC00}-\x{D7A3}]' .claude/agent-memory/plan-auditor/*.md | wc -l           → 한글 포함
+```
+(HEAD 귀속 — 제가 파일을 더했으므로 값 대신 명령을 남깁니다. 측정 시점에 중첩 형태가 다수였고 한국어가 관행이었습니다.)
+
+**형제를 따랐습니다** — 중첩 `metadata:` + 한국어. 디렉터리 안의 일관성이 제 선호보다 우선하고, 세 번째 형태를 새로 만들면 관행이 더 갈라집니다. 감사 훅은 비차단 경고만 낸다고 `moai-memory.md` 가 적습니다. **이 어긋남 자체는 이 카드 범위 밖이고 `moai-memory.md` 는 템플릿 관리이므로 고치지 않았습니다** — 관측으로만 남깁니다.
+
+### 9.6 열린 채로 두는 미검증 (처분 22 — 지금 닫지 않음)
+
+1. **`moai update` 를 실제로 돌려 덮어쓰기를 재현하지 않았습니다.**
+2. **`--dry-run --templates-only` 도 돌리지 않았습니다.** 검사 대상이 「dry-run 이 정말 아무것도 안 건드리는가」인데 그것을 확인하려고 dry-run 을 돌리는 것은 순환이고, 이 도구는 `~/.claude` 같은 워크트리 밖 공유 자리까지 쓸 수 있어 버리는 나무를 만들어도 격리가 서지 않습니다.
+3. **덮어쓰기인지 3방향 병합인지 확정하지 못했습니다.** `moai update --verbose` 도움말의 "3-way merge fallback notices" 와 `constitution.md` 의 「user file is preserved」 경로가, `skill-authoring.md` [HARD] 의 「overwrites … lost」와 겹치는 자리를 규명하지 못했습니다.
+
+**1·2·3 을 닫는 경로:** 이 저장소 **밖 별도 클론**에서 template_managed 파일에 로컬 편집을 넣고 `moai update` 를 실제로 돌려 결과를 관측하는 것. 이 나무에서는 돌리지 않습니다.
+
+**이 미검증이 결론을 바꾸지 않는 이유:** 병합이든 덮어쓰기든 **새 파일을 쓰는 쪽은 손해가 없습니다.** 더 나쁜 쪽을 가정한 설계이므로, 실제가 더 관대하더라도 이 회차의 산출물은 그대로 유효합니다.
+
+4. **새 규약 파일이 감사관에게 실제로 적재되는지 관측하지 않았습니다.** 근거는 t37 선례(`completed-spec-semantics.md` 가 같은 형태로 살아 있음)와 `paths:` 규약입니다.
