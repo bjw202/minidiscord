@@ -1,0 +1,12 @@
+quality gate failed: npm test
+
+npm error Missing script: "test"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /Users/byunjungwon/.npm/_logs/2026-09-06T02_20_31_056Z-debug-0.log
+          
+   ERROR  
+          
+  Quality gate failed.                                                                                                
+
