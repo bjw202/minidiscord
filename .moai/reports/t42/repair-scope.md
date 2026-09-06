@@ -151,3 +151,103 @@ repaired (5 dims, 5 judges): {"verdict":"PASS","harmonic_mean":0.9}
 - 배경 부하 프로세스: 없음. 실행한 것은 `node` 한 번(즉시 종료)과 읽기 명령들
 - 남의 관측 인용: `dynamic-workflows.md:115` 는 원문 축자 인용이고, 그 진술의 재현은 §6-1 에 미검증으로 적었습니다
 - 계수: 이 보고서는 훑기 범위(`.claude/`) 밖에 있으므로 자기 계수 문제 없음. 그래도 §1 의 자리 수는 값이 아니라 `grep` 앵커로 적었습니다
+
+---
+
+## 8. 리드 지시 재측정 — 「내 산출물도 날아가는가」
+
+리드가 착수 전에 재라고 한 물음입니다. **재 봤고, 위험이 실재합니다.** 그리고 살아남는 자리도 찾았습니다.
+
+### 8.1 표적 넷은 전부 템플릿 관리입니다
+
+`.moai/manifest.json`(`version 3.1.2`, `deployed_at 2026-08-26`)에 네 표적이 모두 등재돼 있고 provenance 가 같습니다.
+
+```
+$ jq -r --arg f "<path>" '.files[$f].provenance' .moai/manifest.json
+.claude/agents/moai/sync-auditor.md            → template_managed
+.claude/agents/moai/plan-auditor.md            → template_managed
+.moai/config/evaluator-profiles/default.md     → template_managed
+.claude/rules/moai/core/agent-common-protocol.md → template_managed
+```
+
+매니페스트 전체에 다른 provenance 값이 **없습니다**:
+
+```
+$ jq -r '.files | to_entries[] | .value.provenance' .moai/manifest.json | sort | uniq -c
+   466 template_managed
+```
+
+그리고 규약이 두 자리에서 이 영역을 얼립니다:
+
+- `.claude/rules/moai/development/skill-authoring.md:364` **[HARD]** — "The `moai-*` namespace (all prefixes) is template-distributed. If the user modifies it directly, the next `moai update` **overwrites it — user customizations are lost**."
+- `.claude/skills/moai/workflows/harness.md:185` — "`.claude/agents/moai/` (template-managed agents are **FROZEN**; `.claude/agents/harness/` is a user-owned allowed-write target, NOT frozen)"
+
+`moai update` 는 실재합니다(`moai update --help`, rc=0) — 최상위 도움말 목록에는 안 보이지만 명령은 있습니다.
+
+**즉 리드의 우려가 맞습니다.** 1·3·4번 항목을 그 파일들 안에 적으면 다음 `moai update` 에 사라집니다. 더 나쁜 것은 **조용히** 사라진다는 점입니다 — 되돌아온 파일은 다시 「FROZEN (design-constitution §12 Mechanism 3)」이라고 적혀 있고, 그것이 틀렸다는 기록은 남지 않습니다.
+
+### 8.2 이 저장소는 실제로 그 영역을 거의 안 건드렸습니다
+
+매니페스트 등재분 전부를 디스크와 대조했습니다.
+
+```
+$ jq -r '.files | to_entries[] | .key' .moai/manifest.json > /tmp/mf.txt
+$ while IFS= read -r f; do [ -f "$f" ] || continue
+    real=$(shasum -a 256 "$f" | awk '{print $1}')
+    rec=$(jq -r --arg f "$f" '.files[$f].current_hash' .moai/manifest.json | sed 's/^sha256://')
+    [ "$real" = "$rec" ] || echo "$f"
+  done < /tmp/mf.txt
+```
+→ HEAD `8cc8207` 시점에 어긋난 것 여덟, 없는 것 넷, 나머지는 일치.
+
+어긋난 여덟 중 일곱은 `.moai/config/sections/*.yaml` 여섯과 `.gitignore` — 프로젝트 설정이라 원래 사용자가 정하는 자리입니다. **문서는 정확히 하나뿐입니다:**
+
+```
+.claude/rules/moai/workflow/spec-workflow.md   ← card t37 (aef8108) 이 고침
+```
+
+그리고 `.claude/agents/moai/` 아래는 **한 건도 어긋나 있지 않습니다.** 제 편집이 첫 표류가 됩니다.
+
+> 이 계수는 시점에 귀속됩니다(HEAD `8cc8207`). 제가 파일을 하나라도 더하면 값이 바뀌므로, 판정에 쓸 때는 위 명령을 다시 돌리십시오.
+
+### 8.3 살아남는 자리 — 매니페스트 밖에 사는 것들
+
+`.claude/` 아래 파일 중 매니페스트에 없는 것을 뽑았습니다(= `moai update` 가 덮을 대상이 아예 없는 것).
+
+```
+$ find .claude -type f \( -name '*.md' -o -name '*.js' -o -name '*.sh' -o -name '*.json' \) \
+    | sed 's|^\./||' | sort | comm -23 - <(jq -r '.files|keys[]' .moai/manifest.json | sort)
+```
+
+`.claude/agent-memory/**` 를 뺀 나머지는 둘뿐입니다:
+
+```
+.claude/rules/moai/workflow/completed-spec-semantics.md
+.claude/settings.local.json
+```
+
+**첫 줄이 이 카드가 찾던 선례입니다.** card t37 이 `aef8108` 에서 **새 규약 파일을 신설**했고, 그 파일은 매니페스트에 없으므로 `moai update` 가 덮을 것이 없습니다. 즉 **기존 템플릿 문서를 고치는 것은 날아가지만, 새 규약 파일을 더하는 것은 남습니다.** 그 파일은 frontmatter 에 `paths: ".moai/specs/**"` 를 달아 SPEC 산출물을 읽을 때만 적재되게 해 뒀습니다.
+
+두 번째 자리는 **감사관 자신의 기억**입니다. 두 감사관 모두 frontmatter 에 `memory: project` 를 선언합니다(`plan-auditor.md:12`, `sync-auditor.md:14`), 그리고 그 저장 위치는 `agent-authoring.md:123` 이 `.claude/agent-memory/<name>/` 로 못박습니다 — 매니페스트 밖이고, 이 저장소가 이미 `plan-auditor/`·`manager-spec/` 밑을 쓰고 있습니다.
+
+### 8.4 그래서 어디에 적어야 하는가 — 제안
+
+| 항목 | 원래 적으려던 자리 | 그러면 | 제안하는 자리 |
+|---|---|---|---|
+| 1. 동결 인용 정정 | `sync-auditor.md` 본문 | **날아감(조용히)** | 새 규약 파일 + `agent-memory/sync-auditor/` |
+| 2. 간극 여덟 명시(처분 19 형태) | `plan-auditor.md` 새 절 | **날아감** | 새 규약 파일 + `agent-memory/plan-auditor/` |
+| 3. 계정 넷 정리 | `evaluator-profiles/default.md` | **날아감** | 새 규약 파일 |
+| 4. 집계식 자리 가리키기 | `plan-auditor.md` 한 줄 | **날아감** | 새 규약 파일 |
+
+즉 **네 항목이 하나의 새 규약 파일로 모입니다.** 형태는 t37 선례를 그대로 따릅니다 — `.claude/rules/moai/` 아래 새 파일, `paths:` 로 감사 표면에 한정, 머리말에 출처와 근거 커밋을 적음.
+
+그리고 정정 자체가 **감사관이 일할 때 손에 들려 있어야** 하므로, 두 감사관의 `agent-memory` 에 각각 한 장씩 남깁니다. 규약 파일은 「무엇이 사실인가」를 세우고, 기억 파일은 「이 감사관이 이 문장을 만나면 이렇게 읽어라」를 세웁니다.
+
+**템플릿 원본 쪽 수리는 이 저장소에서 못 합니다.** 대신 보고서가 상류에 낼 수 있는 형태로 자리를 적어 둡니다 — `sync-auditor.md:46` 한 문장, `plan-auditor.md` 한 절, `default.md` L79-L90 한 표.
+
+### 8.5 이 절이 세우지 못한 것 (미검증)
+
+1. **`moai update` 를 실제로 돌려 덮어쓰기를 재현하지 않았습니다.** 근거는 규약 두 자리(하나는 [HARD])와 매니페스트의 provenance 단일값입니다. **이 나무가 미푸시 유일 사본이라, 파일을 만지는 도구를 여기서 돌리지 않았습니다.**
+2. **`--dry-run --templates-only` 도 돌리지 않았습니다.** 플래그가 "without modifying the filesystem" 이라고 적지만 그 진술 자체가 미검증이고, 유일 사본에서 시험할 만한 가치보다 위험이 큽니다. 안전한 사본이 있으면 이것이 8.5-1 을 닫는 관측입니다.
+3. **덮어쓰기인지 3방향 병합인지 확정하지 못했습니다.** `moai update --verbose` 도움말은 "3-way merge fallback notices" 를 언급하고 `constitution.md:94` 는 「user file is preserved」 경로를 적는 반면, `skill-authoring.md:364` 는 「overwrites … lost」라고 [HARD] 로 적습니다. **두 진술이 겹치는 자리를 규명하지 못했습니다.** 제 제안은 더 나쁜 쪽(덮어쓰기)을 가정합니다 — 병합이더라도 새 파일을 쓰는 쪽이 손해가 없기 때문입니다.
+4. **새 규약 파일이 감사관에게 실제로 적재되는지 재현하지 않았습니다.** 근거는 t37 선례와 `paths:` 규약이며, 적재를 관측하지는 않았습니다.
