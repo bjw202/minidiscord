@@ -13,4 +13,7 @@
 - [대체값이 이분 판정을 뒤집는다](fallback-value-flips-the-binary-judgment.md) — 내가 권고한 `?? 0` 이 「필드 있고 안 비었으면 통과」를 통과시켰을 것; 수리 권고 전에 기준의 통과 조건부터 (t39 2회차, 2026-09-05)
 - [「이미 옳다」 딱지가 붙은 인용은 훑기를 빠져나간다](quoted-canon-labeled-correct-escapes-sweeps.md) — t38: README:242 수정이 LIVEVERIFY:228 의 정본 인용을 낡게 했는데 그 칸엔 「이미 옳다」가 적혀 있었다; 훑기 근거와 결론은 따로 판정 (2026-09-06)
 - [동결 인용이 엉뚱한 주장을 따라갔다](frozen-citation-followed-the-wrong-claim.md) — 헌법 §12 Mechanism 3 은 필수 통과 방화벽만 얼리고 차원 목록은 안 얼림; 넷을 지키는 건 결합이며 「이름만 늘려 보는」 변이는 판별력이 없다 (t42, 2026-09-06)
+- [닮은꼴 대조군은 그 판정이 아니다](lookalike-control-is-not-the-judgment.md) — 코드가 돌리는 `===` 를 bash `test` 로 잰 대조군은 판별력을 세우지 않음; 비공허성은 프로그램 자신이 낸 0 아닌 값으로 (t35 2회차, 2026-09-06)
+- [조화평균이 카드를 통과선 밖에 가둔다](harmonic-mean-can-cap-a-card-below-threshold.md) — 범위 밖 사유로 두 차원이 0.75 에 묶이면 나머지가 만점이어도 0.785; FAIL 보고 전에 감도표를 낼 것 (t35 2회차)
+- [수리가 자기 완료 기록을 거짓으로 만든다](a-fix-falsifies-its-own-completion-record.md) — 「버전은 그대로」·「합계는 싣지 않았다」가 같은 커밋에 반증됨; 고친 파일이 아니라 «옮긴 값과 그 부정형»으로 훑을 것 (t35 2회차)
 - [덮인 쪽이 PASS 일 수 있다](superseded-value-may-be-the-pass.md) — 증거는 FAIL·표는 PASS 일 때 git log -p 로 뒤집힌 커밋을 못 박을 것; t35 는 M8 이 뒤집었고 같은 커밋이 표만 안 고쳤다 (2026-09-06)
