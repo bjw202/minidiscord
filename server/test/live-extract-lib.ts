@@ -47,8 +47,12 @@ const FULL_TOKEN_RE = /\b[0-9a-f]{64}\b/g
  *      (`entry_before=` / `entry_after=`). 그 항목은 `spec.md` §7 의 토큰 소재 1번이다.
  *  오늘 그 항목에 토큰이 없다는 것은 실측했으므로(`evidence/E08-ambient-sweep.txt`) 새는 것은
  *  없다. 다만 `REQ-LIVEENV-011`·`AC-LIVEENV-011` 이 기대는 가림에 경로 하나가 비어 있다.
- *  수리는 `writeFileSync(...)` 두 자리를 `maskTokens(...)` 로 감싸는 일이며, 카드 t35 는
- *  이 회차에 그것을 하지 않았다 — 처분 기록은 `spec.md` §5 의 열어 둔 관측이 진다.
+ *  [갱신] 그 수리는 **이미 됐다**(리드 처분 47) — 아래 `runExtract` 의 두 `writeFileSync` 가
+ *  이 함수를 지난다. 위 목록은 「지나지 않던 자리」의 기록으로 남긴다.
+ *  e5 갈래의 수리는 회귀가 붙들고 있다(`live-extract.test.ts` 의 「e5 갈래가 전역 항목을
+ *  실을 때 토큰 전문이 남지 않는다」 — 수리를 되돌리면 그 시험이 빨개진다, 실행 확인).
+ *  manifest 쪽은 회귀가 없다 — 단위 시험이 그 산출에 64자 hex 를 밀어 넣을 입력 경로가
+ *  없기 때문이며(항 이름·상태·파일명만 담는다), 그 사실을 그 시험 옆에 적었다.
  */
 export function maskTokens(s: string): string {
   return s.replace(FULL_TOKEN_RE, m => `${m.slice(0, 8)}…(가림)`)

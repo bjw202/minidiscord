@@ -22,3 +22,5 @@
 - [반복 문자 픽스처가 단언을 공허하게 만든다](repeated-char-fixture-hollows-the-assertion.md) — 'a'.repeat(64) 위에서 「앞 8글자만」 시험이 16글자 남기는 변이에 살아남음; 변이 집합의 축 목록이 곧 그 주장의 범위 (t35 4회차, 2026-09-06)
 - [차원 통과선이 기준 단위로 쓰여 있을 수 있다](dimension-threshold-may-be-written-per-criterion.md) — 「방화벽은 차원에 걸린다」는 기제로 맞지만 default.md:9·:16 이 「모든 기준 통과」라 결론을 못 옮김; 프로파일 자신이 :27 과 모순 (t35 4회차)
 - [결함은 기준에 대고 역방향으로 훑는다](a-finding-must-be-swept-against-the-criteria.md) — t35 가 「추출기는 항상 2」를 적고도 그 값을 [HARD] 판별자로 쓰는 AC-013 이 상수가 됐다는 데 안 닿음 (2026-09-06)
+- [「못 한다」는 관측이고 증거를 진다](an-impossibility-claim-carries-evidence.md) — t35 5회차: 「이 수리는 시험으로 못 잡는다」의 [HARD] 이유가 같은 파일 400줄 아래의 이음매로 반증됨; 반증은 같은 파일에서 먼저 찾을 것 (2026-09-07)
+- [채점 모드가 어느 루브릭 규칙이 걸리는지 정한다](scoring-mode-decides-which-rubric-rule-binds.md) — 「앵커만 합법·보간 금지」는 계층형 규칙; hierarchical 0건이면 {n}/100 이 형식이고 앵커는 보정용 (t35 5회차)
