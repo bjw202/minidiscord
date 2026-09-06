@@ -17,3 +17,5 @@
 - [조화평균이 카드를 통과선 밖에 가둔다](harmonic-mean-can-cap-a-card-below-threshold.md) — 범위 밖 사유로 두 차원이 0.75 에 묶이면 나머지가 만점이어도 0.785; FAIL 보고 전에 감도표를 낼 것 (t35 2회차)
 - [수리가 자기 완료 기록을 거짓으로 만든다](a-fix-falsifies-its-own-completion-record.md) — 「버전은 그대로」·「합계는 싣지 않았다」가 같은 커밋에 반증됨; 고친 파일이 아니라 «옮긴 값과 그 부정형»으로 훑을 것 (t35 2회차)
 - [덮인 쪽이 PASS 일 수 있다](superseded-value-may-be-the-pass.md) — 증거는 FAIL·표는 PASS 일 때 git log -p 로 뒤집힌 커밋을 못 박을 것; t35 는 M8 이 뒤집었고 같은 커밋이 표만 안 고쳤다 (2026-09-06)
+- [앞 회차의 Gap 은 잴 수 있을지 모른다](gap-recorded-by-a-predecessor-may-be-measurable.md) — t35 3회차: 2회차의 「커버리지 도구 없음」 위에 카드가 「구조적 상한 0.837」 논증을 얹었는데, 명령 한 줄과 t33 감사가 둘 다 반증 (2026-09-06)
+- [선례 인용은 판별력이 있어야 한다](precedent-citation-must-discriminate.md) — t22 의 0.85 는 경쟁 가설의 예측값과 같아 아무것도 못 가름; 가른 것은 인용되지 않은 t36 의 0.75 (2026-09-06)
