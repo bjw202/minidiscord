@@ -408,16 +408,18 @@ export function runExtract(o: ExtractOpts): number {
   }
 
   const items = [...built.map(b => b.item), ...buildHumanItems(false)]
-  writeFileSync(path.join(o.out, 'manifest.json'), JSON.stringify(buildManifest(items), null, 2) + '\n')
+  writeFileSync(path.join(o.out, 'manifest.json'), maskTokens(JSON.stringify(buildManifest(items), null, 2) + '\n'))
   if (notes.length) writeFileSync(path.join(o.out, 'extract-notes.txt'), maskTokens(notes.join('\n') + '\n'))
 
   const mtimeAfter = existsSync(o.globalConfig) ? statSync(o.globalConfig).mtimeMs : -1
   const entryAfter = readGlobalEntry(o.globalConfig)
   if (entryBefore !== entryAfter) {
     process.stderr.write('live-extract: 실행 중 전역 항목의 내용이 바뀌었다 — 귀속이 서지 않는다\n')
-    writeFileSync(path.join(o.out, 'extract-notes.txt'),
+    // [수리] 이 갈래는 전역 MCP 항목의 «내용» 을 그대로 싣는다(spec.md §7 토큰 소재 1번).
+    //   같은 파일을 쓰는 위 정상 갈래는 maskTokens 를 지나는데 이 갈래만 지나지 않았다.
+    writeFileSync(path.join(o.out, 'extract-notes.txt'), maskTokens(
       `unmeasured_path=e5_global_entry_changed\nentry_before=${entryBefore}\nentry_after=${entryAfter}\n`
-      + `# 참고 — 파일 수정 시각: before=${mtimeBefore} after=${mtimeAfter} (판별자가 아니다)\n`)
+      + `# 참고 — 파일 수정 시각: before=${mtimeBefore} after=${mtimeAfter} (판별자가 아니다)\n`))
     return EXIT_UNMEASURED
   }
 

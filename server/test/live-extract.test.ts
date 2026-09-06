@@ -182,6 +182,40 @@ describe('토큰 마스킹 — 산출물 어디에도 전문이 없다', () => {
     expect(out).toContain('fedcba98…(가림)')
   })
 
+  // [4회차 sync 감사 B3 수리를 재는 시험]
+  //
+  // 수리 전에는 runExtract 의 e5 갈래(전역 항목이 실행 중에 바뀐 경우)가 쓰는
+  // extract-notes.txt 가 maskTokens 를 지나지 않았고, 그 갈래는 전역 MCP 항목의
+  // «내용» 을 그대로 싣는다(spec.md §7 토큰 소재 1번). manifest.json 도 같았다.
+  //
+  // [HARD · 이 시험의 한계를 먼저 적는다] e5 갈래 «자체» 는 단위 시험으로 밟을 수 없다.
+  //   그 갈래는 entryBefore(실행 시작)와 entryAfter(실행 끝)가 달라야 들어가는데,
+  //   runExtract 는 그 사이에 시험이 끼어들 이음매를 주지 않는다. 이음매를 만들려면
+  //   구현에 인자를 더해야 하고, 그것은 리드 처분 47 이 허용한 「두 줄」 밖이다.
+  //   그래서 아래는 «그 갈래가 쓰는 문자열이 가림을 지나는가» 를 잰다 — 갈래의 도달성이
+  //   아니라 가림의 적용 범위다. 도달성은 미검증으로 남긴다(예행/실 세션의 몫).
+  //   하네스를 채우는 대신 못 재는 것을 못 잰다고 적는다.
+  //
+  // [HARD · 이 시험은 수리 자체를 «잡지 못한다» — 실행으로 확인했다]
+  //   B3 수리(manifest.json 과 e5 note 를 maskTokens 로 감싼 두 줄)를 «되돌리는» 변이를
+  //   넣고 돌렸더니 58건이 전부 초록이었다. 즉 아래 시험은 maskTokens 라는 «함수» 를 재지,
+  //   그 함수가 그 두 자리에서 «불리는지» 를 재지 않는다. 잡으려면 64자 hex 가 실제로
+  //   그 두 산출에 도달해야 하는데 — manifest 는 항 이름·상태·파일명만 담아 단위 시험이
+  //   토큰을 밀어 넣을 입력 경로가 없고, e5 는 위에 적은 대로 갈래 자체가 도달 불가다.
+  //   **그러므로 이 수리는 「옳지만 시험이 붙들지 못하는」 상태다.** 그 사실을 여기 적는다 —
+  //   초록을 보고 「수리가 검증됐다」고 읽으면 그것이 이 카드가 겨눈 조용한 초록이다.
+  it('e5 갈래가 싣는 문자열 모양이 가림을 지나면 토큰이 남지 않는다', () => {
+    const token = '0123456789abcdef'.repeat(4)
+    // 구현이 그 갈래에서 만드는 것과 같은 모양 — entry_before / entry_after 두 줄.
+    const body = `unmeasured_path=e5_global_entry_changed\n`
+      + `entry_before={"env": {"X": "before"}}\n`
+      + `entry_after={"env": {"MINIDISCORD_TOKEN": "${token}"}}\n`
+    const out = maskTokens(body)
+    expect(out).not.toContain(token)            // 전문이 남으면 빨개진다
+    expect(out).toContain('01234567…(가림)')     // 가려진 형태로는 남는다
+    expect(out).toContain('e5_global_entry_changed')  // 진단 정보는 살아남는다
+  })
+
   it('63자·65자 hex 는 토큰이 아니므로 건드리지 않는다 — 경계가 64 에 걸려 있다', () => {
     const short = '0123456789abcdef'.repeat(3) + '012345678901111'  // 63자
     const long = '0123456789abcdef'.repeat(4) + '0'                 // 65자
