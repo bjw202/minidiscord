@@ -1,5 +1,5 @@
 # AC-LIVEENV-011 — 산출물 어디에도 토큰 전문이 없다
-# head=0466300 · BASE=5edd97f (리터럴)
+# head=84546a7 · BASE=5edd97f (리터럴)
 
 ## ㉠ 이 카드의 산출 디렉터리 — 절대 0
 $ grep -rEl [0-9a-f]{64} .moai/specs/SPEC-LIVEENV-001/evidence/ ; echo "exit=$?"

@@ -85,10 +85,14 @@ E16="$EV/E16-sibling-e2e016.txt"
   echo '# 측정 ③ — 해당 없음 (이 카드는 README.md 에 수동 체크리스트를 싣지 않는다)'
   echo ""
   echo '# 루트 package.json — 기존 test·e2e 열쇠의 값이 그대로인가'
-  echo '$ git diff -- package.json | grep -cE ''^[-+][[:space:]]*"(test|e2e)":''   # → 0'
-  git diff -- package.json | grep -cE '^[-+][[:space:]]*"(test|e2e)":'
-  echo '$ git diff --stat -- package.json'
-  git diff --stat -- package.json
+  echo '# [HARD] 대조는 기준선(5edd97f) 대비다. 작업 트리 diff 로 재면 그 편집이 커밋된 뒤에는'
+  echo '#   「변경 없음」이 나와 값이 옳은 이유가 아니라 «이미 커밋됐다» 는 이유로 0 이 된다.'
+  echo '$ git diff 5edd97f..HEAD -- package.json | grep -cE ''^[-+][[:space:]]*"(test|e2e)":''   # → 0'
+  git diff "$BASE"..HEAD -- package.json | grep -cE '^[-+][[:space:]]*"(test|e2e)":'
+  echo '$ git diff 5edd97f..HEAD --stat -- package.json   # 더해진 줄이 하나임을 볼 자리'
+  git diff "$BASE"..HEAD --stat -- package.json
+  echo '$ git diff 5edd97f..HEAD -- package.json'
+  git diff "$BASE"..HEAD -- package.json | tail -8
   echo ""
   echo '$ git status --porcelain -- .moai/specs/SPEC-E2E-001/ | wc -l   # → 0'
   git status --porcelain -- .moai/specs/SPEC-E2E-001/ | wc -l | tr -d ' '

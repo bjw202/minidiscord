@@ -1,5 +1,5 @@
 # AC-LIVEENV-016 — 형제 기준 AC-E2E-016 이 여전히 초록이다
-# head=0466300
+# head=84546a7
 
 # 측정 ①(수행 주장 부재 — 무조건) → exit=1
 exit=1
@@ -20,11 +20,22 @@ exit=1
 # 측정 ③ — 해당 없음 (이 카드는 README.md 에 수동 체크리스트를 싣지 않는다)
 
 # 루트 package.json — 기존 test·e2e 열쇠의 값이 그대로인가
-$ git diff -- package.json | grep -cE ^[-+][[:space:]]*"(test|e2e)":   # → 0
+# [HARD] 대조는 기준선(5edd97f) 대비다. 작업 트리 diff 로 재면 그 편집이 커밋된 뒤에는
+#   「변경 없음」이 나와 값이 옳은 이유가 아니라 «이미 커밋됐다» 는 이유로 0 이 된다.
+$ git diff 5edd97f..HEAD -- package.json | grep -cE ^[-+][[:space:]]*"(test|e2e)":   # → 0
 0
-$ git diff --stat -- package.json
+$ git diff 5edd97f..HEAD --stat -- package.json   # 더해진 줄이 하나임을 볼 자리
  package.json | 1 +
  1 file changed, 1 insertion(+)
+$ git diff 5edd97f..HEAD -- package.json
+@@ -4,6 +4,7 @@
+   "workspaces": ["server", "channel"],
+   "scripts": {
+     "e2e": "npx tsx scripts/e2e.mts",
++    "live-dryrun": "npx tsx scripts/live-dryrun.mts",
+     "test": "npm test --workspaces --if-present"
+   }
+ }
 
 $ git status --porcelain -- .moai/specs/SPEC-E2E-001/ | wc -l   # → 0
 0

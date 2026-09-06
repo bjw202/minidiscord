@@ -1,5 +1,5 @@
 # AC-LIVEENV-012 — manifest 가 기계 판정과 사람 판정을 가른다
-# head=0466300
+# head=84546a7
 
 $ cat .moai/specs/SPEC-LIVEENV-001/evidence/dryrun/manifest.json
 {
