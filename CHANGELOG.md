@@ -6,7 +6,7 @@
 
 ### 라이브 검증 환경을 스크립트로 옮겼고, 사람 손이 다섯 자리라는 것을 찾았습니다 (카드 `t35`)
 
-**들어온 것은 새로 놓은 파일들과 기존 파일 세 자리의 최소 편집입니다.** 새로 놓은 것은 검증 환경 스크립트 `scripts/live-env.sh`(하위 명령 `paths`·`up`·`down`·`status`·`invite`·`bot`·`token-sweep`), 증거 추출기 `scripts/live-extract.mts`, 가짜 채널 예행 `scripts/live-dryrun.mts`, 그리고 추출기의 순수 함수와 그 인프로세스 회귀 15건(`server/test/live-extract-lib.ts`·`server/test/live-extract.test.ts`)에 합성 fixture 두 벌입니다. 기존 파일에 손댄 것은 세 자리뿐이에요 — `.gitignore` 한 줄(`bot-01/`), 루트 `package.json` 한 줄(`live-dryrun`), 그리고 예행이 사본을 만들지 않고 헬퍼를 가져다 쓰도록 `scripts/e2e.mts` 의 헬퍼 다섯을 `export` 로 연 것입니다. 시나리오 수와 `[n/15]` 진행 표지는 건드리지 않았습니다.
+**들어온 것은 새로 놓은 파일들과 기존 파일 세 자리의 최소 편집입니다.** 새로 놓은 것은 검증 환경 스크립트 `scripts/live-env.sh`(하위 명령 `paths`·`up`·`down`·`status`·`invite`·`bot`·`token-sweep`), 증거 추출기 `scripts/live-extract.mts`, 가짜 채널 예행 `scripts/live-dryrun.mts`, 그리고 추출기의 순수 함수와 그 인프로세스 회귀(`server/test/live-extract-lib.ts`·`server/test/live-extract.test.ts`)에 합성 fixture 두 벌입니다. 기존 파일에 손댄 것은 세 자리뿐이에요 — `.gitignore` 한 줄(`bot-01/`), 루트 `package.json` 한 줄(`live-dryrun`), 그리고 예행이 사본을 만들지 않고 헬퍼를 가져다 쓰도록 `scripts/e2e.mts` 의 헬퍼 다섯을 `export` 로 연 것입니다. 시나리오 수와 `[n/15]` 진행 표지는 건드리지 않았습니다.
 
 **왜 필요했는지.** 실 Claude 세션 하나로 열두 항을 손으로 재는 절차(`SPEC-LIVEVERIFY-001` §A)는 실제로 완주했지만, 완주하는 동안 같은 부류의 사고가 되풀이됐습니다 — 기본 체크아웃에서 서버를 켠 일이 두 번, 재초대로 토큰이 무효화된 일이 두 번, 낡은 토큰을 다시 쓴 일이 세 번. 뿌리는 하나입니다: **검증 환경이 사람의 기억 속에 있고 코드 안에 없었습니다.** 이 카드는 그 환경을 스크립트와 추출기로 옮깁니다.
 
@@ -26,7 +26,7 @@
 
 #### 잰 것
 
-품질 게이트는 `npm test` 가 server 243건과 channel 126건 합쳐 **369건 통과**, 두 워크스페이스 타입 검사 오류 0, `bash -n scripts/live-env.sh` 통과입니다. 기준이 실제로 판별력을 갖는지는 **변이 열 건**으로 확인했습니다 — 열 건 각각이 빨간 출력을 냈고 되돌린 뒤 초록으로 돌아왔습니다.
+품질 게이트는 `npm test` 통과, 두 워크스페이스 타입 검사 오류 0, `bash -n scripts/live-env.sh` 통과입니다. **시험 건수는 여기 적지 않습니다** — 동기화 검토에서 시험을 더해 값이 움직였고(아래 커버리지 절), 한 항목 안에 두 값이 남으면 그것 자체가 이 카드가 겨눈 결함입니다. 기준이 실제로 판별력을 갖는지는 **변이 열 건**으로 확인했습니다 — 열 건 각각이 빨간 출력을 냈고 되돌린 뒤 초록으로 돌아왔습니다.
 
 **수용 기준은 열여섯 가운데 열다섯이 통과했고 하나는 미관측입니다 — `16/16` 이 아닙니다.** 동기화 단계 감사가 판정표와 증거 파일이 어긋나는 자리 둘을 찾았고, 둘 다 이 회차에서 처분됐습니다.
 

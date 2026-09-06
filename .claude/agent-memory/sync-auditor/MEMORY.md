@@ -19,3 +19,6 @@
 - [덮인 쪽이 PASS 일 수 있다](superseded-value-may-be-the-pass.md) — 증거는 FAIL·표는 PASS 일 때 git log -p 로 뒤집힌 커밋을 못 박을 것; t35 는 M8 이 뒤집었고 같은 커밋이 표만 안 고쳤다 (2026-09-06)
 - [앞 회차의 Gap 은 잴 수 있을지 모른다](gap-recorded-by-a-predecessor-may-be-measurable.md) — t35 3회차: 2회차의 「커버리지 도구 없음」 위에 카드가 「구조적 상한 0.837」 논증을 얹었는데, 명령 한 줄과 t33 감사가 둘 다 반증 (2026-09-06)
 - [선례 인용은 판별력이 있어야 한다](precedent-citation-must-discriminate.md) — t22 의 0.85 는 경쟁 가설의 예측값과 같아 아무것도 못 가름; 가른 것은 인용되지 않은 t36 의 0.75 (2026-09-06)
+- [반복 문자 픽스처가 단언을 공허하게 만든다](repeated-char-fixture-hollows-the-assertion.md) — 'a'.repeat(64) 위에서 「앞 8글자만」 시험이 16글자 남기는 변이에 살아남음; 변이 집합의 축 목록이 곧 그 주장의 범위 (t35 4회차, 2026-09-06)
+- [차원 통과선이 기준 단위로 쓰여 있을 수 있다](dimension-threshold-may-be-written-per-criterion.md) — 「방화벽은 차원에 걸린다」는 기제로 맞지만 default.md:9·:16 이 「모든 기준 통과」라 결론을 못 옮김; 프로파일 자신이 :27 과 모순 (t35 4회차)
+- [결함은 기준에 대고 역방향으로 훑는다](a-finding-must-be-swept-against-the-criteria.md) — t35 가 「추출기는 항상 2」를 적고도 그 값을 [HARD] 판별자로 쓰는 AC-013 이 상수가 됐다는 데 안 닿음 (2026-09-06)

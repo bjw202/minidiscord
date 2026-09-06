@@ -37,7 +37,19 @@ export interface ManifestItem {
 // ── 토큰 마스킹 (REQ-011) ────────────────────────────────────────────
 const FULL_TOKEN_RE = /\b[0-9a-f]{64}\b/g
 
-/** 64자 hex 를 앞 8글자만 남긴 형태로 바꾼다. 산출 경로 전부가 이 함수를 지난다. */
+/** 64자 hex 를 앞 8글자만 남긴 형태로 바꾼다.
+ *
+ *  [주의] **산출 경로 전부가 이 함수를 지나지는 않는다.** 이 주석은 원래 「전부가 지난다」고
+ *  적혀 있었고 그것이 거짓이었다(4회차 sync 감사 B3). 지나지 않는 자리 둘:
+ *    - `runExtract` 의 `manifest.json` 쓰기 — `writeFileSync` 를 직접 부른다
+ *    - `runExtract` 의 e5 갈래 `extract-notes.txt` 쓰기 — 같은 파일을 쓰는 정상 갈래는
+ *      이 함수를 지나는데 e5 갈래만 지나지 않고, **전역 MCP 항목의 내용을 그대로 싣는다**
+ *      (`entry_before=` / `entry_after=`). 그 항목은 `spec.md` §7 의 토큰 소재 1번이다.
+ *  오늘 그 항목에 토큰이 없다는 것은 실측했으므로(`evidence/E08-ambient-sweep.txt`) 새는 것은
+ *  없다. 다만 `REQ-LIVEENV-011`·`AC-LIVEENV-011` 이 기대는 가림에 경로 하나가 비어 있다.
+ *  수리는 `writeFileSync(...)` 두 자리를 `maskTokens(...)` 로 감싸는 일이며, 카드 t35 는
+ *  이 회차에 그것을 하지 않았다 — 처분 기록은 `spec.md` §5 의 열어 둔 관측이 진다.
+ */
 export function maskTokens(s: string): string {
   return s.replace(FULL_TOKEN_RE, m => `${m.slice(0, 8)}…(가림)`)
 }

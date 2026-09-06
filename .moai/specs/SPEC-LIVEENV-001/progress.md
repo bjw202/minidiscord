@@ -43,7 +43,7 @@
 | `scripts/live-env.sh` | M0~M3 — `paths`·`up`·`down`·`status`(3값)·`invite`·`bot`·`token-sweep` |
 | `scripts/live-extract.mts` | M4 추출기 CLI (`extract`·`capture`) |
 | `server/test/live-extract-lib.ts` | M4 순수 함수. **배치 근거**: `server/` 타입 검사가 rootDir 밖 `.mts` 를 거절한다(실측 TS6059·TS5097). 형제 `gateway-v2.ts` 와 같은 자리 |
-| `server/test/live-extract.test.ts` | M4 인프로세스 회귀 15건 |
+| `server/test/live-extract.test.ts` | M4 인프로세스 회귀. **개수는 여기 적지 않는다** — sync 단계가 시험을 더해 값이 바뀌었고(리드 처분 42), 현재 값은 `npm run test -w server` 출력이 진다 |
 | `server/test/fixtures/live-extract/{positive,negative}.jsonl` | 합성 fixture + **음성 fixture 짝**(같은 값을 `tool_result`·알림에 심었다) |
 | `.gitignore` `bot-01/` 한 줄 | M3. 이 카드가 편집하는 저장소 설정 파일 둘 가운데 첫째 |
 | `.moai/specs/SPEC-LIVEENV-001/drivers/*.sh` | 증거 드라이버 여섯 |
@@ -64,15 +64,15 @@
 | `AC-007` | `E07-inventory.txt` | **PASS** | `site=` 12줄 = §7 표 12행 · `comm -3` 출력 0줄(이름 집합 일치) |
 | `AC-008` | `E08-ambient-sweep.txt` | **미관측 (운영자 수용)** | 상시 여섯 0건(두 회차) · **항목 내용 불변** `entry-unchanged exit=0`(sync 회차 실측, 반대 방향 `exit=1`) — 그러나 **[HARD] 양성 대조군이 반대쪽이다**: 기록된 줄이 `principal=pm:api=false:conn=0`(붙어 **있지 않은** 시각)이라 「0건이 아무도 안 쓰기 때문이 아니다」가 서지 않는다. 다시 세우려면 사람 손 다섯을 밟아야 해 무인으로 불가 → **통과로 옮기지 않는다.** **운영자 처분 37 로 이 미관측 하나를 안고 닫는다** — 아래 절이 근거를 진다 |
 | `AC-009` | `E09-mcp-attribution.txt` | **PASS** | ㉠ 전역 항목의 `args[0]` 에 `test -e` 가 `exit=1` · ㉡ 같은 시각 세션(`3dabf75d…`)의 대화 기록에 `mcp__minidiscord-channel__reply` 호출과 `tool_result` 가 **짝으로** 있음 · `sessionId`·`cwd` 단일값 · 승인 뒤 `api=true:conn=1` |
-| `AC-010` | 회귀 15/15 · `E10-extract-run.txt` | **PASS** | 대응 관계(회귀) + DB·프로세스 면 도달성(예행) + **대화 기록 면 도달성(M8)** 세 공급원이 모두 섰다. 실 세션 산출에서 `reply_arg=q7Rm2XbK` · `db_row=q7Rm2XbK` · `agree=yes`, manifest 의 `A01 ㉣` 이 `machine`/`ok`. `session_uuid=3dabf75d-cd20-4371-85cc-503ee2531af9` |
+| `AC-010` | 회귀(전건 통과) · `E10-extract-run.txt` | **PASS** | 대응 관계(회귀) + DB·프로세스 면 도달성(예행) + **대화 기록 면 도달성(M8)** 세 공급원이 모두 섰다. 실 세션 산출에서 `reply_arg=q7Rm2XbK` · `db_row=q7Rm2XbK` · `agree=yes`, manifest 의 `A01 ㉣` 이 `machine`/`ok`. `session_uuid=3dabf75d-cd20-4371-85cc-503ee2531af9` |
 | `AC-011` | `E11-no-full-token.txt` | **PASS** | ㉠ 산출 디렉터리 절대 0(`exit=1`) · ㉡ 추적 파일 **증분 0**(기준선 36 = 현재 36, `comm -13` 0줄) · 양성 대조군 두 벌 모두 적중 |
 | `AC-012` | `E12-manifest-judge.txt` | **PASS** | 항 이름 집합이 정확히 그 일곱(`names_match=yes`) · `A03`·`A10` `has_verdict=False` |
-| `AC-013` | `E13-playwright-absence.txt` | **PASS** | 다섯 실행 · ①③④⑤ `exit=2` · ②(Playwright 있음) `exit=0` · **`exit=1` 0건** · 의존 추가 0 |
-| `AC-014` | `E14-dry-run.txt` (sync 재실행 · head `0a88b77`) | **PASS** | 예행 `VERDICT=PASS`·`exit=0` — 기대 파일 집합 완비 · 대화 기록 유래 산출 부재 · `A01 ㉣` `UNMEASURED`(정상값) · **좁은 판별자 증분 0**(before=1 after=1 — 그 1 은 M8 봇 세션, 이 예행이 만든 것이 아니다) · 자손 판별자 `0` · 세션 증분 0 · 대조군 두 벌(좁은 판별자 1→2 에서 `exit=1`, 되돌아오면 `exit=0`) |
+| `AC-013` | `E13-playwright-absence.txt` | **PASS (단서 있음)** | 다섯 실행 · ①③④⑤ `exit=2` · ②(Playwright 있음) `exit=0` · **`exit=1` 0건** · 의존 추가 0. **[단서 — 4회차 감사 B2]** ①③④⑤ 의 `exit=2` 는 **판별력이 약하다**: §E.4 발견 ① 이 보이듯 `runExtract` 는 모든 입력에 2 를 내므로, 엣지 케이스 탐지를 **통째로 지워도 그 넷은 여전히 `exit=2`** 를 찍는다. `acceptance.md:285` 가 이 조항을 둔 목적(결함이 그 세 자리에서 되살아나는 것을 막는다)은 **note 줄 판별자**가 지고 있고 그것은 성립한다. 재측정도 강등도 하지 않되, 종료 코드만으로 이 기준이 섰다고 읽지 말 것 |
+| `AC-014` | `E14-dry-run.txt` (sync 재실행) | **PASS** | 예행 `VERDICT=PASS`·`exit=0` — 기대 파일 집합 완비 · 대화 기록 유래 산출 부재 · `A01 ㉣` `UNMEASURED`(정상값) · **좁은 판별자 증분 0**(before=1 after=1 — 그 1 은 M8 봇 세션, 이 예행이 만든 것이 아니다) · 자손 판별자 `0` · 세션 증분 0 · 대조군 두 벌(좁은 판별자 1→2 에서 `exit=1`, 되돌아오면 `exit=0`) |
 | `AC-015` | `E15-fence.txt` | **PASS** | 기준선 가드 해소 · `git diff` 0줄 · `git status` 0줄 |
 | `AC-016` | `E16-sibling-e2e016.txt` | **PASS** | ① `exit=1` · ①-b `7`(상한 이하) · ①-c 전부 `0` · ② `exit=1` · ③ 「해당 없음」 · 루트 `package.json` 의 기존 `test`·`e2e` 값 불변(diff 0), 더해진 줄 1 |
 | 변이 | `M01-mutation.txt` | **10/10** | 열 건 각각 빨간 출력 + 복원 후 초록. **⑤ 도 M8 에서 실행됐다** — `.mcp.json` 부재에서 `api=false:conn=0`·답 없음, 복원 뒤 **같은 메시지**가 답을 받음 · 잔존 확인은 해시 대조로 전부 동일 |
-| 품질 게이트 | `npm test` · `tsc` | **PASS** | server 243 + channel 126 = **369건 통과**, 실패 0 · `tsc --noEmit -p server` 오류 0 · `npm run typecheck -w channel` 오류 0 · `bash -n scripts/live-env.sh` OK |
+| 품질 게이트 | `npm test` · `tsc` | **PASS** | **run 단계 인도 시점(`120469d`)의 값: server 243 + channel 126 = 369건 통과**, 실패 0. sync 단계가 시험을 더해 값이 커졌다 — 현재 값은 §E.4 「감사 회차 기록」 아래 게이트 줄이 진다 · `tsc --noEmit -p server` 오류 0 · `npm run typecheck -w channel` 오류 0 · `bash -n scripts/live-env.sh` OK |
 
 **셈** (sync 단계 감사와 리드 처분 33·34 반영): `acceptance.md` 의 「미관측의 처분」이 요구하는
 형태로 — **통과 15 / 실패 0 / 미관측 1**(합 16). `K = 1` 이므로 **`16/16` 을 쓸 수 없다.**
@@ -154,7 +154,7 @@
 - `run_status: audit-ready` — **M0~M8 전부 실행됐다**(리드 처분 26 으로 M8 진행).
 - **통과 15 / 실패 0 / 미관측 1** — 합 16. `K = 1` 이므로 **`16/16` 을 쓰지 않는다.** 미관측 한 건은 `AC-008`(양성 대조군이 반대쪽 — §E.2 의 그 행과 `E08-ambient-sweep.txt` 의 「미검증 ②」 절이 사유를 진다). **이 줄은 sync 단계 감사 뒤 리드 처분 33·34 로 개정됐다** — M8 인도 시점에는 「통과 16 / 실패 0 / 미관측 0」이었고, 그 이력은 §E.2 의 셈 표가 진다.
 - 변이 **10/10** — 열 건 각각 빨간 출력과 복원 후 초록을 담는다. 변이 ⑤ 의 「복원 확인(바이트 대조)」 절은 앞 회차에 제목만 있고 비어 있었고, sync 단계가 변이 직전 사본과의 해시 대조로 채웠다(리드 처분 35).
-- 품질 게이트: `npm test` 369건 통과 · `tsc --noEmit -p server` 오류 0 · `npm run typecheck -w channel` 오류 0 · `bash -n scripts/live-env.sh` OK
+- 품질 게이트: **run 단계 인도 시점** `npm test` 369건 통과 · `tsc --noEmit -p server` 오류 0 · `npm run typecheck -w channel` 오류 0 · `bash -n scripts/live-env.sh` OK
 - 울타리: `SPEC-LIVEVERIFY-001` 변경 0줄 · `SPEC-E2E-001` 변경 0줄 · 형제 `AC-E2E-016` 무조건 측정 넷 그대로
 - 저장소 밖 편집 **0건** · 요구사항 16 · 수용 기준 16 **불변** · 배경 부하 **없음**
 
@@ -213,7 +213,7 @@
 
 **어긋나는 자리는 §E.2 의 `AC-014` 행 두 문장이다.** 그 행은 「예행 `VERDICT=PASS`」라고 적었으나 인용된 파일은 `FAIL` 을 적고 있고, 「좁은/자손 판별자 0」이라고 적었으나 **좁은 판별자(`narrow`)는 1이고 0인 것은 자손 판별자뿐**이다. §E.3 의 「통과 16 / 실패 0 / 미관측 0」은 그 행에서 값을 물려받는다.
 
-**동기화 단계의 처지.** 이 발견이 처분되기 전까지 이 절도, `CHANGELOG.md` 도 **수용 기준 합계를 적지 않는다** — 다투어지는 값을 확정된 값으로 실어 나르는 것이 이 카드가 겨눈 결함 부류 그 자체이기 때문이다. `CHANGELOG.md` 에는 그래서 합계 대신 변이 10/10 과 게이트 369건만 실었고, 기준 하나의 판정이 검토 중이라는 사실을 명시했다. **판정 자체는 리드가 내린다.**
+**동기화 단계의 처지.** 이 발견이 처분되기 전까지 이 절도, `CHANGELOG.md` 도 **수용 기준 합계를 적지 않는다** — 다투어지는 값을 확정된 값으로 실어 나르는 것이 이 카드가 겨눈 결함 부류 그 자체이기 때문이다. `CHANGELOG.md` 에는 그래서 합계 대신 변이 10/10 과 게이트 통과 사실만 실었고, 기준 하나의 판정이 검토 중이라는 사실을 명시했다. **판정 자체는 리드가 내린다.**
 
 **왜 빨간가 — F-14 가 이름댄 결함 부류가 넷째 자리에 남았다.** 처분 14 는 「기계 전체의 절대 0」을 요구하던 네 자리의 판정선을 **증분·자손**으로 옮겼다(`AC-006 ㉢`·`AC-008`·`AC-011 ㉡`·`AC-014 ㉢`). 그런데 예행의 좁은 판별자 `narrow` 는 그 이동을 받지 못하고 **절대 0 요구로 남았다** — 위 4번이 보이듯 `-P` 가 없어 기계 전체를 센다. 하필 그것이 겨누는 플래그가 **F-15 가 이름댄 다섯째 사람 손의 그 플래그**(`--dangerously-load-development-channels`)라, 이 카드가 M8 을 돌리는 한 그 값은 0 이 될 수 없다. 바로 아래 대조군이 그 구조를 그대로 드러낸다.
 
@@ -314,7 +314,7 @@
 
 | 무엇 | 실행한 명령 | 관측 |
 |---|---|---|
-| 품질 게이트 | `npm test` | `exit=0` · server 243 + channel 126 = **369건 통과** |
+| 품질 게이트 | `npm test` | `exit=0`. **건수를 값으로 적지 않는다** — sync 회차가 시험을 더해 값이 움직였고, 이 표에 적는 순간 다음 회차에 낡는다. 현재 값은 그 명령을 다시 돌려 읽을 것 |
 | 울타리 — `SPEC-LIVEVERIFY-001` | `git diff 5edd97f..HEAD -- .moai/specs/SPEC-LIVEVERIFY-001` | **0줄** |
 | 울타리 — `SPEC-E2E-001` | `git diff 5edd97f..HEAD -- .moai/specs/SPEC-E2E-001` | **0줄** |
 | 위 둘의 대조군 | 같은 명령을 `.moai/specs/SPEC-LIVEENV-001` 에 | 수천 줄 — 명령이 변경을 실제로 잡아낸다. **줄 수를 값으로 적지 않는다**: 그 명령의 범위에 이 파일이 들어 있어 여기에 적는 수가 스스로 자기 분모를 움직인다. 필요하면 같은 명령을 다시 돌린다 |
@@ -366,6 +366,6 @@
 
 | 파일 | 무엇 |
 |---|---|
-| `CHANGELOG.md` | `[Unreleased]` 최상단에 카드 `t35` 항목 — 착지한 것 · 3값 계약 · 토큰 소재 열거 · 잰 것(변이 10/10 · 게이트 369건) · 닫지 못한 것(`ps eww`)과 늘어난 사람 손. **수용 기준 셈은 「통과 15 / 실패 0 / 미관측 1」로 싣는다** — `AC-014` 는 고쳐서 다시 통과했고 `AC-008` 은 미관측으로 내렸다는 경위를 함께 적었다. **[정정 기록] `951f7fd` 시점의 이 칸은 「합계는 싣지 않았다」라고 적었는데, 같은 커밋이 이미 합계를 실은 뒤였다** — 다툼이 처분돼 CHANGELOG 를 고쳤으면서 이 칸을 되짚지 않았다. 2회차 감사가 잡았고, 위 프런트매터 칸과 **같은 부류**다 |
+| `CHANGELOG.md` | `[Unreleased]` 최상단에 카드 `t35` 항목 — 착지한 것 · 3값 계약 · 토큰 소재 열거 · 잰 것(변이 10/10 · 게이트 통과 · 커버리지) · 닫지 못한 것(`ps eww`)과 늘어난 사람 손. **수용 기준 셈은 「통과 15 / 실패 0 / 미관측 1」로 싣는다** — `AC-014` 는 고쳐서 다시 통과했고 `AC-008` 은 미관측으로 내렸다는 경위를 함께 적었다. **[정정 기록] `951f7fd` 시점의 이 칸은 「합계는 싣지 않았다」라고 적었는데, 같은 커밋이 이미 합계를 실은 뒤였다** — 다툼이 처분돼 CHANGELOG 를 고쳤으면서 이 칸을 되짚지 않았다. 2회차 감사가 잡았고, 위 프런트매터 칸과 **같은 부류**다 |
 | `README.md` | `## 명령어` 아래 `### 라이브 검증 환경 (scripts/live-env.sh)` — 용도 · 하위 명령 · 3값 종료 코드 · 토큰 자리와 `bot-01/`. 리드 처분 35 로 하위 절 `#### bot 은 사람 손 둘을 부릅니다 — 하나는 매번입니다` 를 더해 **사람 손 ④·⑤ 를 표로 실었다**(⑤ 는 매 기동마다 뜬다) |
 | 이 절 (`progress.md` §E.4) | 병합·재측정·재유도·미해결 |

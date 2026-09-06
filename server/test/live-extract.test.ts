@@ -158,6 +158,39 @@ describe('토큰 마스킹 — 산출물 어디에도 전문이 없다', () => {
     expect(out).not.toContain(token)
     expect(out).toContain('aaaaaaaa')
   })
+
+  // [4회차 sync 감사 B1 부수] 위 시험만으로는 «앞 8글자» 의 8 이 지켜지는지 서지 않는다.
+  // fixture 가 'a' 64개라 toContain('aaaaaaaa') 는 남는 길이가 8이든 16이든 늘 참이다
+  // — 감사가 slice(0,8) → slice(0,16) 변이를 넣었을 때 54건이 전부 초록으로 살아남았다.
+  // 폭을 실제로 못박으려면 «자리마다 다른» 토큰이어야 한다.
+  it('남기는 길이가 정확히 8 이다 — 아홉째 글자부터는 지워진다', () => {
+    // 0123456789abcdef 를 네 번 이어 64자를 만든다. 각 자리가 서로 다르므로 폭이 드러난다.
+    const token = '0123456789abcdef'.repeat(4)
+    const out = maskTokens(`token=${token}`)
+    expect(out).not.toContain(token)
+    expect(out).toContain('01234567…(가림)')   // 앞 8글자 + 표지
+    expect(out).not.toContain('012345678')      // 아홉째 글자가 남으면 빨개진다
+  })
+
+  it('한 줄에 토큰이 둘이면 둘 다 가린다', () => {
+    const a = '0123456789abcdef'.repeat(4)
+    const b = 'fedcba9876543210'.repeat(4)
+    const out = maskTokens(`before=${a} after=${b}`)
+    expect(out).not.toContain(a)
+    expect(out).not.toContain(b)
+    expect(out).toContain('01234567…(가림)')
+    expect(out).toContain('fedcba98…(가림)')
+  })
+
+  it('63자·65자 hex 는 토큰이 아니므로 건드리지 않는다 — 경계가 64 에 걸려 있다', () => {
+    const short = '0123456789abcdef'.repeat(3) + '012345678901111'  // 63자
+    const long = '0123456789abcdef'.repeat(4) + '0'                 // 65자
+    expect(short).toHaveLength(63)
+    expect(long).toHaveLength(65)
+    expect(maskTokens(`x=${short}`)).toContain(short)
+    // 65자는 \b 경계 때문에 통째로는 안 잡힌다 — 원문이 그대로 남는지로 확인한다
+    expect(maskTokens(`y=${long}`)).toContain(long)
+  })
 })
 
 // ────────────────────────────────────────────────────────────────────────
