@@ -1,16 +1,16 @@
 {
   "spec": "SPEC-LIVEENV-001",
-  "generated_at": "2026-09-06T11:15:15.495Z",
+  "generated_at": "2026-09-06T11:03:31.155Z",
   "items": [
     {
       "name": "A01 ㉣",
       "judge": "machine",
-      "status": "UNMEASURED",
+      "status": "ok",
       "files": [
         "A01-reply-arg.txt",
         "A01-db-row.txt"
       ],
-      "note": "두 면 가운데 하나가 비었다 — machine 판정을 붙이지 않는다"
+      "verdict": "agree"
     },
     {
       "name": "A08",
@@ -23,11 +23,10 @@
     {
       "name": "A09",
       "judge": "machine",
-      "status": "ok",
+      "status": "UNMEASURED",
       "files": [
         "A09-since-id.txt"
-      ],
-      "verdict": "두 줄 포함 여부를 기록했다"
+      ]
     },
     {
       "name": "A11",
@@ -41,11 +40,10 @@
     {
       "name": "A12",
       "judge": "machine",
-      "status": "ok",
+      "status": "UNMEASURED",
       "files": [
         "A12-archived.txt"
-      ],
-      "verdict": "방 상태와 접속 수를 함께 기록했다"
+      ]
     },
     {
       "name": "A03",

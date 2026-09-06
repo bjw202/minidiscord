@@ -1,5 +1,5 @@
 # AC-LIVEENV-016 — 형제 기준 AC-E2E-016 이 여전히 초록이다
-# head=84546a7
+# head=4f5bd69
 
 # 측정 ①(수행 주장 부재 — 무조건) → exit=1
 exit=1

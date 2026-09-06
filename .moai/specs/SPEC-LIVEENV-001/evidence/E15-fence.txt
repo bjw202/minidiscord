@@ -1,5 +1,5 @@
 # AC-LIVEENV-015 — SPEC-LIVEVERIFY-001 이 한 글자도 바뀌지 않았다
-# head=84546a7 · BASE=5edd97f (리터럴)
+# head=4f5bd69 · BASE=5edd97f (리터럴)
 $ git rev-parse --short 5edd97f   # 기준선 생존 가드
 5edd97f
 # 가드 exit=0
