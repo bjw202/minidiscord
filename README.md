@@ -258,6 +258,8 @@ ID 형식(소문자 5글자, `l` 제외)에 맞지 않는 승인 요청은 대�
 
 **이 검사들은 GitHub Actions에서도 자동으로 돕니다.** `push`와 `pull_request`마다 `npm ci` → 두 워크스페이스의 `typecheck` → `npm test` 순서로 실행됩니다(`.github/workflows/ci.yml`). 그래서 손으로 돌리는 것을 잊어도 붉은 CI가 알려 줍니다.
 
+**`npm test`는 server의 타입 검사도 함께 돌립니다.** `server`의 `pretest` 훅이 `npm run typecheck`를 부르므로, `npm test` 한 명령과 커밋 전 품질 게이트(`moai gate`) 양쪽에서 server의 타입 오류가 잡힙니다. 그 전에는 게이트가 도는 단계에 server 타입 검사가 들어 있지 않아, 타입 오류가 있는 트리에서도 게이트가 조용히 통과했습니다. `channel`과 훅의 모양이 다른 것은 의도한 것입니다 — `channel`은 `dist/`를 실제로 만들어야 하지만 `server`는 빌드 산출물이 없어야 하고, 이름 붙은 `typecheck` 스크립트를 거치면 CI가 돌리는 명령과 같은 자리를 참조하게 됩니다.
+
 **`npm test`는 이제 채널을 스스로 먼저 빌드합니다.** `channel`의 `pretest` 훅이 `tsc`를 돌리므로, 갓 받아온 체크아웃이나 새로 만든 워크트리에서도 `npm run build -w channel`을 앞서 돌릴 필요 없이 `npm test` 한 명령이면 됩니다. (`claude mcp add`로 채널을 등록하기 전에는 여전히 빌드가 필요합니다 — 위 "봇 초대 토큰"의 안내가 그대로 유효합니다.)
 
 ## 폴더 구조
