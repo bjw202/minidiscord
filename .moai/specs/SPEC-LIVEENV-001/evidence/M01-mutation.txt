@@ -1,0 +1,119 @@
+# M01-mutation.txt — 변이 열 건
+# head=0466300
+# 판별자가 상수 함수인지는 변이로만 알 수 있다. 초록만 보고하면 그 기준이 무엇을 재는지 모른다.
+
+## 변이 ① — AC-LIVEENV-001 (트리 고정)
+# 조작: git rev-parse --show-toplevel 유도를 pwd 로 바꾼다
+$ git diff --stat -- scripts/live-env.sh
+ scripts/live-env.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ ( cd /tmp && <절대 경로>/scripts/live-env.sh paths )   # 빨간 출력
+root=/private/tmp
+server_dir=/private/tmp/server
+data_dir=/private/tmp/data/live-env
+bot_dir=/private/tmp/bot-01
+# 판정: 이 트리 아래인 줄 수 = 0 (분모와 같아야 통과인데 0 이다 → AC-LIVEENV-001 빨강)
+# 복원 후 초록:
+# 이 트리 아래인 줄 수 = 10 / 분모 10
+
+## 변이 ② — AC-LIVEENV-004 (세 값 계약)
+# 조작: 「미측정이 하나라도 있으면 2」 분기를 지우고 관례대로 0 을 내게 한다
+$ git diff -- scripts/live-env.sh | grep ^[-+].*EXIT_
+-  if [ $unmeasured -eq 1 ]; then return $EXIT_UNMEASURED; fi
++  if [ $unmeasured -eq 1 ]; then return $EXIT_OK; fi
+$ scripts/live-env.sh status   # DB 파일 부재를 성립시킨 상태 — 2 여야 하는데
+db_rows=- measured=no
+unmeasured_path=db_file_absent
+principal=pm:api=false:conn=0 measured=yes
+exit=0
+# 판정: 미측정인데 0 이 나오면 AC-LIVEENV-004 의 열다섯 실걸이가 전부 빨개진다
+# 복원 후 초록:
+$ scripts/live-env.sh status
+principal=pm:api=false:conn=0 measured=yes
+exit=2
+
+## 변이 ③ — AC-LIVEENV-005 (토큰 파일이 커밋되지 않는다)
+# 조작: 토큰 파일 경로를 추적되는 디렉터리(.moai/state/)로 옮긴다
+$ git check-ignore -v .moai/state/live-env-token ; echo "exit=$?"   # 빨간 출력
+exit=1
+# 판정: exit=1 이면 무시되지 않는다 → AC-LIVEENV-005 ㉢ 빨강
+# 복원 후 초록:
+$ git check-ignore -v data/live-env/token ; echo "exit=$?"
+.gitignore:2:data/	data/live-env/token
+exit=0
+
+## 변이 ④ — AC-LIVEENV-007 (토큰 소재 목록이 전건이다)
+# 조작: spec.md §7 표에서 shell_rc 행을 지운다
+$ git diff --stat -- .moai/specs/SPEC-LIVEENV-001/spec.md
+ .moai/specs/SPEC-LIVEENV-001/spec.md | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+$ comm -3 sites-sweep sites-table   # 빨간 출력 — 비어야 통과인데
+shell_rc
+# 출력 줄 수 = 1 → AC-LIVEENV-007 ② 빨강
+# 복원 후 초록:
+# comm -3 출력 줄 수 = 0
+
+## 변이 ⑤ — AC-LIVEENV-009 (봇 디렉터리 .mcp.json 귀속) : 미관측
+# 이 변이의 판정 대상은 «실 세션의 채널 왕복» 이고, 그 왕복의 유일한 공급원은 M8 이다.
+# 이번 회차는 M8 을 돌리지 않았으므로(리드 처분 16) 변이 전후를 가를 관측이 없다.
+# [HARD] 다른 경로로 우회해 세우지 않는다 — 우회하면 이 변이가 무엇을 재는지 알 수 없다.
+status=UNMEASURED
+
+## 변이 ⑥ — AC-LIVEENV-012 (사람 판정에 판정 필드가 없다)
+# 조작: buildHumanItems 가 A03·A10 에 verdict 를 붙이게 한다
+$ git diff -- server/test/live-extract-lib.ts | grep ^[-+].*verdict
++    verdict: 'pass',
+$ npx vitest run test/live-extract.test.ts   # 빨간 출력
+     × A03·A10 은 judge=human 이고 판정 필드가 아예 없다 2ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 14 passed (15)
+# 복원 후 초록:
+      Tests  15 passed (15)
+
+## 변이 ⑦ — AC-LIVEENV-006 ㉢ (이력 증분 0)
+# 조작: 이력 «사본» 에 가짜 64자 hex 한 줄을 덧붙였다 (원본은 건드리지 않는다)
+# before=19  after=20
+$ test "19" -eq "20"; echo "hist-delta-zero exit=$?"   # 빨간 출력
+hist-delta-zero exit=1
+# 판정: 증분이 생기면 exit=1 → 이 판정은 상수 함수가 아니다
+# 복원 후 초록 (실제 실행의 before/after):
+# before=19 after=19
+hist-delta-zero exit=0
+
+## 변이 ⑧ — AC-LIVEENV-008 (전역 항목 무편집)
+# 조작: 전역 항목 «사본» 의 args[0] 에 한 글자를 더했다 (원본은 건드리지 않는다)
+$ diff <(ENTRY 원본) <(ENTRY 사본); echo "entry-unchanged exit=$?"   # 빨간 출력
+1c1
+< {"args": ["/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/channel/dist/index.js"], "command": "node", "env": {"MINIDISCORD_SERVER": "ws://127.0.0.1:3000/bot"}, "type": "stdio"}
+---
+entry-unchanged exit=1
+# 복원 후 초록 (원본 대 원본):
+entry-unchanged exit=0
+
+## 변이 ⑨ — AC-LIVEENV-011 ㉡ (추적 파일 증분 0)
+# 이 변이는 그 기준의 양성 대조군 ㉡ 과 같은 조작이라 E11 안에서 함께 실행했다.
+# 관측: 스테이징한 임시 파일 한 개 → comm -13 이 그 이름을 내고 증분이 1 이 된다.
+# 전문은 evidence/E11-no-full-token.txt 의 「양성 대조군 ㉡」 절에 있다.
+$ git add <임시 파일>; git grep -lE ... | grep <임시 파일>   # → 적중 1건
+probe-token-control.txt
+$ comm -13 hex-before hex-staged   # 증분 판정도 함께 빨개진다
+probe-token-control.txt
+
+## 변이 ⑩ — AC-LIVEENV-014 ㉢ (예행 중 세션 증분 0)
+# 조작: 예행 «밖에서» 이름이 claude 인 프로세스를 하나 띄웠다(pid 38143)
+# before=14  during=15
+$ test "14" -eq "15"; echo "claude-delta-zero exit=$?"   # 빨간 출력
+claude-delta-zero exit=1
+# 판정: 증분이 생기면 exit=1 → 이 판정은 상수 함수가 아니다
+# 복원 후 초록: before=14 after=14
+claude-delta-zero exit=0
+$ ps -p 38143 >/dev/null; echo "대조군 종료 확인 exit=$?"
+대조군 종료 확인 exit=1
+
+## 변이 잔존 확인 — 대상 파일이 변이 직전과 바이트 단위로 같다
+# [HARD] git status 로는 이 확인이 서지 않는다 — 이번 회차의 «정당한 변경»(spec.md HISTORY,
+#   e2e.mts 의 export, 추출기 수정)과 변이 잔여를 구분하지 못하기 때문이다. 1회차가 그 형태였고
+#   세 파일의 M 표시를 놓고 「복원됐는가」를 사람이 판단해야 했다. 그래서 변이 직전 해시와 대조한다.
+unchanged=yes  scripts/live-env.sh
+unchanged=yes  server/test/live-extract-lib.ts
+unchanged=yes  .moai/specs/SPEC-LIVEENV-001/spec.md

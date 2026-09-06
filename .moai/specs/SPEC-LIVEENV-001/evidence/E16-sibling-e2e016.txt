@@ -1,0 +1,30 @@
+# AC-LIVEENV-016 — 형제 기준 AC-E2E-016 이 여전히 초록이다
+# head=0466300
+
+# 측정 ①(수행 주장 부재 — 무조건) → exit=1
+exit=1
+
+# 측정 ①-b(면제된 주장의 수) → 7 이하
+7
+
+# 측정 ①-c(면제 표지 우회 통로 차단) → 합이 0
+README.md:0
+scripts/live-env.sh:0
+scripts/e2e.mts:0
+scripts/live-dryrun.mts:0
+scripts/live-extract.mts:0
+
+# 측정 ②(유료 API 무호출 — 무조건) → exit=1
+exit=1
+
+# 측정 ③ — 해당 없음 (이 카드는 README.md 에 수동 체크리스트를 싣지 않는다)
+
+# 루트 package.json — 기존 test·e2e 열쇠의 값이 그대로인가
+$ git diff -- package.json | grep -cE ^[-+][[:space:]]*"(test|e2e)":   # → 0
+0
+$ git diff --stat -- package.json
+ package.json | 1 +
+ 1 file changed, 1 insertion(+)
+
+$ git status --porcelain -- .moai/specs/SPEC-E2E-001/ | wc -l   # → 0
+0

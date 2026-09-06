@@ -65,7 +65,7 @@ export async function checkDependencies(): Promise<void> {
  *  빈 문자열은 미설정으로 본다 — AC-E2E-006 이 상정한 점유자 경주에서 빈 값이 흘러들 때
  *  스크립트가 스스로 빈 포트를 잡는 쪽이 기준이 기대한 동작이다.
  *  없으면 이 순간 빈 포트를 하나 잡는다(listen(0) 후 닫음 — 닫힘과 재사용 사이의 작은 경주는 감수). */
-async function acquirePort(): Promise<{ forServer: string; forProbe: number }> {
+export async function acquirePort(): Promise<{ forServer: string; forProbe: number }> {
   const forced = process.env.E2E_FORCE_PORT
   if (forced) return { forServer: forced, forProbe: Number(forced) }
   const port = await new Promise<number>((resolve, reject) => {
@@ -85,7 +85,7 @@ async function acquirePort(): Promise<{ forServer: string; forProbe: number }> {
  *  MINIDISCORD_PORT(config.ts:3) · MINIDISCORD_HOST(config.ts:6) · MINIDISCORD_DATA_DIR(config.ts:8) ·
  *  MINIDISCORD_BOT_FILES_DIR(config.ts:13 — 미설정이면 봇 첨부를 전부 거부하는 fail-closed).
  *  시나리오 ⑧첨부 저장·⑨내려받기가 이 서버 환경을 그대로 쓰므로 주입이 필수다. */
-function spawnServer(portForServer: string, dataDir: string, botFilesDir: string): ChildProcess {
+export function spawnServer(portForServer: string, dataDir: string, botFilesDir: string): ChildProcess {
   return spawn('npx', ['tsx', 'server/src/index.ts'], {
     cwd: PROJECT_ROOT,
     detached: true,
@@ -104,7 +104,7 @@ function spawnServer(portForServer: string, dataDir: string, botFilesDir: string
  *  받아들이고 /api/health 가 응답하는 것 — 고정 sleep 이 아니다(P-06 이전 지적).
  *  시한 초과 또는 서버 프로세스가 먼저 죽으면(점유 포트 EADDRINUSE 등) [boot-timeout] 을
  *  딱 한 번 표준출력에 찍고 exit 9 로 끝낸다. */
-async function waitForBoot(child: ChildProcess, probePort: number): Promise<void> {
+export async function waitForBoot(child: ChildProcess, probePort: number): Promise<void> {
   const url = `http://127.0.0.1:${probePort}/api/health`
   const deadline = Date.now() + BOOT_TIMEOUT_MS
   let exited = false
@@ -133,7 +133,7 @@ export function step(n: number): void {
 
 /** 서버 프로세스 그룹을 거둔다 — SIGTERM → 3초 유예 → SIGKILL.
  *  최종 정리(cleanup)와 ⑭ 재시작이 함께 쓴다. */
-async function stopServer(child: ChildProcess): Promise<void> {
+export async function stopServer(child: ChildProcess): Promise<void> {
   if (!child.pid) return
   const dead = new Promise<void>(resolve => child.once('exit', () => resolve()))
   try { process.kill(-child.pid, 'SIGTERM') } catch { /* 이미 죽었다 */ }
@@ -173,7 +173,7 @@ function messageForm(body: string): FormData {
 }
 
 /** JSON/폼 HTTP 호출 — 상태 코드·본문·원응답(쿠키 헤더용)을 돌려준다 */
-async function api(port: number, method: string, path: string, init: { cookie?: string; json?: unknown; form?: FormData } = {}): Promise<{ status: number; body: any; res: Response }> {
+export async function api(port: number, method: string, path: string, init: { cookie?: string; json?: unknown; form?: FormData } = {}): Promise<{ status: number; body: any; res: Response }> {
   const headers: Record<string, string> = {}
   if (init.cookie) headers.cookie = init.cookie
   let body: FormData | string | undefined

@@ -1,0 +1,9 @@
+# AC-LIVEENV-015 — SPEC-LIVEVERIFY-001 이 한 글자도 바뀌지 않았다
+# head=0466300 · BASE=5edd97f (리터럴)
+$ git rev-parse --short 5edd97f   # 기준선 생존 가드
+5edd97f
+# 가드 exit=0
+$ git diff --name-only 5edd97f..HEAD -- .moai/specs/SPEC-LIVEVERIFY-001/ | wc -l   # → 0
+0
+$ git status --porcelain -- .moai/specs/SPEC-LIVEVERIFY-001/ | wc -l               # → 0
+0

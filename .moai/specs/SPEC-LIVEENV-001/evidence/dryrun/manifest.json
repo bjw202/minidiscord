@@ -1,0 +1,69 @@
+{
+  "spec": "SPEC-LIVEENV-001",
+  "generated_at": "2026-09-06T01:29:34.815Z",
+  "items": [
+    {
+      "name": "A01 ㉣",
+      "judge": "machine",
+      "status": "UNMEASURED",
+      "files": [
+        "A01-reply-arg.txt",
+        "A01-db-row.txt"
+      ],
+      "note": "두 면 가운데 하나가 비었다 — machine 판정을 붙이지 않는다"
+    },
+    {
+      "name": "A08",
+      "judge": "machine",
+      "status": "UNMEASURED",
+      "files": [
+        "A08-fetch-history.txt"
+      ]
+    },
+    {
+      "name": "A09",
+      "judge": "machine",
+      "status": "ok",
+      "files": [
+        "A09-since-id.txt"
+      ],
+      "verdict": "두 줄 포함 여부를 기록했다"
+    },
+    {
+      "name": "A11",
+      "judge": "machine",
+      "status": "ok",
+      "files": [
+        "A11-restart.txt"
+      ],
+      "verdict": "본문 동일성 대조용 행을 고정했다"
+    },
+    {
+      "name": "A12",
+      "judge": "machine",
+      "status": "ok",
+      "files": [
+        "A12-archived.txt"
+      ],
+      "verdict": "방 상태와 접속 수를 함께 기록했다"
+    },
+    {
+      "name": "A03",
+      "judge": "human",
+      "status": "UNMEASURED",
+      "files": [
+        "A03-capture.txt"
+      ],
+      "note": "순간 관측 — 기계는 캡처만 남기고 판정하지 않는다"
+    },
+    {
+      "name": "A10",
+      "judge": "human",
+      "status": "UNMEASURED",
+      "files": [
+        "A10-capture.txt"
+      ],
+      "note": "순간 관측 — 기계는 캡처만 남기고 판정하지 않는다"
+    }
+  ]
+}

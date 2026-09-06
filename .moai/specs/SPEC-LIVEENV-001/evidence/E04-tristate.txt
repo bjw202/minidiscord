@@ -1,0 +1,172 @@
+# AC-LIVEENV-004 — 「재지 못함」이 「통과」와 다른 값으로 나온다
+# head=0466300
+
+$ scripts/live-env.sh status --unmeasured-paths   # 분모 N
+listen_tool_absent
+listen_no_listener
+listen_cwd_unreadable
+e1_port_taken_before_bind
+db_tool_absent
+db_file_absent
+db_table_absent
+principal_state_incomplete
+principal_api_unreachable
+principal_api_empty
+principal_conn_unreadable
+e2_approval_pending
+e3_transcript_candidates_multiple
+e5_global_entry_changed
+capture_playwright_absent
+# N=15
+
+## 양성 기준선 — 세 축이 모두 measured=yes 이면 0 이다
+$ scripts/live-env.sh status
+listen_pid_cwd=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server measured=yes
+db_rows=0 measured=yes
+principal=pm:api=false:conn=0 measured=yes
+exit=0
+
+## 실행 1 — listen_tool_absent
+# 성립: PATH 를 lsof 가 없는 디렉터리 하나로 좁혔다
+$ PATH=<lsof 없는 stub> scripts/live-env.sh status
+listen_pid_cwd=- measured=no
+unmeasured_path=listen_tool_absent
+db_rows=0 measured=yes
+principal=- measured=no
+unmeasured_path=principal_conn_unreadable
+exit=2
+
+## 실행 2 — listen_no_listener
+# 성립: 상태 파일의 포트를 아무도 LISTEN 하지 않는 값(1)으로 바꿨다
+$ scripts/live-env.sh status
+listen_pid_cwd=- measured=no
+unmeasured_path=listen_no_listener
+db_rows=0 measured=yes
+principal=- measured=no
+unmeasured_path=principal_api_unreachable
+exit=2
+
+## 실행 3 — listen_cwd_unreadable
+# 성립: lsof 대역이 LISTEN pid 는 주되 cwd 질의에는 실패한다 (부분 측정)
+$ PATH=<cwd 를 못 읽는 lsof 대역> scripts/live-env.sh status
+listen_pid_cwd=- measured=no
+unmeasured_path=listen_cwd_unreadable
+db_rows=0 measured=yes
+principal=pm:api=false:conn=0 measured=yes
+exit=2
+
+## 실행 4 — e1_port_taken_before_bind
+# 성립: 서버를 내리고 같은 포트를 무관한 프로세스가 잡게 했다 (엣지 E-1)
+$ scripts/live-env.sh status
+listen_pid_cwd=- measured=no
+unmeasured_path=e1_port_taken_before_bind
+db_rows=0 measured=yes
+principal=- measured=no
+unmeasured_path=principal_api_unreachable
+exit=2
+
+## 실행 5 — db_tool_absent
+# 성립: PATH 를 sqlite3 가 없는 디렉터리 하나로 좁혔다
+$ PATH=<sqlite3 없는 stub> scripts/live-env.sh status
+listen_pid_cwd=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server measured=yes
+db_rows=- measured=no
+unmeasured_path=db_tool_absent
+principal=pm:api=false:conn=0 measured=yes
+exit=2
+
+## 실행 6 — db_file_absent
+# 성립: 상태 파일의 DB 경로를 존재하지 않는 경로로 바꿨다
+$ scripts/live-env.sh status
+listen_pid_cwd=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server measured=yes
+db_rows=- measured=no
+unmeasured_path=db_file_absent
+principal=pm:api=false:conn=0 measured=yes
+exit=2
+
+## 실행 7 — db_table_absent
+# 성립: DB 파일은 있으나 대상 테이블이 없는 파일로 바꿨다 (부분 측정)
+$ scripts/live-env.sh status
+listen_pid_cwd=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server measured=yes
+db_rows=- measured=no
+unmeasured_path=db_table_absent
+principal=pm:api=false:conn=0 measured=yes
+exit=2
+
+## 실행 8 — principal_state_incomplete
+# 성립: 방·봇을 적은 대상 파일을 치웠다
+$ scripts/live-env.sh status
+listen_pid_cwd=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server measured=yes
+db_rows=0 measured=yes
+principal=- measured=no
+unmeasured_path=principal_state_incomplete
+exit=2
+
+## 실행 9 — principal_api_unreachable
+# 성립: 대상 방을 존재하지 않는 방으로 바꿔 초대 목록 조회가 실패하게 했다
+$ scripts/live-env.sh status
+listen_pid_cwd=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server measured=yes
+db_rows=0 measured=yes
+principal=- measured=no
+unmeasured_path=principal_api_unreachable
+exit=2
+
+## 실행 10 — principal_api_empty
+# 성립: 초대 목록은 200 으로 오되 그 봇이 실리지 않게 했다 (부분 측정)
+$ scripts/live-env.sh status
+listen_pid_cwd=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server measured=yes
+db_rows=0 measured=yes
+principal=- measured=no
+unmeasured_path=principal_api_empty
+exit=2
+
+## 실행 11 — principal_conn_unreadable
+# 성립: lsof 가 없어 api 면은 읽히되 접속 면을 얻지 못한다 (부분 측정 · 같은 실행에서 listen_tool_absent 도 함께 신고된다)
+$ PATH=<lsof 없는 stub> scripts/live-env.sh status
+listen_pid_cwd=- measured=no
+unmeasured_path=listen_tool_absent
+db_rows=0 measured=yes
+principal=- measured=no
+unmeasured_path=principal_conn_unreadable
+exit=2
+
+## 실행 12 — e2_approval_pending
+# 성립: 대화 기록에 채널 도구 왕복 짝이 없는 상태로 추출기를 돌렸다 (엣지 E-2)
+$ npx tsx scripts/live-extract.mts extract --transcript-dir <후보 1개, 왕복 0건>
+unmeasured_path=e2_approval_pending (채널 도구 왕복 짝이 0건)
+exit=2
+
+## 실행 13 — e3_transcript_candidates_multiple
+# 성립: 대화 기록 후보를 둘로 만들었다 — 세션 하나당 파일 하나 전제가 깨졌다 (엣지 E-3)
+$ npx tsx scripts/live-extract.mts extract --transcript-dir <후보 2개>
+unmeasured_path=e3_transcript_candidates_multiple (2개 후보)
+candidate=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/e04/transcripts/one.jsonl
+candidate=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/e04/transcripts/two.jsonl
+exit=2
+
+## 실행 14 — e5_global_entry_changed
+# 성립: 추출기가 큰 대화 기록을 파싱하는 동안 전역 항목 «사본» 의 args[0] 을 바꿨다 (엣지 E-5 · 원본은 건드리지 않는다)
+$ npx tsx scripts/live-extract.mts extract --transcript-dir <큰 jsonl> --global-config <실행 중 내용이 바뀌는 사본>
+live-extract: 실행 중 전역 항목의 내용이 바뀌었다 — 귀속이 서지 않는다
+exit=2
+# extract-notes.txt:
+unmeasured_path=e5_global_entry_changed
+entry_before={"command":"node","args":["/before/path"],"env":{}}
+entry_after={"command":"node","args":["/after/path"],"env":{}}
+# 참고 — 파일 수정 시각: before=1788658527840.7297 after=1788658528387.6235 (판별자가 아니다)
+
+## 실행 15 — capture_playwright_absent
+# 성립: PLAYWRIGHT_BROWSERS_PATH 를 빈 디렉터리로 지정해 캡처 단계를 돌렸다
+$ PLAYWRIGHT_BROWSERS_PATH=<빈 경로> npx tsx scripts/live-extract.mts capture
+live-extract: Playwright 모듈/브라우저 캐시 부재로 방 화면 캡처를 건너뛴다 — 이 항은 UNMEASURED 다
+exit=2
+
+## 판정
+# 분모 N = 15
+# 실행 건수 = 15
+# 모든 실행의 종료 코드가 2 인가 (0 이나 1 이 하나라도 있으면 실패):
+15
+# exit=0 인 실행 수 (양성 기준선 1건만 허용):
+1
+# exit=1 인 실행 수 (0 이어야 한다 — 1 은 「쟀고 틀렸다」라 사실을 잘못 말한다):
+0
+VERDICT=실행 건수는 분모를 채웠다 — 종료 코드 계수를 함께 읽을 것

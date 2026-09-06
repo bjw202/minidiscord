@@ -1,0 +1,28 @@
+# AC-LIVEENV-011 — 산출물 어디에도 토큰 전문이 없다
+# head=0466300 · BASE=5edd97f (리터럴)
+
+## ㉠ 이 카드의 산출 디렉터리 — 절대 0
+$ grep -rEl [0-9a-f]{64} .moai/specs/SPEC-LIVEENV-001/evidence/ ; echo "exit=$?"
+exit=1
+
+## ㉡ 추적되는 저장소 파일 — 증분 0 (절대값은 판정선이 아니다)
+$ git grep -lE [0-9a-f]{64} -- . :!package-lock.json | wc -l   # 절대값
+36
+# 기준선(5edd97f)의 적중 파일 수: 36
+# 현재(HEAD)의 적중 파일 수:    36
+$ comm -13 hex-before hex-after   # 새로 생긴 적중 파일 — 비어야 한다
+# 새로 생긴 적중 파일 수: 0
+# [실측] 기준선의 적중은 전부 정당한 SHA-256 이다 — 매니페스트·검증 스냅숏·CI 로그.
+
+## 양성 대조군 ㉠ — 추적되지 않는 임시 파일
+$ grep -rEl [0-9a-f]{64} <임시 디렉터리> | wc -l   # → 1 이상
+1
+
+## 양성 대조군 ㉡ — git add 로 스테이징한 임시 파일 (= 변이 ⑨)
+$ git add <임시 파일>; git grep -lE ... | grep <임시 파일>   # → 적중 1건
+probe-token-control.txt
+$ comm -13 hex-before hex-staged   # 증분 판정도 함께 빨개진다
+probe-token-control.txt
+# 증분 = 1 (0 이 아니어야 한다 — 판정이 상수 함수가 아니다)
+$ git rm --cached <임시 파일>; rm <임시 파일>; git status --porcelain | grep probe-token
+(되돌렸다 — 작업 트리에 남지 않았다)

@@ -1,0 +1,96 @@
+# AC-LIVEENV-012 — manifest 가 기계 판정과 사람 판정을 가른다
+# head=0466300
+
+$ cat .moai/specs/SPEC-LIVEENV-001/evidence/dryrun/manifest.json
+{
+  "spec": "SPEC-LIVEENV-001",
+  "generated_at": "2026-09-06T01:29:34.815Z",
+  "items": [
+    {
+      "name": "A01 ㉣",
+      "judge": "machine",
+      "status": "UNMEASURED",
+      "files": [
+        "A01-reply-arg.txt",
+        "A01-db-row.txt"
+      ],
+      "note": "두 면 가운데 하나가 비었다 — machine 판정을 붙이지 않는다"
+    },
+    {
+      "name": "A08",
+      "judge": "machine",
+      "status": "UNMEASURED",
+      "files": [
+        "A08-fetch-history.txt"
+      ]
+    },
+    {
+      "name": "A09",
+      "judge": "machine",
+      "status": "ok",
+      "files": [
+        "A09-since-id.txt"
+      ],
+      "verdict": "두 줄 포함 여부를 기록했다"
+    },
+    {
+      "name": "A11",
+      "judge": "machine",
+      "status": "ok",
+      "files": [
+        "A11-restart.txt"
+      ],
+      "verdict": "본문 동일성 대조용 행을 고정했다"
+    },
+    {
+      "name": "A12",
+      "judge": "machine",
+      "status": "ok",
+      "files": [
+        "A12-archived.txt"
+      ],
+      "verdict": "방 상태와 접속 수를 함께 기록했다"
+    },
+    {
+      "name": "A03",
+      "judge": "human",
+      "status": "UNMEASURED",
+      "files": [
+        "A03-capture.txt"
+      ],
+      "note": "순간 관측 — 기계는 캡처만 남기고 판정하지 않는다"
+    },
+    {
+      "name": "A10",
+      "judge": "human",
+      "status": "UNMEASURED",
+      "files": [
+        "A10-capture.txt"
+      ],
+      "note": "순간 관측 — 기계는 캡처만 남기고 판정하지 않는다"
+    }
+  ]
+}
+
+## ㉣ 항 이름 집합 대조 — 개수가 아니라 이름으로 대조한다
+want = ['A01 ㉣', 'A03', 'A08', 'A09', 'A10', 'A11', 'A12']
+got  = ['A01 ㉣', 'A03', 'A08', 'A09', 'A10', 'A11', 'A12']
+names_match = yes
+
+## ㉠ 기계 판정 다섯
+A01 ㉣: judge=machine status=UNMEASURED
+A08: judge=machine status=UNMEASURED
+A09: judge=machine status=ok
+A11: judge=machine status=ok
+A12: judge=machine status=ok
+
+## ㉡ 사람 판정 둘 — 판정 필드가 아예 없어야 한다
+A03: judge=human status=UNMEASURED has_verdict=False
+A10: judge=human status=UNMEASURED has_verdict=False
+
+## ㉢ Playwright 가 없어 캡처를 못 만든 항의 상태
+A03/A10 status = {'A03': 'UNMEASURED', 'A10': 'UNMEASURED'}
+
+## 변이 ⑥ 의 대상 — 인프로세스 회귀가 그 경계를 진다
+# server/test/live-extract.test.ts 의 「A03·A10 은 judge=human 이고 판정 필드가 아예 없다」
+# 단언이 그 자리다. 변이 기록은 M01-mutation.txt 를 보라.

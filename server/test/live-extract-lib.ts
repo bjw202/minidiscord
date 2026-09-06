@@ -381,7 +381,10 @@ export function runExtract(o: ExtractOpts): number {
   const surfaces: SurfaceInput = { transcript, messages, rooms, processes: o.processes }
   const built = [buildA01(surfaces), buildA08(surfaces), buildA09(surfaces), buildA11(surfaces), buildA12(surfaces)]
 
-  writeMasked(o.out, 'A01-reply-arg.txt', built[0]!.body)
+  // [HARD] 대화 기록 유래 산출은 그 표면에 «닿았을 때만» 만든다. 예행은 세션을 띄우지 않아
+  // 그 표면에 원리적으로 닿지 못하므로, 무조건 쓰면 예행의 기대 파일 집합이 거짓이 된다
+  // (AC-LIVEENV-014 ㉡ — 없는 것을 만들라고 적으면 예행은 영구히 빨갛다).
+  if (transcript !== null) writeMasked(o.out, 'A01-reply-arg.txt', built[0]!.body)
   writeMasked(o.out, 'A01-db-row.txt', built[0]!.body)
   writeMasked(o.out, 'A08-fetch-history.txt', built[1]!.body)
   writeMasked(o.out, 'A09-since-id.txt', built[2]!.body)

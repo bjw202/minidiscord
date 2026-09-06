@@ -1,0 +1,12 @@
+dryrun_pid=91044
+claude_before=14
+claude_during=14
+claude_delta=0
+pgrep_narrow_flag=0
+pgrep_descendant_claude=0
+pgrep_descendant_any=1
+extract_exit=2
+expected_missing=0
+forbidden_present=0
+a01_status=UNMEASURED
+marker_planted=Dr7yRun9

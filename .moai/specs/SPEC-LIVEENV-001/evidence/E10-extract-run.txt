@@ -1,0 +1,39 @@
+# AC-LIVEENV-010 — 추출기가 세 표면에서 다섯 항을 만든다
+# head=0466300
+
+## 절반 1 — 인프로세스 회귀 (대응 관계)
+$ npm test -w server -- test/live-extract.test.ts
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  10:37:15
+   Duration  106ms (transform 26ms, setup 0ms, import 35ms, tests 5ms, environment 0ms)
+
+
+## 절반 2 — 예행 실행 (DB 면·프로세스 면의 도달성)
+$ ls .moai/specs/SPEC-LIVEENV-001/evidence/dryrun/
+A01-db-row.txt
+A03-capture.txt
+A08-fetch-history.txt
+A09-since-id.txt
+A10-capture.txt
+A11-restart.txt
+A12-archived.txt
+dryrun-report.txt
+extract-notes.txt
+manifest.json
+# 각 산출 파일의 첫 줄:
+A01-db-row.txt: # A01 ㉣ — 그 세션이 그 답변을 만들었다 (reply 호출 인자 대조)
+A03-capture.txt: # A03 — 순간 관측. 기계는 캡처만 남기고 판정하지 않는다.
+A08-fetch-history.txt: # A08 — /clear 뒤 fetch_history 로 복구한다
+A09-since-id.txt: # A09 — since_id 커서로 못 본 두 줄을 따라잡는다
+A10-capture.txt: # A10 — 순간 관측. 기계는 캡처만 남기고 판정하지 않는다.
+A11-restart.txt: # A11 — 서버 재시작 후 대화가 그대로다
+A12-archived.txt: # A12 — 방 보관 후 칩 소멸과 접속 거부
+
+## 절반 3 — 실 세션 (대화 기록 표면) : 미관측
+# [HARD] 이 절반의 공급원은 M8(실 세션 한 번) 하나뿐이고, 이번 회차는 M8 을 돌리지
+#   않았다(리드 처분 16). 세션 UUID 가 여기 없으므로 이 기준은 통과가 아니라 미관측이다.
+#   예행은 Claude 세션을 띄우지 않으므로 jsonl 파서에 원리적으로 닿지 못한다 —
+#   합성 fixture 통과와 예행 통과를 도달성 증거로 읽지 않는다.
+session_uuid=(미관측)
