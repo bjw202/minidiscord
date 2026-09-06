@@ -59,7 +59,7 @@ quality gate failed: npm test
 > npm test --workspaces --if-present --passWithNoTests
 ```
 
-**단계는 이 하나뿐이다.** `channel` 은 자기 `pretest: tsc` 를 갖고 있어 타입 검사가 `npm test` 안에 딸려 온다. `server` 에는 `pretest` 가 없다 — 그래서 server 의 타입 오류는 게이트에 보이지 않는다.
+**단계는 이 하나뿐이다.** `channel` 은 자기 `pretest: tsc` 를 갖고 있어 타입 검사가 `npm test` 안에 딸려 온다. **이 카드 이전에는 `server` 에 `pretest` 가 없었다** — 그래서 server 의 타입 오류는 게이트에 보이지 않았다. **이것이 이 카드가 존재하는 이유이고, A 항목이 고치는 것이 바로 이 부재다**(REQ-GATECHECKS-001). 지금 트리에는 `pretest` 가 있다 — 이 문단은 수리 이전의 상태를 서술한다.
 
 ### 공통 배경 — 통과는 침묵이다
 
@@ -213,7 +213,7 @@ C 는 t34 감사 발견 H-01 이 권고한 **셸 무관 명령 형식**(`xargs g
 ## 8. 교차 참조
 
 - `.moai/reports/t40/reproduction.md` @`05fef76` — 이 SPEC 의 모든 실측값의 출처. 원본 출력은 `.moai/reports/t40/evidence/`
-- `.github/workflows/ci.yml:27-28` — CI 가 실제로 도는 두 typecheck 단계. **당장의 위험을 덮고 있는 것이 이것이다**
+- `.github/workflows/ci.yml:27-28` — CI 가 실제로 도는 두 typecheck 단계. **이 카드 이전에는 server 타입 오류를 잡는 자리가 여기뿐이었다** — 커밋 전 게이트는 그것을 보지 못했고, 붉은 CI 만이 뒤늦게 알려 줬다. A 를 착지시킨 뒤로는 게이트도 같은 오류를 잡는다
 - `.moai/config/sections/gate.yaml` — `disabled_steps: {}` (§5 미검증 항목)
 - `SPEC-CI-001` — CI 가 typecheck 를 두 단계로 편입한 결정(OD-1=(b))
 - `SPEC-PERMROUTE-001` — C 의 대상. **본문 불변**
