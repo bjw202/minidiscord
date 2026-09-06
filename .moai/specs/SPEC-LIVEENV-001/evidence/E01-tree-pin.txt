@@ -1,0 +1,25 @@
+# AC-LIVEENV-001 — 스크립트가 자기 트리에 고정된다
+# tree=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35
+# head=5edd97f
+# 호출 셸의 작업 디렉터리(실행 전): /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35
+$ ( cd /tmp && "$WT/scripts/live-env.sh" paths )
+root=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35
+server_dir=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server
+data_dir=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env
+bot_dir=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/bot-01
+channel_dist=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/channel/dist/index.js
+token_file=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/token
+session_file=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/session
+state_file=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/state.json
+target_file=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/target.json
+evidence_dir=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/.moai/specs/SPEC-LIVEENV-001/evidence
+# exit=0
+# 호출 셸의 작업 디렉터리(실행 후): /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35
+$ grep -cE ^[a-z_]+= E01-tree-pin.txt   # 분모 — 출력된 경로 줄 수
+10
+$ grep -cE "^[a-z_]+=$WT" E01-tree-pin.txt  # 분자 — 이 트리 아래인 줄 수
+10
+$ grep -cE "^[a-z_]+=<기본 체크아웃>/scripts" E01-tree-pin.txt  # → 0
+0
+# cwd_unchanged=yes
+VERDICT=PASS (분모=10 분자=10 바깥=0 cwd 불변)

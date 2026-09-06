@@ -1,0 +1,22 @@
+# AC-LIVEENV-003 — status 의 세 축
+# head=5edd97f
+
+# --- ㉠ 통과 실행: 서버가 떠 있고 방·봇·초대가 세워진 상태 ---
+$ scripts/live-env.sh status
+listen_pid_cwd=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server measured=yes
+db_rows=0 measured=yes
+principal=pm:api=false:conn=0 measured=yes
+exit=0
+
+# --- ㉡ 음성 대조군: 서버를 내리고 같은 포트(62512)를 무관한 프로세스(5982)가 잡았다 ---
+$ ( cd /tmp && python3 -m http.server <포트> --bind 127.0.0.1 ) &
+$ scripts/live-env.sh status
+listen_pid_cwd=- measured=no
+unmeasured_path=e1_port_taken_before_bind
+db_rows=0 measured=yes
+principal=- measured=no
+unmeasured_path=principal_api_unreachable
+exit=2
+VERDICT=PASS (음성 대조군이 2 를 냈다 — 통과가 아니다)
+$ kill <대조군>; ps -p <대조군> >/dev/null; echo "exit=$?"
+대조군 종료 확인 exit=1

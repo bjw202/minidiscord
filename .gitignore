@@ -7,3 +7,4 @@ coverage/
 **/.moai/state/
 # 저장소 루트의 .moai/state/ 만 예외 — 검증 증거(verify/)가 여기 커밋된다
 !/.moai/state/
+bot-01/

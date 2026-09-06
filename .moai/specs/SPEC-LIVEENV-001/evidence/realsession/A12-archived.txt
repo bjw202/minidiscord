@@ -1,0 +1,4 @@
+# A12 — 방 보관 후 칩 소멸과 접속 거부
+room=1:live-env-1:status=active
+established_connections=-
+# 프로세스 표면이 읽히지 않았다

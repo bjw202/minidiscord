@@ -1,0 +1,71 @@
+# AC-LIVEENV-013 — 부재가 조용한 통과도 조용한 실패도 아니다
+# head=0466300
+# [HARD] 부재는 정의상 «재지 못함» 이므로 2 다. 1 을 내면 상위 판정이 「쟀고 실패」로 오독한다.
+
+## 실행 1 — Playwright 부재
+$ PLAYWRIGHT_BROWSERS_PATH=<빈 경로> npx tsx scripts/live-extract.mts capture
+live-extract: Playwright 모듈/브라우저 캐시 부재로 방 화면 캡처를 건너뛴다 — 이 항은 UNMEASURED 다
+exit=2
+# capture-status.txt:
+unmeasured_path=capture_playwright_absent
+status=UNMEASURED
+
+## 실행 2 — Playwright 존재 (양성 대조군)
+# 없으면 「부재 관용」과 「캡처 기능이 아예 없다」가 구별되지 않는다.
+$ npx tsx scripts/live-extract.mts capture
+live-extract: Playwright 후보 5건 — 캡처 단계가 성립한다
+exit=0
+# capture-status.txt:
+status=ok
+playwright_candidates=5
+
+## 실행 3 — E-2 승인 프롬프트에서 멈춤
+# 성립: 봇 디렉터리의 항목이 승인되지 않아 채널 도구 왕복 짝이 생기지 않은 상태를
+#       대화 기록으로 재현했다 — tool_use/tool_result 짝이 0건이다.
+$ npx tsx scripts/live-extract.mts extract --transcript-dir <왕복 0건>
+unmeasured_path=e2_approval_pending (채널 도구 왕복 짝이 0건)
+exit=2
+# manifest 해당 줄 (A01 ㉣):
+{"name": "A01 ㉣", "judge": "machine", "status": "UNMEASURED", "files": ["A01-reply-arg.txt", "A01-db-row.txt"], "note": "두 면 가운데 하나가 비었다 — machine 판정을 붙이지 않는다"}
+# extract-notes.txt:
+unmeasured_path=e2_approval_pending (채널 도구 왕복 짝이 0건)
+
+## 실행 4 — E-3 대화 기록 후보 다수
+# 성립: 대상 슬러그 디렉터리에 jsonl 두 개를 놓았다 — 세션 하나당 파일 하나 전제가 깨졌다.
+$ npx tsx scripts/live-extract.mts extract --transcript-dir <후보 2개>
+unmeasured_path=e3_transcript_candidates_multiple (2개 후보)
+candidate=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/e13/tdir/one.jsonl
+candidate=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/e13/tdir/two.jsonl
+exit=2
+# manifest 해당 줄 (A01 ㉣):
+{"name": "A01 ㉣", "judge": "machine", "status": "UNMEASURED", "files": ["A01-reply-arg.txt", "A01-db-row.txt"], "note": "두 면 가운데 하나가 비었다 — machine 판정을 붙이지 않는다"}
+# extract-notes.txt:
+unmeasured_path=e3_transcript_candidates_multiple (2개 후보)
+candidate=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/e13/tdir/one.jsonl
+candidate=/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/e13/tdir/two.jsonl
+
+## 실행 5 — E-5 실행 중 전역 항목 변경
+# 성립: 추출기가 큰 대화 기록을 파싱하는 «동안» 항목 사본의 args[0] 을 바꿨다.
+#       (실측: 추출 전체가 약 0.96초이고 두 읽기 사이 창이 0.25~0.95초다)
+$ npx tsx scripts/live-extract.mts extract --global-config <실행 중 내용이 바뀌는 사본>
+live-extract: 실행 중 전역 항목의 내용이 바뀌었다 — 귀속이 서지 않는다
+exit=2
+# extract-notes.txt:
+unmeasured_path=e5_global_entry_changed
+entry_before={"command":"node","args":["/before/path"],"env":{}}
+entry_after={"command":"node","args":["/after/path"],"env":{}}
+# 참고 — 파일 수정 시각: before=1788658583024.6829 after=1788658583573.263 (판별자가 아니다)
+
+## 의존 추가 금지 확인
+$ git diff -- package.json server/package.json channel/package.json | grep -c playwright   # → 0
+0
+
+## 판정
+# 실행 수 (다섯이어야 한다):
+5
+# exit=2 인 실행 수 (①③④⑤ — 넷):
+4
+# exit=0 인 실행 수 (② 하나):
+1
+# exit=1 인 실행 수 (0 이어야 한다):
+0

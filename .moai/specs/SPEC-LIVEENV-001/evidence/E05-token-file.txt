@@ -1,0 +1,22 @@
+# AC-LIVEENV-005 — 토큰이 파일 한 곳에만 놓이고 그 파일은 커밋되지 않는다
+# head=5edd97f
+$ scripts/live-env.sh invite 1 pm
+token_head=d0fa37c6
+issued_at=2026-09-05T17:46:32Z
+# exit=0
+$ grep -cE [0-9a-f]{64} E05-token-file.txt   # → 0
+0
+$ stat -f %Lp data/live-env/token            # → 600
+600
+$ git check-ignore -v data/live-env/token
+.gitignore:2:data/	data/live-env/token
+# exit=0
+$ cut -c1-8 data/live-env/token > le-head-file
+$ sed -n s/^token_head=//p E05-token-file.txt > le-head-out
+$ test "$(wc -l < le-head-out)" -eq 1; echo "head-lines exit=$?"
+head-lines exit=0
+$ diff le-head-file le-head-out; echo "exit=$?"
+# diff exit=0
+$ git check-ignore -v bot-01/.mcp.json
+.gitignore:10:bot-01/	bot-01/.mcp.json
+# exit=0

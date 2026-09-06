@@ -1,0 +1,32 @@
+# AC-LIVEENV-002 — up/down 이 자기 프로세스만 다룬다
+# head=5edd97f
+$ scripts/live-env.sh up
+up port=60199 pid=2528
+exit=0
+$ cat data/live-env/state.json   # port·data_dir·bot_files_dir·pid·db_path
+{
+  "port": 60199,
+  "data_dir": "/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env",
+  "bot_files_dir": "/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/bot-01",
+  "pid": 2528,
+  "db_path": "/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/data/live-env/minidiscord.db"
+}
+$ ps -p "$PID" -o pid,command
+  PID COMMAND
+ 2528 /Users/byunjungwon/.nvm/versions/node/v24.12.0/bin/node --require /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/node_modules/tsx/dist/preflight.cjs --import file:///Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/node_modules/tsx/dist/loader.mjs src/index.ts
+
+# --- 양성 대조군: 상태 파일의 pid 를 무관한 살아 있는 프로세스(2554)로 바꿨다 ---
+$ scripts/live-env.sh down
+down: pid=2554 는 이 트리의 서버가 아니다 (cwd=/private/tmp) — 신호를 보내지 않는다
+exit=1
+$ ps -p <decoy> -o pid,command   # 여전히 살아 있어야 한다
+  PID COMMAND
+ 2554 sleep 600
+decoy_alive=yes
+
+# --- 본 실행: 상태 파일을 되돌린 뒤 down ---
+$ scripts/live-env.sh down
+down pid=2528 port=60199
+exit=0
+$ ps -p "$PID" >/dev/null; echo "after-down exit=$?"
+after-down exit=1

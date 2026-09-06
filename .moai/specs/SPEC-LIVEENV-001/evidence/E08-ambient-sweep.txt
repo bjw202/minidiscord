@@ -1,0 +1,103 @@
+# AC-LIVEENV-008 — 상시 소재의 평문 토큰이 0건이다
+#
+# 이 파일은 두 회차를 담는다. 아래 「run 회차」는 원문 그대로 보존하고, sync 단계가
+# 리드 처분 34 로 «빠져 있던 [HARD] 측정» 을 실행해 「sync 회차」로 덧붙였다.
+
+## ── run 회차 (head=5edd97f) — 원문 보존 ──────────────────────────────
+
+# ~/.claude.json 수정 시각 (실행 전): 1788630392
+$ scripts/live-env.sh token-sweep --ambient
+site=global_claude_json cmd=python3-json:~/.claude.json:mcpServers.minidiscord-channel.env hits=0
+site=project_mcp_json cmd=grep:MINIDISCORD_TOKEN:.mcp.json hits=0
+site=bot_mcp_json cmd=grep:MINIDISCORD_TOKEN:bot-01/.mcp.json hits=0
+site=settings_env cmd=python3-json:.claude/settings.json:env hits=0
+site=shell_rc cmd=grep-l:MINIDISCORD_TOKEN:셸 기동 파일 셋 hits=0
+site=tracked_repo_files cmd=git-grep-lE:64자 hex:추적 파일 hits=36
+$ scripts/live-env.sh status   # 양성 대조군 자리 — 아래 [미검증 ②] 를 함께 읽을 것
+principal=pm:api=false:conn=0 measured=yes
+# ~/.claude.json 수정 시각 (실행 후): 1788630396
+# [실측 · 미결] tracked_repo_files 의 적중은 이 카드 이전부터 0 이 아니다 —
+#   전부 정당한 SHA-256(매니페스트·검증 증거·변이 기록)이며 토큰이 아니다.
+
+## ── [정정] 수정 시각 두 값은 판정에 쓰지 않는다 ──────────────────────
+# 위 두 줄에 원래 「두 값이 같으면 이 카드가 그 파일을 편집하지 않았다는 뜻이다」라는
+# 주석이 붙어 있었다. 그 주석을 정정한다. 두 가지가 함께 틀렸다.
+#   ① 그 판별자는 AC-008 이 [HARD] 로 명시적으로 «반증» 한 것이다 — 그 파일은 Claude Code
+#      자신이 세션 기동·종료 때 쓰므로, 시각은 「항목이 바뀌었다」가 아니라 「세션이 떴다」를 잰다.
+#      그리고 이 카드의 bot 단계가 정확히 세션을 띄우므로 정상 실행이 늘 빨개진다.
+#   ② 그리고 위 두 값은 애초에 «같지 않다»(1788630392 ≠ 1788630396). 주석이 요구한 조건이
+#      기록된 값 자신에 의해 성립하지 않는다.
+# 두 값을 지우지는 않는다 — 지우면 「왜 이 판별자를 쓰지 않는가」가 사라진다. 참고값으로 남긴다.
+# 판정선은 아래 sync 회차의 «항목 내용 대조» 다.
+
+## ── sync 회차 (head=0a88b77) — 리드 처분 34 로 실행한 [HARD] 측정 ────
+# [왜 이 절이 필요했나] AC-008 은 acceptance.md 의 측정 블록에서 «항목 내용 대조» 를 [HARD] 로
+#   요구하는데, run 회차의 이 파일에 그 측정이 «한 줄도 없었다». 감사가 grep 으로 찾아냈다:
+#     $ grep -c 'entry-unchanged' E08-ambient-sweep.txt   → 0
+#     $ grep -c 'entry-unchanged' M01-mutation.txt        → 3   (대조군 — 이 grep 은 대상을 찾는다)
+#   §E.2 의 AC-008 행은 「전역 항목 내용 불변」이라 적었으나 그 관측이 인용된 파일에 없었다.
+#   주장의 내용은 참이었지만 «재지 않고 적힌» 상태였다. 아래가 실제로 잰 것이다.
+
+$ ENTRY() { python3 -c "import json,os;d=json.load(open(os.path.expanduser('~/.claude.json')));print(json.dumps(d['mcpServers']['minidiscord-channel'],sort_keys=True))"; }
+$ ENTRY > /tmp/le-entry-before
+{"args": ["/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/channel/dist/index.js"], "command": "node", "env": {"MINIDISCORD_SERVER": "ws://127.0.0.1:3000/bot"}, "type": "stdio"}
+
+$ scripts/live-env.sh token-sweep --ambient   # sync 회차 실행 (exit=0)
+site=global_claude_json cmd=python3-json:~/.claude.json:mcpServers.minidiscord-channel.env hits=0
+site=project_mcp_json cmd=grep:MINIDISCORD_TOKEN:.mcp.json hits=0
+site=bot_mcp_json cmd=grep:MINIDISCORD_TOKEN:bot-01/.mcp.json hits=0
+site=settings_env cmd=python3-json:.claude/settings.json:env hits=0
+site=shell_rc cmd=grep-l:MINIDISCORD_TOKEN:셸 기동 파일 셋 hits=0
+site=tracked_repo_files cmd=git-grep-lE:64자 hex:추적 파일 hits=36
+
+$ ENTRY > /tmp/le-entry-after
+$ diff /tmp/le-entry-before /tmp/le-entry-after; echo "entry-unchanged exit=$?"
+entry-unchanged exit=0          # 무편집 — 훑기가 그 파일을 고치지 않았다
+
+# 참고값 (판정선 아님): stat -f %m ~/.claude.json  before=1788698014  after=1788698014
+
+## 반대 방향 — 내용 대조가 상수 함수가 아니다
+# [HARD] 원본 ~/.claude.json 은 건드리지 않는다(운영자 결정). 변이는 사본에만 건다.
+$ sed 's|/t32/|/t32X/|' /tmp/le-entry-before > /tmp/le-entry-mutated
+$ diff /tmp/le-entry-before /tmp/le-entry-mutated > /dev/null; echo "entry-unchanged exit=$?"
+entry-unchanged exit=1          # 한 글자만 달라도 빨개진다
+
+## ── [미검증 ②] 양성 대조군이 반대쪽에 서 있다 — 이 회차가 닫지 못했다 ──
+# AC-008 의 Given 은 「봇 세션이 떠 있고 토큰이 «실제로 쓰이는 중»」이고, [HARD] 로
+#   「양성 대조군이 같은 파일에 있어야 한다 — 봇이 붙어 있지 않은 시각의 「0건」은
+#    「상시 소재에 없다」와 「토큰이 아예 없다」를 가르지 못한다」를 요구한다.
+# 그런데 run 회차가 기록한 principal 줄은 «api=false:conn=0» 이다 — 붙어 «있지 않은» 시각이다.
+#   붙어 있던 관측은 존재하지만(E09-mcp-attribution.txt 의 `principal=pm:api=true:conn=1`)
+#   그것은 다른 파일·다른 시각이라 [HARD] 의 「같은 파일」 요구를 채우지 못한다.
+# sync 회차에 다시 세우려 했으나 서버가 내려가 있어 불가능했다:
+$ scripts/live-env.sh status
+listen_pid_cwd=- measured=no
+unmeasured_path=listen_no_listener
+db_rows=- measured=no
+unmeasured_path=db_file_absent
+principal=- measured=no
+unmeasured_path=principal_state_incomplete
+# exit=2  ← 3값 계약대로 「재지 못함」이다. 통과도 실패도 아니다.
+#
+# 이 대조군을 세우려면 봇 세션이 실제로 접속해 있어야 하고, 그것은 spec.md §1.2 F-12·F-15 가
+# 열거한 «사람 손 다섯» 을 다시 밟아야 한다(MCP 항목 승인 · --dangerously-… 확인 창 포함).
+# 무인으로 세울 수 없으므로 이 회차는 «미검증» 으로 남긴다 — 통과로 옮기지 않는다.
+# 즉 이 파일이 오늘 세우는 것은 「훑기가 전역 항목을 편집하지 않았다」까지이고,
+# 「0건이 아무도 안 쓰기 때문이 아니다」는 아직 서지 않았다.
+
+## ── 운영자 처분 37 — 이 미관측을 안고 닫는다 ──────────────────────
+# 3회차 감사 F2: progress.md §E.2 의 AC-008 행이 「사유를 진다」며 이 파일을 가리키는데
+#   정작 이 파일에 처분 기록이 없었다. 가리켜진 자리에 그것이 있어야 한다.
+#
+# 운영자 판단으로 이 기준은 «미관측» 인 채로 닫는다. 사람 손 다섯을 다시 밟지 않는다.
+#   측정된 것 : 상시 소재 여섯 0건(두 회차) · 항목 내용 불변 entry-unchanged exit=0
+#               (반대 방향 exit=1 — 상수 함수가 아니다)
+#   미측정인 것: 「봇이 붙어 있는 시각」의 양성 대조군 «하나뿐»
+#   왜 못 세우나: 그 상태를 만들려면 spec.md §1.2 F-12·F-15 의 사람 손 다섯을 다시
+#               밟아야 한다(MCP 항목 승인 · --dangerously-… 확인 창 포함). 무인 불가.
+#   왜 카드를 배반하지 않나: 이 카드의 중심 주장이 「재지 못한 것을 통과로 적지 않는다」이고,
+#               미관측을 미관측이라 적는 것이 그 규율 그 자체다.
+#
+# 다시 열려면: 운영자가 자리를 지키는 회차에 봇 세션을 띄우고
+#   scripts/live-env.sh token-sweep --ambient  와  scripts/live-env.sh status  를
+#   «같은 파일에 연속으로» 찍으면 이 기준은 닫힌다. 그 한 번이 남은 전부다.

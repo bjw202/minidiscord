@@ -1,0 +1,64 @@
+# AC-LIVEENV-010 — 추출기가 세 표면에서 다섯 항을 만든다
+# head=4f5bd69
+
+## 절반 1 — 인프로세스 회귀 (대응 관계)
+$ npm test -w server -- test/live-extract.test.ts
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  20:14:45
+   Duration  105ms (transform 28ms, setup 0ms, import 36ms, tests 5ms, environment 0ms)
+
+
+## 절반 2 — 예행 실행 (DB 면·프로세스 면의 도달성)
+$ ls .moai/specs/SPEC-LIVEENV-001/evidence/dryrun/
+A01-db-row.txt
+A03-capture.txt
+A08-fetch-history.txt
+A09-since-id.txt
+A10-capture.txt
+A11-restart.txt
+A12-archived.txt
+dryrun-report.txt
+extract-notes.txt
+manifest.json
+# 각 산출 파일의 첫 줄:
+A01-db-row.txt: # A01 ㉣ — 그 세션이 그 답변을 만들었다 (reply 호출 인자 대조)
+A03-capture.txt: # A03 — 순간 관측. 기계는 캡처만 남기고 판정하지 않는다.
+A08-fetch-history.txt: # A08 — /clear 뒤 fetch_history 로 복구한다
+A09-since-id.txt: # A09 — since_id 커서로 못 본 두 줄을 따라잡는다
+A10-capture.txt: # A10 — 순간 관측. 기계는 캡처만 남기고 판정하지 않는다.
+A11-restart.txt: # A11 — 서버 재시작 후 대화가 그대로다
+A12-archived.txt: # A12 — 방 보관 후 칩 소멸과 접속 거부
+
+## 절반 3 — 실 세션 (대화 기록 표면) : 관측됨
+session_uuid=3dabf75d-cd20-4371-85cc-503ee2531af9
+# 이 절반의 공급원은 M8 하나뿐이다. 예행은 Claude 세션을 띄우지 않으므로 jsonl 파서를
+#   한 줄도 밟지 못한다 — 그 표면의 도달성은 이 실행이 단독으로 진다.
+$ npx tsx scripts/live-extract.mts extract --transcript-dir <실제 슬러그 디렉터리>
+# 산출 파일 목록:
+A01-db-row.txt
+A01-reply-arg.txt
+A03-capture.txt
+A08-fetch-history.txt
+A09-since-id.txt
+A10-capture.txt
+A11-restart.txt
+A12-archived.txt
+manifest.json
+# 각 산출 파일의 첫 줄:
+A01-db-row.txt: # A01 ㉣ — 그 세션이 그 답변을 만들었다 (reply 호출 인자 대조)
+A01-reply-arg.txt: # A01 ㉣ — 그 세션이 그 답변을 만들었다 (reply 호출 인자 대조)
+A03-capture.txt: # A03 — 순간 관측. 기계는 캡처만 남기고 판정하지 않는다.
+A08-fetch-history.txt: # A08 — /clear 뒤 fetch_history 로 복구한다
+A09-since-id.txt: # A09 — since_id 커서로 못 본 두 줄을 따라잡는다
+A10-capture.txt: # A10 — 순간 관측. 기계는 캡처만 남기고 판정하지 않는다.
+A11-restart.txt: # A11 — 서버 재시작 후 대화가 그대로다
+A12-archived.txt: # A12 — 방 보관 후 칩 소멸과 접속 거부
+# A01 ㉣ 전문 — 두 값과 그 일치 여부:
+# A01 ㉣ — 그 세션이 그 답변을 만들었다 (reply 호출 인자 대조)
+reply_arg=q7Rm2XbK
+db_row=q7Rm2XbK
+agree=yes
+# manifest 의 A01 ㉣ 항:
+{"name": "A01 ㉣", "judge": "machine", "status": "ok", "files": ["A01-reply-arg.txt", "A01-db-row.txt"], "verdict": "agree"}

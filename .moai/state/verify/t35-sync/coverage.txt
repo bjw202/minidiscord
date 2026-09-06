@@ -1,0 +1,49 @@
+
+> pretest
+> npm run typecheck
+
+
+> typecheck
+> tsc --noEmit
+
+
+> test
+> vitest run --coverage --coverage.provider=v8
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server
+      Coverage enabled with v8
+
+
+ Test Files  19 passed (19)
+      Tests  243 passed (243)
+   Start at  22:34:54
+   Duration  15.53s (transform 1.31s, setup 0ms, import 3.91s, tests 34.94s, environment 1.54s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   78.34 |    69.64 |   79.64 |   79.88 |                   
+ src               |    95.2 |    87.93 |   97.87 |   96.45 |                   
+  auth.ts          |   97.82 |    96.87 |     100 |     100 | 21                
+  db.ts            |      95 |    83.33 |     100 |   94.44 | 93                
+  gateway.ts       |    95.6 |    87.23 |     100 |   96.96 | 64-68             
+  index.ts         |   82.85 |       50 |      80 |   83.33 | 73-79             
+  permissions.ts   |     100 |     92.3 |     100 |     100 | 61,71             
+  routes-bots.ts   |   95.91 |    85.71 |      90 |   97.61 | 17                
+  ...s-messages.ts |   93.24 |    79.41 |     100 |    94.2 | 182-186           
+  routes-rooms.ts  |   96.42 |    91.66 |     100 |   97.87 | 57                
+  sse.ts           |   95.65 |       90 |     100 |     100 | 37                
+ test              |   53.16 |    51.36 |   56.16 |   52.72 |                   
+  gateway-v2.ts    |   86.74 |    77.41 |   94.11 |   91.93 | 47-49,69,90       
+  ...xtract-lib.ts |   32.71 |    33.54 |   33.33 |   31.95 | ...02-273,311-441 
+  ...e-judgment.ts |   79.36 |    80.88 |   78.57 |   77.27 | 73-84             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 78.34% ( 709/905 )
+Branches     : 69.64% ( 358/514 )
+Functions    : 79.64% ( 133/167 )
+Lines        : 79.88% ( 580/726 )
+================================================================================

@@ -1,0 +1,32 @@
+
+> live-dryrun
+> npx tsx scripts/live-dryrun.mts
+
+[dryrun] pid=20528 claude_before=15 narrow_before=1
+minidiscord listening on 127.0.0.1:49183
+[dryrun] ① 서버 기동
+[dryrun] ② 초대 발급
+[dryrun] ③ 가짜 채널 접속
+[dryrun] ④ @TO 왕복
+[dryrun] ⑤ 멘션 없는 두 줄
+[dryrun] ⑥ 이력 회수
+minidiscord listening on 127.0.0.1:49192
+[dryrun] ⑦ 서버 재시작
+[dryrun] ⑧ 방 보관
+# 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달
+[dryrun] ⑨ 추출기 종료 코드 = 2
+[dryrun] dryrun_pid=20528
+[dryrun] claude_before=15
+[dryrun] claude_during=15
+[dryrun] claude_delta=0
+[dryrun] pgrep_narrow_before=1
+[dryrun] pgrep_narrow_after=1
+[dryrun] pgrep_narrow_delta=0
+[dryrun] pgrep_descendant_claude=0
+[dryrun] pgrep_descendant_any=2
+[dryrun] extract_exit=2
+[dryrun] expected_missing=0
+[dryrun] forbidden_present=0
+[dryrun] a01_status=UNMEASURED
+[dryrun] marker_planted=Dr7yRun9
+[dryrun] VERDICT=PASS

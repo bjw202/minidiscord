@@ -1,0 +1,3 @@
+# A09 — since_id 커서로 못 본 두 줄을 따라잡는다
+unmentioned_lines=2
+covered_by_reply=no

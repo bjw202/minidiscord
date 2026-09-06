@@ -1,0 +1,37 @@
+# AC-LIVEENV-009 — 봇 세션의 채널 왕복이 봇 디렉터리 .mcp.json 에서 온다
+# head=4f5bd69
+# 두 관측을 «같은 시각» 에 함께 읽는다 — 하나만으로는 귀속이 서지 않는다.
+
+## ㉠ 전역 항목이 존재하지 않는 경로를 가리킨다
+# 관측 시각: 2026-09-06T11:04:39Z
+$ python3 -c "... d[mcpServers][minidiscord-channel][args][0]"
+/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t32/channel/dist/index.js
+$ test -e "<전역 args[0]>"; echo "exit=$?"
+exit=1
+# [HARD] 이 값이 exit=0 이면(경로가 존재하면) 이 기준은 통과가 아니라 UNMEASURED 다.
+#   두 적재 경로가 구별되지 않기 때문이다. 지금은 exit=1 이므로 대조군이 성립한다.
+
+## ㉡ 그 세션의 대화 기록에 채널 도구 호출과 결과가 «짝으로» 있다
+# 관측 시각: 2026-09-06T11:04:39Z
+# 대화 기록 후보 수: 1 (둘 이상이면 E-3 — 판정하지 않는다)
+# 파일: /Users/byunjungwon/.claude/projects/-Users-byunjungwon-Dev-my-project-04-minidiscord--claude-worktrees-t35-bot-01/3dabf75d-cd20-4371-85cc-503ee2531af9.jsonl
+session_uuid = ['3dabf75d-cd20-4371-85cc-503ee2531af9']
+cwd          = ['/Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/bot-01']
+# 둘 다 단일값이어야 «한 세션» 이 선다
+채널 도구 호출 = 1 · 결과가 돌아온 짝 = 1
+
+[tool_use]    id=toolu_01U3h1ALKwJG2adbsERsf2yZ
+  name  = mcp__minidiscord-channel__reply
+  input = {"text": "무작위 영숫자 8자리입니다: q7Rm2XbK"}
+[tool_result] id=toolu_01U3h1ALKwJG2adbsERsf2yZ
+  content = [{"type": "text", "text": "sent"}]
+
+VERDICT=PASS (㉠ 과 ㉡ 이 함께 섰다 — 왕복을 만든 것은 봇 디렉터리의 .mcp.json 뿐이다)
+
+## 승인 시점 — 첫 기동은 무인으로 붙지 않는다
+# [HARD] 봇 디렉터리의 .mcp.json 은 프로젝트 범위 항목이라 첫 사용에 사람 승인을 요구한다
+#   (spec.md §1.2 F-12). 이 실행에서도 운영자가 세 확인 창을 처리한 «뒤에» 왕복이 생겼다.
+#   승인 전의 왕복 부재는 실패가 아니라 아직 재지 않은 상태다.
+# 승인 전 관측(이 회차 기록): principal=pm:api=false:conn=0
+$ scripts/live-env.sh status   # 승인 뒤
+principal=pm:api=true:conn=1 measured=yes

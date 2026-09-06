@@ -1,0 +1,3 @@
+# A12 — 방 보관 후 칩 소멸과 접속 거부
+room=1:live-env dry run:status=archived
+established_connections=0

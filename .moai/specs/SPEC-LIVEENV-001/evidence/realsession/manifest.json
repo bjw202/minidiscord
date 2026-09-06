@@ -1,0 +1,67 @@
+{
+  "spec": "SPEC-LIVEENV-001",
+  "generated_at": "2026-09-06T11:03:31.155Z",
+  "items": [
+    {
+      "name": "A01 ㉣",
+      "judge": "machine",
+      "status": "ok",
+      "files": [
+        "A01-reply-arg.txt",
+        "A01-db-row.txt"
+      ],
+      "verdict": "agree"
+    },
+    {
+      "name": "A08",
+      "judge": "machine",
+      "status": "UNMEASURED",
+      "files": [
+        "A08-fetch-history.txt"
+      ]
+    },
+    {
+      "name": "A09",
+      "judge": "machine",
+      "status": "UNMEASURED",
+      "files": [
+        "A09-since-id.txt"
+      ]
+    },
+    {
+      "name": "A11",
+      "judge": "machine",
+      "status": "ok",
+      "files": [
+        "A11-restart.txt"
+      ],
+      "verdict": "본문 동일성 대조용 행을 고정했다"
+    },
+    {
+      "name": "A12",
+      "judge": "machine",
+      "status": "UNMEASURED",
+      "files": [
+        "A12-archived.txt"
+      ]
+    },
+    {
+      "name": "A03",
+      "judge": "human",
+      "status": "UNMEASURED",
+      "files": [
+        "A03-capture.txt"
+      ],
+      "note": "순간 관측 — 기계는 캡처만 남기고 판정하지 않는다"
+    },
+    {
+      "name": "A10",
+      "judge": "human",
+      "status": "UNMEASURED",
+      "files": [
+        "A10-capture.txt"
+      ],
+      "note": "순간 관측 — 기계는 캡처만 남기고 판정하지 않는다"
+    }
+  ]
+}

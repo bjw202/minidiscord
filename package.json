@@ -4,6 +4,7 @@
   "workspaces": ["server", "channel"],
   "scripts": {
     "e2e": "npx tsx scripts/e2e.mts",
+    "live-dryrun": "npx tsx scripts/live-dryrun.mts",
     "test": "npm test --workspaces --if-present"
   }
 }

@@ -1,0 +1,53 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> pretest
+> npm run typecheck
+
+
+> typecheck
+> tsc --noEmit
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/server
+
+Error: in prepare, file is not a database (26)
+Error: in prepare, file is not a database (26)
+Error: in prepare, file is not a database (26)
+unmeasured_path=e3_transcript_candidates_multiple (2개 후보)
+candidate=/var/folders/y4/3w12s_ns7c32yh937159cj440000gn/T/live-extract-sg9Lyb/a.jsonl
+candidate=/var/folders/y4/3w12s_ns7c32yh937159cj440000gn/T/live-extract-sg9Lyb/b.jsonl
+unmeasured_path=e2_approval_pending (채널 도구 왕복 짝이 0건)
+# 대화 기록 후보가 없다 — ㉠ 표면 미도달
+# 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달
+live-extract: 실행 중 전역 항목의 내용이 바뀌었다 — 귀속이 서지 않는다
+live-extract: Playwright 모듈/브라우저 캐시 부재로 방 화면 캡처를 건너뛴다 — 이 항은 UNMEASURED 다
+
+ Test Files  19 passed (19)
+      Tests  286 passed (286)
+   Start at  23:47:52
+   Duration  15.36s (transform 1.09s, setup 0ms, import 3.33s, tests 34.30s, environment 1.47s)
+
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/t35/channel
+
+
+ Test Files  7 passed (7)
+      Tests  126 passed (126)
+   Start at  23:48:07
+   Duration  65.57s (transform 434ms, setup 0ms, import 1.25s, tests 70.81s, environment 0ms)
+
