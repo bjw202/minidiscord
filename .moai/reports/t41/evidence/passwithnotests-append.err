@@ -1,0 +1,11 @@
+quality gate failed: npm test
+
+sh: line 0: exit: too many arguments
+
+> test
+> echo GOT >> ARGLOG.txt; exit 3 --passWithNoTests
+          
+   ERROR  
+          
+  Quality gate failed.                                                                                                
+
