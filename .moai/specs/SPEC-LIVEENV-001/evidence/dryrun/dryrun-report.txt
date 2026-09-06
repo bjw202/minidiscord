@@ -1,10 +1,12 @@
-dryrun_pid=73459
+dryrun_pid=20528
 claude_before=15
 claude_during=15
 claude_delta=0
-pgrep_narrow_flag=1
+pgrep_narrow_before=1
+pgrep_narrow_after=1
+pgrep_narrow_delta=0
 pgrep_descendant_claude=0
-pgrep_descendant_any=1
+pgrep_descendant_any=2
 extract_exit=2
 expected_missing=0
 forbidden_present=0

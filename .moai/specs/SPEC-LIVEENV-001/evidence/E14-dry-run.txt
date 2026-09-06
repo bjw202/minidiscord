@@ -1,37 +1,66 @@
 # AC-LIVEENV-014 — 가짜 채널 예행이 실 세션보다 먼저 돈다
-# head=4f5bd69
+# head=0a88b77 (sync 단계 재실행 — 리드 처분 33)
+#
+# [이 파일이 다시 쓰인 이유] 앞 회차(head=4f5bd69 시점의 실행이 M8 커밋 120469d 에 실린 것)는
+#   VERDICT=FAIL 이었다. 원인은 예행의 결함이 아니라 «기준이 자기 제목과 모순된 것» 이었다 —
+#   AC-014 ㉢ 의 제목은 「판별자는 「이 예행이 띄운 것」이지 「기계의 모든 claude」가 아니다」인데
+#   그 아래 첫 줄이 `pgrep -f 'dangerously-load-development-channels' | wc -l → 0` 으로,
+#   -P 가 없어 정의역이 «기계 전체» 였다. 하필 그 플래그가 spec.md §1.2 F-15 가 이름댄
+#   다섯째 사람 손의 그 플래그라, 이 카드가 실 세션을 띄우는 한 절대 0 이 될 수 없었다.
+#   리드 처분 33 으로 그 판별자를 넓은 판별자와 같은 «증분» 형태로 옮기고 다시 돌렸다.
+#   앞 회차의 FAIL 은 지우지 않는다 — progress.md §E.2 가 그 이력을 진다.
+
+## 실행
+
+$ pgrep -f 'dangerously-load-development-channels' | wc -l   # 실행 직전 절대값 — 판정선이 아니다
+1
+
 $ npm run live-dryrun
 
 > live-dryrun
 > npx tsx scripts/live-dryrun.mts
 
-[dryrun] pid=73459 claude_before=15
-minidiscord listening on 127.0.0.1:51577
+[dryrun] pid=20528 claude_before=15 narrow_before=1
+minidiscord listening on 127.0.0.1:49183
 [dryrun] ① 서버 기동
 [dryrun] ② 초대 발급
 [dryrun] ③ 가짜 채널 접속
 [dryrun] ④ @TO 왕복
 [dryrun] ⑤ 멘션 없는 두 줄
 [dryrun] ⑥ 이력 회수
-minidiscord listening on 127.0.0.1:51584
+minidiscord listening on 127.0.0.1:49192
 [dryrun] ⑦ 서버 재시작
 [dryrun] ⑧ 방 보관
 # 대화 기록 디렉터리가 주어지지 않았다 — ㉠ 표면 미도달
 [dryrun] ⑨ 추출기 종료 코드 = 2
-[dryrun] dryrun_pid=73459
+[dryrun] dryrun_pid=20528
 [dryrun] claude_before=15
 [dryrun] claude_during=15
 [dryrun] claude_delta=0
-[dryrun] pgrep_narrow_flag=1
+[dryrun] pgrep_narrow_before=1
+[dryrun] pgrep_narrow_after=1
+[dryrun] pgrep_narrow_delta=0
 [dryrun] pgrep_descendant_claude=0
-[dryrun] pgrep_descendant_any=1
+[dryrun] pgrep_descendant_any=2
 [dryrun] extract_exit=2
 [dryrun] expected_missing=0
 [dryrun] forbidden_present=0
 [dryrun] a01_status=UNMEASURED
 [dryrun] marker_planted=Dr7yRun9
-[dryrun] VERDICT=FAIL
-# exit=1
+[dryrun] VERDICT=PASS
+# exit=0
+
+## 판정 항 하나씩
+
+# 좁은 판별자 (증분) : before=1  after=1  delta=0  → 성립
+#   절대값 1 은 M8 이 띄운 봇 세션(pid 64918, 기동 2026-09-06 20:10:49)이다. 이 예행이 만든 것이
+#   아니므로 판정에서 빠지고, 증거에는 남는다. 「기계의 과거를 지우면 나중 회차가 원래 0 이었다고 오독한다」.
+# 자손 판별자        : pgrep -P 20528 -x claude = 0            → 성립 (정의역이 예행의 자식이므로 절대 0 이 옳다)
+# 넓은 판별자 (증분) : claude_before=15  claude_during=15  delta=0 → 성립
+# 기대 파일 집합     : expected_missing=0                      → 성립
+# 금지 산출          : forbidden_present=0                     → 성립 (A01-reply-arg.txt 없음 — 예행은 세션을 띄우지 않는다)
+# A01 ㉣            : UNMEASURED                              → 정상값 (DB 면만 서고 reply 인자 면이 비었다)
+# 추출기 종료 코드   : 2                                       → 정상값 (대화 기록 표면 미도달)
 
 $ ls .moai/specs/SPEC-LIVEENV-001/evidence/dryrun/   # 산출 파일 목록
 A01-db-row.txt
@@ -45,11 +74,22 @@ dryrun-report.txt
 extract-notes.txt
 manifest.json
 
-# --- 양성 대조군 ①: 좁은 판별자에 걸리는 프로세스를 예행 밖에서 띄웠다(pid 73955) ---
-$ pgrep -f dangerously-load-development-channels | wc -l   # → 1 이상
-2
-$ kill <대조군>; pgrep -f ... | wc -l   # → 0 (되돌렸다)
-1
-# 양성 대조군 ②(자손 판별자)는 예행 자신이 낸다 — dryrun-report.txt 의
-#   pgrep_descendant_any 가 1 이상이면 그 명령이 침묵하는 형태가 아님이 배제된다.
-pgrep_descendant_any=1
+## 양성 대조군 ① — 좁은 판별자가 살아 있고, 증분 판정이 상수 함수가 아니다
+# [HARD] 판정선을 증분으로 옮겼으므로 「증분이 생기면 실제로 빨개지는가」를 같은 파일에서 보인다.
+#   대조군은 스스로 끝나는 프로세스로 세웠다 — 뒤에 kill 을 두면 그 줄에 닿지 못하는 경로가 남는다.
+
+$ B=$(pgrep -f 'dangerously-load-development-channels' | wc -l)                       # → 1
+$ python3 -c "import time; time.sleep(6)" --dangerously-load-development-channels probe-t35-sync &
+$ D=$(pgrep -f 'dangerously-load-development-channels' | wc -l)                       # → 2  (대조군이 걸린다)
+$ test "$B" -eq "$D"; echo "narrow-delta-zero exit=$?"
+narrow-delta-zero exit=1        # 증분이 생기면 빨개진다 — 판정이 상수 함수가 아니다
+$ wait   # 대조군이 스스로 끝난다
+$ A=$(pgrep -f 'dangerously-load-development-channels' | wc -l)                       # → 1
+$ test "$B" -eq "$A"; echo "narrow-delta-zero exit=$?"
+narrow-delta-zero exit=0        # 되돌아온다
+$ ps -p <대조군> > /dev/null; echo "대조군 종료 확인 exit=$?"
+대조군 종료 확인 exit=1         # 죽었다
+
+## 양성 대조군 ② — 자손 판별자가 침묵하는 형태가 아니다
+# 예행이 서버를 spawn 하므로 pgrep -P "$DRYRUN_PID" 가 그 자식을 잡는다.
+pgrep_descendant_any=2          # 1 이상 — 그 명령이 애초에 아무것도 못 잡는 형태가 아님을 배제한다

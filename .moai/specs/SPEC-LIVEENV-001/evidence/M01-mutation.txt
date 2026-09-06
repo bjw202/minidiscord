@@ -92,6 +92,17 @@ principal=pm:api=true:conn=1 measured=yes
 #   존재 여부 하나뿐이다.
 
 ### 복원 확인 (바이트 대조)
+# [이 절은 앞 회차에 제목만 있고 비어 있었다 — sync 단계가 채웠다(리드 처분 35).]
+# 변이 ⑤ 는 조작이 둘이었으므로 대상도 둘이다: 지운 파일과, 그 파일을 다시 쓰지 못하게 막은 스크립트.
+# 변이 직전에 뜬 사본이 data/live-env/ 아래 남아 있어 대조가 가능했다.
+$ shasum -a 256 data/live-env/mcp.json.premut bot-01/.mcp.json          # 두 해시가 같다
+unchanged=yes  bot-01/.mcp.json          (변이 직전 사본 = mcp.json.premut)
+$ shasum -a 256 data/live-env/live-env.sh.premut scripts/live-env.sh    # 두 해시가 같다
+unchanged=yes  scripts/live-env.sh       (변이 직전 사본 = live-env.sh.premut)
+# 대조군: 서로 다른 두 파일(mcp.json.premut · scripts/live-env.sh)의 해시를 같은 명령으로 뽑으면
+#   서로 다른 값 2개가 나온다 — 이 대조가 「무엇을 넣어도 같다」고 답하는 형태가 아니다.
+# [HARD] 해시 원문은 여기 싣지 않는다 — SHA-256 은 64자 hex 라 AC-LIVEENV-011 ㉠(이 카드의 산출
+#   디렉터리에 64자 hex 절대 0건)이 빨개진다. 재확인은 위 두 명령을 다시 돌려서 한다.
 
 ## 변이 ⑥ — AC-LIVEENV-012 (사람 판정에 판정 필드가 없다)
 # 조작: buildHumanItems 가 A03·A10 에 verdict 를 붙이게 한다

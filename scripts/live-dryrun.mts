@@ -49,8 +49,12 @@ async function main(): Promise<number> {
 
   // ㉢ 의 기준선 — 예행 «전» 의 기계 전체 세션 수. 판정선이 아니라 증분의 앞자리다.
   const claudeBefore = pgrepCount(['-x', 'claude'])
+  // 좁은 판별자도 -P 가 없어 «기계 전체» 를 잰다 — 절대 0 은 판정선이 될 수 없다(AC-014 ㉢, 리드 처분 33).
+  // 하필 이 플래그가 spec.md §1.2 F-15 의 다섯째 사람 손이라, 이 카드가 실 세션을 띄우면 값이 1 이상이 된다.
+  // 그래서 넓은 판별자와 같은 형태로 «이 예행이 만든 증분» 을 잰다. 기준선은 예행이 시작하는 지금 잡는다.
+  const narrowBefore = pgrepCount(['-f', 'dangerously-load-development-channels'])
   const dryrunPid = process.pid
-  log(`[dryrun] pid=${dryrunPid} claude_before=${claudeBefore}`)
+  log(`[dryrun] pid=${dryrunPid} claude_before=${claudeBefore} narrow_before=${narrowBefore}`)
 
   const port = await acquirePort()
   let child: ChildProcess | null = spawnServer(port.forServer, dataDir, botFilesDir)
@@ -106,7 +110,7 @@ async function main(): Promise<number> {
   log('[dryrun] ⑦ 서버 재시작')
 
   // ㉢ 관측 — 예행이 도는 «지금» 잰다. 자손 판별자가 이 예행이 낳은 것을 겨눈다.
-  const narrow = pgrepCount(['-f', 'dangerously-load-development-channels'])
+  const narrowAfter = pgrepCount(['-f', 'dangerously-load-development-channels'])
   const descendantClaude = pgrepCount(['-P', String(dryrunPid), '-x', 'claude'])
   const descendantAny = pgrepCount(['-P', String(dryrunPid)])
   const claudeDuring = pgrepCount(['-x', 'claude'])
@@ -143,7 +147,9 @@ async function main(): Promise<number> {
     `claude_before=${claudeBefore}`,
     `claude_during=${claudeDuring}`,
     `claude_delta=${claudeDuring - claudeBefore}`,
-    `pgrep_narrow_flag=${narrow}`,
+    `pgrep_narrow_before=${narrowBefore}`,
+    `pgrep_narrow_after=${narrowAfter}`,
+    `pgrep_narrow_delta=${narrowAfter - narrowBefore}`,
     `pgrep_descendant_claude=${descendantClaude}`,
     `pgrep_descendant_any=${descendantAny}`,
     `extract_exit=${code}`,
@@ -156,7 +162,7 @@ async function main(): Promise<number> {
   for (const line of report) log(`[dryrun] ${line}`)
 
   const ok = missing.length === 0 && forbidden.length === 0
-    && narrow === 0 && descendantClaude === 0
+    && narrowAfter === narrowBefore && descendantClaude === 0
     && claudeDuring === claudeBefore
     && a01?.status === 'UNMEASURED'
   log(`[dryrun] VERDICT=${ok ? 'PASS' : 'FAIL'}`)
