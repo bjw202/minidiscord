@@ -131,7 +131,7 @@ npx tsx scripts/e2e.mts   # 이 시점엔 빨갛다 — C2 에서 다시 쓴다.
 ```text
 minidiscord v2 리팩토링 2단계(A). 먼저 A-0 실세션 관측(가이드 §2 A-0)을 하고 결과를 한 줄로 보고한 뒤, /moai plan 으로 SPEC-A 를 쓴다.
 재료: .moai/reports/v2-refactoring-guide.md §2 A-1 (DDL·HTTP·프레임·MCP·게이트웨이 규칙은 글자 그대로), .moai/reports/v2-review.md §6 위험 1~4·7, §4 «지켜야 할 것» 17개.
-결정 ①③ 은 가이드 §0 기본 답. C1 은 끝나 있다(커밋 <C1 SHA>).
+결정 ①③ 은 가이드 §0 기본 답. C1 은 끝나 있다(커밋 2f6cd3f, 워크트리 .claude/worktrees/v2-model 브랜치 WT-v2-model — 그 안에서 이어 간다).
 plan 감사 통과 뒤 Kickoff 승인을 받고 /moai run 으로 간다. sync 는 감사 2회차 상한.
 ```
 
@@ -177,7 +177,7 @@ minidiscord v2 리팩토링 3단계(B). 가이드 .moai/reports/v2-refactoring-g
 
 1. **보관 이동** (10개, 보고서 §4 목록): `SPEC-AUTH-001, BOT-001, GATEWAY-001, CHANCLIENT-001, CHANAUTH-001, GWAUTH-002, ROOMAUTHZ-001(④ 기본 답일 때), E2E-001, LIVEVERIFY-001, LIVEENV-001` → `.moai/specs/_archive/`. 원 자리에 `SPEC-GWAUTH-001.md` 와 같은 모양의 안내 파일 한 줄(«대체됨 → SPEC-A / v2 모델 변경으로 보관, 카드 …, 내용 무변경»).
 2. **개정 표기** (11개): `CORE, ROOM, MSG, PERM, CHANNEL, CHANPERM, CHANWIRE, WEBSHELL, WEBRICH, CHANINJECT` + (SPEC-A 가 GATEWAY 를 대체했음을 CHANINJECT 등에서 참조). 각 `spec.md` HISTORY 에 한 줄 — 본문은 «지금 참» 으로만 고치고 당시 결정 기록은 둔다(메모리 규칙: 본문은 지금 참, HISTORY 는 그때 참).
-3. **테스트 잔여**: §5 «버림» 중 아직 남은 파일 삭제, `.moai/state/verify/` 에 의존하는 `truncate.test.ts` 의 형제 훑기 스크립트가 저장소에 있는지 확인(없으면 그 `it` 하나만 제거).
+3. **테스트 잔여**: §5 «버림» 중 아직 남은 파일 삭제. `truncate.test.ts` ㉡이 실행하는 `.moai/state/verify/t25-plan/sibling-sweep.mjs` 의 고정 목록은 C1 에서 이미 `transport-auth` → `entrypoint` 로 바꿨다(저장소에 있음) — A 가 `gateway-mutual-auth.test.ts` 를 지우면 그 줄도 같이 지운다.
 4. **스크립트**: `scripts/e2e.mts` 를 v2 프레임(맨몸 hello·`room_id`)으로 다시 쓰고 시나리오를 «봇 하나·방 둘» 로 바꾼다. `scripts/live-*` 는 LIVEENV 와 함께 보관(삭제 아님, `scripts/_archive/`).
 5. **문서**: README «채널 플러그인을 붙이기 전에» 절 재작성(핸드셰이크·TLS·«서비스화 안 됨» 삭제), ROADMAP 에 v2 절 추가, `.moai/project/codemaps/` 5종 갱신(`/moai codemaps`).
 
@@ -203,10 +203,10 @@ minidiscord v2 리팩토링 4단계(C2). 가이드 .moai/reports/v2-refactoring-
 
 ```
 ──────────────────────────────────────────────
-🎯 v2 리팩토링   ░░░░░░░░░░  0/5 (0%)
+🎯 v2 리팩토링   ▓▓▓▓░░░░░░  2/5 (40%)
 
-[⬜] 0. 결정 넷 확정        ← ④ 비공개 방만 운영자 답 필요, 나머지 기본 답 있음
-[⬜] 1. C1 게이트웨이 밖 삭제 ← 바닐라 · 반나절 크기 · 테스트 하네스 로그인 교체
+[🟢] 0. 결정 넷 확정        ← ④ 기본 답(비공개 방 삭제, 2026-09-07 운영자 확정), 나머지 기본 답
+[🟢] 1. C1 게이트웨이 밖 삭제 ← 커밋 2f6cd3f (WT-v2-model) · npm test 초록 254+102 · e2e 15/15 · grep 넷 0건
 [⬜] 2. A  봇 단위 모델      ← moai plan→run→sync(감사 2회 상한) · 본체 · A-0 실세션 10분 먼저
 [⬜] 3. B  봇→봇 멘션·역할   ← 바닐라 · 끝 조건 5개를 테스트로 먼저
 [⬜] 4. C2 문서·테스트 정리   ← 바닐라 · SPEC 28→19 · e2e 러너 재작성
