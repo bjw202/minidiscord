@@ -192,6 +192,8 @@ npm test && npx tsx scripts/e2e.mts                              # 둘 다 초�
 grep -rn "t23\|TLS 종단\|상호 인증" README.md                     # 0건
 ```
 
+**C2 종결 기록 (2026-09-07, 커밋 `74ff7c9` 정리 + `867e853` 문서)**: 네 명령 실측 — `19` · `11` · `npm test` exit 0 (server 197 · channel 103) 와 `npx tsx scripts/e2e.mts` exit 0 (`[15/15]`) · `0`. 출력 원문은 `.moai/state/verify/c2/{npm-test,e2e}.txt`. 이월 F1(참여하지 않은 방의 인바운드 프레임 버림, 시험 빨강→초록)·F3(POST→deliver→ws 인프로세스 시험) 은 «하는 것» 3 에서 닫았다. 표 밖에서 한 것 둘: `server/test/fixtures/README.md`(지운 TLS 열쇠 설명, 버림 잔여) 삭제, CHANGELOG 에 B·C2 항목. 남긴 것: `.moai/project/{structure,tech}.md` 는 아직 v1 문장(`bot_tokens`·`room_members`·`live-env`)을 담고 있다 — §4 표 밖이라 손대지 않았고, ROADMAP OD-8(보관 방에도 봇 글 저장) 과 함께 후속이다.
+
 ### 시작 메시지
 
 ```text
@@ -205,13 +207,14 @@ minidiscord v2 리팩토링 4단계(C2). 가이드 .moai/reports/v2-refactoring-
 
 ```
 ──────────────────────────────────────────────
-🎯 v2 리팩토링   ▓▓▓▓▓▓▓▓░░  4/5 (80%)
+🎯 v2 리팩토링   ▓▓▓▓▓▓▓▓▓▓  5/5 (100%)
 
 [🟢] 0. 결정 넷 확정        ← ④ 기본 답(비공개 방 삭제, 2026-09-07 운영자 확정), 나머지 기본 답
 [🟢] 1. C1 게이트웨이 밖 삭제 ← 커밋 2f6cd3f (WT-v2-model) · npm test 초록 254+102 · e2e 15/15 · grep 넷 0건
 [🟢] 2. A  봇 단위 모델      ← 커밋 b6ff9af (WT-v2-model) · SPEC-BOTMODEL-001 completed · npm test 초록 248+103 · grep 둘 0건 · e2e exit=1(정해진 빨강) · sync 감사 1회차 PASS 0.893
 [🟢] 3. B  봇→봇 멘션·역할   ← 커밋 12deb70 (WT-v2-model) · 테스트 5 빨강→초록 · npm test 초록 253+103 · F1·F3 → C2
-[⬜] 4. C2 문서·테스트 정리   ← 바닐라 · SPEC 28→19 · e2e 러너 재작성
+[🟢] 4. C2 문서·테스트 정리   ← 커밋 74ff7c9·867e853 (WT-v2-model) · SPEC 19+보관 11 · npm test 197+103 · e2e 15/15 · README grep 0 · F1·F3 종결
+   └─ 남은 것: 메인 체크아웃의 이 가이드 사본은 합칠 때 함께 갱신 · structure/tech.md v1 문장 · OD-8
 ──────────────────────────────────────────────
 ```
 
