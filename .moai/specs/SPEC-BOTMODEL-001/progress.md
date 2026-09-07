@@ -253,7 +253,15 @@ open_for_audit:
 sync_status: audit-ready
 sync_complete_at: 2026-09-07
 sync_head_sha: 0ab8d13           # sync 편집의 기준 HEAD (run 종결 문서 커밋). 이 sync 커밋 자신의 SHA 는 아래
-sync_commit_sha: pending-backfill-sync   # 한 커밋 규칙(§E.3 commit_strategy)이라 자기 SHA 를 적을 수 없다 — git log --grep 'SPEC-BOTMODEL-001 sync' 로 확인
+sync_commit_sha: 5b123a2         # 감사 1회차 뒤 리드가 채움 (이 줄과 아래 sync_audit 는 후속 문서 커밋)
+sync_audit:
+  iterations: 1                  # 상한 2 (plan.md §E) — 1회차 PASS 라 2회차 없음
+  verdict: PASS
+  score: 0.893                   # 조화평균 F 0.96 · S 0.85 · C 0.92 · Cs 0.85, Tier L 통과선 0.85
+  report: .moai/reports/sync-audit/SPEC-BOTMODEL-001-sync-audit-1.md
+  blocking: 0
+  fixed_after_audit: "F2 ROADMAP.md:53 — C1 이 지운 방 구성원 인가를 살아 있는 문장으로 적었던 것을 한 줄 교정"
+  carried_forward: "F1 인바운드 프레임의 room_bots 참여 검사 부재(SPEC 요구 아님, Medium) → B 단계 후보 · F3 POST /messages→deliver→ws 인프로세스 시험 부재 → B 단계 후보 · F6 C1 잔존 README/ROADMAP 문장 → C2"
 branch: WT-v2-model
 worktree: .claude/worktrees/v2-model
 pr: none                          # v2 브랜치는 B·C2 단계로 이어진다 — 이 단계는 로컬 커밋만, 푸시 없음
