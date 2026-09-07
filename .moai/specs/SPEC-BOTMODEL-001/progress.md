@@ -98,7 +98,7 @@ _\<pending sync-phase\>_
 | 도메인 수 | 3 (server/ · channel/ · web/) |
 | 언어 혼합 | TypeScript + JavaScript + Markdown |
 | 동시성 이득 | 낮음 — coding-heavy 이고 세 파일이 **같은 프레임 계약 위에 서야 한다** |
-| Kickoff 승인 | **미승인 — plan 감사 통과 뒤 운영자 승인이 필요하다** |
+| Kickoff 승인 | **승인됨 (2026-09-07, 세션 4489b66a, AskUserQuestion «승인 — 자율 진행») — 감사 3회차 PASS 0.940 뒤** |
 
 | 모드 | 선택 | 근거 |
 |------|------|------|
