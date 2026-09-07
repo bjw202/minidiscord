@@ -4,6 +4,18 @@
 
 ## [Unreleased]
 
+### 봇이 봇을 부를 수 있게 됐고, 문서와 시험을 v2 에 맞췄습니다 — v2 리팩토링 B·C2 단계
+
+**B — 봇 → 봇 멘션 전달, 역할 규칙, 되먹임 차단** (커밋 `12deb70`). 지금까지 봇이 쓴 글의 `@TO(다른봇)` 은 아무에게도 가지 않았습니다(사람 글만 파싱했습니다). 이제 봇 글도 사람 글과 같은 자리에서 타깃을 풉니다 — 멘션 → `room_bots` 조회를 `server/src/targets.ts` 의 `resolveTargets` 로 뽑아 사람 경로(`routes-messages.ts`)와 봇 경로(`gateway.ts` `handleBotMessage`)가 함께 씁니다. 그 위에 규칙 둘을 얹었습니다. **역할** — 봇은 등록할 때 `orchestrator` 또는 `worker`(기본)이고(`POST /api/bots` 는 그 밖의 값을 `400` 으로 거절), worker 봇은 orchestrator 봇과 사람만 부를 수 있습니다. worker 가 다른 worker 를 `@TO` 하면 전달되지 않고 system 메시지 한 줄이 남으며, 원문은 사람 화면에 그대로 있습니다. **되먹임 차단**(가이드 §0 결정 ③, N=6) — 그 방에서 마지막 사람 글 이후 봇 글이 여섯 개 이어지면(지금 저장한 글까지 세어) 그 글의 `@TO` 는 `cc` 로 내려가 상대 봇에게 답변 의무 없이 도착하고 system 메시지 한 줄이 남습니다. 봇 경로에는 `400` 같은 응답이 없으므로 참여하지 않은 봇 멘션도 system 메시지 한 줄로 알립니다. 끝 조건 넷은 `server/test/gateway.test.ts` 의 `B-1`~`B-4` 로, role 검증은 `rooms-bots.test.ts` 로 먼저 써서 다섯이 빨간 것을 보고 구현했습니다.
+
+**C2 — 정리** (이 항목을 담은 커밋). v2 에서 대체되거나 사라진 SPEC 10개(`AUTH`·`BOT`·`GATEWAY`·`CHANCLIENT`·`CHANAUTH`·`GWAUTH-002`·`ROOMAUTHZ`·`E2E`·`LIVEVERIFY`·`LIVEENV`)를 `.moai/specs/_archive/` 로 옮기고 원 자리에 «대체됨 →» 한 줄 안내 파일을 두었습니다(내용 무변경). 살아 있되 조항이 바뀐 SPEC 10개(`CORE`·`ROOM`·`MSG`·`PERM`·`CHANNEL`·`CHANPERM`·`CHANWIRE`·`WEBSHELL`·`WEBRICH`·`CHANINJECT`)는 본문의 당시 결정 기록은 그대로 두고 HISTORY 에 v2 개정 한 줄씩만 더했습니다. 옛 방별 토큰 위에 서 있던 라이브 검증 도구(`scripts/live-*`)와 그 시험은 `scripts/_archive/` 로 옮겼고, `scripts/e2e.mts` 는 v2 프레임 «봇 하나 · 방 둘» 15단계로 다시 썼습니다 — 방별 전달·이력·재전송·재시작 영속성·보관까지 한 소켓 위에서 잽니다. README(로그인·API 표·보안 절·폴더 구조·데이터베이스·문서 목록)·ROADMAP(v2 절·규모·보류 카드)·코드맵 5종을 현재 코드 기준으로 고쳤습니다.
+
+**A 의 sync 감사가 이월한 둘도 여기서 닫았습니다.** F1 — 봇 토큰 하나로 **참여하지 않은 방**에 글을 쓰고 이력을 읽을 수 있었습니다(시험으로 재현: 다른 방의 `bot_message` 가 저장되고 `history_response` 가 돌아왔음). 이제 `gateway.ts` 가 `room_id` 검사 바로 뒤에서 `room_bots` 참여를 확인해, 참여하지 않은 방을 실은 프레임은 행·발행·응답 없이 버리고 소켓은 열어 둡니다(네 프레임 전부). F3 — 사람 경로 `POST /api/rooms/:id/messages` → `deliver` → 봇 소켓의 `message` 프레임을 한 프로세스 안에서 재는 시험이 없었습니다. 경로 자체는 이미 동작했고 시험만 더했습니다.
+
+**잰 것**: `npm test` server 197 · channel 103 초록(보관한 live-extract 시험 58개가 빠지고 F1·F3 둘이 더해짐), `npx tsx scripts/e2e.mts` `[15/15]` exit 0, 살아 있는 SPEC 디렉터리 19 · `_archive` 11, README 에 `t23|TLS 종단|상호 인증` 0건.
+
+**코드맵을 다시 쓰며 본 것 하나** — `gateway.ts` 는 `rooms.status` 를 `handleHello` 한 곳에서만 읽습니다. 그래서 보관된 방이라도 `room_bots` 행이 남아 있으면 봇 글이 저장·발행됩니다(사람 경로는 `409`). 이번엔 고치지 않았고 ROADMAP 후속 후보에 적어 둡니다.
+
 ### 봇의 신원을 방에서 봇으로 옮겼습니다 — v2 리팩토링 A 단계 (`SPEC-BOTMODEL-001`)
 
 **토큰이 봇의 것이 됐고, 방 참여는 표의 한 행이 됐으며, 모든 프레임이 자기 방을 말합니다.** 지금까지 봇은 방마다 초대받아 방별 토큰(`bot_tokens`)으로 붙었고, 소켓 하나가 곧 «어느 방의 어느 봇»이었습니다. 이제 봇은 등록할 때 토큰 하나를 받고(`POST /api/bots` — 평문 토큰은 그 응답에 한 번만 실리고 `bots` 표에 저장됩니다), 방은 `POST /api/rooms/:id/bots` 로 참여자를 받으며(`room_bots`, 멱등), 소켓은 봇마다 하나입니다. 초대 라우트 셋(`/api/rooms/:id/invites`)은 사라졌습니다. 어느 방의 일인지는 접속이 아니라 프레임이 말합니다 — 채널→서버 네 프레임(`bot_message`·`status`·`history_request`·`permission_request`)은 `room_id` 가 필수이고, 없으면 서버가 system 메시지 없이 조용히 버리되 소켓은 닫지 않습니다. 서버→채널의 `message`·`history_response` 는 `room_id` 를 항상 싣고, `welcome` 은 참여한 활성 방 목록을, `permission_verdict` 는 `request_id` 만 싣습니다.

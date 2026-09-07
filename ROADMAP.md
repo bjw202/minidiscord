@@ -8,7 +8,7 @@
 
 사내망에서 도는 채팅 서버를 만들고, 거기에 과제원들의 Claude Code 세션이 봇으로 접속해서 대화하게 만든다. (배치 맥락 운영자 확정 2026-08-31: 사내 네트워크, 등록 사용자는 과제원, 봇은 서버 PC 에서만 실행. 보안 강화는 사내망 밖으로 여는 «서비스화» 시점에 다룬다.) — 서버의 기본 바인드는 아직 `127.0.0.1`이라 현재는 이 PC에서만 접속된다.
 
-**2026-09-07 현재: M1~M6 여섯 단계가 전부 끝났고, 그 뒤 카드 t9~t42 로 채널 플러그인을 단단하게 만드는 작업까지 `main` 하나에 합쳐져 있다. 큐는 비어 있다.**
+**2026-09-07 현재: M1~M6 여섯 단계가 전부 끝났고, 그 뒤 카드 t9~t42 로 채널 플러그인을 단단하게 만드는 작업까지 `main` 하나에 합쳐져 있다. 그 위에 v2 리팩토링(아래 「v2 리팩토링」 절) 네 단계가 브랜치 `WT-v2-model` 에서 끝났다. 큐는 비어 있다.**
 
 ## 전체 그림
 
@@ -32,7 +32,7 @@ M3 메시지 + 게이트웨이 + 권한 릴레이               ✅ MENTION · S
                                                                   BOTSTAB · PERMROUTE · WSUPGRADE · GATECHECKS · LIVEENV(진행 중)
 ```
 
-M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에 진행했어요. 각 SPEC 의 상태와 요구사항은 `.moai/specs/` 에 있고, 28개 중 27개가 `completed`, `SPEC-LIVEENV-001` 하나가 `in-progress` 예요.
+M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에 진행했어요. 각 SPEC 의 상태와 요구사항은 `.moai/specs/` 에 있어요 — v2 리팩토링 뒤 **살아 있는 SPEC 19개**(`SPEC-BOTMODEL-001` 포함)가 거기 있고, v2 에서 대체되거나 사라진 **11개는 `.moai/specs/_archive/`** 에 있으며 원 자리에 한 줄 안내 파일(`SPEC-*.md`)이 가리킵니다. 위 그림의 AUTH · BOT · GATEWAY · CHANCLIENT · CHANAUTH · GWAUTH-002 · ROOMAUTHZ · E2E · LIVEVERIFY · LIVEENV 가 보관된 것들이에요.
 
 ## 마일스톤별 상세
 
@@ -40,7 +40,7 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에
 
 **끝나면**: `npm test`가 통과하는 빈 서버가 하나 생긴다. `/api/health`에 요청하면 `{ok: true}`가 온다. SQLite 에 테이블이 만들어져 있다.
 
-**지금**: 테이블은 설계 때 8개였고 지금은 **10개**다 — 방 구성원(`room_members`, 카드 t11)과 마이그레이션 표식(`schema_migrations`)이 더해졌다. DDL 과 마이그레이션 셋은 `server/src/db.ts` `openDb` 한 곳에 있다 (`codemaps/data-flow.md` §1).
+**지금**: 테이블은 **8개**다 — 설계 때의 8개에서 방별 토큰(`bot_tokens`)이 봇 참여(`room_bots`)로 바뀌었고, 카드 t11 이 더했던 방 구성원(`room_members`)과 마이그레이션 표식(`schema_migrations`)은 v2 C1 단계에서 지웠다. DDL 은 `server/src/db.ts` `openDb` 한 곳에 있고, 옛 모양의 데이터베이스는 열 때 거절한다 (`codemaps/data-flow.md` §1).
 
 **참고**: `plan-v2.md` Task 1-2 · `SPEC-CORE-001`
 
@@ -48,11 +48,11 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에
 
 ### M2 — 로그인 + 방 + 봇 초대 ✅
 
-**끝나면**: 웹 API로 회원가입/로그인이 되고, 방을 만들고 보관할 수 있고, 봇을 등록해서 방에 초대하면 접속 토큰과 "세션 실행 명령"이 발급된다.
+**끝나면**: 웹 API로 로그인이 되고, 방을 만들고 보관할 수 있고, 봇을 등록하면 접속 토큰과 "세션 실행 명령"이 발급되며 방에 참여시킬 수 있다.
 
 **지금**: 다 된다 — 다만 모양이 바뀌었다. v2 봇 모델(`SPEC-BOTMODEL-001`)에서 토큰은 방 초대가 아니라 **봇 등록**(`POST /api/bots`)이 한 번 발급하고, 방은 `POST /api/rooms/:id/bots` 로 참여자를 받는다(`room_bots`, 멱등). 초대 라우트 셋(`/api/rooms/:id/invites`)은 없다. 카드 t11 이 넣었던 방 구성원 명단과 그 인가(`SPEC-ROOMAUTHZ-001`)는 v2 C1 단계(커밋 2f6cd3f, 결정 ④ 비공개 방 삭제)에서 지웠다 — 지금은 로그인한 사람이면 어느 방이든 읽고 쓴다. 첨부 다운로드의 방 검사 부재(보류 카드 t17)는 그래서 새 구멍이 아니라 같은 규칙이다.
 
-**참고**: `plan-v2.md` Task 3-5 · `SPEC-AUTH-001` · `SPEC-ROOM-001` · `SPEC-BOT-001`
+**참고**: `plan-v2.md` Task 3-5 · `SPEC-ROOM-001` · `SPEC-BOTMODEL-001` (AUTH-001 · BOT-001 은 `_archive/`)
 
 ---
 
@@ -62,7 +62,7 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에
 
 **지금**: 다 된다. 게이트웨이 인증은 설계 때의 토큰 해시 대조도, 카드 t22 의 상호 인증 v2 도 아니라 **맨몸 토큰 `hello`**(v2 봇 모델, `SPEC-BOTMODEL-001`)다 — 봇 단위로 붙고, `welcome` 이 참여한 방 목록을 돌려주며, 그 뒤 프레임은 전부 `room_id` 를 싣는다. 놓친 메시지는 `room_bots` 의 방별 커서로 재접속 때 다시 온다. 권한 판정은 요청한 접속 하나에만 되돌아간다 (카드 t34, `SPEC-PERMROUTE-001`). 프레임 목록은 `codemaps/entry-points.md` §6.
 
-**참고**: `plan-v2.md` Task 6-10 · `SPEC-MENTION-001` · `SPEC-SSE-001` · `SPEC-GATEWAY-001` · `SPEC-MSG-001` · `SPEC-PERM-001`
+**참고**: `plan-v2.md` Task 6-10 · `SPEC-MENTION-001` · `SPEC-SSE-001` · `SPEC-BOTMODEL-001` · `SPEC-MSG-001` · `SPEC-PERM-001` (GATEWAY-001 은 `_archive/`)
 
 ---
 
@@ -72,7 +72,7 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에
 
 **지금**: 다 된다. `fetch_history` 는 `{cursor, messages}` JSON 을 돌려주고, 세션은 그 `cursor` 를 다음 호출의 `since_id` 로 넘겨 그 다음부터만 받는다. (설계 때의 「각 줄의 `#번호`를 기억해 넘긴다」는 방식은 카드 t10 에서 커서 오염의 원인으로 판명돼 폐기됐다 — `SPEC-CHANINJECT-001` F-03.) 그 뒤 t9(전송 계층: `ws://` 는 루프백만·그 밖은 `wss://`), t10(주입 방어: 봉투 중화·신뢰 경계 지시문), t25(모델로 나가는 바이트 상한) 가 얹혔다.
 
-**참고**: `plan-v2.md` Task 11-14 · `SPEC-CHANNEL-001` · `SPEC-CHANCLIENT-001` · `SPEC-CHANPERM-001` · `SPEC-CHANWIRE-001` · `SPEC-CHANAUTH-001` · `SPEC-CHANINJECT-001` · `SPEC-BOTSTAB-001`
+**참고**: `plan-v2.md` Task 11-14 · `SPEC-CHANNEL-001` · `SPEC-CHANPERM-001` · `SPEC-CHANWIRE-001` · `SPEC-CHANINJECT-001` · `SPEC-BOTSTAB-001` (CHANCLIENT-001 · CHANAUTH-001 은 `_archive/`)
 
 ---
 
@@ -92,17 +92,30 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에
 
 **끝나면**: 진짜 Claude Code 세션 하나로 실제 방에서 송수신을 확인했고, 서버를 껐다 켜도 대화·파일·토큰이 그대로 남아있는 걸 확인했고, README로 "어떻게 켜고 쓰는지"가 정리돼 있다.
 
-**지금**: 세 조건이 다 찼다. 가짜 채널 E2E 15단계와 재시작 영속성은 카드 t6(`SPEC-E2E-001`), CI 는 카드 t27(`SPEC-CI-001`), **진짜 Claude Code 세션이 방에서 답하는 것을 사람이 열두 항목으로 손수 관측한 것은 카드 t32(`SPEC-LIVEVERIFY-001`, 2026-09-03)** 다. 그 관측 절차를 사람 기억이 아니라 스크립트로 옮기는 후속이 카드 t35(`SPEC-LIVEENV-001`)인데, 이것은 아래 「지금 어디까지 왔나」에 적은 대로 감사 통과선에 못 미친 채 닫혔다.
+**지금**: 세 조건이 다 찼다. E2E 러너는 카드 t6(`SPEC-E2E-001`)이 만들었고 v2 C2 단계가 «봇 하나·방 둘» 15단계로 다시 썼다(`scripts/e2e.mts`, SPEC 없이 스크립트 머리 주석이 단계를 적는다). CI 는 카드 t27(`SPEC-CI-001`). **진짜 Claude Code 세션이 방에서 답하는 것을 사람이 열두 항목으로 손수 관측한 것은 카드 t32(`SPEC-LIVEVERIFY-001`, 2026-09-03)** 이고, v2 에서는 A-0 관측으로 다시 쟀다. 그 관측 절차를 스크립트로 옮기던 카드 t35(`SPEC-LIVEENV-001`)는 감사 통과선에 못 미친 채 닫혔고, 도구와 SPEC 은 v2 에서 보관됐다(`scripts/_archive/`, `.moai/specs/_archive/`).
 
-**참고**: `plan-v2.md` Task 18-19 · `SPEC-E2E-001` · `SPEC-CI-001` · `SPEC-LIVEVERIFY-001`
+**참고**: `plan-v2.md` Task 18-19 · `SPEC-CI-001` (E2E-001 · LIVEVERIFY-001 · LIVEENV-001 은 `_archive/`)
 
 ## 지금 어디까지 왔나 (2026-09-07)
 
 - **코드는 전부 `main` 에 있다.** 2026-09-02 시점에 미병합이던 네 브랜치는 카드 t31 이 합쳤고(t27·t8·t25·t6), 그 뒤 카드들은 PR #2~#9 로 들어왔다. CI 워크플로(`.github/workflows/ci.yml`)도 `main` 에 있고 push·PR 마다 `npm ci → typecheck 둘 → npm test` 를 돈다.
-- **규모**: 제품 코드 약 2,100줄(`server/src` + `channel/src`), 웹 약 1,600줄, 스크립트 약 1,400줄. 테스트 파일 26개(서버 19 · 채널 7), 테스트 412개(서버 286 · 채널 126, 2026-09-07 pre-commit 게이트 실행에서 관측). 설계 문서(SPEC 28개)가 여전히 코드보다 훨씬 크지만, 이 불균형의 원인과 처방은 `진단-스펙폭발-2026-09-02.md` 와 `작업-나누기-정리-2026-09-02.md` 에 정리돼 있고 그 뒤 카드는 한 카드에 SPEC 하나 원칙을 지켰다.
+- **규모** (v2 C2 종결 시점, `wc -l`·`ls`·`npm test` 로 잰 값): 제품 코드 약 1,700줄(`server/src` 1,121 + `channel/src` 592), 웹 약 1,600줄, 스크립트 477줄(`scripts/e2e.mts` 하나). 테스트 파일 23개(서버 17 · 채널 6), 테스트 300개(서버 197 · 채널 103). 설계 문서는 살아 있는 SPEC 19개 + 보관 11개. 불균형의 원인과 처방은 `진단-스펙폭발-2026-09-02.md` 와 `작업-나누기-정리-2026-09-02.md` 에 정리돼 있고 그 뒤 카드는 한 카드에 SPEC 하나 원칙을 지켰다.
 - **큐는 비어 있다** (`moai todo` → `queue is empty`). 2026-09-02 재정렬 때 세운 카드 t31~t35 와 그 진행 중 생긴 t36~t42 가 전부 처리됐다 — 아래 표.
-- **서비스화(사내망 밖으로 열기)는 아직 안 된다.** 서버가 TLS 를 종단하지 않아 상호 인증의 채널 바인딩이 `unbound` 이고, 중계형 중간자가 배제되지 않는다. 조건은 보류 카드 t23(서버 TLS 종단)과 t17(구성원 검사 예외 둘). README 「채널 플러그인을 붙이기 전에」가 같은 말을 한다.
-- **감사 통과선에 못 미친 채 닫은 SPEC 이 하나 있다.** `SPEC-LIVEENV-001`(카드 t35)은 7회차 감사 FAIL 0.742(통과선 0.80)에서 운영자 처분으로 닫았고 `status` 는 `in-progress` 로 남겼다. 통과로 옮기지 않은 이유와 열린 항목은 그 SPEC 의 HISTORY 0.15.0·0.16.0 과 §5 에 있다. 도구 자체(`scripts/live-env.sh`·`live-extract.mts`·`live-dryrun.mts`)는 `main` 에 있고 쓸 수 있다.
+- **배치 전제는 «아는 사람 몇 명, 같은 PC 나 사내망» 이다.** v2 리팩토링이 그 전제에 맞지 않는 장치(비밀번호·가입·방 구성원 인가·게이트웨이 핸드셰이크·전선 봉투·전송 스킴 검사)를 걷어냈다. 토큰은 전선과 표에서 평문이고 방 사이에 경계가 없다 — 그 밖으로 내가는 배치는 README 「보안에 대해 알아둘 점」의 «없는 것» 목록을 채운 뒤의 일이다.
+- **감사 통과선에 못 미친 채 닫은 SPEC 이 하나 있다.** `SPEC-LIVEENV-001`(카드 t35)은 7회차 감사 FAIL 0.742(통과선 0.80)에서 운영자 처분으로 닫았고 `status` 는 `in-progress` 인 채 v2 C2 단계에서 `_archive/` 로 옮겼다. 도구(`scripts/live-env.sh`·`live-extract.mts`·`live-dryrun.mts`)도 옛 방별 토큰 위에 있어 `scripts/_archive/` 로 함께 옮겼다.
+
+## v2 리팩토링 (2026-09-07, 브랜치 `WT-v2-model`)
+
+카드 t9~t42 가 채널을 단단하게 만드는 동안 봇 모델이 «방마다 토큰 하나» 위에 서 있다는 것이 계속 걸렸다. 판정 보고서 `.moai/reports/v2-review.md` 가 무엇을 왜 바꾸는지를, 가이드 `.moai/reports/v2-refactoring-guide.md` 가 어떤 순서로 무엇을 시키고 무엇으로 끝났다고 판단하는지를 적는다. 네 단계, 각 단계는 `npm test` 초록에서 커밋.
+
+| 단계 | 무엇을 | 착지 |
+|---|---|---|
+| C1 | 게이트웨이 밖의 삭제 — 비밀번호·가입·방 구성원 인가(결정 ④)·전송 스킴 검사. 이름 로그인으로 축소 | `2f6cd3f` |
+| A | 봇 단위 신원(`bots.token`)·`room_bots` 참여·모든 프레임에 `room_id`. 핸드셰이크·봉투·방별 토큰 삭제 | `SPEC-BOTMODEL-001` · `b6ff9af` · sync 감사 PASS 0.893 |
+| B | 봇 → 봇 멘션 전달, 역할 규칙(worker 는 orchestrator 만 부른다), 사람 글 없이 봇 글 6개 이어지면 `@TO` 를 `cc` 로 | `12deb70` (테스트 5 빨강→초록) |
+| C2 | SPEC 10개 `_archive/` 이동 + 개정 표기 10줄, 라이브 도구 보관, e2e 러너 v2 재작성, README·ROADMAP·코드맵 갱신, 이월 F1·F3 종결 | 이 문서를 고친 커밋 |
+
+남긴 보안 둘은 어느 단계에서도 건드리지 않았다: 봇 첨부의 허용 뿌리 검사(`gateway.ts` 의 `realpathSync`), 채널의 봉투 무력화·절단(`channel-server.ts`·`truncate.ts`).
 
 ## 카드를 나누는 원칙
 
@@ -134,8 +147,8 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에
 | 옛 카드 | 내용 | 다시 넣는 조건 |
 |---|---|---|
 | t12 | 승인 대기 맵(`permissions.ts` open 맵)과 승인 안내 메시지 행에 상한·만료·속도 제한이 없음. 봇이 `permission_request` 를 반복하면 메모리·DB 가 무제한 증가할 수 있다는 가설 (Low, 부하 재현 미실시). 근거 `.moai/reports/t7/sync-audit.md` §2.4. 코드에 `@MX:DEBT` 로 같은 내용이 적혀 있다 | 실제 장기 구동에서 증상이 관측되면. 착수 시 재현이 먼저 |
-| t17 | `GET /api/attachments/:id` 는 방 밖 경로라 번호 추측으로 비멤버가 남의 방 첨부를 받을 수 있고, `POST /api/rooms/:id/archive` 는 없는 방 404 / 있는 방 200·409 로 방 실재를 드러낸다. SPEC-ROOMAUTHZ-001 REQ-013 이 «알려진 미준수»로 인수한 두 자리. 예상 처방은 `isRoomMember` 검사 한 줄 | 서비스화(과제원 밖 사용자에게 열 때). 사내망·과제원 배치에서는 팀 규범의 층 |
-| t23 | 서버 TLS 종단(`server/src/index.ts`). Fastify 직접 종단 vs 프록시 앞단 종단의 배치 판단 수반. 완료 시 SPEC-GWAUTH-002 §1.1 조건부 종결을 무조건 종결로 승격하고 배포 경고 해제 | 서비스화. 사내망 안의 중계자는 과제원이라 지킬 상대가 없다(운영자 확정) |
+| t17 | `GET /api/attachments/:id` 와 `POST /api/rooms/:id/archive` 의 구성원 검사 예외 둘 — v2 C1 이 구성원 인가 자체를 지워(결정 ④) 지금은 예외가 아니라 규칙이다 | 비공개 방을 되살릴 때(가이드 §0 ④ 의 되돌리기) 그 SPEC 과 함께 |
+| t23 | 서버 TLS 종단(`server/src/index.ts`). Fastify 직접 종단 vs 프록시 앞단 종단의 배치 판단 수반. v2 가 핸드셰이크·봉투를 지운 뒤로는 토큰이 평문으로 지나는 유일한 방어 후보다 | 서비스화. 사내망 안의 중계자는 과제원이라 지킬 상대가 없다(운영자 확정) |
 | (t32 sync F-03) | `TO_REPLY_NOTE` 표식이 중화된 사람 유래 본문과 같은 문자열에 섞여 표식을 흉내 낼 수 있음 — 실질 약화이되 새 능력 아님(`.moai/reports/t32/sync-audit.md` F-03) | 표식을 본문과 다른 채널(구조 필드)로 옮길 설계가 정해지면 |
 | (t4 CD-1) | 네 채널 SPEC(CHANWIRE·CHANPERM·CHANNEL-001·CHANCLIENT-001)의 비교 범위 끝 SHA 고정 — 앞 둘은 run_commit_sha 기록 있음(4bed641·72d7b1f), 뒤 둘은 기록 없어 git 고고학 필요(t33 run-done §5-①) | 뒤 둘의 마지막 구현 커밋을 근거와 함께 확정할 사람이 정해지면 |
 | (t33 sync F-03) | 사용자 이름에 유니코드 정규화가 없어 `café` NFC/NFD 가 별개 계정이 되고 키릴 `аlice` 같은 혼동 문자가 등록된다(`.moai/reports/t33/sync-audit.md` F3). NFC 정규화만 할지 혼동 문자(confusables)까지 막을지 설계 판단 수반 | 가입이 사내망 밖으로 열리거나 닮은꼴 계정 사고가 실제로 나면 |
@@ -160,7 +173,6 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에
 - **카드를 고르는 건 항상 사람 몫이에요.** 칸반이 알아서 다음 카드를 골라 시작하지 않습니다 — `moai cc -k`로 칸반 모드를 켜면, 리드 세션이 큐를 보여주고 어떤 카드를 할지 물어봅니다.
 - **구현을 실제로 시작하기 전엔 항상 한 번 확인을 받아요.** ("이대로 코드 짜기 시작해도 될까요?" 게이트) — 이건 자동 진행 조건을 걸어놔도 건너뛸 수 없는 안전장치예요.
 - **카드 하나에 SPEC 하나, 코드 변경 없는 카드도 SPEC 을 갖는다.** t38·t39 처럼 「규명만 하고 고치지 않기로」 닫는 카드도 요구사항과 수용 기준을 남겨서, 나중에 왜 안 고쳤는지 문서에서 읽을 수 있게 해요.
-- **채널 테스트 하나는 전체 스위트 부하에서 시간 초과로 넘어질 수 있어요.** `channel/test/transport-auth.test.ts` 「세 관문은 분리돼 있다」는 자식 vitest 를 띄워 5초 제한으로 재는 구조라, pre-commit 게이트에서 1회 관측됐고 단독 재실행에서는 통과했어요(2026-09-07). 빨개지면 우회 옵션보다 먼저 그 파일만 다시 돌려 보세요.
 
 ## 후속 후보
 
@@ -168,8 +180,9 @@ M4(채널 플러그인)와 M5(웹 UI)는 서로 의존하지 않아서 동시에
 
 | # | 항목 | 무엇을 정해야 하나 |
 |---|---|---|
-| OD-3 | `SPEC-CHANAUTH-001` 오독 방지 | 본문 일부가 현재형으로 거짓 — 현재 구동 조건은 `SPEC-GWAUTH-002`(`REQ-GWAUTH2-017`)다. 오독 방지 포인터를 어디에 어떻게 넣을지. **2026-09-07 확인: 그 SPEC 본문에 GWAUTH-002 를 가리키는 문장이 아직 없다** (`grep GWAUTH .moai/specs/SPEC-CHANAUTH-001/spec.md` 0건) |
+| ~~OD-3~~ | `SPEC-CHANAUTH-001` 오독 방지 | **v2 C2 에서 종결** — 그 SPEC 을 `_archive/` 로 옮기고 원 자리의 `SPEC-CHANAUTH-001.md` 가 «본문의 현재형 문장은 이제 거짓이다» 라고 적는다 |
 | OD-4 | SPEC frontmatter 의 `followup_cards` 가 사라진 카드를 가리킨다 | **네 파일**이 그 필드를 들고 있다 — `SPEC-CHANPERM-001` · `SPEC-CHANWIRE-001` · `SPEC-CHANNEL-001` 이 `[t15, t16, t20]`, `SPEC-CHANCLIENT-001` 이 `[t15, t16, t20, t23]` (2026-09-07 `grep -rln '^followup_cards' .moai/specs/` 로 재확인, 여전히 넷). 가리키는 카드 넷 다 큐에 없다. 낡은 것은 `t16` 하나가 아니라 **필드 전체**이므로 하나만 떼면 나머지가 같은 결함으로 남는다. 정할 것: 닫힌 카드 id 를 지울 것인가, 이력으로 둘 것인가 — `completed-spec-semantics.md` 가 본문에 답한 물음과 같지만 **frontmatter 는 본문이 아니라 메타데이터**라 답이 다를 수 있다 |
 | OD-5 | `server/src/gateway.ts` 의 `@MX:ANCHOR` 가 4개로 파일당 상한 3 을 넘는다 | 넷이 v2 암호 규칙의 정본을 서로 가리키는 자리(바인딩·전사·봉투·`Gateway` 계약)라 기계적으로 하나를 내리지 않았다. 어느 것을 NOTE 로 내릴지, 아니면 이 파일만 상한을 올릴지 |
-| OD-6 | CI 가 `npm run e2e` 와 `live-dryrun` 을 돌리지 않는다 | 15단계 E2E 와 가짜 채널 예행이 수동 게이트로만 남아 있다. CI 에 넣을지(러너에서 브라우저·실 세션 의존 항은 `UNMEASURED` 가 정상값), 수동으로 둘지 |
+| OD-6 | CI 가 `npm run e2e` 를 돌리지 않는다 | v2 «봇 하나·방 둘» 15단계 러너가 수동 게이트로만 남아 있다(`live-dryrun` 은 보관돼 대상에서 빠짐). CI 에 넣을지, 수동으로 둘지 |
 | OD-7 | README 환경변수 표에 `MINIDISCORD_WEB_DIR` 가 없다 | `server/src/index.ts` 가 읽는 실제 설정값인데 README 는 넷만 적는다. 다음 README 작업에서 넣을지 — 코드맵 `entry-points.md` §8 이 전건을 적어 두었다 |
+| OD-8 | 보관된 방에도 봇 글이 저장·발행된다 | `gateway.ts` 는 `rooms.status` 를 `handleHello` 의 welcome 목록 SQL 한 곳에서만 읽는다(v2 C2 코드맵 재작성 때 관측). 참여 행이 남은 보관 방으로 `bot_message` 가 오면 저장·SSE 발행이 된다 — 사람 경로는 `409`. 프레임 검사에 `status='active'` 를 더할지, 보관 때 `room_bots` 를 지울지 |
