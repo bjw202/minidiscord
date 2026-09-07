@@ -51,9 +51,9 @@ function installFetch(handler: Handler) {
   }
 }
 
-// 초대 목록 GET 호출만 센다. POST /api/rooms/:id/invites 는 SPEC-WEBRICH-001 의
-// 초대 발급이므로 형제가 자기 SPEC 대로 구현해도 이 계수가 흔들리지 않아야 한다.
-const inviteGets = () => calls.filter(c => c.method === 'GET' && c.url.includes('/invites')).length
+// 참여 목록 GET 호출만 센다 (v2: /api/rooms/:id/bots). POST /api/rooms/:id/bots 는 SPEC-WEBRICH-001 의
+// 참여 추가이므로 형제가 자기 SPEC 대로 구현해도 이 계수가 흔들리지 않아야 한다.
+const inviteGets = () => calls.filter(c => c.method === 'GET' && /^\/api\/rooms\/[0-9]+\/bots/.test(c.url)).length
 
 // 마이크로태스크를 흘려보낸다. 가짜 타이머 아래에서도 Promise 는 정상 해소되므로
 // setTimeout(0) 대신 이것을 쓴다 — setTimeout 은 가짜 타이머에 잡혀 영원히 안 돈다.
@@ -138,7 +138,7 @@ function baseHandler(over: Record<string, unknown> = {}): Handler {
     for (const [k, v] of Object.entries(over)) if (url.startsWith(k)) return { data: v }
     if (url.startsWith('/api/rooms/1/messages')) return { data: { messages: [] } }
     if (url.startsWith('/api/rooms/2/messages')) return { data: { messages: [] } }
-    if (url.includes('/invites')) return { data: [] }
+    if (/^\/api\/rooms\/[0-9]+\/bots/.test(url)) return { data: [] }
     if (url.startsWith('/api/rooms')) return { data: { active: [{ id: 1, name: '방1' }, { id: 2, name: '방2' }], archived: [] } }
     if (url.startsWith('/api/bots')) return { data: [] }
     return { data: {} }
@@ -183,7 +183,7 @@ describe('AC-WEBCHAT-001 openRoom renders history', () => {
     // 방 목록에는 없는 방을 직접 연다 — # undefined 대신 방 번호가 보여야 한다 (plan.md §D 8번)
     const app = await loadApp(url => {
       if (url.startsWith('/api/rooms/9/messages')) return { data: { messages: [] } }
-      if (url.includes('/invites')) return { data: [] }
+      if (/^\/api\/rooms\/[0-9]+\/bots/.test(url)) return { data: [] }
       if (url.startsWith('/api/rooms')) return { data: { active: [], archived: [] } }
       return { data: {} }
     })
@@ -290,7 +290,7 @@ describe('AC-WEBCHAT-003 no markup interpretation', () => {
     const evil = '<img src=x onerror="window.__pwned=1"><b>굵게</b>'
     const app = await loadApp(baseHandler({
       '/api/rooms/1/messages': { messages: [msg({ id: 1, body: evil, author_name: evil })] },
-      '/api/rooms/1/invites': [{ bot_id: 1, bot_name: '<script>window.__pwned=1</script>', online: true }],
+      '/api/rooms/1/bots': [{ bot_id: 1, bot_name: '<script>window.__pwned=1</script>', online: true }],
     }))
     await app.openRoom(1)
     await flush()
@@ -331,7 +331,7 @@ describe('AC-WEBCHAT-004 live message reception', () => {
 describe('AC-WEBCHAT-005 bot_status on chips', () => {
   it('reflects bot_status on the bot chip', async () => {
     const app = await loadApp(baseHandler({
-      '/api/rooms/1/invites': [{ bot_id: 3, bot_name: 'pm', online: true }],
+      '/api/rooms/1/bots': [{ bot_id: 3, bot_name: 'pm', online: true }],
     }))
     await app.openRoom(1)
     await flush()
@@ -353,7 +353,7 @@ describe('AC-WEBCHAT-006 stale after five minutes', () => {
   it('marks a bot stale after five minutes without idle', async () => {
     vi.useFakeTimers()
     const app = await loadApp(baseHandler({
-      '/api/rooms/1/invites': [{ bot_id: 3, bot_name: 'pm', online: true }],
+      '/api/rooms/1/bots': [{ bot_id: 3, bot_name: 'pm', online: true }],
     }))
     await app.openRoom(1)
     await flush()
@@ -379,7 +379,7 @@ describe('AC-WEBCHAT-007 cleanup on room switch', () => {
   it('clears pending timers and closes the previous stream on room switch', async () => {
     vi.useFakeTimers()
     const app = await loadApp(baseHandler({
-      '/api/rooms/1/invites': [{ bot_id: 3, bot_name: 'pm', online: true }],
+      '/api/rooms/1/bots': [{ bot_id: 3, bot_name: 'pm', online: true }],
     }))
     await app.openRoom(1)
     await flush()
@@ -406,7 +406,7 @@ describe('AC-WEBCHAT-008 reconnect backfill', () => {
     const app = await loadApp(url => {
       if (url === '/api/rooms/1/messages') return { data: { messages: [msg({ id: 10, body: '과거' })] } }
       if (url === '/api/rooms/1/messages?after=11') return { data: { messages: [msg({ id: 12, body: '놓친 것' })] } }
-      if (url.includes('/invites')) return { data: [] }
+      if (/^\/api\/rooms\/[0-9]+\/bots/.test(url)) return { data: [] }
       if (url.startsWith('/api/rooms')) return { data: { active: [{ id: 1, name: '방1' }], archived: [] } }
       return { data: {} }
     })
@@ -432,7 +432,7 @@ describe('AC-WEBCHAT-008 reconnect backfill', () => {
 describe('AC-WEBCHAT-009 autocomplete reads cache only', () => {
   it('shows candidates from cache without one request per keystroke', async () => {
     const app = await loadApp(baseHandler({
-      '/api/rooms/1/invites': [
+      '/api/rooms/1/bots': [
         { bot_id: 1, bot_name: 'pm', online: true },
         { bot_id: 2, bot_name: 'qa', online: false },
       ],
@@ -462,7 +462,7 @@ describe('AC-WEBCHAT-009 autocomplete reads cache only', () => {
 describe('AC-WEBCHAT-010 mention contract round-trip', () => {
   it('inserts a mention the real server parser resolves to that bot', async () => {
     const app = await loadApp(baseHandler({
-      '/api/rooms/1/invites': [{ bot_id: 1, bot_name: 'pm', online: true }],
+      '/api/rooms/1/bots': [{ bot_id: 1, bot_name: 'pm', online: true }],
     }))
     await app.openRoom(1)
     await flush()
@@ -488,7 +488,7 @@ describe('AC-WEBCHAT-010 mention contract round-trip', () => {
 describe('AC-WEBCHAT-011 unmentionable names excluded', () => {
   it('never offers a bot name the server parser cannot resolve', async () => {
     const app = await loadApp(baseHandler({
-      '/api/rooms/1/invites': [
+      '/api/rooms/1/bots': [
         { bot_id: 1, bot_name: '코드 리뷰어', online: true },
         { bot_id: 2, bot_name: 'pm', online: true },
       ],
@@ -515,7 +515,7 @@ describe('AC-WEBCHAT-011 unmentionable names excluded', () => {
 describe('AC-WEBCHAT-012 enter with open dropdown', () => {
   it('does not send while the autocomplete is open', async () => {
     const app = await loadApp(baseHandler({
-      '/api/rooms/1/invites': [{ bot_id: 1, bot_name: 'pm', online: true }],
+      '/api/rooms/1/bots': [{ bot_id: 1, bot_name: 'pm', online: true }],
     }))
     await app.openRoom(1)
     await flush()
@@ -698,7 +698,7 @@ describe('AC-WEBCHAT-014 late response isolation', () => {
         return { data: { messages: [msg({ id: 1, body: '방1 메시지' })] } }
       }
       if (url.startsWith('/api/rooms/2/messages')) return { data: { messages: [msg({ id: 2, body: '방2 메시지' })] } }
-      if (url.includes('/invites')) return { data: [] }
+      if (/^\/api\/rooms\/[0-9]+\/bots/.test(url)) return { data: [] }
       if (url.startsWith('/api/rooms')) return { data: { active: [{ id: 1, name: '방1' }, { id: 2, name: '방2' }], archived: [] } }
       return { data: {} }
     })

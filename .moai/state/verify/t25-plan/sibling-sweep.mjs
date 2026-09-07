@@ -20,7 +20,6 @@ const rows = []
 const FILES = [
   'channel/test/channel-server.test.ts',
   'channel/test/gateway-client.test.ts',
-  'channel/test/gateway-mutual-auth.test.ts',
   'channel/test/index-wiring.test.ts',
   'channel/test/permission-relay.test.ts',
   'channel/test/entrypoint.test.ts',   // v2 C1: transport-auth.test.ts 를 대체한다

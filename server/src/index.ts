@@ -17,7 +17,7 @@ import { config } from './config.js'
 
 // FastifyInstance.db — requireAuth 와 이후 도메인 라우트가 req.server.db 로 공유하는 단일 연결
 // FastifyInstance.hub — SSE 허브. 프로세스당 하나며 Task 8·9·10 이 app.hub.publish 로 결합한다
-// FastifyInstance.gateway — 봇 게이트웨이. routes-messages·permissions·routes-bots 초대 online 이 소비한다
+// FastifyInstance.gateway — 봇 게이트웨이. routes-messages·permissions·routes-bots 참여 목록의 online 이 소비한다
 // FastifyInstance.uploadsDir — 업로드 디렉터리. 메시지 라우트가 req.server.uploadsDir 로 읽는다 (REQ-MSG-006 정의 상자)
 // FastifyInstance.permissions — 권한 릴레이 브로커. 메시지 라우트의 가로채기가 req.server.permissions 로 접근한다
 declare module 'fastify' {
@@ -43,7 +43,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // SSE 허브 — 순수 메모리 구조. 서버 재시작 시 구독은 사라지고 브라우저가 다시 연결한다
   const hub = createSseHub()
   app.decorate('hub', hub)
-  // 봇 게이트웨이 — 허브 데코레이트 뒤에 만든다 (REQ-GW-022). 방 보관 훅으로 그 방 접속 끊기를 건다.
+  // 봇 게이트웨이 — 허브 데코레이트 뒤에 만든다 (REQ-GW-022). 방 보관 훅으로 closeRoom 을 건다 (REQ-BOTMODEL-010).
   // uploadsDir 데코레이터와 게이트웨이가 같은 값을 쓴다 — 갈라지면 경로 봉인 검사가 무엇을 재는지 불분명해진다 (plan.md §D 4번)
   app.decorate('uploadsDir', config.uploadsDir)
   const gateway = createGateway(app, { uploadsDir: config.uploadsDir, botFilesDir: config.botFilesDir })

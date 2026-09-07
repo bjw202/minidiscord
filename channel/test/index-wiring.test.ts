@@ -2,7 +2,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { WebSocketServer, WebSocket } from 'ws'
 import { spawn } from 'node:child_process'
-import { createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { AddressInfo } from 'node:net'
 import { z } from 'zod'
@@ -15,23 +14,6 @@ import { MAX_BODY_BYTES, MAX_HISTORY_BYTES, MAX_NAME_BYTES, SIGIL_OPEN, TRUNC_MA
 // 대신 재는 것이 아니라 fixture 가 경계에 있음을 재는 것이고(acceptance.md AC-015 예외 절), 절단을
 // 개입시키는 truncateToBudget 은 이 예외에 들지 않는다 — 절단이 개입하는 순간 그것이 곧 합성이다.
 import { neutralizeEnvelope, TO_REPLY_NOTE } from '../src/channel-server.js'
-
-// v2 열쇠 유도 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
-// 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 스텁의 토큰 상수는 'tok' 다.
-// (SPEC-GWAUTH-002 plan.md §D-9 — 이 사본은 channel/test 의 다른 하네스와 상수를 공유하지 않는다.)
-const pubOf = (t: string) => createPublicKey(createPrivateKey({
-  key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), createHmac('sha256', t).update('minidiscord/v2/sign').digest()]),
-  format: 'der', type: 'pkcs8',
-})).export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex')
-const ksrvOf = (t: string) => createHmac('sha256', t).update('minidiscord/v2/server-confirm').digest()
-const challengeProofOf = (t: string, cn: string, sn: string, room: number, bot: number, pub: string) =>
-  createHmac('sha256', ksrvOf(t)).update(`challenge|${cn}|${sn}|${room}|${bot}|${pub}|unbound`).digest('hex')
-const sessKeyOf = (t: string, cn: string, sn: string, room: number, bot: number) =>
-  createHmac('sha256', ksrvOf(t)).update(`session|${cn}|${sn}|${room}|${bot}|unbound`).digest()
-const envOf = (sessKey: Buffer, seq: number, inner: object) => {
-  const payload = JSON.stringify(inner)
-  return { type: 'env', seq, payload, mac: createHmac('sha256', sessKey).update(`${seq}|${payload}`).digest('hex') }
-}
 
 // 열어 둔 자원(WS 서버·게이트웨이 클라이언트·MCP 관찰자)의 일괄 정리 목록. 등록 역순으로 닫는다.
 const cleanups: (() => Promise<void> | void)[] = []
@@ -54,36 +36,29 @@ const ChannelNotification = z.object({
     content: z.string(),
     meta: z.object({
       chat_id: z.string(),
+      message_id: z.string(),
       delivery: z.string(),
       sender: z.string(),
+      author_type: z.string(),
     }).passthrough(),
   }).passthrough(),
 })
 
+// 게이트웨이 스텁 — v2 A 단계: hello{token} 에 맨몸 welcome{bot_id, bot_name, rooms} 로 답하고, 이후 프레임은 맨몸 JSON 이다.
+const STUB_ROOMS = [{ room_id: 1, room_name: 'R1' }, { room_id: 2, room_name: 'R2' }]
 function gatewayStub(token = 'tok') {
   const wss = new WebSocketServer({ port: 0 })
   const sent: any[] = []                                    // 봇이 게이트웨이로 보낸 프레임 전부, 순서대로
   const hooks: ((ws: WebSocket, m: any) => void)[] = []
-  const sessions = new Map<WebSocket, { sessKey: Buffer; seq: number }>()
-  const pending = new Map<WebSocket, { cn: string; sn: string }>()
+  const welcomed = new Set<WebSocket>()
   wss.on('connection', ws => {
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       sent.push(m)
       if (m.type === 'hello') {
-        // v2 (SPEC-GWAUTH-002) — hello 의 pub·client_nonce 로 challenge 를 계산해 답한다. 증명은
-        // 이 하네스가 자체 유도한 k_srv 로 계산한다(구현 미호출).
-        const sn = randomBytes(32).toString('hex')
-        pending.set(ws, { cn: m.client_nonce, sn })
-        ws.send(JSON.stringify({ type: 'challenge', server_nonce: sn, room_id: 1, bot_id: 2, server_proof: challengeProofOf(token, m.client_nonce, sn, 1, 2, m.pub) }))
-        return
-      }
-      if (m.type === 'auth') {
-        // auth 통과 — 세션 확립. 확립 welcome 도 봉투로 나간다 (REQ-GWAUTH2-012)
-        const p = pending.get(ws)!
-        const sessKey = sessKeyOf(token, p.cn, p.sn, 1, 2)
-        sessions.set(ws, { sessKey, seq: 1 })
-        ws.send(JSON.stringify(envOf(sessKey, 1, { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' })))
+        if (m.token !== token) { ws.close(); return }     // 모르는 토큰은 어떤 프레임도 없이 닫힌다 (REQ-BOTMODEL-012 모양)
+        welcomed.add(ws)
+        ws.send(JSON.stringify({ type: 'welcome', bot_id: 2, bot_name: 'pm', rooms: STUB_ROOMS }))
         return
       }
       for (const h of hooks) h(ws, m)
@@ -95,17 +70,14 @@ function gatewayStub(token = 'tok') {
     port: () => (wss.address() as AddressInfo).port,
     push: (msg: any) => {
       for (const c of wss.clients) {
-        const s = sessions.get(c)
-        if (!s) continue
-        s.seq += 1
-        c.send(JSON.stringify(envOf(s.sessKey, s.seq, msg)))
+        if (!welcomed.has(c)) continue
+        c.send(JSON.stringify(msg))
       }
     },
     onFrame: (h: (ws: WebSocket, m: any) => void) => hooks.push(h),
     countOf: (pred: (m: any) => boolean) => sent.filter(pred).length,
-    // 세션이 선 소켓의 수. push 는 확립되지 않은 소켓을 조용히 건너뛰므로(위 continue),
-    // 확립 전에 밀면 아무것도 도착하지 않고 기준은 대기 타임아웃으로 죽는다.
-    establishedCount: () => sessions.size,
+    // welcome 을 받은 소켓의 수. push 는 환영된 소켓만 상대하므로 확립 전에 밀면 아무것도 도착하지 않는다.
+    establishedCount: () => welcomed.size,
   }
 }
 
@@ -182,11 +154,12 @@ describe('channel wiring', () => {
   // AC-CHANWIRE-001 — 수신 갈래: 게이트웨이 메시지가 세션 알림으로 정확히 한 번 도착한다
   it('gateway message becomes exactly one session notification', async () => {
     const { stub, notified } = await connected()
-    stub.push({ type: 'message', id: 9, body: '일정 정리해줘', author_name: 'alice', delivery: 'to' })
+    stub.push({ type: 'message', room_id: 1, id: 9, body: '일정 정리해줘', author_name: 'alice', author_type: 'user', delivery: 'to' })
     await waitFor(() => notified.length > 0, '알림 도착')
     expect(notified.length).toBe(1)
     expect(notified[0].params.meta.delivery).toBe('to')
-    expect(notified[0].params.meta.chat_id).toBe('9')
+    expect(notified[0].params.meta.chat_id).toBe('1')          // v2: chat_id 는 방 번호 (REQ-BOTMODEL-024)
+    expect(notified[0].params.meta.message_id).toBe('9')       // 메시지 번호는 message_id 로
     expect(notified[0].params.content).toContain('일정 정리해줘')
     // SPEC-BOTSTAB-001 M4a — content 등식은 «상한 이하» 에서만 성립한다 (spec.md §3.3). 이
     // fixture 는 첨부 없는 짧은 메시지이므로, 렌더된 content 가 이름·본문 상한과 조립 상수
@@ -199,11 +172,11 @@ describe('channel wiring', () => {
   // AC-CHANWIRE-002 — cc 는 전달되지만 working 을 만들지 않는다
   it('cc message is delivered but raises no working status', async () => {
     const { stub, notified } = await connected()
-    stub.push({ type: 'message', id: 9, body: '일정 정리해줘', author_name: 'alice', delivery: 'to' })
+    stub.push({ type: 'message', room_id: 1, id: 9, body: '일정 정리해줘', author_name: 'alice', author_type: 'user', delivery: 'to' })
     await waitFor(() => notified.length === 1, '첫 알림')
     const workingBefore = stub.countOf(m => m.type === 'status' && m.state === 'working')
 
-    stub.push({ type: 'message', id: 10, body: '참고만', author_name: 'alice', delivery: 'cc' })
+    stub.push({ type: 'message', room_id: 1, id: 10, body: '참고만', author_name: 'alice', author_type: 'user', delivery: 'cc' })
     await waitFor(() => notified.length === 2, 'cc 알림')
     expect(notified[1].params.meta.delivery).toBe('cc')
     // cc 는 전달되지만 상태를 흔들지 않는다. 아직 도착하지 않았을 뿐일 가능성을 배제하려 여유를 준다.
@@ -216,7 +189,7 @@ describe('channel wiring', () => {
   // 유발 지시는 주입 자체에 있어야 한다. cc 는 답변 금지라 접미가 없다는 짝도 함께 잰다.
   it('a TO delivery carries the reply-invoking system suffix in its content', async () => {
     const { stub, notified } = await connected()
-    stub.push({ type: 'message', id: 11, body: '정리 부탁해', author_name: 'alice', delivery: 'to' })
+    stub.push({ type: 'message', room_id: 1, id: 11, body: '정리 부탁해', author_name: 'alice', author_type: 'user', delivery: 'to' })
     await waitFor(() => notified.length === 1, '알림 도착')
     expect(notified[0].params.content.endsWith(TO_REPLY_NOTE), 'TO 주입 content 는 답변 유발 접미로 끝난다').toBe(true)
     expect(notified[0].params.content).toContain('정리 부탁해')
@@ -229,7 +202,7 @@ describe('channel wiring', () => {
 
   it('a CC delivery carries no reply-invoking suffix', async () => {
     const { stub, notified } = await connected()
-    stub.push({ type: 'message', id: 12, body: '참고만', author_name: 'alice', delivery: 'cc' })
+    stub.push({ type: 'message', room_id: 1, id: 12, body: '참고만', author_name: 'alice', author_type: 'user', delivery: 'cc' })
     await waitFor(() => notified.length === 1, 'cc 알림')
     expect(notified[0].params.content.endsWith(TO_REPLY_NOTE), 'cc 주입에는 접미가 없다').toBe(false)
     expect(notified[0].params.content).not.toContain('reply 도구로 답변하세요')
@@ -242,13 +215,14 @@ describe('channel wiring', () => {
   // AC-CHANWIRE-003 — TO 수신이 working 상태를 만든다
   it('a TO message reports working to the gateway', async () => {
     const { stub, notified } = await connected()
-    stub.push({ type: 'message', id: 9, body: '일정 정리해줘', author_name: 'alice', delivery: 'to' })
+    stub.push({ type: 'message', room_id: 1, id: 9, body: '일정 정리해줘', author_name: 'alice', author_type: 'user', delivery: 'to' })
     await waitFor(() => stub.sent.some(m => m.type === 'status' && m.state === 'working'), 'working 프레임')
     await waitFor(() => notified.length === 1, '알림 도착')
     // 이 라우트가 내는 첫 상태 프레임이 'working' 이어야 한다 — 'idle' 을 먼저 내는 구현은 여기서 걸린다.
     // (t4 감사 F-12 정정: 이전 단언은 state === 'working' 으로 찾은 자리에 다시 같은 것을 물어 항상 참이었다)
     const states = stub.sent.filter(m => m.type === 'status').map(m => m.state)
     expect(states[0]).toBe('working')
+    expect(stub.sent.find(m => m.type === 'status')!.room_id).toBe(1)   // to 메시지의 방 (REQ-BOTMODEL-020)
     // TO 한 건에 working 은 한 번만 — 상태를 반복해 흔드는 구현을 막는다
     expect(states.filter(x => x === 'working')).toHaveLength(1)
   })
@@ -436,7 +410,7 @@ describe('channel wiring', () => {
 
     // 전제 확인: 이 상태의 pushChatMessage 는 실제로 거부된다 — 이 테스트가 무엇을 재는지 못 박는다
     await expect(
-      channel.pushChatMessage({ id: 1, author_name: 'a', body: 'x', delivery: 'to' }),
+      channel.pushChatMessage({ id: 1, room_id: 1, author_name: 'a', author_type: 'user', body: 'x', delivery: 'to' }),
     ).rejects.toThrow()
 
     const rejections: unknown[] = []
@@ -444,7 +418,7 @@ describe('channel wiring', () => {
     process.on('unhandledRejection', onRejection)
     cleanups.push(() => { process.off('unhandledRejection', onRejection) })
 
-    stub.push({ type: 'message', id: 9, body: '일정 정리해줘', author_name: 'alice', delivery: 'to' })
+    stub.push({ type: 'message', room_id: 1, id: 9, body: '일정 정리해줘', author_name: 'alice', author_type: 'user', delivery: 'to' })
     await waitFor(() => stub.sent.some(m => m.type === 'status' && m.state === 'working'), 'working 프레임')
     await new Promise(r => setTimeout(r, 200))   // 처리되지 않은 거부는 다음 턴에야 보고된다
 
@@ -464,10 +438,8 @@ describe('channel wiring', () => {
     await waitFor(() => rpcResponse(withToken.out(), 1) !== undefined, '(a) initialize 응답')
     expect(rpcResponse(withToken.out(), 1).result.serverInfo.name).toBe('minidiscord-channel')
     await waitFor(() => stub.sent.some(m => m.type === 'hello'), '(a) hello 도착')
-    // v2 (SPEC-GWAUTH-002) — 토큰이 게이트웨이를 여는 방식은 pub 유도로 바뀌었다. hello 가 토큰에서
-    // 유도한 검증자를 실어 나르는 것이 «토큰이 게이트웨이만을 여는다» 의 v2 관측이고, 평문은 전선에 없다
-    expect(stub.sent.find(m => m.type === 'hello').pub).toBe(pubOf('tok'))
-    expect(stub.sent.some(m => JSON.stringify(m).includes('tok'))).toBe(false)
+    // v2 A 단계 — hello 는 맨몸 {type, token} 이다. 토큰이 게이트웨이만을 연다는 것의 관측은 그 프레임 자체다
+    expect(stub.sent.find(m => m.type === 'hello')).toEqual({ type: 'hello', token: 'tok' })
 
     // (b) 토큰 없음 — MCP 는 여전히 말하고, 게이트웨이에는 붙지 않는다
     const helloBefore = stub.countOf(m => m.type === 'hello')
@@ -672,5 +644,107 @@ describe('channel wiring', () => {
     expect(h.messages.length).toBeGreaterThanOrEqual(1)
     expect(first.id).toBe(9)
     expect(h.cursor).toBe(9)
+  })
+
+  // ── SPEC-BOTMODEL-001 — 이음매(AC-001 ③)·reply 방(AC-002 ①)·chat_id 세 겹(AC-022)·이력 커서(AC-023)·status 방(AC-017 채널 쪽) ──
+
+  // AC-BOTMODEL-001 ③ — 서버가 실은 room_id 와 채널이 낸 meta.chat_id 가 같은 값이다 (REQ-014·024)
+  it('AC-001 ③: the notification chat_id equals the room_id the gateway put on the message frame, room after room', async () => {
+    const { stub, notified } = await connected()
+    stub.push({ type: 'message', room_id: 2, id: 41, body: '@TO(pm) R2', author_name: 'alice', author_type: 'user', delivery: 'to', files: [] })
+    await waitFor(() => notified.length === 1, 'R2 알림')
+    expect(notified[0].params.meta.chat_id).toBe('2')
+    expect(notified[0].params.meta.message_id).toBe('41')
+    stub.push({ type: 'message', room_id: 1, id: 42, body: '@TO(pm) R1', author_name: 'alice', author_type: 'user', delivery: 'to', files: [] })
+    await waitFor(() => notified.length === 2, 'R1 알림')
+    expect(notified[1].params.meta.chat_id).toBe('1')
+    expect(notified[1].params.meta.message_id).toBe('42')
+    // 다섯 키 전부 — 무변형 (AC-021 의 배선 쪽 관측)
+    expect(notified[1].params.meta).toEqual({ chat_id: '1', message_id: '42', delivery: 'to', sender: 'alice', author_type: 'user' })
+  })
+
+  // AC-BOTMODEL-002 ① — reply{chat_id} 가 그 방의 bot_message 하나가 된다 (REQ-013·024)
+  it('AC-002 ①: reply{chat_id: "2"} becomes exactly one bot_message carrying room_id 2', async () => {
+    const { stub, obs } = await connected()
+    await obs.callTool({ name: 'reply', arguments: { chat_id: '2', text: '답장' } })
+    await waitFor(() => stub.sent.some(m => m.type === 'bot_message'), 'bot_message 도착')
+    const msgs = stub.sent.filter(m => m.type === 'bot_message')
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0]).toEqual({ type: 'bot_message', room_id: 2, body: '답장', files: [] })
+    // idle 도 같은 방을 싣고 bot_message 뒤에 나간다 (REQ-BOTMODEL-020 — idle 은 reply 의 방)
+    await waitFor(() => stub.sent.some(m => m.type === 'status' && m.state === 'idle'), 'idle 프레임')
+    const idle = stub.sent.find(m => m.type === 'status' && m.state === 'idle')!
+    expect(idle.room_id).toBe(2)
+    expect(stub.sent.indexOf(idle)).toBeGreaterThan(stub.sent.indexOf(msgs[0]))
+  })
+
+  // AC-BOTMODEL-022 — chat_id 인자와 «마지막 to 방» 보충 (REQ-BOTMODEL-024)
+  it('AC-022: chat_id from the session wins, the last to-room fills in when absent, and a channel that never saw a to sends no room_id', async () => {
+    const { stub, obs, notified } = await connected()
+    stub.push({ type: 'message', room_id: 2, id: 9, body: '@TO(pm)', author_name: 'alice', author_type: 'user', delivery: 'to', files: [] })
+    await waitFor(() => notified.length === 1, 'R2 to 알림')
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') stub.push({ type: 'history_response', room_id: m.room_id, rid: m.rid, messages: [] })
+    })
+
+    // ① 세션이 채운다 — 인자의 방으로 나간다
+    await obs.callTool({ name: 'reply', arguments: { chat_id: '7', text: '일곱' } })
+    await waitFor(() => stub.sent.some(m => m.type === 'bot_message' && m.body === '일곱'), '① bot_message')
+    expect(stub.sent.find(m => m.type === 'bot_message' && m.body === '일곱')!.room_id).toBe(7)
+    // ② 없으면 채널이 마지막 to 방(2)으로 채운다
+    await obs.callTool({ name: 'reply', arguments: { text: '둘' } })
+    await waitFor(() => stub.sent.some(m => m.type === 'bot_message' && m.body === '둘'), '② bot_message')
+    expect(stub.sent.find(m => m.type === 'bot_message' && m.body === '둘')!.room_id).toBe(2)
+    // fetch_history 도 같은 두 갈래를 따른다
+    const r7 = await obs.callTool({ name: 'fetch_history', arguments: { chat_id: '7', limit: 1 } })
+    const r2 = await obs.callTool({ name: 'fetch_history', arguments: { limit: 1 } })
+    const hist = stub.sent.filter(m => m.type === 'history_request')
+    expect(hist.map(h => h.room_id)).toEqual([7, 2])
+    // SPEC-BOTSTAB-001 §F — 이력 결과 문자열은 빈 이력에서도 총 상한(OD-4) 이하다 (형제 블록과 같은 재기)
+    for (const r of [r7, r2]) {
+      expect(Buffer.byteLength((r as { content: { text: string }[] }).content[0].text, 'utf8')).toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+    }
+
+    // ③ 한 번도 to 를 받지 않은 채널 — chat_id 없는 reply 는 room_id 없이 나간다 (서버가 AC-015 대로 버린다)
+    const fresh = await connected()
+    await fresh.obs.callTool({ name: 'reply', arguments: { text: '방 없음' } })
+    await waitFor(() => fresh.stub.sent.some(m => m.type === 'bot_message'), '③ bot_message')
+    const bare = fresh.stub.sent.find(m => m.type === 'bot_message')!
+    expect(bare).not.toHaveProperty('room_id')
+    expect(bare.body).toBe('방 없음')
+  })
+
+  // AC-BOTMODEL-023 — 이력 커서는 여전히 결과 JSON 의 cursor(메시지 id 최댓값)다 — 방 번호가 아니다 (REQ-BOTMODEL-025)
+  it('AC-023: fetch_history{chat_id} still returns {cursor, messages} with cursor = max message id, null when empty', async () => {
+    const { stub, obs } = await connected()
+    stub.onFrame((ws, m) => {
+      if (m.type === 'history_request') {
+        const rows = m.room_id === 1
+          ? [{ id: 41, created_at: 't1', author_name: 'a', body: '하나' }, { id: 57, created_at: 't2', author_name: 'b', body: '둘' }]
+          : []
+        stub.push({ type: 'history_response', room_id: m.room_id, rid: m.rid, messages: rows })
+      }
+    })
+    const res1 = await obs.callTool({ name: 'fetch_history', arguments: { chat_id: '1' } })
+    const h1 = parsedHistory(res1)
+    expect(Object.keys(h1).sort()).toEqual(['cursor', 'messages'])
+    expect(h1.cursor).toBe(57)          // 메시지 id 의 최댓값이지 방 번호 1 이 아니다
+    expect(h1.messages).toHaveLength(2)
+    // SPEC-BOTSTAB-001 §F — 이 fixture 는 상한 이하이므로 결과 문서가 이력 총 상한(OD-4) 이하임을 나란히 단언한다
+    expect(Buffer.byteLength((res1 as { content: { text: string }[] }).content[0].text, 'utf8')).toBeLessThanOrEqual(MAX_HISTORY_BYTES)
+    const h2 = parsedHistory(await obs.callTool({ name: 'fetch_history', arguments: { chat_id: '2' } }))
+    expect(h2).toEqual({ cursor: null, messages: [] })
+    expect(stub.sent.filter(m => m.type === 'history_request').map(m => m.room_id)).toEqual([1, 2])
+  })
+
+  // AC-BOTMODEL-017 (채널 쪽) — working 은 to 메시지의 방, idle 은 reply 의 방을 싣는다 (REQ-BOTMODEL-020)
+  it('AC-017: status{working} carries the to-message room and status{idle} carries the reply room', async () => {
+    const { stub, obs, notified } = await connected()
+    stub.push({ type: 'message', room_id: 2, id: 9, body: '@TO(pm)', author_name: 'alice', author_type: 'user', delivery: 'to', files: [] })
+    await waitFor(() => notified.length === 1, 'to 알림')
+    await obs.callTool({ name: 'reply', arguments: { chat_id: '2', text: '답' } })
+    await waitFor(() => stub.sent.some(m => m.type === 'status' && m.state === 'idle'), 'idle')
+    const statuses = stub.sent.filter(m => m.type === 'status').map(m => [m.room_id, m.state])
+    expect(statuses).toEqual([[2, 'working'], [2, 'idle']])
   })
 })

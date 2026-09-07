@@ -48,8 +48,8 @@
       <header id="room-header">
         <h2 id="room-title"></h2>
         <div id="room-bots"></div>
-        <!-- 봇 초대 모달의 결합은 SPEC-WEBRICH-001 몫이다 — 이 SPEC 은 자리만 둔다 (REQ-WEBCHAT-001) -->
-        <button id="invite-btn" type="button">초대</button>
+        <!-- 봇 참여 모달의 결합은 SPEC-WEBRICH-001 몫이다 — 이 SPEC 은 자리만 둔다 (REQ-WEBCHAT-001). v2: 초대가 아니라 참여 추가다 -->
+        <button id="invite-btn" type="button">봇 참여</button>
       </header>
       <div id="messages"></div>
       <footer id="composer">
@@ -77,13 +77,14 @@
     </form>
   </dialog>
 
-  <!-- 봇 초대 다이얼로그 — SPEC-WEBRICH-001 소유. 새 id 는 invite-dialog·invite-command·invite-result·
-       copy-command 네 개뿐이고 문서 전체에서 유일하다 (§4.8 계약 4). 명령 문자열은 이 화면이 사는 유일한 집이다 (REQ-WEBRICH-013). -->
+  <!-- 봇 다이얼로그 — SPEC-WEBRICH-001 소유. v2 에서 두 일을 한다: 참여 추가(봇 고르기)와 등록 명령 표시(토큰 한 번).
+       id 넷(invite-dialog·invite-command·invite-result·copy-command)은 문서 전체에서 유일하다 (§4.8 계약 4).
+       명령 문자열은 이 화면이 사는 유일한 집이다 (REQ-WEBRICH-013). -->
   <dialog id="invite-dialog">
-    <h2>봇 초대</h2>
+    <h2>봇</h2>
     <ul class="invite-choices"></ul>
     <div id="invite-result" hidden>
-      <p class="invite-notice">아래 명령을 지금 복사하세요 — 토큰은 다시 보여지지 않습니다.</p>
+      <p class="invite-notice">아래 등록 명령을 지금 복사하세요 — 토큰은 다시 보여지지 않습니다.</p>
       <pre id="invite-command"></pre>
       <p class="invite-error" hidden></p>
       <button id="copy-command" type="button">명령 복사</button>

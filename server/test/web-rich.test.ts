@@ -213,7 +213,7 @@ describe('AC-WEBRICH-016 observation 5 wiring', () => {
         author_name: 'u', body: '첨부 있음', created_at: '2026-08-27 10:00:00',
         attachments: [{ id: 9, filename: '보고서.pdf' }],
       }] })
-      if (url.startsWith('/api/rooms/1/invites')) return json([])
+      if (url.startsWith('/api/rooms/1/bots')) return json([])
       if (url.startsWith('/api/rooms')) return json({ active: [{ id: 1, name: '방' }], archived: [] })
       if (url.startsWith('/api/bots')) return json([])
       return json({})

@@ -179,14 +179,18 @@ export async function archiveRoom(id) {
   await loadRooms()
 }
 
+// v2 — 등록 응답의 토큰·명령을 그대로 돌려준다. 표시는 리치 표면(initApp 의 핸들러)이 맡는다 (SPEC-BOTMODEL-001 REQ-004).
+// 네트워크 호출 순서와 개수(POST 뒤 목록 재적재)는 그대로다 (§4.8 계약 6).
 export async function createBot(name, description) {
+  let created
   try {
-    await api('/api/bots', { method: 'POST', body: { name, description } })
+    created = await api('/api/bots', { method: 'POST', body: { name, description } })
   } catch (err) {
     toastError(err)
     return
   }
   await loadBots()
+  return created
 }
 
 function toastError(err) {
@@ -274,7 +278,10 @@ export function initApp() {
   })
   $('new-bot-btn').addEventListener('click', async () => {
     const name = await promptText('새 봇 이름')
-    if (name) await createBot(name, '')
+    if (!name) return
+    const created = await createBot(name, '')
+    // 등록 응답의 토큰은 이 화면에 한 번만 뜬다 — 다이얼로그가 닫히면 DOM 에서 지워진다 (REQ-WEBRICH-013·015)
+    if (created && created.command) showRegistration(created)
   })
   $('logout-btn').addEventListener('click', () => { logout() })
   initInvite()   // 리치 표면(SPEC-WEBRICH-001)의 초대 다이얼로그 핸들러 — initApp 은 계약 6 의 아홉 함수 밖이다
@@ -361,14 +368,15 @@ export function renderMessage(m) {
   $('messages').appendChild(wrap)
 }
 
-// 초대 목록을 받아 캐시하고 봇 칩을 다시 그린다. 방을 열 때(openRoom 8단계)만 부른다 —
-// 키 입력마다 부르지 않는다 (REQ-WEBCHAT-009). 응답 반영 직전에 방 세대를 검사한다.
+// 참여 목록(v2: GET /api/rooms/:id/bots — [{bot_id, bot_name, online}])을 받아 캐시하고 봇 칩을 다시 그린다.
+// 방을 열 때(openRoom 8단계)와 참여를 더한 뒤에만 부른다 — 키 입력마다 부르지 않는다 (REQ-WEBCHAT-009).
+// 응답 반영 직전에 방 세대를 검사한다.
 export async function refreshRoomBots() {
   const generation = state.roomGeneration
   const id = state.currentRoomId
-  const invites = await api(`/api/rooms/${id}/invites`)
+  const participants = await api(`/api/rooms/${id}/bots`)
   if (generation !== state.roomGeneration) return   // 방이 바뀐 사이에 온 응답은 버린다
-  state.roomBots = invites
+  state.roomBots = participants
   renderRoomBots()
 }
 
@@ -603,14 +611,15 @@ import { createRichContext, buildInviteChoices, applyInviteResult, clearInviteRe
 // 컨텍스트가 undefined 가 되어 첨부와 권한 버튼이 아무 오류 없이 영원히 안 뜬다 (감사 MF-9).
 registerMessageDecorator(createRichContext)
 
-// 초대 다이얼로그 — showModal/close 는 이 파일에만 둔다. rich.js 는 노드 조립과 상태만
+// 봇 다이얼로그(#invite-dialog) — v2 에서 두 일을 한다: «참여 추가»(방 헤더의 버튼 → 봇 고르기 → POST /api/rooms/:id/bots)와
+// «등록 명령 표시»(봇 등록 직후 → 토큰이 든 명령 한 번). showModal/close 는 이 파일에만 둔다. rich.js 는 노드 조립과 상태만
 // 다루게 해서 어떤 수용 기준도 showModal 을 부르지 않게 한다 (plan.md §D 10).
 // 노드 쌍은 InviteNodes 구조적 형(textContent·hidden) 그대로 넘긴다 (REQ-WEBRICH-001).
 function inviteNodes() {
   return { commandEl: $('invite-command'), resultEl: $('invite-result') }
 }
 
-// 복사·초대 실패는 #invite-result 안의 오류 문구 요소에 보인다 — 삼켜지는 실패가 없게 (plan.md §D 9, REQ-WEBRICH-014).
+// 복사·참여 실패는 #invite-result 안의 오류 문구 요소에 보인다 — 삼켜지는 실패가 없게 (plan.md §D 9, REQ-WEBRICH-014).
 function showInviteError(message) {
   const err = document.querySelector('#invite-result .invite-error')
   if (!err) return
@@ -625,15 +634,25 @@ function hideInviteError() {
   err.hidden = true
 }
 
-async function pickInvite(bot) {
+// 참여 추가 — 토큰이 오가지 않는다. 성공하면 칩을 다시 그리고 다이얼로그를 닫는다 (REQ-BOTMODEL-006)
+async function pickParticipant(bot) {
   try {
-    // 초대 발급 호출은 이 SPEC 자신의 함수 안에 둔다 — 아홉 액션 함수 본문은 그대로다 (§4.8 계약 6)
-    const res = await api(`/api/rooms/${state.currentRoomId}/invites`, { method: 'POST', body: { bot_id: bot.id } })
+    await api(`/api/rooms/${state.currentRoomId}/bots`, { method: 'POST', body: { bot_id: bot.id } })
     hideInviteError()
-    applyInviteResult(inviteNodes(), res)
+    await refreshRoomBots()
+    $('invite-dialog').close()
   } catch (err) {
     showInviteError(err instanceof Error ? err.message : String(err))
   }
+}
+
+// 등록 명령 표시 — 봇 등록 응답의 command 를 다이얼로그에 띄운다. 토큰이 사는 곳은 이 DOM 노드가 유일하다 (REQ-WEBRICH-013)
+function showRegistration(created) {
+  const dialog = $('invite-dialog')
+  hideInviteError()
+  dialog.querySelector('.invite-choices').replaceChildren()
+  applyInviteResult(inviteNodes(), created)
+  dialog.showModal()
 }
 
 function initInvite() {
@@ -646,7 +665,7 @@ function initInvite() {
     hideInviteError()
     clearInviteResult(inviteNodes())
     const choices = dialog.querySelector('.invite-choices')
-    choices.replaceChildren(buildInviteChoices({ bots: state.bots, doc: document, onPick: pickInvite }))
+    choices.replaceChildren(buildInviteChoices({ bots: state.bots, doc: document, onPick: pickParticipant }))
     dialog.showModal()
   })
 

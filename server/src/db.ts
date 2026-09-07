@@ -1,8 +1,11 @@
-// SQLite 연결과 스키마 (spec 5장 데이터 모델)
+// SQLite 연결과 스키마 (spec 5장 데이터 모델 — v2 A 단계 SPEC-BOTMODEL-001 §3.1)
 import Database from 'better-sqlite3'
 
 export type Db = Database.Database
 
+// 봇은 신원이다 — 토큰 하나가 bots 행에 산다. 참여는 방 × 봇(room_bots)이고, 재접속 재전송의
+// 커서(last_delivered_id)는 참여 행에 산다. v1 의 방별 토큰 표(방·봇 쌍마다 토큰과 커서)는 없다.
+// role 열은 B 단계가 읽는다 — 표를 두 번 바꾸지 않으려고 여기서 만들되 A 단계는 저장만 한다 (결정 ③).
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,18 +28,15 @@ CREATE TABLE IF NOT EXISTS bots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
   description TEXT NOT NULL DEFAULT '',
+  token TEXT UNIQUE NOT NULL,
+  role TEXT NOT NULL DEFAULT 'worker',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-CREATE TABLE IF NOT EXISTS bot_tokens (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE IF NOT EXISTS room_bots (
   room_id INTEGER NOT NULL REFERENCES rooms(id),
   bot_id INTEGER NOT NULL REFERENCES bots(id),
-  verifier_pub TEXT UNIQUE NOT NULL,   -- 조회 열쇠이자 검증자 — Ed25519 공개키 64자 hex (SPEC-GWAUTH-002 §D-1·D-3)
-  server_confirm_key TEXT NOT NULL,    -- 서버가 자신을 증명하는 대칭 비밀 — 게이트웨이 사칭 방향은 별도 방어의 몫이다
   last_delivered_id INTEGER NOT NULL DEFAULT 0,
-  last_seen_at TEXT,
-  revoked_at TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  PRIMARY KEY (room_id, bot_id)
 );
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,27 +64,25 @@ CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, id);
 CREATE INDEX IF NOT EXISTS idx_targets_bot ON message_targets(bot_id, message_id);
 `
 
-// @MX:ANCHOR: [AUTO] SQLite 통합 지점이자 스키마·마이그레이션의 단일 출처 — buildServer 와 서버 시험 열한 파일이 이 함수로 DB 를 만든다
-// @MX:REASON: DDL(테이블 8·인덱스 2)과 명령형 마이그레이션(v1 bot_tokens 스키마 거부)이 여기에만 있다. 테이블을 더하거나 열을 바꾸면 이 함수와 codemaps/data-flow.md 가 함께 바뀐다
+// @MX:ANCHOR: [AUTO] SQLite 통합 지점이자 스키마의 단일 출처 — buildServer 와 서버 시험 열한 파일이 이 함수로 DB 를 만든다
+// @MX:REASON: DDL(테이블 8·인덱스 2)과 옛 파일 거절 검사가 여기에만 있다. 테이블을 더하거나 열을 바꾸면 이 함수와 codemaps/data-flow.md 가 함께 바뀐다
 export function openDb(path: string): Db {
   const db = new Database(path)
   db.pragma('journal_mode = WAL')
   db.exec(SCHEMA)
 
-  // SPEC-GWAUTH-002 §D-3 — v1 token_hash 에서 v2 검증자로 가는 변환은 존재하지 않는다(서버는 평문 토큰을 저장한
-  // 적이 없어 유도할 수 없다). 마이그레이션 문은 쓰지 않기로 판정했다 — 변환 불가인 마이그레이션은 행을 지우는
-  // 일의 다른 이름이다. 대신 옛 모양 테이블은 여기서 큰 소리로 거절한다 — 위 DDL 은 기존 파일의 컬럼을 못 고치므로,
-  // 검사가 없으면 «테이블은 있는데 컬럼이 없는» 상태가 첫 발급의 no such column 까지 조용히 숨는다.
-  // @MX:NOTE: [AUTO] 이 검사는 openDb 마다 PRAGMA 를 한 번 읽는다 — 개발 단계 판정이며, 배치 이전 경로가 필요해지는 것은 후속 카드 t23 이후의 별도 결정이다
-  const tokenCols = db.prepare('PRAGMA table_info(bot_tokens)').all() as { name: string }[]
-  if (!tokenCols.some(c => c.name === 'verifier_pub')) {
-    throw new Error('bot_tokens 이 v1 스키마다 — v2 로의 이전 경로는 없다. 개발용 DB 파일을 지우고 새로 만들 것 (SPEC-GWAUTH-002 §D-3)')
+  // 옛 파일 거절 — 위 DDL 은 기존 파일의 열을 못 고치므로, 검사가 없으면 «테이블은 있는데 열이 없는»
+  // 상태가 첫 등록의 no such column 까지 조용히 숨는다. v1(방별 토큰 시대)의 bots 에는 token 열이 없다 —
+  // 그 한 줄로 v2 표 모양을 판정한다. 이전 경로는 없다: 봇을 다시 등록하면 된다 (REQ-BOTMODEL-003)
+  const botCols = db.prepare('PRAGMA table_info(bots)').all() as { name: string }[]
+  if (!botCols.some(c => c.name === 'token')) {
+    throw new Error('bots 가 옛 스키마(방별 토큰 시대)다 — v2 는 봇마다 토큰 하나다. 개발용 DB 파일을 지우고 새로 만드세요 (SPEC-BOTMODEL-001 §3.1)')
   }
   // v2 C1 — 비밀번호 열이 남은 옛 users 표는 이름 로그인의 INSERT 가 NOT NULL 로 막힌다. 같은 이유로 여기서 거절한다.
   // 위 DDL 의 users 는 열 셋(id·username·created_at)이다 — 열 수가 다르면 옛 파일이다
   const userCols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[]
   if (userCols.length !== 3) {
-    throw new Error('users 가 옛 스키마(비밀번호 열)다 — v2 는 비밀번호가 없다. 개발용 DB 파일을 지우고 새로 만들 것')
+    throw new Error('users 가 옛 스키마(비밀번호 열)다 — v2 는 비밀번호가 없다. 개발용 DB 파일을 지우고 새로 만드세요')
   }
 
   return db

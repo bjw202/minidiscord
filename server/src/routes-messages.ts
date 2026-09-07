@@ -69,14 +69,14 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       return reply.code(400).send({ error: '내용이나 파일이 필요합니다' })
     }
 
-    // 멘션 → 그 방에 초대된 봇으로만 매핑 (REQ-MSG-002). 미초대 이름이 하나라도 있으면 전체를 400 으로
-    // 거부하고 어떤 행도 남기지 않는다 (REQ-MSG-003). 디스크에 남는 고아 파일은 plan.md §D 6번이 수용한 위험이다.
+    // 멘션 → 그 방에 참여한 봇으로만 매핑 (REQ-MSG-002, v2: room_bots — REQ-BOTMODEL-025). 미참여 이름이 하나라도 있으면
+    // 전체를 400 으로 거부하고 어떤 행도 남기지 않는다 (REQ-MSG-003). 디스크에 남는 고아 파일은 plan.md §D 6번이 수용한 위험이다.
     const targets: { botId: number; delivery: 'to' | 'cc' }[] = []
     const unknown: string[] = []
     for (const m of parseMentions(body)) {
       const bot = db.prepare(
-        `SELECT b.id FROM bots b JOIN bot_tokens t ON t.bot_id = b.id
-         WHERE b.name = ? AND t.room_id = ? AND t.revoked_at IS NULL`,
+        `SELECT b.id FROM bots b JOIN room_bots rb ON rb.bot_id = b.id
+         WHERE b.name = ? AND rb.room_id = ?`,
       ).get(m.bot, roomId) as { id: number } | undefined
       if (!bot) { unknown.push(m.bot); continue }
       targets.push({ botId: bot.id, delivery: m.delivery })

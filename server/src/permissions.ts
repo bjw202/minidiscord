@@ -46,8 +46,22 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
   // @MX:CEILING: 미측정 — 부하 재현 없음. 아는 사람 몇 명·봇 몇 개 배치에서는 증상이 관측된 적 없다
   // @MX:UPGRADE: 장기 구동에서 메모리·메시지 증가가 관측되면 (ROADMAP 보류 카드 t12). 착수 시 재현이 먼저
   const open = new Map<string, ConnInfo>()
-  // 합성키 — 키에 방 번호가 박혀 있으므로 다른 방의 답은 맵 조회 자체가 놓친다. 소비·전송 없이 대기 항목이 살아 남는 것이 곧 REQ-PERM-011 이다
+  // 합성키 — 키에 방 번호가 박혀 있으므로 다른 방의 답은 이 맵 조회가 놓친다. 소비·전송 없이 대기 항목이 살아 남는 것이 곧 REQ-PERM-011 이다
   const keyOf = (roomId: number, requestId: string) => `${roomId}:${requestId.toLowerCase()}`
+  // 둘째 색인 — «봇:소문자id» (v2 결정 ①, REQ-BOTMODEL-023). 채널이 싣는 방(마지막 to 방)이 틀려도 같은 봇이 참여한
+  // 다른 방에서 온 yes 가 같은 요청을 닫는다. 방 색인이 놓친 뒤에만 찾고, 참여하지 않은 방의 답은 여전히 놓친다
+  const byBot = new Map<string, ConnInfo>()
+  const botKeyOf = (botId: number, requestId: string) => `${botId}:${requestId.toLowerCase()}`
+  // 방 색인이 놓친 답을 봇 색인으로 찾는다 — 답한 방에 그 봇이 참여해 있을 때만
+  function findByBot(roomId: number, requestId: string): ConnInfo | undefined {
+    const suffix = `:${requestId}`
+    for (const [key, info] of byBot) {
+      if (!key.endsWith(suffix)) continue
+      const member = db.prepare('SELECT 1 FROM room_bots WHERE room_id = ? AND bot_id = ?').get(roomId, info.botId)
+      if (member) return info
+    }
+    return undefined
+  }
 
   // system 메시지 저장 + 같은 방에 SSE 발행. 이벤트 이름은 기존 'message' 하나 — 새 이벤트 타입을 만들지 않는다 (REQ-PERM-013)
   function postSystem(roomId: number, body: string): void {
@@ -71,8 +85,10 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
       // 않도록 그 자리를 문자셋·길이로 좁힌다. 요청은 그대로 등록된다 (T7-F-09)
       const rawToolName = String(params.tool_name ?? '')
       const toolName = TOOL_NAME_RE.test(rawToolName) ? rawToolName : '(형식에 맞지 않는 도구 이름)'
-      // 대기 등록이 system 저장보다 먼저다 — 저장이 실패해도 대기 항목은 남아야 터미널 승인 경로가 살아 있다 (plan.md §B)
+      // 대기 등록이 system 저장보다 먼저다 — 저장이 실패해도 대기 항목은 남아야 터미널 승인 경로가 살아 있다 (plan.md §B).
+      // 두 색인에 함께 건다 — 방:id 와 봇:id (결정 ①)
       open.set(keyOf(info.roomId, requestId), info)
+      byBot.set(botKeyOf(info.botId, requestId), info)
       const body = [
         // 1·4 번째 줄에는 접두가 없다 — 1번째 줄의 봇 텍스트 자리(tool_name)는 진입부 문자셋 검사가 통제하고
         // 4번째 줄은 서버 문구만으로 이뤄진다. 접두 없는 줄이 곧 서버가 쓴 줄이라는 불변식이다 (T7-F-09)
@@ -88,9 +104,12 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
       const m = PERMISSION_REPLY_RE.exec(text)
       if (!m) return false                       // 판정 형식이 아니면 흘려보낸다 (REQ-PERM-010)
       const requestId = m[2].toLowerCase()       // 대문자로 답해도 봇은 소문자로 알아본다 (REQ-PERM-006)
-      const info = open.get(keyOf(roomId, requestId))
+      // 방:id 로 먼저 찾고, 못 찾으면 봇:id 로도 찾는다 (REQ-BOTMODEL-023)
+      const info = open.get(keyOf(roomId, requestId)) ?? findByBot(roomId, requestId)
       if (!info) return false                    // 모르는 ID — 재시작 직후와 같은 경로다 (REQ-PERM-003·010)
-      open.delete(keyOf(roomId, requestId))      // 해제는 전송 시도 직후 — 성공 여부와 무관 (plan.md §B). 남기면 같은 답을 무한 재시도할 수 있다
+      // 해제는 전송 시도 직후 — 성공 여부와 무관 (plan.md §B). 남기면 같은 답을 무한 재시도할 수 있다. 두 색인을 함께 지운다
+      open.delete(keyOf(info.roomId, requestId))
+      byBot.delete(botKeyOf(info.botId, requestId))
       const behavior = m[1][0].toLowerCase() === 'y' ? 'allow' : 'deny'   // 정규식이 y|yes|n|no 로 좁혔으니 첫 글자로 갈린다 (REQ-PERM-006·007)
       // REQ-PERMROUTE-006 — 판정은 «요청한 접속 하나» 로만 되돌아간다. 전원 발신 메서드는 판정 경로에서 부르지 않는다
       // REQ-PERMROUTE-008 — 접속을 찾지 못해도 같은 (방, 봇) 의 다른 접속으로 «대신 보내지 않는다» — 대체 발신은 채널 가드 의존의 재생이다

@@ -165,9 +165,11 @@ export function createRichContext({ api, doc }) {
   }
 }
 
-// ── 봇 초대 ────────────────────────────────────────────────────────────
+// ── 봇 참여 · 등록 명령 ─────────────────────────────────────────────────
+// v2 (SPEC-BOTMODEL-001): 초대(방별 토큰)는 없다. 아래 선택 목록은 «참여 추가» 에, 결과 표시 둘은 «봇 등록 명령» 에 쓰인다.
+// 함수 이름은 형제 기준이 부르는 계약 표면이라 그대로 둔다.
 
-// 초대 다이얼로그의 봇 선택 목록 — 항목은 이름만, 클릭이 onPick 으로 봇 객체를 넘긴다 (REQ-WEBRICH-012).
+// 봇 선택 목록 — 항목은 이름만, 클릭이 onPick 으로 봇 객체를 넘긴다 (REQ-WEBRICH-012).
 export function buildInviteChoices({ bots, doc, onPick }) {
   const list = doc.createElement('ul')
   list.className = 'invite-choices'
@@ -181,7 +183,7 @@ export function buildInviteChoices({ bots, doc, onPick }) {
   return list
 }
 
-// 응답의 command 문자열을 그대로 textContent 에 넣는다 — 자르거나 다시 조립하지 않는다 (REQ-WEBRICH-012).
+// 등록 응답의 command 문자열을 그대로 textContent 에 넣는다 — 자르거나 다시 조립하지 않는다 (REQ-WEBRICH-012).
 // 토큰·명령이 사는 곳은 화면의 DOM 노드가 유일하다 (REQ-WEBRICH-013).
 export function applyInviteResult(nodes, res) {
   nodes.commandEl.textContent = res.command

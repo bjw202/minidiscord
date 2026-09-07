@@ -22,16 +22,31 @@ export function resolveUrl(env: NodeJS.ProcessEnv = process.env): string {
 // @MX:REASON: 두 팩토리를 잇는 순서와 콜백 갈래(TO -> working, cc 무시)가 여기 한 곳에만 있다.
 // 반환 모양 { channel, gw } 를 바꾸면 채널 기준 전부가 한꺼번에 죽는다
 export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClient } {
+  // «마지막 to 방» — 채널이 가장 최근에 delivery="to" 알림을 세션에 넘긴 방의 번호 (SPEC-BOTMODEL-001 §2).
+  // chat_id 가 없는 reply·fetch_history 와 permission_request 의 방을 이것으로 채운다 (결정 ①·②, 겹 2 — 안전망이지 기본 경로가 아니다).
+  let lastToRoom: number | null = null
+  // 방 번호 세 겹 (design.md §C.2): ① 세션이 chat_id 로 채운다 → ② 없으면 마지막 to 방 → ③ 그것도 없으면 null —
+  // 프레임은 room_id 없이 나가고 서버가 버린다 (REQ-BOTMODEL-013).
+  const roomOf = (chatId: string | undefined): number | null => {
+    const n = chatId === undefined ? NaN : Number(chatId)
+    return Number.isInteger(n) ? n : lastToRoom
+  }
+  const withRoom = (roomId: number | null, frame: Record<string, unknown>): Record<string, unknown> =>
+    roomId === null ? frame : { room_id: roomId, ...frame }
+
   // 두 클로저는 서로를 참조하지만 호출은 gw.start() 이후에만 일어난다 — 선언 순서는 안전하다 (plan.md §D 7번).
   const gw = createGatewayClient({
     url: opts.url,
     token: opts.token,
-    // 수신 갈래 + 상태 갈래. TO 이면 세션에 넘기기 전에 working 을 먼저 보낸다 (REQ-CHANWIRE-008).
+    // 수신 갈래 + 상태 갈래. TO 이면 방을 기억하고, 세션에 넘기기 전에 그 방의 working 을 먼저 보낸다 (REQ-CHANWIRE-008, REQ-BOTMODEL-020).
     // gateway-client 가 이 콜백을 await 하지 않으므로 여기서 생긴 거부는 아무도 받지 않는다.
     // MCP 상대가 먼저 끊긴 뒤 채팅이 오면 pushChatMessage 가 거부되므로 명시적으로 삼킨다 —
     // 판정 갈래의 .catch(() => {}) (channel-server.ts) 와 같은 형태의 방어다.
     onMessage: async (m: ChatMessage) => {
-      if (m.delivery === 'to') gw.send({ type: 'status', state: 'working' })
+      if (m.delivery === 'to') {
+        lastToRoom = m.room_id
+        gw.send({ type: 'status', room_id: m.room_id, state: 'working' })
+      }
       await channel.pushChatMessage(m).catch(() => {})
     },
     // 판정 갈래: 게이트웨이 verdict 를 세션 알림으로 되돌린다. 두 필드만 골라 넘긴다 —
@@ -42,16 +57,18 @@ export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClien
   })
   const channel = createChannelServer({
     // 송신 갈래. files 는 경로 문자열을 { local_path } 객체로 바꿔 싣는다 — 게이트웨이가 읽는 필드 이름이다 (REQ-CHANWIRE-011).
-    // idle 은 bot_message 다음에 나간다. 순서가 계약이다 (REQ-CHANWIRE-009).
+    // 방은 세 겹(roomOf)으로 정한다. idle 은 bot_message 다음에 같은 방으로 나간다 — 순서가 계약이다 (REQ-CHANWIRE-009, REQ-BOTMODEL-020).
     sendToChat: async payload => {
-      gw.send({ type: 'bot_message', body: payload.text, files: (payload.files ?? []).map(local_path => ({ local_path })) })
-      gw.send({ type: 'status', state: 'idle' })
+      const roomId = roomOf(payload.chat_id)
+      gw.send(withRoom(roomId, { type: 'bot_message', body: payload.text, files: (payload.files ?? []).map(local_path => ({ local_path })) }))
+      gw.send(withRoom(roomId, { type: 'status', state: 'idle' }))
     },
-    // 승인 요청 갈래: params 에 type 만 붙여 게이트웨이로 내보낸다 — 서버가 그 값으로 분기한다 (REQ-CHANPERM-004).
+    // 승인 요청 갈래: 마지막 to 방을 room_id 로 싣고 params 에 type 을 붙여 내보낸다 (REQ-CHANPERM-004, 결정 ①).
+    // 서버 쪽 대기 맵의 봇:id 색인이 이 근사가 틀린 경우를 받쳐 준다 (REQ-BOTMODEL-023).
     sendPermissionRequest: params => {
-      gw.send({ type: 'permission_request', ...params })
+      gw.send(withRoom(lastToRoom, { type: 'permission_request', ...params }))
     },
-    // 이력 갈래. 파라미터는 통째로 그대로 넘긴다 — since_id 는 봇의 따라잡기 커서다 (REQ-CHANWIRE-012).
+    // 이력 갈래. chat_id 는 방 번호로 바꿔 room_id 로 싣고 나머지 파라미터는 그대로 넘긴다 — since_id 는 봇의 따라잡기 커서다 (REQ-CHANWIRE-012).
     // 결과는 구조화 JSON 문자열 하나다 (REQ-CHANINJECT-004·006): 줄 잇기를 버려 본문의 개행·#숫자·따옴표가
     // 원소 경계나 커서를 만들지 못하고, 커서는 배열 밖 cursor 필드에서 id 최댓값으로만 나온다 (REQ-CHANINJECT-005).
     // 빈 이력도 같은 모양의 JSON 이다 — 결과 타입이 갈리면 커서가 다시 텍스트 추측으로 돌아간다 (plan.md §B).
@@ -59,7 +76,9 @@ export function wire(opts: WireOpts): { channel: ChannelHandle; gw: GatewayClien
     // 알림만 중화하면 같은 문자열이 통로만 바꾸어 모델에 도착한다. id·at 은 무변형이다 — id 는
     // 커서의 유일한 출처이고(REQ-CHANINJECT-005), 중화 함수는 channel-server.ts 한 벌을 나눠 쓴다.
     fetchHistory: async params => {
-      const res = await gw.requestHistory(params)
+      const { chat_id, ...rest } = params
+      const roomId = roomOf(chat_id)
+      const res = await gw.requestHistory(roomId === null ? rest : { room_id: roomId, ...rest })
       const messages: { id: number; author_name: string; body: string; created_at: string }[] = res.messages ?? []
       // 최종 문서를 하나의 함수로 빚는다 — 2단계의 총바이트 판정과 반환값이 같은 모양을 쓰도록.
       // cursor 도 이 문자열의 일부다 — 그래서 총바이트 판정에 cursor 가 함께 잰다 (AC-BOTSTAB-007 ㉠ 의 대상).

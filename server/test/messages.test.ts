@@ -12,7 +12,6 @@ import { createSseHub } from '../src/sse.js'
 import { createGateway } from '../src/gateway.js'
 import { registerAuthRoutes, requireAuth } from '../src/auth.js'
 import { registerMessageRoutes } from '../src/routes-messages.js'
-import { pubOf, ksrvHexOf } from './gateway-v2.js'
 
 let dir: string
 let db: Db
@@ -49,11 +48,9 @@ async function build() {
 
 function seed(): { roomId: number; botId: number } {
   const roomId = db.prepare("INSERT INTO rooms (name) VALUES ('A')").run().lastInsertRowid as number
-  const botId = db.prepare("INSERT INTO bots (name, description) VALUES ('pm', '')").run().lastInsertRowid as number
-  // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 이 시험은 접속하지 않는 방 보조 봇이지만 스키마는 v2 다
-  const seedToken = randomBytes(32).toString('hex')
-  db.prepare('INSERT INTO bot_tokens (room_id, bot_id, verifier_pub, server_confirm_key) VALUES (?, ?, ?, ?)')
-    .run(roomId, botId, pubOf(seedToken), ksrvHexOf(seedToken))
+  // v2 (SPEC-BOTMODEL-001 §3.1) — 봇은 토큰 하나를 지닌 신원이고, 참여는 room_bots 행이다. 이 시험의 봇은 접속하지 않는다
+  const botId = db.prepare("INSERT INTO bots (name, description, token) VALUES ('pm', '', ?)").run(randomBytes(32).toString('hex')).lastInsertRowid as number
+  db.prepare('INSERT INTO room_bots (room_id, bot_id) VALUES (?, ?)').run(roomId, botId)
   return { roomId, botId }
 }
 
@@ -117,6 +114,24 @@ describe('messages', () => {
     // 대조군 — 초대된 봇 멘션은 같은 라우트에서 통과한다
     const good = await postMessage(app, cookie, roomId, '@TO(pm) 안녕')
     expect(good.statusCode).toBe(200)
+  })
+
+  // AC-BOTMODEL-024 — 멘션 → 타깃 매핑이 bot_tokens 가 아니라 room_bots 를 본다 (REQ-BOTMODEL-025)
+  it('AC-024: a mention resolves only in rooms the bot participates in — 200 + one target row in R1, 400 and no rows in R2', async () => {
+    const { app, cookie } = await build()
+    const { roomId: r1, botId } = seed()   // pm 은 R1 에만 참여한다
+    const r2 = db.prepare("INSERT INTO rooms (name) VALUES ('R2')").run().lastInsertRowid as number
+
+    const ok = await postMessage(app, cookie, r1, '@TO(pm) R1 에서')
+    expect(ok.statusCode).toBe(200)
+    const targets = db.prepare('SELECT * FROM message_targets').all() as { bot_id: number; delivery: string }[]
+    expect(targets).toEqual([{ message_id: ok.json().message.id, bot_id: botId, delivery: 'to' }])
+
+    const bad = await postMessage(app, cookie, r2, '@TO(pm) R2 에서')
+    expect(bad.statusCode).toBe(400)
+    expect(bad.json().error).toBe('pm 봇은 이 방에 초대되지 않았습니다')
+    expect((db.prepare('SELECT COUNT(*) c FROM messages WHERE room_id=?').get(r2) as { c: number }).c).toBe(0)
+    expect((db.prepare('SELECT COUNT(*) c FROM message_targets').get() as { c: number }).c).toBe(1)   // R1 의 한 행뿐이다
   })
 
   it('send failures distinguish missing room from archived room', async () => {

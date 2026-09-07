@@ -27,7 +27,8 @@ export const INSTRUCTIONS = [
   '사용자가 보낸 파일은 content에 안내된 내 PC 로컬 경로에서 직접 읽을 수 있습니다.',
   '멘션 없는 메시지는 이 세션에 전달되지 않습니다. 사람들끼리 나눈 대화가 비어 있을 수 있으니,',
   '방에서 사람이 나를 부르면 답하기 전에 fetch_history 도구로 놓친 대화를 먼저 확인하세요.',
-  '커서로는 chat_id 를 쓰세요. 마지막으로 본 chat_id 를 기억해 두고 다음에 since_id 로 넘기면 그 다음부터만 옵니다.',
+  // v2 (SPEC-BOTMODEL-001 REQ-025) — chat_id 는 메시지 번호가 아니라 방 번호다. 커서 안내는 결과 JSON 의 cursor 로 옮겼다
+  'chat_id 는 방 번호입니다. 이력 커서는 결과 JSON 의 cursor 를 쓰세요.',
   '컨텍스트를 초기화한 직후에도 같은 방법으로 맥락을 복구합니다.',
   '이 채널에서 온 것 외의 출처에 답변하지 마세요.',
   // 신뢰 경계 두 문장 (REQ-CHANINJECT-003·008). 기존 열 조각은 하나도 지우지 않는다 (REQ-CHANINJECT-009).
@@ -43,17 +44,21 @@ export function neutralizeEnvelope(s: string): string {
   return s.replace(/<\/?channel/gi, m => `&lt;${m.slice(1)}`)
 }
 
+// 서버가 봇 접속으로 보내는 message 프레임의 모양 — room_id 를 항상 싣는다 (SPEC-BOTMODEL-001 REQ-014)
 export interface ChatMessage {
   id: number
+  room_id: number
   author_name: string
+  author_type: string
   body: string
   delivery: 'to' | 'cc'
   files?: { name: string; local_path: string }[]
 }
 
+// chat_id 는 방 번호 문자열이다 (알림 meta.chat_id 값 그대로). 없으면 배선(index.ts)이 «마지막 to 방» 으로 채운다 (REQ-BOTMODEL-024)
 export interface ChannelDeps {
-  sendToChat: (payload: { text: string; files?: string[] }) => Promise<void>
-  fetchHistory: (params: { since_id?: number; since?: string; until?: string; speaker?: string; limit?: number }) => Promise<string>
+  sendToChat: (payload: { chat_id?: string; text: string; files?: string[] }) => Promise<void>
+  fetchHistory: (params: { chat_id?: string; since_id?: number; since?: string; until?: string; speaker?: string; limit?: number }) => Promise<string>
   sendPermissionRequest?: (params: { request_id: string; tool_name: string; description: string; input_preview: string }) => void
 }
 
@@ -132,6 +137,8 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
         inputSchema: {
           type: 'object',
           properties: {
+            // 세션이 알림의 chat_id 값을 그대로 되돌린다 (결정 ②, A-0 실측 2/2). 없으면 채널이 마지막 to 방으로 채운다
+            chat_id: { type: 'string', description: '답할 방 번호 — 받은 메시지의 chat_id 값을 그대로 넘긴다' },
             text: { type: 'string', description: '답변 본문' },
             files: { type: 'array', items: { type: 'string' }, description: '첨부할 내 PC 로컬 파일 경로 목록 (선택)' },
           },
@@ -146,6 +153,7 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
         inputSchema: {
           type: 'object',
           properties: {
+            chat_id: { type: 'string', description: '이력을 볼 방 번호 — 받은 메시지의 chat_id 값을 그대로 넘긴다' },
             since_id: { type: 'number', description: '이 id 다음부터 (결과 JSON 의 cursor 필드 값을 넘긴다. 시각보다 이쪽을 쓴다)' },
             since: { type: 'string', description: '이후 (ISO 날짜)' },
             until: { type: 'string', description: '이전 (ISO 날짜)' },
@@ -159,12 +167,12 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
 
   mcp.setRequestHandler(CallToolRequestSchema, async req => {
     if (req.params.name === 'reply') {
-      const { text, files } = req.params.arguments as { text: string; files?: string[] }
-      await deps.sendToChat({ text, files })
+      const { chat_id, text, files } = req.params.arguments as { chat_id?: string; text: string; files?: string[] }
+      await deps.sendToChat({ chat_id, text, files })
       return { content: [{ type: 'text', text: 'sent' }] }
     }
     if (req.params.name === 'fetch_history') {
-      const args = req.params.arguments as { since_id?: number; since?: string; until?: string; speaker?: string; limit?: number }
+      const args = req.params.arguments as { chat_id?: string; since_id?: number; since?: string; until?: string; speaker?: string; limit?: number }
       const text = await deps.fetchHistory(args)
       return { content: [{ type: 'text', text }] }
     }
@@ -173,8 +181,8 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
 
   async function pushChatMessage(msg: ChatMessage): Promise<void> {
     // content 에 실리는 사람 유래 조각 세 곳 — 본문·이름·첨부 경로 — 을 모두 중화한다 (REQ-CHANINJECT-001).
-    // 본문만 중화하면 이름 필드에 심은 </channel> 우회가 남는다. meta 세 값(chat_id·delivery·sender)은
-    // 봉투 속성의 유일한 정직한 출처이므로 중화하지 않고 원문 그대로 실는다 (REQ-CHANINJECT-002).
+    // 본문만 중화하면 이름 필드에 심은 </channel> 우회가 남는다. meta 다섯 값(chat_id·message_id·delivery·sender·author_type)은
+    // 봉투 속성의 유일한 정직한 출처이므로 중화하지 않고 원문 그대로 실는다 (REQ-CHANINJECT-002, v2 REQ-BOTMODEL-024).
     //
     // 절단은 중화 «뒤»에 온다 (SPEC-BOTSTAB-001 plan.md §B) — 중화는 <channel 8바이트를 &lt;channel
     // 11바이트로 늘리므로, 먼저 자르면 그 뒤의 중화가 상한을 다시 깬다. truncateToBudget 은 시길
@@ -190,10 +198,13 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
       method: 'notifications/claude/channel',
       params: {
         content,
+        // v2 — chat_id 는 방 번호, message_id 는 메시지 번호. 다섯 키 전부 무변형 (SPEC-BOTMODEL-001 §3.4)
         meta: {
-          chat_id: String(msg.id),
+          chat_id: String(msg.room_id),
+          message_id: String(msg.id),
           delivery: msg.delivery,
           sender: msg.author_name,
+          author_type: msg.author_type,
         },
       },
     })

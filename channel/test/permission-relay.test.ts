@@ -7,26 +7,8 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { WebSocketServer } from 'ws'
-import { createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
+import { WebSocketServer, WebSocket } from 'ws'
 import { createChannelServer } from '../src/channel-server.js'
-
-// v2 열쇠 유도 헬퍼 — 이 파일이 자체 정의한다. src 의 구현을 부르지 않는다 (SPEC-GWAUTH-001 §3.5 —
-// 사본이 함께 틀려도 기준이 알아채지 못하게 하려는 의도다). 스텁의 토큰 상수는 'tok' 다.
-// (SPEC-GWAUTH-002 plan.md §D-9 — 이 사본은 channel/test 의 다른 하네스와 상수를 공유하지 않는다.)
-const pubOf = (t: string) => createPublicKey(createPrivateKey({
-  key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), createHmac('sha256', t).update('minidiscord/v2/sign').digest()]),
-  format: 'der', type: 'pkcs8',
-})).export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex')
-const ksrvOf = (t: string) => createHmac('sha256', t).update('minidiscord/v2/server-confirm').digest()
-const challengeProofOf = (t: string, cn: string, sn: string, room: number, bot: number, pub: string) =>
-  createHmac('sha256', ksrvOf(t)).update(`challenge|${cn}|${sn}|${room}|${bot}|${pub}|unbound`).digest('hex')
-const sessKeyOf = (t: string, cn: string, sn: string, room: number, bot: number) =>
-  createHmac('sha256', ksrvOf(t)).update(`session|${cn}|${sn}|${room}|${bot}|unbound`).digest()
-const envOf = (sessKey: Buffer, seq: number, inner: object) => {
-  const payload = JSON.stringify(inner)
-  return { type: 'env', seq, payload, mac: createHmac('sha256', sessKey).update(`${seq}|${payload}`).digest('hex') }
-}
 
 // 열어 둔 자원(MCP 클라이언트·게이트웨이 스텁)의 일괄 정리 목록. 등록 역순으로 닫는다.
 const cleanups: (() => Promise<void> | void)[] = []
@@ -92,30 +74,20 @@ function collectUnhandled() {
   return async () => { await tick(); return seen }
 }
 
-// 게이트웨이 스텁. Task 13 의 것과 같은 형태다.
-// v2 (SPEC-GWAUTH-002) — challenge→auth 로 세션을 세우고 이후 발신은 전부 봉투로 나간다.
+// 게이트웨이 스텁 — v2 A 단계: hello{token} 에 맨몸 welcome 으로 답하고, 이후 발신은 전부 맨몸 JSON 이다.
 function gatewayStub(token = 'tok') {
   const wss = new WebSocketServer({ port: 0 })
   const sent: Record<string, unknown>[] = []
-  const sessions = new Map<WebSocket, { sessKey: Buffer; seq: number }>()
-  const pending = new Map<WebSocket, { cn: string; sn: string }>()
+  const welcomed = new Set<WebSocket>()
   cleanups.push(() => new Promise<void>(r => wss.close(() => r())))
   wss.on('connection', ws => {
     ws.on('message', d => {
       const m = JSON.parse(String(d))
       sent.push(m)
       if (m.type === 'hello') {
-        // v2 (SPEC-GWAUTH-002) — hello 의 pub·client_nonce 로 challenge 를 계산해 답한다(구현 미호출).
-        const sn = randomBytes(32).toString('hex')
-        pending.set(ws, { cn: m.client_nonce, sn })
-        ws.send(JSON.stringify({ type: 'challenge', server_nonce: sn, room_id: 1, bot_id: 2, server_proof: challengeProofOf(token, m.client_nonce, sn, 1, 2, m.pub) }))
-        return
-      }
-      if (m.type === 'auth') {
-        const p = pending.get(ws)!
-        const sessKey = sessKeyOf(token, p.cn, p.sn, 1, 2)
-        sessions.set(ws, { sessKey, seq: 1 })
-        ws.send(JSON.stringify(envOf(sessKey, 1, { type: 'welcome', room_id: 1, bot_id: 2, bot_name: 'pm' })))
+        if (m.token !== token) { ws.close(); return }
+        welcomed.add(ws)
+        ws.send(JSON.stringify({ type: 'welcome', bot_id: 2, bot_name: 'pm', rooms: [{ room_id: 1, room_name: 'A' }, { room_id: 5, room_name: 'E' }] }))
         return
       }
     })
@@ -125,15 +97,12 @@ function gatewayStub(token = 'tok') {
     port: () => (wss.address() as { port: number }).port,
     push: (msg: unknown) => {
       for (const c of wss.clients) {
-        const s = sessions.get(c)
-        if (!s) continue
-        s.seq += 1
-        c.send(JSON.stringify(envOf(s.sessKey, s.seq, msg)))
+        if (!welcomed.has(c)) continue
+        c.send(JSON.stringify(msg))
       }
     },
-    // 세션이 선 소켓의 수. push 가 확립되지 않은 소켓을 조용히 건너뛰므로, 대기 술어는
-    // 「hello 가 도착했는가」가 아니라 이 값을 읽어야 한다 (v2 악수는 네 프레임이다).
-    establishedCount: () => sessions.size,
+    // welcome 을 받은 소켓의 수 — push 는 환영된 소켓만 상대한다
+    establishedCount: () => welcomed.size,
   }
 }
 
@@ -311,7 +280,16 @@ describe('permission relay', () => {
     await sendRequest(client, REQ)
     await waitFor(() => gwStub.sent.some(m => m.type === 'permission_request'), '요청 프레임 도착')
     const out = gwStub.sent.find(m => m.type === 'permission_request')
+    // 아직 to 알림을 넘긴 적이 없다 — room_id 없이 나간다 (서버가 버린다, AC-BOTMODEL-015)
     expect(out).toEqual({ type: 'permission_request', ...REQ })
+
+    // to 알림을 하나 넘긴 뒤의 요청은 «마지막 to 방» 을 room_id 로 싣는다 (결정 ①, REQ-BOTMODEL-022)
+    gwStub.push({ type: 'message', room_id: 5, id: 3, body: '@TO(pm)', author_name: 'alice', author_type: 'user', delivery: 'to', files: [] })
+    await waitFor(() => gwStub.sent.some(m => m.type === 'status' && m.state === 'working'), 'working 프레임')
+    await sendRequest(client, { ...REQ, request_id: 'fghij' })
+    await waitFor(() => gwStub.sent.some(m => m.type === 'permission_request' && m.request_id === 'fghij'), '둘째 요청 프레임')
+    expect(gwStub.sent.find(m => m.type === 'permission_request' && m.request_id === 'fghij'))
+      .toEqual({ type: 'permission_request', room_id: 5, ...REQ, request_id: 'fghij' })
 
     // 돌아오는 방향: 게이트웨이 verdict → Claude Code 알림
     gwStub.push({ type: 'permission_verdict', request_id: 'abcde', behavior: 'deny' })

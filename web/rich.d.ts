@@ -20,7 +20,8 @@ export type InviteNodes = {
   commandEl: { textContent: string | null }
   resultEl: { hidden: boolean }
 }
-export type InviteResult = { command: string }
+// v2 — 초대 결과가 아니라 봇 등록 응답이다 (POST /api/bots → {id, name, token, command}). 화면은 command 만 읽는다
+export type BotRegistration = { id?: number; name?: string; token?: string; command: string }
 export type CopyDeps = { nav?: unknown; onFail: (e: unknown) => void }
 export type RichContext = {
   decorate(el: Element, m: MessageEnvelope): void
@@ -35,6 +36,6 @@ export declare function verdictBody(requestId: string, decision: 'allow' | 'deny
 export declare function verdictForm(requestId: string, decision: 'allow' | 'deny'): FormData
 export declare function createRichContext(deps: { api: Function; doc: Document }): RichContext
 export declare function buildInviteChoices(args: { bots: Bot[]; doc: Document; onPick: (bot: Bot) => void }): Element
-export declare function applyInviteResult(nodes: InviteNodes, res: InviteResult): void
+export declare function applyInviteResult(nodes: InviteNodes, res: BotRegistration): void
 export declare function clearInviteResult(nodes: InviteNodes): void
 export declare function copyText(text: string, deps: CopyDeps): Promise<boolean>
