@@ -1,10 +1,10 @@
 ---
 id: SPEC-CORE-001
 title: "minidiscord 저장소 스캐폴드와 SQLite 스키마 기반"
-version: "0.4.0"
+version: "0.5.0"
 status: completed
 created: 2026-08-26
-updated: 2026-08-31
+updated: 2026-09-07
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -24,6 +24,7 @@ tier: M
 | 0.2.0 | 2026-08-27 | REQ-CORE-010 개정 — 수신 호스트를 `0.0.0.0` 고정에서 `127.0.0.1` 기본 + `MINIDISCORD_HOST` 확장으로 바꿨다. 근거: `.moai/reports/t3/sync-audit.md` F-03, `.moai/reports/t3/sync-reaudit.md` N-04. 구현(`server/src/config.ts:6`, `server/src/index.ts:67`)은 이미 개정 내용을 따르고 있어 SPEC 을 코드에 맞춘 개정이다. AC-CORE-015 에 3단계(호스트 관측)를 추가했다. | manager-spec |
 | 0.3.0 | 2026-08-27 | REQ-CORE-005 정렬 — 설정 객체 열거를 실제 export 6개(`port`, `host`, `dataDir`, `dbPath`, `uploadsDir`, `botFilesDir`)로 맞췄다. 근거: `server/src/config.ts` 실제 export 관측. 새 요구사항이 아니라 관측 사실 정렬이다. AC-CORE-007 에 키 열거 확인을 추가했다. | manager-spec |
 | 0.4.0 | 2026-08-31 | AC-CORE-012 시점 한정 개정 — `ls server/src`(현재 트리)를 `git ls-tree --name-only a97d36c server/src/`(이 SPEC 구현 시점 트리, M2)로 고정했다. 근거: `.moai/reports/t3/sync-audit-3.md` N-09. 형제 SPEC 이 server/src 에 파일을 추가한 것은 정상 범위 확장이라 현재 트리 파일 수가 이 기준의 대상이 아님을 본문에 명시. `a97d36c` 시점 세 파일 실측 확인(`git ls-tree` 실행 관측). 코드 변경 없음. | run (card t8) |
+| 0.5.0 | 2026-09-07 | **v2 개정 표기 (리팩토링 C2 단계).** AC-CORE-005 의 표 목록(`bot_tokens`·`sessions` 요구)은 v2 표(`bots`·`room_bots`, `bot_tokens` 없음)로 대체됐다. AC-CORE-015 루프백 기본은 유지. 근거: `.moai/reports/v2-review.md` §4 «살아 있음(개정)» 행. 본문의 당시 결정 기록은 그대로 두고 이 줄만 더한다 — 본문은 «그때 참», 현재 상태는 코드와 이 줄이 말한다. | v2-c2 |
 
 ---
 

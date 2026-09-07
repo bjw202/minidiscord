@@ -1,10 +1,10 @@
 ---
 id: SPEC-ROOM-001
 title: "minidiscord 방 API와 봇 등록 API"
-version: "0.4.0"
+version: "0.5.0"
 status: completed
 created: 2026-08-26
-updated: 2026-08-27
+updated: 2026-09-07
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -25,6 +25,7 @@ depends_on: [SPEC-CORE-001, SPEC-AUTH-001]
 | 0.2.0 | 2026-08-26 | **plan-audit 교정 라운드.** `.moai/reports/plan-audit/t2-3spec-audit.md` 가 이 SPEC 을 **FAIL**(0.74, Tier M 기준선 0.80)로 판정했고, 차단 1건(ROOM-B1)·중대 3건·경미 4건을 지적했다. 전부 반영했다. 보관 실패 응답을 `404`(방 없음) 와 `409`(이미 보관됨)로 나눠 `SPEC-BOT-001` 의 초대 실패 응답과 의미를 맞췄고(원본으로부터의 의도적 이탈 — `plan.md` §D 7번), `buildServer` 등록을 요구사항 층에 올렸으며(REQ-ROOM-014), `POST /api/rooms` 응답의 다섯 키를 REQ-ROOM-003 에 못 박았다. 요구사항 13→14개, 수용 기준 10→11개로 Tier M(16/16) 이내다. | manager-spec |
 | 0.3.0 | 2026-08-26 | **plan-audit 2차 교정 라운드 (소규모).** `.moai/reports/plan-audit/t2-3spec-audit-iter2.md` 가 **PASS**(0.88, Tier M 기준선 0.80, 차단 0건)로 판정했고, 남은 중대 2건만 닫았다. **R1** — 범위 경계 기준(AC-ROOM-009)의 관측 조건이 "출력이 비어 있다" 하나뿐이라, M1 단계 0 을 건너뛴 실행에서도 통과했다. `git rev-parse --verify` 로 기준 SHA 확인을 앞에 두고 두 명령 모두 **종료 코드 `0`** 을 관측 조건에 넣었다. **R2** — AC-ROOM-011 이 쓰는 임시 `MINIDISCORD_DATA_DIR` 이 `SPEC-BOT-001` 착수 이후 반영되지 않게 될 예정이었다. `server/src/config.ts` 의 `dataDir` 을 게터로 고쳤다 — `SPEC-CORE-001` 산출물을 카드 `t2` 에서 수정한 것이며, 사유는 `AC-ROOM-011` hermetic 보장이다(`plan.md` §D 8번). 요구사항 14개·수용 기준 11개로 개수는 그대로다. | manager-spec |
 | 0.4.0 | 2026-08-26 | **plan-audit 3차 교정 라운드 (기준 관측성 한정).** `.moai/reports/plan-audit/t2-3spec-audit-iter3.md` 가 이 SPEC 을 **FAIL**(0.88, Tier M 기준선 0.80, 차단 2건)로 판정했다 — 점수는 기준선을 넘었고 실패 사유는 차단 결함이다. 리드 지시에 따라 **D1 하나만** 닫는다. "이름 붙은 기존 테스트가 통과한다"를 관측으로 삼은 기준 세 개(AC-ROOM-001·005·006)가 명령을 `npm test -w server` 로 지정하고 있었는데, 기본 리포터는 파일 수와 테스트 수만 내보내고 테스트 이름은 한 줄도 내지 않는다. 그 결과 그 테스트를 아예 쓰지 않은 실행과 통과한 실행의 출력이 서로 같았다 — 둘 다 종료 코드 `0` 이라 검사가 아무것도 검사하지 못했다. 명령을 `npm test -w server -- --reporter=verbose` 로 바꾸고, 관측 대상을 `✓ test/rooms-bots.test.ts > <describe 이름> > <테스트 이름>` 줄이 출력에 실제로 나타나는가로 바꿨다. `plan.md` §H 에 같은 결함이 되돌아오는 것을 막는 안티패턴을 더했다. 요구사항 14개·수용 기준 11개로 개수는 그대로다. D2(원본 `plan-v2.md` 부재)는 리드 판단 대기라 이번 범위 밖이다. | manager-spec |
+| 0.5.0 | 2026-09-07 | **v2 개정 표기 (리팩토링 C2 단계).** AC-ROOM-003 «보관 = 방 갱신 + 토큰 철회 한 트랜잭션» 의 토큰 철회가 사라졌다 — 방별 토큰이 없다. 보관은 방 상태 갱신뿐이고 봇 접속은 유지된다(다음 welcome 의 rooms 에서 빠짐). 근거: `.moai/reports/v2-review.md` §4 «살아 있음(개정)» 행. 본문의 당시 결정 기록은 그대로 두고 이 줄만 더한다 — 본문은 «그때 참», 현재 상태는 코드와 이 줄이 말한다. | v2-c2 |
 
 ---
 

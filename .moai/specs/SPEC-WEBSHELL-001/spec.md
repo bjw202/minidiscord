@@ -1,10 +1,10 @@
 ---
 id: SPEC-WEBSHELL-001
 title: "minidiscord 웹 UI 껍데기 — 정적 서빙, 로그인, 방 목록, 봇 목록"
-version: "0.2.0"
+version: "0.3.0"
 status: completed
 created: 2026-08-27
-updated: 2026-08-28
+updated: 2026-09-07
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -23,6 +23,7 @@ depends_on: [SPEC-CORE-001, SPEC-AUTH-001, SPEC-ROOM-001]
 |------|------|-----------|--------|
 | 0.1.0 | 2026-08-27 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 15 에서 도출 (칸반 카드 `t5`, 마일스톤 M5). 요구사항 14개·수용 기준 16개로 Tier M 상한(16/16) 안에 든다. 원본 Task 15 가 제안한 "서버 띄우고 눈으로 확인" 검증 방식을 **기계 검증으로 대체**했다 — `app.js` 를 ES 모듈로 만들고 순수 로직을 내보내 jsdom 위에서 vitest 로 재고, 정적 서빙은 이미 쓰이는 `app.inject` 로 재고, 토큰 준수는 `grep` 으로 잰다. 원본 코드 블록에서 발견한 결함 일곱 건은 `plan.md` §D 에 기록하고 의도적으로 이탈했다 — 중복 `id="sidebar-top"`, 로그아웃 경로 부재, `promptText` 의 `returnValue` 읽는 시점, 오류 삼킴, 토큰 파일 미소비, 전역 스크립트라 import 불가, `@fastify/static` 미등록. | manager-spec |
 | 0.2.0 | 2026-08-27 | **plan 단계 감사 교정 라운드.** 근거: `.moai/reports/t5/plan-audit.md` (plan-auditor 독립 감사, 2026-08-27, HEAD `6e9a167`). 이 SPEC 판정은 **CONDITIONAL PASS**, 카드 `t5` 의 세 SPEC 을 잇는 통합 표면 판정은 **FAIL**. 이 SPEC 에 배정된 MUST-FIX 다섯 건(MF-2·MF-3·MF-4·MF-6·MF-7)과 관찰 O-4 를 고쳤다. ① **MF-2** — AC-006 이 export 집합과 `state` 를 `toEqual` 로 못 박아 형제가 확장하는 순간 옳은 구현이 실패했다. 소유하지 않은 것에는 침묵하도록 **필수 부분집합 + 형태** 단언으로 다시 썼다. ② **MF-3** — 형제 둘이 의존하는 `$(id)` 를 export 목록에 넣었다(17→18개). 형제가 참조한 `enterMain()` 은 **존재하지 않는다** — 실재하는 이름은 `showMain()` 이며 §4.8 이름 대조표가 그 사실을 명시한다. ③ **MF-4** — `state` 확장 모델을 §4.8 에 단일 해석으로 못 박았다: 이 SPEC 은 세 필드만 초기화하고, 형제는 **자기 필드를 스스로 선언·초기화한다**. 부재 단언은 영구 테스트에서 빼고 이 SPEC 마감 시점 검사(AC-015)로 옮겼다. ④ **MF-6** — `#placeholder` 를 영속 id 에서 분리했다. `#chat` **요소**는 이 SPEC 소유(영속), `#chat` **내용물**은 `SPEC-WEBCHAT-001` 소유. ⑤ **MF-7** — 토큰 로딩 경로를 §4.8 에 단일 경로로 확정했다: `style.css` 의 `@import` 하나뿐이며 `index.html` 에는 `design-tokens.css` 문자열이 **없다**. ⑥ **O-4** — AC-015 허용 집합에 루트 `package-lock.json` 을 더했다. 함께 **REQ-WEBSHELL-015**(형제 결합 계약)를 신설해 14→15개가 됐고, 카드 전체를 놓고 열여섯 기준을 두 방향으로 다시 훑었다(`plan.md` §E.2). **`web/app.js` 를 ES 모듈로 확정한 것은 이 SPEC 의 단독 판단이 아니라 plan-audit 교정 게이트에서의 오케스트레이터 결정이다**(MF-1 해소 방향) — `SPEC-WEBCHAT-001` 의 클래식 스크립트 전제와 `window.eval` 테스트 골격은 그 결정에 따라 폐기되고 ES 모듈 import 로 교정된다. | manager-spec |
+| 0.3.0 | 2026-09-07 | **v2 개정 표기 (리팩토링 C2 단계).** 회원가입/로그인 흐름(§ 흐름도의 `POST /api/auth/register`) → 이름 하나로 로그인(C1 단계). 가입 화면·비밀번호는 없다. 근거: `.moai/reports/v2-review.md` §4 «살아 있음(개정)» 행. 본문의 당시 결정 기록은 그대로 두고 이 줄만 더한다 — 본문은 «그때 참», 현재 상태는 코드와 이 줄이 말한다. | v2-c2 |
 
 ---
 

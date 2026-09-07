@@ -1,10 +1,10 @@
 ---
 id: SPEC-MSG-001
 title: "minidiscord 메시지 API — multipart 전송·멘션 팬아웃·목록 커서·첨부 다운로드"
-version: "0.2.0"
+version: "0.3.0"
 status: completed
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-09-07
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -23,6 +23,7 @@ depends_on: [SPEC-CORE-001, SPEC-AUTH-001, SPEC-ROOM-001, SPEC-MENTION-001, SPEC
 |------|------|-----------|--------|
 | 0.2.0 | 2026-08-27 | **plan-audit 교정 라운드.** `.moai/reports/t3-plan-audit-a.md` 가 이 SPEC 을 **CONDITIONAL PASS** 로 판정하고 must-fix 4건을 지적했다. 전부 반영했다. **M1** — 공통 테스트 하네스의 `set-cookie` 처리가 `light-my-request` 의 실제 반환(배열이 아닌 문자열 하나)과 어긋나 열두 기준이 통째로 실행 불가능했다. 기존 `server/test/rooms-bots.test.ts:21-26` 과 같은 `setCookieOf` 정규화로 바꿨다. **M2·M4** — 프로덕션 배선을 규범으로도 관측으로도 두지 않아, 실서버에 라우트가 등록되지 않아도 완료로 판정되는 상태였다. REQ-MSG-015(배선 + `registerMessageRoutes` 시그니처 + multipart 등록 순서)와 AC-MSG-015(실제 `buildServer()` 기동 관측)를 신설하고, REQ-MSG-006·007·009 의 "업로드 디렉터리"를 `req.server.uploadsDir` 기준으로 정정했다. **M3** — AC-MSG-009 가 `Gateway.deliver` 의 `msg` 인자를 단언하지 않아 빈 객체를 넘기는 구현이 통과했다. `msg.id`·`body`·`author_name` 과 SSE 페이로드까지 단언한다. 여기에 nice-to-have 7(MIME 표를 SPEC 본문으로 이관)을 더했다. 요구사항 14→15개, 수용 기준 14→15개. 경위는 `progress.md` §Audit Response 에 있다. | manager-spec |
 | 0.1.0 | 2026-08-27 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 9 에서 도출 (칸반 카드 `t3`, 마일스톤 M3). 원본 Task 9 를 `spec-v2.md` 7·8·9장과 대조하면서 모순 7건을 찾아 `plan.md` §D 에 기록했다 — 그중 3건(실패 상태 코드, 업로드 파일명 경로 이탈, 테스트 하네스의 `uploadsDir` 누락)은 원본을 그대로 옮겨 적으면 각각 계약 불일치·보안 결함·테스트 실패를 낳는다. 요구사항 14개, 수용 기준 14개 (Tier M 상한 16/16). | manager-spec |
+| 0.3.0 | 2026-09-07 | **v2 개정 표기 (리팩토링 C2 단계).** «초대된 봇 = `bot_tokens` 활성 행» → `room_bots` 참여 행. 멘션 → 타깃 변환은 `server/src/targets.ts` 의 `resolveTargets` 로 뽑아 봇 경로(gateway)와 공유한다(B 단계). 봉인·팬아웃 1회 조항은 그대로. 근거: `.moai/reports/v2-review.md` §4 «살아 있음(개정)» 행. 본문의 당시 결정 기록은 그대로 두고 이 줄만 더한다 — 본문은 «그때 참», 현재 상태는 코드와 이 줄이 말한다. | v2-c2 |
 
 ---
 

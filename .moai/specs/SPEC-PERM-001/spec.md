@@ -1,10 +1,10 @@
 ---
 id: SPEC-PERM-001
 title: "minidiscord 권한 릴레이 — 봇의 도구 승인 요청을 사람에게 중계하고 판정을 되돌린다"
-version: "0.3.0"
+version: "0.4.0"
 status: completed
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-09-07
 author: manager-spec
 priority: P0
 phase: "v0.1.0 target"
@@ -24,6 +24,7 @@ depends_on: [SPEC-CORE-001, SPEC-AUTH-001, SPEC-SSE-001, SPEC-GATEWAY-001]
 | 0.3.0 | 2026-08-27 | **재감사 교정 라운드 (하네스 한정).** `.moai/reports/t3-plan-reaudit.md` 가 v0.2.0 의 네 수정(MF-1·2·3·5)을 **RESOLVED** 로 확인하고 차단급 회귀 한 건(R-1)을 새로 지적했다 — 하네스의 `build()` 가 `set-cookie` 를 배열로 가정해(`headers['set-cookie']![0]`) 실제로는 문자열의 첫 글자 `"m"` 을 쿠키로 보내고 있었고, 그 아래에서 기준 열 개가 구현이 완벽해도 `401` 로 실패했다. 형제 SPEC 세 곳이 쓰는 `setCookieOf` 헬퍼로 교정했고, 같은 부류(스칼라를 배열로 인덱싱)를 하네스 전체에서 기계적으로 훑어 다른 자리가 없음을 확인했다. **요구사항·수용 기준은 이번에도 개수·내용 모두 그대로다**(REQ-PERM-001..014, AC-PERM-001..014). 바뀐 것은 하네스 한 줄과 헬퍼 하나이며, 내역은 `progress.md` §G.2 에 있다. | manager-spec |
 | 0.2.0 | 2026-08-27 | **plan-audit 교정 라운드.** `.moai/reports/t3-plan-audit-b.md` 가 이 SPEC 을 **CONDITIONAL PASS** 로 판정하고 필수 수정 4건(MF-1·2·3·5)을 지적했다 — 유예 4건·의도적 이탈 1건·원본 차단급 결함 주장은 모두 옳다고 확인됐고, 지적은 전부 기술적인 것이다. 넷 다 `acceptance.md` 와 `plan.md` 에서 닫았고, 있으면 좋은 것 2건(NH-3·NH-4)도 함께 반영했다. **요구사항은 하나도 바뀌지 않았다** — REQ-PERM-001..014 그대로이고, 수용 기준도 14개 그대로다. 바뀐 것은 두 기준(AC-PERM-003·010)이 **무엇을 보고 판정하는가**와 공통 테스트 하네스의 배선(`reply.hijack()` 추가, `cleanups` 일괄 정리, `readFrame`/`openStream` 헬퍼)이다. 자세한 내역은 `progress.md` §Audit Response 에 있다. | manager-spec |
 | 0.1.0 | 2026-08-27 | 최초 작성. `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Task 10 과 `spec-v2.md` 7장(권한 릴레이)·9장(보안)에서 도출 (칸반 카드 `t3`, 마일스톤 M3). 요구사항 14개·수용 기준 14개로 Tier M 상한(16/16) 안이다. 작성 지시서가 요구한 네 항목(전용 승인/거절 HTTP 엔드포인트, 방 멤버십 검사, 미응답 타임아웃, 봇 연결 해제 시 대기 정리)은 원본 두 문서 어디에도 없어 §5 범위 밖에 소유자와 함께 기록했고, 리드에 보고했다. | manager-spec |
+| 0.4.0 | 2026-09-07 | **v2 개정 표기 (리팩토링 C2 단계).** `ConnInfo={roomId,botId}` 의 roomId 출처가 접속이 아니라 `permission_request` 프레임의 `room_id` 로 바뀌었다. 대기 키 `방:id` 는 그대로. 근거: `.moai/reports/v2-review.md` §4 «살아 있음(개정)» 행. 본문의 당시 결정 기록은 그대로 두고 이 줄만 더한다 — 본문은 «그때 참», 현재 상태는 코드와 이 줄이 말한다. | v2-c2 |
 
 ---
 

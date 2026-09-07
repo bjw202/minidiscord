@@ -97,6 +97,9 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     if (!info) throw new Error('not authenticated')
     const roomId = roomIdOf(msg)
     if (roomId === null) return   // 네 프레임 모두 room_id 가 필수다 — 없으면 무시 (REQ-BOTMODEL-013)
+    // 참여하지 않은 방을 실은 프레임도 같은 자리에서 버린다 — 행·발행·응답 없이, 소켓은 열어 둔다 (A sync 감사 이월 F1, C2).
+    // 이 검사가 없던 동안 봇 토큰 하나로 참여하지 않은 방에 글을 쓰고 이력을 읽을 수 있었다
+    if (!isMember(roomId, info.botId)) return
     switch (msg.type) {
       case 'bot_message': return handleBotMessage(info, roomId, msg)
       case 'status': {

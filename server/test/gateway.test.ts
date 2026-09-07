@@ -16,6 +16,8 @@ import { createSseHub } from '../src/sse.js'
 import { createGateway } from '../src/gateway.js'
 import { registerAuthRoutes } from '../src/auth.js'
 import { registerBotRoutes } from '../src/routes-bots.js'
+import multipart from '@fastify/multipart'
+import { registerMessageRoutes } from '../src/routes-messages.js'
 import { attributeHits, type CaptureRecord, type WinEntry } from './wsupgrade-judgment.js'
 
 let dir: string
@@ -79,10 +81,17 @@ function wsupgradePersistCapture(record: CaptureRecord): void {
 }
 
 // hub.publish 를 감싸 발행 내역을 기록한다. SseHub 가 publish 를 속성으로 갖는 평범한 객체라는 계약에 의존한다.
-async function build(opts: { botFiles?: 'off' } = {}) {
+async function build(opts: { botFiles?: 'off'; messages?: true } = {}) {
   const app = Fastify()
   app.db = db
   await app.register(cookie)
+  // messages: 사람 경로(POST /api/rooms/:id/messages)까지 같은 프로세스에 조립한다 — F3 (라우트 → deliver → ws) 시험용.
+  // 조립 순서는 index.ts 와 같다: multipart 는 메시지 라우트 앞
+  if (opts.messages) {
+    await app.register(multipart)
+    app.decorate('uploadsDir', join(dir, 'up'))
+    registerMessageRoutes(app)
+  }
   const hub = createSseHub()
   const published: { roomId: number; event: string; data: any }[] = []
   const orig = hub.publish.bind(hub)
@@ -1330,6 +1339,63 @@ describe('D-8 absolute local_path in bot frames', () => {
     expect(replay.files).toHaveLength(1)
     expect(isAbsolute(replay.files[0].local_path)).toBe(true)
     expect(replay.files[0].local_path).toBe(resolve(REL))
+    ws.close()
+    await app.close()
+  })
+})
+
+// ── v2 C2 — A 의 sync 감사 이월 F1·F3 (B 가 C2 로 보냄, 가이드 §3 «B 종결 기록») ──────
+describe('C2: carried-over F1/F3', () => {
+  // F1 — 인바운드 프레임의 room_bots 참여 검사. 참여하지 않은 방을 실은 프레임은 room_id 가 없는 프레임과 같이 버린다:
+  // 행도 발행도 응답도 없고 소켓은 열린 채다. 네 프레임 전부에 걸린다 (bot_message·status·history_request·permission_request)
+  it('F1: a frame naming a room the bot has not joined is dropped — no row, no publish, no reply, socket stays open', async () => {
+    const { app, published, gateway, port } = await build()
+    const mine = seedRoom('mine'), other = seedRoom('other')
+    const pm = seedBot('pm')
+    joinRoom(mine, pm)   // other 에는 참여하지 않는다
+    const seen: any[] = []
+    gateway.setPermissionHandler((info, params) => { seen.push({ info, params }) })
+    const { ws } = await wsConnect(port, tokenOf(pm))
+
+    ws.send(JSON.stringify({ type: 'bot_message', room_id: other, body: '남의 방' }))
+    ws.send(JSON.stringify({ type: 'status', room_id: other, state: 'working' }))
+    ws.send(JSON.stringify({ type: 'history_request', room_id: other, rid: 'h1' }))
+    ws.send(JSON.stringify({ type: 'permission_request', room_id: other, request_id: 'abcde', tool_name: 'Bash', description: 'd', input_preview: 'p' }))
+    await expectNoMessage(ws)
+
+    expect(db.prepare('SELECT COUNT(*) c FROM messages WHERE room_id=?').get(other)).toEqual({ c: 0 })
+    expect(published.filter(p => p.roomId === other)).toHaveLength(0)
+    expect(seen).toHaveLength(0)
+    expect(ws.readyState).toBe(WebSocket.OPEN)
+    // 대조군 — 같은 소켓이 참여한 방으로는 그대로 통한다
+    ws.send(JSON.stringify({ type: 'bot_message', room_id: mine, body: '내 방' }))
+    await new Promise(r => setTimeout(r, 200))
+    expect(db.prepare('SELECT COUNT(*) c FROM messages WHERE room_id=?').get(mine)).toEqual({ c: 1 })
+    ws.close()
+    await app.close()
+  })
+
+  // F3 — 사람 경로 한 프로세스 안에서 끝까지: POST /api/rooms/:id/messages(@TO) → 저장 → deliver → 봇 소켓의 message 프레임
+  it('F3: POST /api/rooms/:id/messages with @TO reaches the bot socket in-process with room_id and delivery to', async () => {
+    const { app, port } = await build({ messages: true })
+    const room = seedRoom()
+    const pm = seedBot('pm')
+    joinRoom(room, pm)
+    const ck = await loginOf(app)
+    const { ws } = await wsConnect(port, tokenOf(pm))
+
+    const form = new FormData()
+    form.append('body', '@TO(pm) 라우트에서 소켓까지')
+    const res = await app.inject({ method: 'POST', url: `/api/rooms/${room}/messages`, headers: { cookie: ck }, payload: form })
+    expect(res.statusCode).toBe(200)
+    const frame = await nextMessage(ws)
+
+    expect(frame.type).toBe('message')
+    expect(frame.room_id).toBe(room)
+    expect(frame.id).toBe(res.json().message.id)
+    expect(frame.delivery).toBe('to')
+    expect(frame.author_name).toBe('alice')
+    expect(cursorOf(room, pm)).toBe(frame.id)
     ws.close()
     await app.close()
   })
