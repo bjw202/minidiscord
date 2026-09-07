@@ -10,6 +10,8 @@ export function isRoomMember(db: Db, roomId: number, userId: number): boolean {
   return !!db.prepare('SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?').get(roomId, userId)
 }
 
+// @MX:ANCHOR: [AUTO] 방 단위 인가 게이트 — 소스 안 네 라우트 파일(routes-rooms·routes-bots·routes-messages·routes-events)의 preHandler 일곱 자리가 부른다
+// @MX:REASON: 시그니처와 404 본문(«방을 찾을 수 없습니다»)이 계약이다 — 비멤버와 없는 방을 같은 응답으로 돌려 방 실재를 숨긴다(REQ-ROOMAUTHZ-013). archive 와 attachments/:id 두 경로는 의도적으로 이 게이트를 거치지 않는다(보류 카드 t17)
 // @MX:NOTE: requireAuth 뒤에서 쓰는 preHandler 게이트. 멤버십을 방 상태(보관 여부) 검사보다 앞에 둔다는 순서 계약(plan.md §B)의 앞부분을 이 함수가 담당한다 — 뒤집으면 비멤버가 409 로 방 실재를 가른다
 export async function requireRoomMember(req: FastifyRequest, reply: FastifyReply): Promise<void> {
   const roomId = Number((req.params as { id: string }).id)

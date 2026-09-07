@@ -78,6 +78,8 @@ CREATE INDEX IF NOT EXISTS idx_targets_bot ON message_targets(bot_id, message_id
 // 방 멤버십 이행 이름 (SPEC-ROOMAUTHZ-001) — 이 이름이 기록돼 있으면 백필을 다시 돌지 않는다
 const ROOMAUTHZ_BACKFILL_MARKER = 'roomauthz-001-backfill'
 
+// @MX:ANCHOR: [AUTO] SQLite 통합 지점이자 스키마·마이그레이션의 단일 출처 — buildServer 와 서버 시험 열한 파일이 이 함수로 DB 를 만든다
+// @MX:REASON: DDL(테이블 10·인덱스 2)과 명령형 마이그레이션 셋(v1 스키마 거부·rooms.created_by 추가·room_members 백필)이 여기에만 있다. 테이블을 더하거나 열을 바꾸면 이 함수와 codemaps/data-flow.md 가 함께 바뀐다
 export function openDb(path: string): Db {
   const db = new Database(path)
   db.pragma('journal_mode = WAL')

@@ -44,6 +44,9 @@ export function createPermissionBroker(app: FastifyInstance): PermissionBroker {
   // 대기 레지스트리 — 프로세스 메모리 맵이며 디스크에 저장되지 않는다 (REQ-PERM-003).
   // 키는 방 이름공간 합성키(방:소문자 id) — 같은 request_id 가 여러 방에 걸려도 서로를 덮어쓰지 않는다 (REQ-PERM-006)
   // 재시작으로 비는 것은 수용된 설계다 — 세션 쪽 승인 대화상자는 살아 있어 터미널에서 직접 승인할 수 있다
+  // @MX:DEBT: [AUTO] 대기 맵 open 에 상한·만료·속도 제한이 없다 — 봇이 permission_request 를 되풀이하면 메모리와 system 메시지 행이 계속 는다. 정리는 사람이 답할 때(open.delete) 뿐이다
+  // @MX:CEILING: 미측정 — 부하 재현 없음. 아는 사람 몇 명·봇 몇 개 배치에서는 증상이 관측된 적 없다
+  // @MX:UPGRADE: 장기 구동에서 메모리·메시지 증가가 관측되면 (ROADMAP 보류 카드 t12). 착수 시 재현이 먼저
   const open = new Map<string, ConnInfo>()
   // 합성키 — 키에 방 번호가 박혀 있으므로 다른 방의 답은 맵 조회 자체가 놓친다. 소비·전송 없이 대기 항목이 살아 남는 것이 곧 REQ-PERM-011 이다
   const keyOf = (roomId: number, requestId: string) => `${roomId}:${requestId.toLowerCase()}`

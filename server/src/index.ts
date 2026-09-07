@@ -30,6 +30,8 @@ declare module 'fastify' {
   }
 }
 
+// @MX:ANCHOR: [AUTO] 서버 조립의 단일 지점 — 진입 블록·health/restart-persistence 시험·E2E 가 띄우는 프로세스가 전부 이 함수로 앱을 만든다
+// @MX:REASON: 등록 순서 셋이 계약이다 — 게이트웨이는 허브 데코레이트 뒤(REQ-GW-022), multipart 는 메시지 라우트 앞(REQ-MSG-015), 정적 서빙은 맨 끝(REQ-WEBSHELL-001). 어느 하나를 옮겨도 오류 없이 조용히 깨진다
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
   mkdirSync(config.dataDir, { recursive: true })

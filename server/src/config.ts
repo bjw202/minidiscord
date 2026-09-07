@@ -1,4 +1,5 @@
 // 서버 설정: 포트와 데이터 경로
+// @MX:NOTE: [AUTO] 서버 환경변수 넷(PORT·HOST·DATA_DIR·BOT_FILES_DIR)의 단일 판독 자리 — README 설정 표가 같은 기본값을 적는다. 정적 루트 MINIDISCORD_WEB_DIR 만 예외로 index.ts 가 직접 읽는다
 export const config = {
   port: Number(process.env.MINIDISCORD_PORT ?? 3000),
   // 기본은 루프백이다. 배치 목표는 사내망·과제원이지만, 가입 게이트가 선행되기 전까지는 기본 바인드를 루프백으로 유지한다

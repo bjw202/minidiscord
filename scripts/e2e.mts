@@ -15,7 +15,6 @@
 // ⑮ 방 보관 후 접속 거부로 15 단계를 채운다. 진행 표지 [n/15] 는 그 단계의 단언이 전부
 // 성공한 뒤에만 찍는다(REQ-E2E-007 [HARD] — step 참고).
 
-// @MX:TODO: [AUTO] M4 — 루트 package.json 에 "e2e" 스크립트 배선 (plan.md §F M4, test 값 불변)
 // @MX:NOTE: [AUTO] ../server/test/gateway-v2.ts 상대 import 는 D1(a) 재사용 — 하네스가 구현을 부르지 않아 독립성 축 유지 (plan.md §D-2)
 
 import { spawn, type ChildProcess } from 'node:child_process'

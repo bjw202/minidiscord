@@ -6,7 +6,7 @@ import { requireRoomMember } from './room-members.js'
 import { config } from './config.js'
 import type { Gateway } from './gateway.js'
 
-// @MX:ANCHOR: [AUTO] v1 토큰 해시 유도 — 이행기 계약. v2 에서 bot_tokens 저장은 이 함수를 쓰지 않는다(§D-3).
+// @MX:NOTE: [AUTO] (호출자 0 — ANCHOR 에서 강등) v1 토큰 해시 유도 — 이행기 계약. v2 에서 bot_tokens 저장은 이 함수를 쓰지 않는다(§D-3).
 // 남은 소비자는 v1 하네스뿐이다: gateway-client.ts 의 v1 hello 전송(M3 에서 v2 로 교체)과, 같은 유도로 v1 모양
 // 행을 심는 형제 하네스 셋(server/test 다섯 파일 · channel/test/gateway-mutual-auth.test.ts — M4/M5 에서 교체).
 // M2 에서 server/src/gateway.ts 의 v1 조회가 떠났다. 마지막 소비자가 M3/M4 에서 떠나면 이 함수는 지운다
