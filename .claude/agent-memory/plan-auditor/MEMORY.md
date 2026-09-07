@@ -28,3 +28,8 @@
 - [SPEC 이 출처의 추론을 사실로 굳힌다](spec-hardens-its-sources-inference.md) — t40: 보고서의 「…라면 0바이트」 조건부가 spec.md 에서 「바이트 단위로 같다」로 승격, 실측은 416 대 0 (t40 1회차, 2026-09-06)
 - [수리가 바꾼 개수가 자기 훑기 밖에서 거짓을 만든다](repair-changed-count-falsifies-outside-its-own-sweep.md) — 셋→넷으로 움직인 수를 잡는 어간이 없고, 수리가 새로 찾은 결합 파일(`web/`)은 범위 목록 밖 (t34 3회차, 2026-09-03)
 - [루브릭에 사실 정확성 칸이 없다](rubric-has-no-cell-for-factual-accuracy.md) — 네 차원은 문서의 형태만 재므로 과대주장은 Clarity 에서 깎지 말고 blocking 으로; 점수 칸 없는 검사 여덟은 관측이고 의도/누락은 미규명(MP-5·6·7 은 명시, 이 여섯은 아님) (t42, 2026-09-06)
+- [증거가 형제와의 경계를 못 가른다](evidence-cannot-tell-the-sibling-apart.md) — 형제 SPEC 이 이미 통과시키는 화면을 다시 찍는 기준; 개별 항은 전부 통과하고 카드 전체가 아무것도 새로 안 보인다 (t32, 2026-09-02)
+- [가장 약한 허용 증거가 기준의 강도를 정한다](weakest-allowed-evidence-sets-the-strength.md) — 「둘 중 하나」로 둔 증거 형태 둘이 같은 것을 재지 않으면, 운영자는 싼 쪽을 고르고 위협은 그 쪽으로 통과한다 (t32 2회차, 2026-09-02)
+- [잇는 매개가 배달 경로를 탄다](linking-token-travels-the-delivery-path.md) — 운영자가 요청에 실은 고유 문자열은 붙은 소켓 전부의 화면에 뜬다; 그 기준은 생산이 아니라 수신을 잰다 (t32 3회차, 2026-09-02)
+- [판별자를 수신 통로 하나에만 대고 검증했다](discriminator-checked-against-one-inbound-channel.md) — 대괄호 규칙은 알림 통로에서만 참이고 도구 결과에서 거짓; 소스는 발신 지점을 다섯으로 세는데 산문 목록은 셋이었다 (t32 4회차, 2026-09-02)
+- [Move the observation point, not the fence](feedback_move-the-observation-point-not-the-fence.md) — when a criterion breaks round after round on "the path list missed one", grade the outbound act instead of the surface

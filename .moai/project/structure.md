@@ -1,6 +1,6 @@
 # minidiscord — 구조 개요
 
-> 설계 원문: `.moai/plan/2026-08-26-minidiscord/spec.md` §3~6, `plan.md` 파일 구조 섹션
+> 설계 원문: `.moai/plan/2026-08-26-minidiscord/spec-v2.md` §3~6, `plan-v2.md` 파일 구조 섹션
 > 이 프로젝트는 아직 구현 코드가 없는 그린필드 상태다. 아래 구조는 설계 문서에 정의된
 > "만들 구조"이며, `.moai/project/codemaps/`는 스캔할 코드가 없어 생성하지 않는다.
 
@@ -98,16 +98,17 @@ HTTP 요청 처리와 멘션 라우팅만, `permissions.ts`는 승인 요청 상
 순수 함수로 분리해 파서 로직만 단독으로 테스트할 수 있게 한다.
 
 전체 19개 구현 태스크(스캐폴드 → DB 스키마 → 인증 → 방/봇 API → 멘션 파서 → SSE → 게이트웨이 →
-메시지 API → 권한 릴레이 → 채널 패키지 → 웹 UI → E2E)의 상세 순서는 `plan.md`를 참고한다.
+메시지 API → 권한 릴레이 → 채널 패키지 → 웹 UI → E2E)의 상세 순서는 `plan-v2.md`를 참고한다.
 
 ## 데이터 모델 (SQLite)
 
 서버는 SQLite 한 파일로 모든 영속 데이터를 관리한다. 테이블 목록과 용도는 다음과 같다
-(전체 DDL은 `spec.md` §5 참고).
+(전체 DDL은 `spec-v2.md` §5 참고).
 
 | 테이블 | 용도 |
 |---|---|
 | `users` | 로그인 계정 (아이디, 비밀번호 해시) |
+| `sessions` | 로그인 세션 (쿠키 토큰 → 사용자 매핑) |
 | `rooms` | 대화방. `status`가 `active`/`archived`로 방 보관 상태를 나타낸다 |
 | `bots` | 봇 정의(표시용 이름·설명만). 페르소나 내용은 포함하지 않는다 |
 | `bot_tokens` | "봇 초대" 1건 = 1행. (방, 봇) 조합의 접속 자격증명(토큰) 및 재접속 시 이어받을 메시지 커서(`last_delivered_id`) |
@@ -133,17 +134,18 @@ HTTP 요청 처리와 멘션 라우팅만, `permissions.ts`는 승인 요청 상
 | 채널 → 서버 | `status` | 봇의 작업 상태(`working`/`idle`) 보고 — "입력 중" 표시에 쓰임 |
 | 채널 → 서버 | `permission_request` | 도구 사용 승인이 필요할 때 요청 |
 | 서버 → 채널 | `permission_verdict` | 사람의 승인/거절 결과 전달 |
-| 채널 → 서버 | `history_request` | 방 대화 기록 조회 요청 |
+| 채널 → 서버 | `history_request` | 방 대화 기록 조회 요청 (`since_id` 커서 지원) |
 | 서버 → 채널 | `history_response` | 조회된 기록 응답 |
 
 서버는 `room_id`별 접속 목록을 관리하며, 사용자 메시지는 멘션 파싱 결과에 따라 **지정된 봇의
 채널에만** 전달한다. 각 메시지 `id`는 방마다 단조 증가하는 커서로, 재접속 시 `missed_after_id`
-이후 메시지만 재전송해 중복 수신을 막는다.
+이후 메시지만 재전송해 중복 수신을 막는다. 같은 번호를 `fetch_history`의 `since_id`가 재사용한다 —
+재접속 복구와 대화 따라잡기가 하나의 커서 체계를 쓴다.
 
 ## 더 읽을 것
 
 - 컴포넌트별 상세 책임, 주요 흐름(사람→봇, 봇 초대, 파일 전달, 프로젝트 전환, 권한 릴레이),
-  에러 처리 표: `.moai/plan/2026-08-26-minidiscord/spec.md` §4, §7, §8
-- 구현 태스크별 파일 목록과 인터페이스 계약: `.moai/plan/2026-08-26-minidiscord/plan.md`
+  에러 처리 표: `.moai/plan/2026-08-26-minidiscord/spec-v2.md` §4, §7, §8
+- 구현 태스크별 파일 목록과 인터페이스 계약: `.moai/plan/2026-08-26-minidiscord/plan-v2.md`
 - 제품 요구사항과 성공 기준: `.moai/project/product.md`
 - 기술 스택/테스트 전략: `.moai/project/tech.md`

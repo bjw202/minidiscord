@@ -1,6 +1,6 @@
 # minidiscord — 기술 스택
 
-> 설계 원문: `.moai/plan/2026-08-26-minidiscord/plan.md` Global Constraints, `.moai/plan/2026-08-26-minidiscord/spec.md` §9~11
+> 설계 원문: `.moai/plan/2026-08-26-minidiscord/plan-v2.md` Global Constraints, `.moai/plan/2026-08-26-minidiscord/spec-v2.md` §9~11
 
 ## 스택과 의존성 버전
 
@@ -47,12 +47,12 @@ Node.js 20 이상, TypeScript strict 모드를 기본 전제로 한다. 의존�
 
 ## 테스트 전략
 
-계획서(spec.md §10)가 정의한 네 가지 테스트 층위다. 실제 Claude 세션을 쓰는 비용이 큰 E2E는
+계획서(spec-v2.md §10)가 정의한 네 가지 테스트 층위다. 실제 Claude 세션을 쓰는 비용이 큰 E2E는
 최소한으로 유지하고, 나머지는 가짜(fake) 클라이언트/서버로 대체한다.
 
 | 층위 | 방법 |
 |---|---|
-| **게이트웨이 프로토콜 테스트** | 가짜 채널 클라이언트로 토큰 인증, 재접속, 놓친 메시지 재전송, 멘션 라우팅을 검증한다(실제 Claude 세션 없이). |
+| **게이트웨이 프로토콜 테스트** | 가짜 채널 클라이언트로 토큰 인증, 재접속, 놓친 메시지 재전송, 멘션 라우팅, `since_id` 이력 조회를 검증한다(실제 Claude 세션 없이). |
 | **채널 플러그인 테스트** | 가짜 게이트웨이 서버로 MCP 알림 → WebSocket 전송, reply → 업로드, `fetch_history` 흐름을 검증한다. |
 | **E2E** | `fakechat` 참고 구현과 실제 Claude 세션 1개로, 방 하나에서 송수신 1사이클을 확인한다(API 비용 최소화가 목적). |
 | **영속성 테스트** | 서버 재시작 후 대화·파일·토큰이 그대로 복원되는지 확인한다. |
@@ -67,7 +67,7 @@ Node.js 20 이상, TypeScript strict 모드를 기본 전제로 한다. 의존�
 | **HTTP 평문** | v1은 HTTP만 지원하므로 공용망에서 도청 위험이 있다 | 이 위험을 인지하고 v1에서는 수용한다. 필요 시 자체 서명 HTTPS로 업그레이드할 수 있는 경로만 남긴다 |
 | **Claude 인증 제약** | Channels는 Bedrock/Vertex 등 일부 인증 방식에서 사용할 수 없다. Team/Enterprise 플랜은 관리자 활성화가 필요하다 | 개인 계정(claude.ai 또는 Console) 사용을 전제로 한다 |
 
-## 보안 원칙 (spec.md §9 요약)
+## 보안 원칙 (spec-v2.md §9 요약)
 
 - **사람 단위 인증 원칙**: 웹 UI는 계정 로그인(세션 쿠키)으로, 봇 게이트웨이는 (방, 봇) 조합
   토큰으로 인증한다. 방 ID가 아니라 토큰으로 식별한다.
@@ -78,7 +78,7 @@ Node.js 20 이상, TypeScript strict 모드를 기본 전제로 한다. 의존�
 
 ## 더 읽을 것
 
-- 전체 보안·에러 처리·리스크 표: `.moai/plan/2026-08-26-minidiscord/spec.md` §8~11
-- 19개 구현 태스크의 상세 스텝(테스트 코드, 구현 코드, 커밋 단위): `.moai/plan/2026-08-26-minidiscord/plan.md`
+- 전체 보안·에러 처리·리스크 표: `.moai/plan/2026-08-26-minidiscord/spec-v2.md` §8~11
+- 19개 구현 태스크의 상세 스텝(테스트 코드, 구현 코드, 커밋 단위): `.moai/plan/2026-08-26-minidiscord/plan-v2.md`
 - 제품 요구사항: `.moai/project/product.md`
 - 아키텍처/데이터 모델/디렉터리 구조: `.moai/project/structure.md`
