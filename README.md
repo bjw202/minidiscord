@@ -32,7 +32,7 @@ curl http://127.0.0.1:3000/api/health
 | 환경변수 | 뜻 | 기본값 |
 |---|---|---|
 | `MINIDISCORD_PORT` | 서버가 열 포트 | `3000` |
-| `MINIDISCORD_HOST` | 서버가 붙을 주소 | `127.0.0.1` |
+| `MINIDISCORD_HOST` | 서버가 붙을 주소. **다른 PC 에서 붙으려면 `0.0.0.0` 이나 이 PC 의 LAN 주소를 지정한다** | `127.0.0.1` |
 | `MINIDISCORD_DATA_DIR` | 데이터가 쌓이는 폴더 | `./data` |
 | `MINIDISCORD_BOT_FILES_DIR` | 봇이 첨부로 보낼 수 있는 파일의 허용 폴더 | 없음 (봇 첨부 꺼짐) |
 

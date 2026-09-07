@@ -889,7 +889,7 @@ describe('gateway', () => {
   it('history_request applies limit before since_id, speaker, since and until', async () => {
     const { app, port } = await build()
     const room = seedRoom(), pm = seedBot('pm')
-    const alice = db.prepare("INSERT INTO users (username, password_hash) VALUES ('alice','x')").run().lastInsertRowid as number
+    const alice = db.prepare("INSERT INTO users (username) VALUES ('alice')").run().lastInsertRowid as number
     const { ws } = await wsConnect(port, invite(room, pm))
 
     const ids: number[] = []
@@ -925,7 +925,7 @@ describe('gateway', () => {
   it('history_response carries id, author_name, body and created_at', async () => {
     const { app, port } = await build()
     const room = seedRoom(), pm = seedBot('pm')
-    const alice = db.prepare("INSERT INTO users (username, password_hash) VALUES ('alice','x')").run().lastInsertRowid as number
+    const alice = db.prepare("INSERT INTO users (username) VALUES ('alice')").run().lastInsertRowid as number
     db.prepare("INSERT INTO messages (room_id, author_type, author_user_id, body) VALUES (?, 'user', ?, '사람 말')").run(room, alice)
     db.prepare("INSERT INTO messages (room_id, author_type, author_bot_id, body) VALUES (?, 'bot', ?, '봇 말')").run(room, pm)
     db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'system', '시스템 말')").run(room)
@@ -1210,8 +1210,7 @@ describe('gateway', () => {
     }
 
     // 가입·로그인 라우트 이름과 set-cookie 정규화는 rooms-bots.test.ts 의 build() 와 같다
-    await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
-    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice' } })
     const raw = login.headers['set-cookie'] ?? ''
     const ck = (Array.isArray(raw) ? raw[0] : raw).split(';')[0]
     const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie: ck }, payload: { name: 'A' } })).json()
@@ -1403,8 +1402,7 @@ describe('AC-GWAUTH2 server side', () => {
   }
 
   async function loginOf(app: any): Promise<string> {
-    await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
-    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice' } })
     const raw = login.headers['set-cookie'] ?? ''
     return (Array.isArray(raw) ? raw[0] : raw).split(';')[0]
   }
@@ -1413,11 +1411,8 @@ describe('AC-GWAUTH2 server side', () => {
   it('an invite stores only a verifier and a confirm key, never the token or its hash', async () => {
     const { app, db } = await build()
     const ck = await loginOf(app)
-    // 방·멤버십은 직접 심는다 — 이 파일의 build() 는 방 라우트를 등록하지 않고, 초대 경로의
-    // 멤버십 게이트(REQ-ROOMAUTHZ-017)를 통과하려면 게이트 행이 필요하다 (permissions.test 선례)
+    // 방은 직접 심는다 — 이 파일의 build() 는 방 라우트를 등록하지 않는다
     const roomId = db.prepare("INSERT INTO rooms (name) VALUES ('A')").run().lastInsertRowid as number
-    const alice = db.prepare("SELECT id FROM users WHERE username = 'alice'").get() as { id: number }
-    db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
     const bot = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie: ck }, payload: { name: 'pm' } })).json()
     const body = (await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/invites`, headers: { cookie: ck }, payload: { bot_id: bot.id } })).json()
 

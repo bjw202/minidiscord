@@ -33,8 +33,7 @@ async function build(opts?: { onArchive?: (roomId: number) => void }) {
   registerAuthRoutes(app, db)
   registerRoomRoutes(app, opts)
   registerBotRoutes(app)
-  await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice' } })
   const cookie0 = setCookieOf(login).split(';')[0]
   return { app, cookie: cookie0 }
 }
@@ -287,8 +286,7 @@ it('buildServer registers room and bot routes behind requireAuth', async () => {
   const guarded = await app.inject({ method: 'GET', url: '/api/rooms' })
   expect(guarded.statusCode).toBe(401)
 
-  await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice' } })
   const cookie = setCookieOf(login).split(';')[0]
 
   const rooms = await app.inject({ method: 'GET', url: '/api/rooms', headers: { cookie } })

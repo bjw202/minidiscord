@@ -2,7 +2,6 @@
 import type { FastifyInstance } from 'fastify'
 import { createHash, createHmac, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto'
 import { requireAuth } from './auth.js'
-import { requireRoomMember } from './room-members.js'
 import { config } from './config.js'
 import type { Gateway } from './gateway.js'
 
@@ -70,14 +69,11 @@ export function registerBotRoutes(app: FastifyInstance): void {
   // (REQ-GWAUTH2-003). v1 은 sha256 해시를 저장했는데 그 값만으로 봇을 사칭할 수 있었다(SPEC-GWAUTH-001 §1.1) —
   // v2 검증자는 공개키라 저장 값을 읽은 상대가 봇 방향으로는 아무것도 만들지 못한다. 확인 열쇠는 그 반대 절반의
   // 대용이며 그 한계는 spec §5 표가 진다
-  // 멤버십 게이트가 방 조회보다 앞선다 (REQ-ROOMAUTHZ-017) — 초대 라우트는 "봇 하나 추가"가 아니라
-  // 그 방 대화 전체로 통하는 두 번째 문이다. 뒤에 두면 비멤버가 보관된 방에서 409 를 받아 실재가 샌다
-  app.post('/api/rooms/:id/invites', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
+  app.post('/api/rooms/:id/invites', { preHandler: [requireAuth] }, async (req, reply) => {
     const roomId = Number((req.params as { id: string }).id)
     const { bot_id } = req.body as { bot_id?: number }
     const db = req.server.db
     // 방을 먼저 조회해 없음(404)과 보관됨(409)을 가른다 — 403은 이 시스템에 쓰지 않는다 (plan.md §D 5).
-    // 비멤버는 위 게이트에서 이미 같은 404 로 끝났으므로 이 분기는 멤버에게만 보인다 (REQ-ROOMAUTHZ-013)
     const room = db.prepare('SELECT id, status FROM rooms WHERE id = ?').get(roomId) as { id: number; status: string } | undefined
     if (!room) return reply.code(404).send({ error: '방을 찾을 수 없습니다' })
     if (room.status === 'archived') return reply.code(409).send({ error: '보관된 방에는 초대할 수 없습니다' })
@@ -92,8 +88,7 @@ export function registerBotRoutes(app: FastifyInstance): void {
   })
 
   // 초대 목록 — SQL 결과를 매핑해 online 을 불리언으로 내보낸다. SQLite 의 0 AS online 은 정수 0 이라 그대로 흘려보내면 안 된다 (plan.md §D 1).
-  // 비멤버에게는 빈 배열이 아니라 404 다 — 빈 배열은 "봇 없는 방"과 구별되지 않아 실재가 샌다 (REQ-ROOMAUTHZ-009 와 같은 논리)
-  app.get('/api/rooms/:id/invites', { preHandler: [requireAuth, requireRoomMember] }, async req => {
+  app.get('/api/rooms/:id/invites', { preHandler: [requireAuth] }, async req => {
     const roomId = Number((req.params as { id: string }).id)
     const rows = req.server.db.prepare(
       `SELECT t.bot_id, b.name AS bot_name FROM bot_tokens t JOIN bots b ON b.id = t.bot_id
@@ -104,8 +99,7 @@ export function registerBotRoutes(app: FastifyInstance): void {
   })
 
   // 초대 철회 — 멱등: 철회할 활성 토큰이 없어도 같은 응답을 낸다 (REQ-BOT-007).
-  // 파괴적 쓰기라서 게이트가 더 중요하다 — 남의 방 봇 세션을 끊을 수 없어야 한다 (REQ-ROOMAUTHZ-017)
-  app.delete('/api/rooms/:id/invites/:botId', { preHandler: [requireAuth, requireRoomMember] }, async req => {
+  app.delete('/api/rooms/:id/invites/:botId', { preHandler: [requireAuth] }, async req => {
     const { id, botId } = req.params as { id: string; botId: string }
     // room_id 와 bot_id 를 모두 조건에 넣어 다른 방의 같은 봇 토큰은 건드리지 않는다
     req.server.db.prepare("UPDATE bot_tokens SET revoked_at=datetime('now') WHERE room_id=? AND bot_id=? AND revoked_at IS NULL").run(Number(id), Number(botId))

@@ -11,7 +11,7 @@
   </script>
 </head>
 <body>
-  <!-- 인증 화면 — 로그인과 회원가입을 한 패널에 둔다 -->
+  <!-- 인증 화면 — 이름 하나로 들어온다 (v2: 비밀번호·회원가입 없음) -->
   <section id="auth-view">
     <!-- 서버가 준 오류 문구가 여기 뜬다 — 화면은 인증 뷰에 머문다 (REQ-WEBSHELL-008) -->
     <p id="auth-error" hidden></p>
@@ -19,17 +19,7 @@
       <h1>minidiscord</h1>
       <label for="login-username">사용자 이름</label>
       <input id="login-username" autocomplete="username">
-      <label for="login-password">비밀번호</label>
-      <input id="login-password" type="password" autocomplete="current-password">
-      <button type="submit">로그인</button>
-    </form>
-    <form id="register-form">
-      <h2>처음이신가요?</h2>
-      <label for="reg-username">사용자 이름</label>
-      <input id="reg-username" autocomplete="username">
-      <label for="reg-password">비밀번호 (8자 이상)</label>
-      <input id="reg-password" type="password" autocomplete="new-password">
-      <button type="submit">회원가입</button>
+      <button type="submit">들어가기</button>
     </form>
   </section>
 

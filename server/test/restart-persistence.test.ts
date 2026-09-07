@@ -62,9 +62,7 @@ interface Rec { cookie: string; roomId: number; botId: number; token: string; ms
 
 /** 재시작 전의 쓰기 — 회원·방·봇·초대 토큰, 첨부 하나가 붙은 메시지. 전부 앱 자신의 라우트로 넣는다 */
 async function seed(): Promise<Rec> {
-  const reg = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'restart-user', password: 'restart-password-123' } })
-  expect(reg.statusCode).toBe(201)
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'restart-user', password: 'restart-password-123' } })
+  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'restart-user' } })
   expect(login.statusCode).toBe(200)
   const rawSet = login.headers['set-cookie'] as unknown as string | string[] | undefined
   const cookie = (Array.isArray(rawSet) ? rawSet : [rawSet ?? '']).map(c => c.split(';')[0]).find(c => c.startsWith('md_session='))

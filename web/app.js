@@ -119,10 +119,11 @@ export async function loadBots() {
 }
 
 // ── 인증 ───────────────────────────────────────────────────────────────
+// 이름 하나로 들어온다 — 처음 보는 이름은 서버가 그 자리에서 만든다 (v2, 비밀번호 없음).
 // 실패 시 #auth-error 에 서버 문구를 띄우고 되던진다 — 화면은 인증 뷰에 머문다 (REQ-WEBSHELL-008).
-export async function login(username, password) {
+export async function login(username) {
   try {
-    await api('/api/auth/login', { method: 'POST', body: { username, password } })
+    await api('/api/auth/login', { method: 'POST', body: { username } })
   } catch (err) {
     const el = $('auth-error')
     el.textContent = err instanceof Error ? err.message : String(err)
@@ -144,24 +145,6 @@ export async function login(username, password) {
     el.hidden = false
     throw err
   }
-}
-
-// 회원가입 성공 → 같은 자격으로 이어서 로그인한다 (REQ-WEBSHELL-008).
-export async function register(username, password) {
-  // 회원가입 단계 자체의 실패(400·409)도 #auth-error 에 서버 문구로 표시한다 —
-  // 핸들러의 «login 이 이미 채웠다» 가정은 회원가입 실패에서 거짓이다 (카드 t32 §D 결함 D-1).
-  try {
-    await api('/api/auth/register', { method: 'POST', body: { username, password } })
-  } catch (err) {
-    const el = $('auth-error')
-    el.textContent = err instanceof Error ? err.message : String(err)
-    el.hidden = false
-    throw err
-  }
-  await login(username, password)
-  // 가입이 끝났다는 신호를 남긴다 — 성공이 «조용한 전환» 이면 운영자는 무반응으로 읽는다
-  // (카드 t32 §D — «성공해도 메시지가 없어 디버깅 불가»).
-  showToast('회원가입 완료')
 }
 
 // 서버 세션을 끊고 state 세 필드를 초기값으로 되돌린 뒤 인증 뷰로 간다 (REQ-WEBSHELL-012).
@@ -213,20 +196,6 @@ function toastError(err) {
   // 성공색으로 보인다 — 거둔다 (카드 t32 §D 잔여 수리).
   toast.classList.remove('toast-success')
   toast.hidden = false
-}
-
-// 성공 알림 — 오류 토스트와 같은 #error-toast 요소를 쓰되 .toast-success 로 상태색을
-// 갈라 쓴다(design DNA §1 — --md-status-online). 성공은 4초 뒤 저절로 사라진다.
-// 오류(toastError)는 자동 숨김 없이 화면에 남는다 — 삼켜진 오류가 없게 하는 기존 관습.
-function showToast(text) {
-  const toast = $('error-toast')
-  toast.textContent = text
-  toast.classList.add('toast-success')
-  toast.hidden = false
-  setTimeout(() => {
-    toast.hidden = true
-    toast.classList.remove('toast-success')
-  }, 4_000)
 }
 
 // ── 방 열기 ──────────────────────────────────────────────────────────
@@ -296,14 +265,8 @@ export function initApp() {
   $('login-form').addEventListener('submit', async (e) => {
     e.preventDefault()
     try {
-      await login($('login-username').value.trim(), $('login-password').value)
+      await login($('login-username').value.trim())
     } catch { /* login 이 이미 #auth-error 를 채웠다 */ }
-  })
-  $('register-form').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    try {
-      await register($('reg-username').value.trim(), $('reg-password').value)
-    } catch { /* register → login 경로에서 이미 문구를 채웠다 */ }
   })
   $('new-room-btn').addEventListener('click', async () => {
     const name = await promptText('새 방 이름')
@@ -326,7 +289,7 @@ export function initApp() {
 }
 
 // ══ 채팅 화면 (SPEC-WEBCHAT-001) ══════════════════════════════════════
-// 이 블록부터는 채팅 SPEC 의 영역이다. 웹 셸의 아홉 함수(api·login·register·logout·
+// 이 블록부터는 채팅 SPEC 의 영역이다. 웹 셸의 여덟 함수(api·login·logout·
 // loadRooms·loadBots·createRoom·archiveRoom·createBot) 본문은 건드리지 않는다(§4.8 계약 6).
 
 // 장식 팩토리 — SPEC-WEBRICH-001 이 모듈 최상위에서 등록한다 (배선 계약, spec.md §4.6).

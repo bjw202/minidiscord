@@ -43,17 +43,12 @@ async function build() {
   app.decorate('gateway', gateway)
   registerAuthRoutes(app, db)
   registerMessageRoutes(app)
-  await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice' } })
   return { app, cookie: setCookieOf(login).split(';')[0], uploadsDir }
 }
 
 function seed(): { roomId: number; botId: number } {
   const roomId = db.prepare("INSERT INTO rooms (name) VALUES ('A')").run().lastInsertRowid as number
-  // M4 (SPEC-ROOMAUTHZ-001): 메시지 게이트가 멤버만 지나게 되었다 — 직접 INSERT 한 방이므로
-  // 생성자 auto-join 에 해당하는 멤버 행 하나가 유일한 빠진 조각이다 (plan.md §F M4 2번)
-  const alice = db.prepare("SELECT id FROM users WHERE username = 'alice'").get() as { id: number }
-  db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES ('pm', '')").run().lastInsertRowid as number
   // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 이 시험은 접속하지 않는 방 보조 봇이지만 스키마는 v2 다
   const seedToken = randomBytes(32).toString('hex')
@@ -332,9 +327,6 @@ describe('messages', () => {
     const { app, cookie } = await build()
     const { roomId } = seed()
     const otherRoom = db.prepare("INSERT INTO rooms (name) VALUES ('B')").run().lastInsertRowid as number
-    // M4 (SPEC-ROOMAUTHZ-001): 이 방도 직접 INSERT 였으므로 alice 의 멤버 행이 필요하다 — 테스트가 B 방도 읽기를 기대한다
-    const aliceId = (db.prepare("SELECT id FROM users WHERE username = 'alice'").get() as { id: number }).id
-    db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(otherRoom, aliceId)
 
     await postMessage(app, cookie, roomId, 'A 방 메시지')
     await postMessage(app, cookie, otherRoom, 'B 방 메시지')
@@ -393,8 +385,7 @@ describe('messages', () => {
     expect((app as any).uploadsDir).toBe(config.uploadsDir)
 
     // 가입·로그인. set-cookie 정규화는 rooms-bots.test.ts 의 build() 와 같다
-    await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'bob', password: 'pw123456' } })
-    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'bob', password: 'pw123456' } })
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'bob' } })
     const ck = setCookieOf(login).split(';')[0]
     const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie: ck }, payload: { name: 'A' } })).json()
 

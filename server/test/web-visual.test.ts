@@ -78,10 +78,9 @@ describe('D-3 hidden guard (real browser, card t32 §D)', () => {
     try {
       const page = await browser.newPage()
       await page.goto(base + '/')
-      // register 성공 흐름 — 제출하면 register → 자동 login → main 진입까지 자동이다
-      await page.fill('#reg-username', `visual-probe-${Date.now()}`)
-      await page.fill('#reg-password', 'visualpass123')
-      await page.click('#register-form button[type="submit"]')
+      // 이름 로그인 흐름 — 제출하면 login → main 진입까지 자동이다 (v2, 가입 없음)
+      await page.fill('#login-username', `visual-probe-${Date.now()}`)
+      await page.click('#login-form button[type="submit"]')
       // 로그인 완료 신호: main-view 의 hidden 속성이 떼어지는 시점까지 기다린다.
       // 이 대기는 속성 기준이다 — 시각 판정은 아래 bounding box 가 한다.
       await page.waitForSelector('#main-view:not([hidden])', { state: 'attached', timeout: 10_000 })
@@ -96,26 +95,6 @@ describe('D-3 hidden guard (real browser, card t32 §D)', () => {
       expect(mainBox!.width).toBeGreaterThan(0)
       expect(mainBox!.height).toBeGreaterThan(0)
 
-      // 묶음 ② — 성공 토스트의 색 분리도 실브라우저에서 잰다. 클래스 존재만으로는 토큰
-      // 오탈자를 못 잡으므로, 계산된 색이 성공 토큰(--md-status-online)과 같고 오류 토큰과
-      // 다른 것까지 확인한다.
-      expect(await page.locator('#error-toast').getAttribute('class'), '성공 토스트에 클래스가 있어야 한다')
-        .toContain('toast-success')
-      const colors = await page.evaluate(() => {
-        const probe = document.createElement('span')
-        document.body.appendChild(probe)
-        const read = (color: string) => {
-          probe.style.color = color
-          return getComputedStyle(probe).color
-        }
-        const online = read('var(--md-status-online)')
-        const error = read('var(--md-status-error)')
-        const toastColor = getComputedStyle(document.getElementById('error-toast')!).color
-        probe.remove()
-        return { toastColor, online, error }
-      })
-      expect(colors.toastColor, `토스트 색이 성공 토큰이어야 한다 — ${JSON.stringify(colors)}`).toBe(colors.online)
-      expect(colors.toastColor, '토스트 색이 오류 토큰이면 안 된다').not.toBe(colors.error)
     } finally {
       await browser.close()
       await app.close()

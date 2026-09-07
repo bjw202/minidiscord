@@ -60,8 +60,7 @@ async function build() {
   const broker = createPermissionBroker(app)
   app.decorate('permissions', broker)
   gateway.setPermissionHandler((info, params) => broker.onGatewayRequest(info, params))
-  await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice' } })
   await app.listen({ port: 0 })
   const port = (app.server.address() as { port: number }).port
   cleanups.push(async () => { await app.close() })
@@ -70,9 +69,6 @@ async function build() {
 
 function seedRoomAndBot(roomName = 'A', botName = 'pm') {
   const roomId = db.prepare('INSERT INTO rooms (name) VALUES (?)').run(roomName).lastInsertRowid as number
-  // t11 이 메시지·초대 경로에 방 구성원 검사를 걸었다 — 배치가 심는 방에 alice 을 구성원으로 넣는다.
-  const alice = db.prepare('SELECT id FROM users WHERE username = ?').get('alice') as { id: number }
-  db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES (?, '')").run(botName).lastInsertRowid as number
   const token = randomBytes(32).toString('hex')
   // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 검증자와 확인 열쇠를 하니스 사본으로 유도해 저장한다

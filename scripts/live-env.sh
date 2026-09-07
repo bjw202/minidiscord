@@ -37,7 +37,6 @@ EVIDENCE_DIR="$ROOT/.moai/specs/SPEC-LIVEENV-001/evidence"
 DB_TABLE="messages"
 
 LIVEENV_USER="liveenv"
-LIVEENV_PASS="liveenv-local-only-passphrase"
 
 # 종료 코드 세 값 (REQ-004)
 EXIT_OK=0
@@ -363,12 +362,9 @@ ensure_session() {
       "http://127.0.0.1:$port/api/rooms" 2>/dev/null || echo 000)
     [ "$code" = "200" ] && return 0
   fi
-  curl -s -o /dev/null -X POST -H 'content-type: application/json' \
-    -d "{\"username\":\"$LIVEENV_USER\",\"password\":\"$LIVEENV_PASS\"}" \
-    "http://127.0.0.1:$port/api/auth/register" 2>/dev/null
   local hdr; hdr="$DATA_DIR/.login-headers"
   curl -s -D "$hdr" -o /dev/null -X POST -H 'content-type: application/json' \
-    -d "{\"username\":\"$LIVEENV_USER\",\"password\":\"$LIVEENV_PASS\"}" \
+    -d "{\"username\":\"$LIVEENV_USER\"}" \
     "http://127.0.0.1:$port/api/auth/login" 2>/dev/null
   local tok
   tok=$(sed -n 's/.*md_session=\([0-9a-f]*\).*/\1/p' "$hdr" | head -1)

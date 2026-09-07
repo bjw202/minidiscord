@@ -49,14 +49,13 @@ async function build() {
   const gateway = createGateway(app, { uploadsDir: join(dir, 'up') })
   app.decorate('gateway', gateway)
   registerAuthRoutes(app, db)
-  // M4 (SPEC-ROOMAUTHZ-001): 이벤트 라우트 사본을 지우고 프로덕션과 같은 등록 함수 하나를 쓴다 (REQ-ROOMAUTHZ-010)
+  // 이벤트 라우트 사본을 지우고 프로덕션과 같은 등록 함수 하나를 쓴다
   registerEventRoute(app)
   registerMessageRoutes(app)
   const broker = createPermissionBroker(app)
   app.decorate('permissions', broker)                                  // 원본 누락분 (plan.md §D 1번)
   gateway.setPermissionHandler((info, params) => broker.onGatewayRequest(info, params))
-  await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'alice', password: 'pw123456' } })
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice', password: 'pw123456' } })
+  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'alice' } })
   await app.listen({ port: 0 })
   const port = (app.server.address() as { port: number }).port
   cleanups.push(async () => { await app.close() })                   // 개별 테스트가 닫지 않는다
@@ -66,10 +65,6 @@ async function build() {
 // (방, 봇, 게이트웨이 토큰) 한 벌을 만든다. 여러 방을 만들려면 name 을 바꿔 부른다.
 function seedRoomAndBot(roomName = 'A', botName = 'pm') {
   const roomId = db.prepare('INSERT INTO rooms (name) VALUES (?)').run(roomName).lastInsertRowid as number
-  // M4 (SPEC-ROOMAUTHZ-001): 메시지·스트림 게이트가 멤버만 지나게 되었다 — 직접 INSERT 한 방이므로
-  // 로그인 사용자(alice)의 멤버 행 하나가 유일한 빠진 조각이다 (plan.md §F M4 2번)
-  const alice = db.prepare("SELECT id FROM users WHERE username = 'alice'").get() as { id: number }
-  db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, alice.id)
   const botId = db.prepare("INSERT INTO bots (name, description) VALUES (?, '')").run(botName).lastInsertRowid as number
   const token = randomBytes(32).toString('hex')
   // v2 저장 계약 (SPEC-GWAUTH-002 §D-3) — 검증자와 확인 열쇠를 하니스 사본으로 유도해 저장한다

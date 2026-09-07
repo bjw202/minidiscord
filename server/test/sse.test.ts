@@ -29,10 +29,9 @@ async function startServer() {
   registerAuthRoutes(app, app.db)
   const hub = createSseHub()
   app.decorate('hub', hub)
-  // M4 (SPEC-ROOMAUTHZ-001): 이벤트 라우트 사본을 지우고 프로덕션과 같은 등록 함수 하나를 쓴다 (REQ-ROOMAUTHZ-010)
+  // 이벤트 라우트 사본을 지우고 프로덕션과 같은 등록 함수 하나를 쓴다
   registerEventRoute(app)
-  await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'u', password: 'pw123456' } })
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'u', password: 'pw123456' } })
+  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'u' } })
   const ck = setCookieOf(login).split(';')[0]
   await app.listen({ port: 0 })
   const port = (app.server.address() as { port: number }).port
@@ -40,13 +39,9 @@ async function startServer() {
   return { app, hub, cookie: ck, port }
 }
 
-// M4 (SPEC-ROOMAUTHZ-001): 스트림 게이트는 실재하는 방과 멤버를 요구한다 — 임의의 1 대신
-// 방을 만들고 로그인 사용자를 그 멤버로 넣은 뒤 그 번호로 스트림을 연다 (plan.md §D.3.1)
-function memberRoom(app: { db: Db }, username = 'u', name = 'A'): number {
-  const roomId = app.db.prepare('INSERT INTO rooms (name) VALUES (?)').run(name).lastInsertRowid as number
-  const u = app.db.prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number }
-  app.db.prepare('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, u.id)
-  return roomId
+// 실재하는 방을 만들고 그 번호로 스트림을 연다 — 임의의 1 을 쓰지 않는다 (v2: 구성원 검사는 없다)
+function memberRoom(app: { db: Db }, _username = 'u', name = 'A'): number {
+  return app.db.prepare('INSERT INTO rooms (name) VALUES (?)').run(name).lastInsertRowid as number
 }
 
 // 이벤트 스트림을 연다. abort() 로 클라이언트 쪽 연결을 끊을 수 있다.
@@ -221,12 +216,10 @@ describe('sse', () => {
     const app = await buildServer()
     cleanups.push(async () => { await app.close() })
 
-    await app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'w', password: 'pw123456' } })
-    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'w', password: 'pw123456' } })
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'w' } })
     const ck = setCookieOf(login).split(';')[0]
 
-    // M4 (SPEC-ROOMAUTHZ-001): 게이트가 실재하는 방과 멤버를 요구한다 — 실서버의 방 생성 라우트로
-    // 만들면 생성자가 곧 멤버다. 임의의 1 을 쓰지 않는다 (plan.md §D.3.1)
+    // 실서버의 방 생성 라우트로 실재하는 방을 만든다 — 임의의 1 을 쓰지 않는다
     const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: { cookie: ck }, payload: { name: 'A' } })).json() as { id: number }
 
     await app.listen({ port: 0 })

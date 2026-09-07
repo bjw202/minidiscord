@@ -19,7 +19,7 @@ import { acquirePort, api, checkDependencies, spawnServer, stopServer, waitForBo
 import { runExtract, type SurfaceInput } from '../server/test/live-extract-lib.ts'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const USER = { username: 'liveenv-dryrun', password: 'liveenv-dryrun-pass' }
+const USER = { username: 'liveenv-dryrun' }
 const BOT_NAME = 'pm'
 // 봇이 «스스로 지어낸» 표지. 요청 어디에도 없고, 예행 밖에서 만들어질 수 없다.
 const MARKER = 'Dr7yRun9'.slice(0, 8)
@@ -62,8 +62,7 @@ async function main(): Promise<number> {
   const p = port.forProbe
   log('[dryrun] ① 서버 기동')
 
-  // ② 초대 — 사람이 손으로 맞추던 자리를 코드가 한다
-  await api(p, 'POST', '/api/auth/register', { json: USER })
+  // ② 초대 — 사람이 손으로 맞추던 자리를 코드가 한다. 로그인은 이름 하나다 (v2)
   const login = await api(p, 'POST', '/api/auth/login', { json: USER })
   const cookie = login.res.headers.getSetCookie?.()?.[0]?.split(';')[0] ?? ''
   if (!cookie) { console.error('[dryrun] 로그인 쿠키를 얻지 못했다'); return 1 }

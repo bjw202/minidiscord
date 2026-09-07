@@ -1,5 +1,6 @@
-// 회원가입/로그인/세션 쿠키 (scrypt 해시, sessions 테이블)
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+// 이름 로그인/세션 쿠키 (sessions 테이블). 비밀번호는 없다 — v2 전제(사내망, 회사 인증을 거친 사람만)에서
+// 사람 인증은 «이름 하나» 로 줄였다 (.moai/reports/v2-review.md §2.3). 남은 검사는 표시 안전용 이름 규칙뿐이다.
+import { randomBytes } from 'node:crypto'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import type { Db } from './db.js'
 
@@ -9,21 +10,6 @@ declare module 'fastify' {
   }
 }
 
-// @MX:NOTE: [AUTO] 16바이트 난수 salt + scrypt 64바이트 파생 키를 `<salt-hex>:<key-hex>` 한 줄로 저장
-export function hashPassword(pw: string): string {
-  const salt = randomBytes(16).toString('hex')
-  return `${salt}:${scryptSync(pw, salt, 64).toString('hex')}`
-}
-
-// @MX:NOTE: [AUTO] timingSafeEqual 상수 시간 비교 — 저장값 형식이 손상되면 거짓을 반환한다
-export function verifyPassword(pw: string, stored: string): boolean {
-  const [salt, hex] = stored.split(':')
-  if (!salt || !hex) return false
-  const a = Buffer.from(hex, 'hex')
-  const b = scryptSync(pw, salt, 64)
-  return a.length === b.length && timingSafeEqual(a, b)
-}
-
 // 사용자 이름 상한 — 상한이 없으면 2만 바이트 이름이 그대로 저장된다(t33)
 export const USERNAME_MAX_LENGTH = 32
 // 보이지 않으면서 표시를 흔드는 문자와 앞뒤 공백을 거른다 — 제어(Cc)·형식(Cf)·줄/문단 구분(Zl/Zp).
@@ -31,13 +17,13 @@ export const USERNAME_MAX_LENGTH = 32
 // 표시·로그를 깨뜨리고 화면상 구분되지 않는 닮은꼴 계정을 만든다 (t33 F2 — sync 감사)
 const USERNAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u
 
-// @MX:NOTE: [AUTO] 이 SPEC 이 등록하는 라우트는 이 세 개뿐 (REQ-AUTH-013) — 그 밖의 경로는 테스트 헬퍼에서만 등록한다
+// @MX:NOTE: 이 모듈이 등록하는 라우트는 login·logout 둘뿐 — 가입은 없다. 처음 보는 이름은 로그인 때 users 에 생긴다
 export function registerAuthRoutes(app: FastifyInstance, db: Db): void {
-  app.post('/api/auth/register', async (req, reply) => {
-    const { username, password } = req.body as { username?: string; password?: string }
-    // 타입 검사를 길이 검사보다 먼저 (REQ-AUTH-006) — 문자열이 아닌 값이 .length 검사를 통과하지 못하게 한다
-    if (typeof username !== 'string' || username === '' || typeof password !== 'string' || password.length < 8) {
-      return reply.code(400).send({ error: 'username과 8자 이상 password가 필요합니다' })
+  app.post('/api/auth/login', async (req, reply) => {
+    const { username } = req.body as { username?: string }
+    // 타입 검사를 길이 검사보다 먼저 — 문자열이 아닌 값이 .length 검사를 통과하지 못하게 한다
+    if (typeof username !== 'string' || username === '') {
+      return reply.code(400).send({ error: 'username이 필요합니다' })
     }
     // 길이·글자 상한 (t33) — 형식 위반과 길이 위반을 구분해 안내한다
     if ([...username].length > USERNAME_MAX_LENGTH) {
@@ -46,27 +32,9 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db): void {
     if (USERNAME_FORBIDDEN.test(username) || username !== username.trim()) {
       return reply.code(400).send({ error: 'username에 제어문자나 앞뒤 공백을 쓸 수 없습니다' })
     }
-    try {
-      db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(username, hashPassword(password))
-    } catch {
-      return reply.code(409).send({ error: '이미 있는 사용자 이름입니다' })
-    }
-    return reply.code(201).send({ ok: true })
-  })
-
-  app.post('/api/auth/login', async (req, reply) => {
-    const { username, password } = req.body as { username?: string; password?: string }
-    // 문자열이 아닌 입력은 400 — 빈 페이로드가 401 로 흘러 AC-AUTH-011 예외 경로 단언을 깨는 것을 막는다
-    if (typeof username !== 'string' || typeof password !== 'string') {
-      return reply.code(400).send({ error: '사용자 이름과 비밀번호가 필요합니다' })
-    }
-    const row = db.prepare('SELECT id, username, password_hash FROM users WHERE username = ?').get(username) as
-      | { id: number; username: string; password_hash: string }
-      | undefined
-    // 없는 사용자와 틀린 비밀번호를 같은 401 본문으로 처리 — 사용자 이름 열거 방지 (REQ-AUTH-009)
-    if (!row || !verifyPassword(password, row.password_hash)) {
-      return reply.code(401).send({ error: '사용자 이름 또는 비밀번호가 틀렸습니다' })
-    }
+    // 같은 이름은 같은 사람이다 — 있으면 그 행을, 없으면 새 행을 쓴다 (INSERT OR IGNORE 뒤 조회)
+    db.prepare('INSERT OR IGNORE INTO users (username) VALUES (?)').run(username)
+    const row = db.prepare('SELECT id, username FROM users WHERE username = ?').get(username) as { id: number; username: string }
     const token = randomBytes(32).toString('hex')
     db.prepare('INSERT INTO sessions (token, user_id) VALUES (?, ?)').run(token, row.id)
     reply.setCookie('md_session', token, { httpOnly: true, sameSite: 'lax', path: '/' })

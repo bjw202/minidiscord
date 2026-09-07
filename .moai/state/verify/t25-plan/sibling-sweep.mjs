@@ -23,7 +23,7 @@ const FILES = [
   'channel/test/gateway-mutual-auth.test.ts',
   'channel/test/index-wiring.test.ts',
   'channel/test/permission-relay.test.ts',
-  'channel/test/transport-auth.test.ts',
+  'channel/test/entrypoint.test.ts',   // v2 C1: transport-auth.test.ts 를 대체한다
 ]
 // 어간이다 — 변수 이름이 아니라 «생산자» 로 잡는다. 이 SPEC 의 절단·탈출이
 // 지나가는 렌더 표면은 정확히 둘이다: 알림의 params.content(pushChatMessage)와

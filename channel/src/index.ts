@@ -18,27 +18,6 @@ export function resolveUrl(env: NodeJS.ProcessEnv = process.env): string {
   return env.MINIDISCORD_SERVER ?? DEFAULT_SERVER
 }
 
-// 전송 판정: 스킴과 호스트 두 값만 본다 (REQ-CHANAUTH-010·011). 루프백 세 값(127.0.0.1·localhost·[::1])은
-// ws 또는 wss 만 허용하고(F-A6 — 루프백 분기도 스킴을 본다), 그 외 원격은 wss 뿐이다(감사 F-07).
-// Node 의 URL 은 IPv6 호스트를 대괄호째 돌려주므로 '[::1]' 형태가 집합에 있어야 하고(계획 감사 M-01),
-// 대괄호 없는 IPv6 루프백 표기는 어떤 입력도 만나지 않는 사문이라 목록에 두지 않는다(F-A7, REQ-CHANINJECT-014).
-// 해석 불가면 거부 — fail-closed.
-// resolveUrl 을 건드리지 않는 이유는 plan.md §D — 형제 기준 AC-CHANWIRE-011 이 반환값을 글자 그대로 단언한다.
-// @MX:NOTE: [AUTO] 판정만 하는 순수 함수다 — 진입점이 실제로 부르는지는 AC-CHANAUTH-011 이 따로 잰다
-const LOOPBACK_HOSTS = ['127.0.0.1', 'localhost', '[::1]']
-
-export function isTransportAllowed(url: string): boolean {
-  let u: URL
-  try {
-    u = new URL(url)
-  } catch {
-    return false
-  }
-  const schemeOk = u.protocol === 'ws:' || u.protocol === 'wss:'
-  if (LOOPBACK_HOSTS.includes(u.hostname)) return schemeOk
-  return u.protocol === 'wss:'
-}
-
 // @MX:ANCHOR: [AUTO] 채널 진입점의 조립 지점 — 여섯 기준 파일이 이 함수 하나로 전체 배선을 세운다 (t4 감사 F-13)
 // @MX:REASON: 두 팩토리를 잇는 순서와 콜백 갈래(TO -> working, cc 무시)가 여기 한 곳에만 있다.
 // 반환 모양 { channel, gw } 를 바꾸면 채널 기준 전부가 한꺼번에 죽는다
@@ -123,26 +102,8 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   const { channel, gw } = wire({ url, token: token ?? '' })
   // stdio 연결은 토큰과 무관하게 항상 — 토큰 없이 띄운 프로세스도 MCP 로 말을 걸면 답한다 (REQ-CHANWIRE-003·004).
   await channel.server.connect(new StdioServerTransport())
-  // 토큰 게이트는 게이트웨이 접속만 가로막는다 (REQ-CHANWIRE-004) — 전송 검사도 같은 자리다 (REQ-CHANAUTH-010·012),
-  // stdio 는 잠그지 않는다. 거부 갈래는 stderr 한 줄로 알리고 프로세스는 계속 산다 — 종료시키면 stdio 로
-  // 말을 걸던 상대가 이유 없이 끊긴 것으로 본다. stdout 은 MCP 전송 통로라 한 글자도 쓸 수 없다 (REQ-CHANAUTH-004).
-  if (token && isTransportAllowed(url)) gw.start()
-  else if (token) {
-    // 거부 사유는 세 갈래로 갈라진다 (REQ-CHANINJECT-012·013, 감사 F-A10 · sync 감사 F-02) — 갈래의 사실과
-    // 그 조치를 말한다. 갈래가 남의 사유를 물려받으면 운영자를 반대 방향으로 보낸다: 루프백 http: 주소가
-    // «비루프백» 이라 말하며 wss:// 를 지목했고, 그 안내를 따른 접속은 TLS 로 못 붙어 조용히 재접속만 반복한다.
-    // (i) 해석 불가 — 호스트가 없으므로 호스트를 근거로 안내하지 않는다. (ii) 루프백 + 비 ws 스킴 —
-    // 조치는 스킴을 ws:// 로 바꾸는 것이다. (iii) 비루프백 평문 — 조치는 wss:// 다.
-    let parsed: URL | null
-    try {
-      parsed = new URL(url)
-    } catch {
-      parsed = null
-    }
-    let reason: string
-    if (parsed === null) reason = `${url} (주소를 해석하지 못했다)`
-    else if (LOOPBACK_HOSTS.includes(parsed.hostname)) reason = `${url} (루프백 주소는 ws:// 를 쓴다)`
-    else reason = `${url} (비루프백 호스트에는 wss:// 를 쓴다)`
-    console.error(`minidiscord-channel: 게이트웨이 주소를 거부했다 — ${reason}`)
-  }
+  // 토큰 게이트는 게이트웨이 접속만 가로막는다 (REQ-CHANWIRE-004) — stdio 는 잠그지 않는다.
+  // 전송 스킴 검사(루프백 밖은 wss 만)는 v2 에서 지웠다 — 사내 LAN 의 ws:// 주소가 표준 사용법이다 (v2-review.md §2.5).
+  // stdout 은 MCP 전송 통로라 한 글자도 쓸 수 없다.
+  if (token) gw.start()
 }

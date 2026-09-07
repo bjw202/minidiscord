@@ -110,12 +110,11 @@ describe('AC-WEBSHELL-002 API not shadowed', () => {
   })
 })
 
-// 영속 id 24개 (spec.md REQ-WEBSHELL-003 관측 2). `placeholder` 는 여기 없다 —
+// 영속 id 20개 (spec.md REQ-WEBSHELL-003 관측 2 — v2 에서 가입 폼·비밀번호 입력의 넷이 빠졌다). `placeholder` 는 여기 없다 —
 // #chat 요소는 이 SPEC 소유지만 #chat 내용물은 SPEC-WEBCHAT-001 소유라, 형제가 내용물을
 // 교체하는 순간 지워진다. 그 존재는 AC-015 관측 5(마감 시점 명령)가 잰다 (감사 MF-6).
 const REQUIRED_IDS = [
-  'auth-view', 'login-form', 'login-username', 'login-password',
-  'register-form', 'reg-username', 'reg-password', 'auth-error',
+  'auth-view', 'login-form', 'login-username', 'auth-error',
   'main-view', 'sidebar', 'room-list', 'archived-box', 'archived-list',
   'bot-list', 'new-room-btn', 'new-bot-btn', 'logout-btn',
   'chat',
@@ -154,11 +153,11 @@ describe('AC-WEBSHELL-004 module bootstrap', () => {
   })
 })
 
-// 이 SPEC 이 소유하는 필수 최소 집합 18개 (spec.md REQ-WEBSHELL-005).
+// 이 SPEC 이 소유하는 필수 최소 집합 17개 (spec.md REQ-WEBSHELL-005 — v2 에서 register 가 빠졌다).
 // 형제 SPEC 은 여기에 이름을 더할 수 있다 — 이 기준은 더해진 이름에 침묵한다.
 const REQUIRED_EXPORTS = [
   '$', 'api', 'archiveRoom', 'createBot', 'createRoom', 'initApp', 'loadBots',
-  'loadRooms', 'login', 'logout', 'openRoom', 'promptText', 'register',
+  'loadRooms', 'login', 'logout', 'openRoom', 'promptText',
   'renderBots', 'renderRooms', 'showAuth', 'showMain', 'state',
 ].sort()
 
@@ -175,7 +174,7 @@ describe('AC-WEBSHELL-006 export surface', () => {
     expect(app.state.rooms).toEqual({ active: [], archived: [] })
     expect(app.state.bots).toEqual([])
     expect(app.state.currentRoomId).toBeNull()
-    // 3) 나머지 열일곱은 전부 함수다.
+    // 3) 나머지 열여섯은 전부 함수다.
     for (const name of REQUIRED_EXPORTS.filter(n => n !== 'state')) {
       expect(typeof app[name], `${name} 은 함수여야 한다`).toBe('function')
     }
@@ -215,7 +214,7 @@ describe('AC-WEBSHELL-008 401 two-way split', () => {
     const { api, showMain } = await loadApp()
     stubFetch({
       'GET /api/rooms': { status: 401, body: { error: '로그인이 필요합니다' } },
-      'POST /api/auth/login': { status: 401, body: { error: '사용자 이름 또는 비밀번호가 틀렸습니다' } },
+      'POST /api/auth/login': { status: 400, body: { error: 'username은 32자 이하여야 합니다' } },
     })
 
     showMain()
@@ -226,10 +225,10 @@ describe('AC-WEBSHELL-008 401 two-way split', () => {
     expect(document.getElementById('main-view')!.hidden).toBe(true)
     expect(document.getElementById('auth-view')!.hidden).toBe(false)
 
-    // 인증 경로의 401 → 화면을 건드리지 않는다
+    // 인증 경로의 실패(400) → 화면을 건드리지 않는다
     showMain()
-    await expect(api('/api/auth/login', { method: 'POST', body: { username: 'a', password: 'b' } }))
-      .rejects.toThrow('사용자 이름 또는 비밀번호가 틀렸습니다')
+    await expect(api('/api/auth/login', { method: 'POST', body: { username: 'a' } }))
+      .rejects.toThrow('username은 32자 이하여야 합니다')
     expect(document.getElementById('main-view')!.hidden, '로그인 실패가 화면을 되돌리면 안 된다').toBe(false)
   })
 })
@@ -242,7 +241,7 @@ describe('AC-WEBSHELL-009 login flow', () => {
       'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
       'GET /api/bots': { status: 200, body: [] },
     })
-    await app.login('alice', 'pw123456')
+    await app.login('alice')
     expect(document.getElementById('main-view')!.hidden).toBe(false)
     expect(document.getElementById('auth-view')!.hidden).toBe(true)
     const paths = ok.map(c => c.path)
@@ -251,10 +250,10 @@ describe('AC-WEBSHELL-009 login flow', () => {
 
     // 실패 경로
     const err = document.getElementById('auth-error')!
-    stubFetch({ 'POST /api/auth/login': { status: 401, body: { error: '사용자 이름 또는 비밀번호가 틀렸습니다' } } })
-    await expect(app.login('alice', 'wrong')).rejects.toThrow()
+    stubFetch({ 'POST /api/auth/login': { status: 400, body: { error: 'username에 제어문자나 앞뒤 공백을 쓸 수 없습니다' } } })
+    await expect(app.login(' alice')).rejects.toThrow()
     expect(err.hidden).toBe(false)
-    expect(err.textContent).toBe('사용자 이름 또는 비밀번호가 틀렸습니다')
+    expect(err.textContent).toBe('username에 제어문자나 앞뒤 공백을 쓸 수 없습니다')
   })
 })
 
@@ -365,11 +364,9 @@ describe('AC-WEBSHELL-013 logout', () => {
   })
 })
 
-// ── 카드 t32 §D — register 실패 무반응 결함 수리 (결함 D-1·D-2) ──────────
-// 결함 D-1: register() 는 회원가입 단계 자체의 실패(400·409)에서 #auth-error 를 채우지 않고
-// 그냥 던진다. submit 핸들러의 «register → login 경로에서 이미 문구를 채웠다» 주석은
-// 회원가입 실패에서 거짓이다 — login 은 아직 불리지 않았다. 레인 재현: 7자 비밀번호로
-// POST /api/auth/register → 서버는 400 본문을 냈고 화면은 무반응이었다.
+// ── 카드 t32 §D — auth-error 배너 위치 수리 (결함 D-2) ──────────
+// 결함 D-1(회원가입 실패 무반응)은 v2 에서 회원가입 자체가 사라져 대상이 없다. login() 은 실패를
+// #auth-error 에 띄우는 같은 형태를 유지한다 — AC-WEBSHELL-009 가 잰다.
 
 // style.css 에서 셀렉터의 규칙 블록 원문을 잡는다. 접두가 겹치는 셀렉터(#auth-view form 등)는
 // 셀렉터 다음에 여백+`{` 가 바로 오지 않으므로 여기서 걸러진다. 주석은 먼저 벗겨낸다 —
@@ -392,41 +389,14 @@ function cssRuleBlock(css: string, selector: string): string {
   return ''
 }
 
-describe('register/auth-error repair (card t32 §D)', () => {
-  it('surfaces the server message when registration itself fails (400)', async () => {
-    const app = await loadApp()
-    stubFetch({
-      'POST /api/auth/register': { status: 400, body: { error: 'username과 8자 이상 password가 필요합니다' } },
-    })
-    await expect(app.register('ttongchim', 'short7'))
-      .rejects.toThrow('username과 8자 이상 password가 필요합니다')
-    const err = document.getElementById('auth-error')!
-    expect(err.hidden, '회원가입 실패가 화면에 보여야 한다').toBe(false)
-    expect(err.textContent).toBe('username과 8자 이상 password가 필요합니다')
-  })
-
-  it('surfaces the duplicate-name message when registration fails (409)', async () => {
-    const app = await loadApp()
-    stubFetch({
-      'POST /api/auth/register': { status: 409, body: { error: '이미 있는 사용자 이름입니다' } },
-    })
-    await expect(app.register('ttongchim', 'pw123456'))
-      .rejects.toThrow('이미 있는 사용자 이름입니다')
-    const err = document.getElementById('auth-error')!
-    expect(err.hidden, '중복 이름 실패도 화면에 보여야 한다').toBe(false)
-    expect(err.textContent).toBe('이미 있는 사용자 이름입니다')
-  })
-
-  // 결함 D-2: #auth-error 가 login-form·register-form 다음(셋째 형제)이라 오류 문구가
-  // 패널 바깥 오른쪽에 떴다 (스크린샷 evidence/defect-1-register-silent.png). 배너가
-  // #auth-view 의 첫 자식인 것을 DOM 위치로 잰다 — 어느 폼이 실패했든 공용 배너로 읽힌다.
-  it('keeps the auth-error banner ahead of both panels', () => {
+describe('auth-error repair (card t32 §D)', () => {
+  // 결함 D-2: #auth-error 가 폼 다음 형제라 오류 문구가 패널 바깥 오른쪽에 떴다
+  // (스크린샷 evidence/defect-1-register-silent.png). 배너가 #auth-view 의 첫 자식인 것을 DOM 위치로 잰다.
+  it('keeps the auth-error banner ahead of the login panel', () => {
     loadDom()
     const banner = document.getElementById('auth-error')!
     const loginForm = document.getElementById('login-form')!
-    const regForm = document.getElementById('register-form')!
     expect(banner.compareDocumentPosition(loginForm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(banner.compareDocumentPosition(regForm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   // 결함 D-2 의 시각 절반 — 배너가 두 패널 «위» 줄을 차지해야 한다. jsdom 은 link 된
@@ -451,51 +421,13 @@ describe('register/auth-error repair (card t32 §D)', () => {
       'POST /api/auth/login': { status: 200, body: { ok: true } },
       'GET /api/rooms': { status: 401, body: { error: '로그인이 필요합니다' } },
     })
-    await expect(app.login('alice', 'pw123456')).rejects.toThrow()
+    await expect(app.login('alice')).rejects.toThrow()
     // api() 의 401 처리가 인증 뷰로 되돌려 놓는다 — 그 위에 문구가 있어야 디버깅이 시작된다
     expect(document.getElementById('auth-view')!.hidden).toBe(false)
     expect(document.getElementById('main-view')!.hidden).toBe(true)
     const err = document.getElementById('auth-error')!
     expect(err.hidden, '세션 유지 실패가 화면에 보여야 한다').toBe(false)
     expect(err.textContent).toBe('로그인은 됐지만 세션을 유지하지 못했습니다 — 브라우저 쿠키 설정을 확인하세요')
-  })
-
-  it('leaves a completion toast when registration succeeds', async () => {
-    const app = await loadApp()
-    stubFetch({
-      'POST /api/auth/register': { status: 201, body: { id: 1, username: 'ttongchim' } },
-      'POST /api/auth/login': { status: 200, body: { ok: true } },
-      'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
-      'GET /api/bots': { status: 200, body: [] },
-    })
-    await app.register('ttongchim', 'pw123456')
-    const toast = document.getElementById('error-toast')!
-    expect(toast.hidden, '가입 완료 신호가 화면에 남아야 한다').toBe(false)
-    expect(toast.textContent).toBe('회원가입 완료')
-    // 성공 토스트는 오류와 같은 요소를 공유하되 성공 클래스로 상태색을 갈라 쓴다 (design DNA §1)
-    expect(toast.classList.contains('toast-success'), '성공 토스트는 성공 클래스를 가진다').toBe(true)
-  })
-
-  // 성공 알림만 저절로 사라진다 — 오류 알림은 삼켜짐 방지를 위해 화면에 남는다(바로 아래 it).
-  it('hides the success toast automatically after four seconds', async () => {
-    const app = await loadApp()
-    vi.useFakeTimers()
-    try {
-      stubFetch({
-        'POST /api/auth/register': { status: 201, body: { id: 1, username: 'ttongchim' } },
-        'POST /api/auth/login': { status: 200, body: { ok: true } },
-        'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
-        'GET /api/bots': { status: 200, body: [] },
-      })
-      await app.register('ttongchim', 'pw123456')
-      const toast = document.getElementById('error-toast')!
-      expect(toast.hidden).toBe(false)
-      vi.advanceTimersByTime(4_000)
-      expect(toast.hidden, '4초 뒤 성공 토스트는 저절로 사라진다').toBe(true)
-      expect(toast.classList.contains('toast-success'), '숨을 때 성공 클래스도 거둔다').toBe(false)
-    } finally {
-      vi.useRealTimers()
-    }
   })
 
   // 오류 토스트는 자동으로 사라지지 않는다 — 삼켜진 오류가 없게 하는 기존 관습의 회귀
@@ -516,32 +448,6 @@ describe('register/auth-error repair (card t32 §D)', () => {
     }
   })
 
-  // 잔여 수리(리드 승인) — 성공 토스트가 떠 있는 4초 창 안에 오류가 나면 toastError 가
-  // 성공 클래스를 거둬야 한다. 거두지 않으면 오류 문구가 성공색(--md-status-online)으로
-  // 보인다. showToast 의 자동 숨김이 클래스를 회수하기 전의 창을 잰다.
-  it('drops the success class when an error toast follows within the four-second window', async () => {
-    const app = await loadApp()
-    vi.useFakeTimers()
-    try {
-      stubFetch({
-        'POST /api/auth/register': { status: 201, body: { id: 1, username: 'ttongchim' } },
-        'POST /api/auth/login': { status: 200, body: { ok: true } },
-        'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
-        'GET /api/bots': { status: 200, body: [] },
-        'POST /api/rooms/9/archive': { status: 409, body: { error: '이미 보관된 방입니다' } },
-      })
-      await app.register('ttongchim', 'pw123456')
-      const toast = document.getElementById('error-toast')!
-      expect(toast.classList.contains('toast-success'), '가입 직후에는 성공 클래스가 있다').toBe(true)
-      // 시간을 흘리지 않는다 — 4초 자동 숨김이 아직 불리지 않은 창 안에서 오류를 낸다
-      await app.archiveRoom(9)
-      expect(toast.hidden, '오류 토스트가 표시된다').toBe(false)
-      expect(toast.textContent).toBe('이미 보관된 방입니다')
-      expect(toast.classList.contains('toast-success'), '오류에는 성공 클래스가 거둬져야 한다').toBe(false)
-    } finally {
-      vi.useRealTimers()
-    }
-  })
 
   // 결함 D-3 의 규칙 절반 — [hidden] 가드. author 의 display:flex 선언(#auth-view·
   // #main-view)은 UA 스타일시트의 [hidden]{display:none} 을 항상 이기므로 el.hidden = true

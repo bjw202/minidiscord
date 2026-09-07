@@ -246,11 +246,10 @@ function expectServerClose(ws: any, label: string): Promise<void> {
  *  각 단계: 단언 전부 → step(n). 실패는 곧 exit 1.
  *  URL·페이로드는 server/src/routes-*.ts 와 gateway.ts 의 실제 형태를 따른다(추측 없음). */
 async function runScenarios(port: number, dataDir: string, botFilesDir: string, proc: { child: ChildProcess | null }): Promise<void> {
-  const USER = { username: 'e2e-user', password: 'e2e-password-123' }
+  const USER = { username: 'e2e-user' }
   const BOT_NAME = 'E2E-Bot'
 
-  // ① 가입·로그인 — 로그인은 md_session 쿠키로 세션을 준다 (auth.ts:56-59)
-  assert((await api(port, 'POST', '/api/auth/register', { json: USER })).status === 201, 'step1 ① 가입이 201 이 아니다')
+  // ① 로그인 — 이름 하나로 md_session 쿠키를 받는다 (v2, 가입 없음)
   const login = await api(port, 'POST', '/api/auth/login', { json: USER })
   assert(login.status === 200, 'step1 ① 로그인이 200 이 아니다')
   const cookie = (login.res.headers.getSetCookie?.() ?? [])

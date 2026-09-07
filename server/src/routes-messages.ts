@@ -5,7 +5,6 @@ import { pipeline } from 'node:stream/promises'
 import { basename, extname, join, resolve, sep } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { requireAuth } from './auth.js'
-import { requireRoomMember } from './room-members.js'
 import { parseMentions } from './mention.js'
 import type { Db } from './db.js'
 
@@ -27,9 +26,7 @@ const MIME: Record<string, string> = {
 // @MX:ANCHOR: [AUTO] 세 메시지 라우트의 등록점 — buildServer(REQ-MSG-015 배선)과 테스트 build() 가 호출한다
 // @MX:REASON: registerMessageRoutes(app: FastifyInstance): void 시그니처는 REQ-MSG-015 가 글자 그대로 고정한다. 게이트웨이는 req.server.gateway 데코레이터로만 접근한다(순환 참조 금지, spec.md §6)
 export function registerMessageRoutes(app: FastifyInstance): void {
-  // 멤버십 게이트가 preHandler 로 방 검사·multipart 소비보다 앞선다 (순서 계약, plan.md §B).
-  // 뒤에 두면 비멤버가 409(보관됨)를 받아 방 실재가 샌다. 이 라우트는 술어의 여덟 호출부 중 하나다
-  app.post('/api/rooms/:id/messages', { preHandler: [requireAuth, requireRoomMember] }, async (req, reply) => {
+  app.post('/api/rooms/:id/messages', { preHandler: [requireAuth] }, async (req, reply) => {
     const db = req.server.db
     const roomId = Number((req.params as { id: string }).id)
 
@@ -123,9 +120,8 @@ export function registerMessageRoutes(app: FastifyInstance): void {
 
   // 목록 — 그 방의 메시지 중 id 가 after 보다 큰 것을 오름차순으로 최대 200개 (REQ-MSG-011).
   // id 는 messages.id 그대로다 — 별도 방별 번호를 만들지 않는다 (REQ-MSG-012).
-  // 이 라우트는 방을 조회하지 않으므로(아래 쿼리에 rooms 가 없다) 멤버십 게이트가 유일한 문이다 —
-  // 비멤버에게는 빈 배열이 아니라 404 로 답한다. 빈 배열은 "메시지 없는 방"과 구별되지 않는다 (REQ-ROOMAUTHZ-009)
-  app.get('/api/rooms/:id/messages', { preHandler: [requireAuth, requireRoomMember] }, async req => {
+  // 이 라우트는 방을 조회하지 않는다(아래 쿼리에 rooms 가 없다) — 없는 방은 빈 배열이다
+  app.get('/api/rooms/:id/messages', { preHandler: [requireAuth] }, async req => {
     const db = req.server.db
     const roomId = Number((req.params as { id: string }).id)
     const raw = (req.query as { after?: string }).after
