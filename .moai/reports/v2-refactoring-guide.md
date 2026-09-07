@@ -160,6 +160,8 @@ plan 감사 통과 뒤 Kickoff 승인을 받고 /moai run 으로 간다. sync �
 4. 사람 글 없이 봇 글 N개 연속 뒤의 `@TO` → `cc` 로 도착, system 메시지 1. N-1 개에서는 `to`.
 5. `npm test` 초록.
 
+**B 종결 기록 (2026-09-07, 커밋 `12deb70`)**: 끝 조건 1~4 는 `server/test/gateway.test.ts` 의 `B-1`~`B-4`, role 검증은 `rooms-bots.test.ts` 의 `B:` 한 건 — 빨강 5 확인 뒤 초록. 결정 ③ 의 «연속 N개» 는 **지금 저장한 봇 글까지 세어** ≥6 이면 `cc` (앞 5 + 지금 1). 이월 F1(인바운드 프레임의 room_bots 참여 검사)·F3(POST /messages→deliver→ws 인프로세스 시험)은 **B 에 넣지 않고 C2 로** — 둘 다 §3 끝 조건 밖이고 C2 의 «테스트 정리» 성격이다.
+
 ### 시작 메시지
 
 ```text
@@ -194,7 +196,7 @@ grep -rn "t23\|TLS 종단\|상호 인증" README.md                     # 0건
 
 ```text
 minidiscord v2 리팩토링 4단계(C2). 가이드 .moai/reports/v2-refactoring-guide.md §4 의 1~5 를 순서대로. 보관 목록은 .moai/reports/v2-review.md §4 «_archive 로 옮길 목록».
-지우지 말고 옮긴다. 완료 SPEC 의 본문 결정 기록은 두고 HISTORY 한 줄만 더한다. 끝 조건 네 명령의 출력을 그대로 보고하라. B 는 끝나 있다(커밋 <B SHA>).
+지우지 말고 옮긴다. 완료 SPEC 의 본문 결정 기록은 두고 HISTORY 한 줄만 더한다. 끝 조건 네 명령의 출력을 그대로 보고하라. B 는 끝나 있다(커밋 12deb70, 워크트리 .claude/worktrees/v2-model 브랜치 WT-v2-model — 그 안에서 이어 간다). A 의 sync 감사 이월 F1·F3 은 B 가 C2 로 보냈다(§3 «B 종결 기록») — «하는 것» 3 테스트 잔여 안에서 함께 처분한다.
 ```
 
 ---
@@ -203,12 +205,12 @@ minidiscord v2 리팩토링 4단계(C2). 가이드 .moai/reports/v2-refactoring-
 
 ```
 ──────────────────────────────────────────────
-🎯 v2 리팩토링   ▓▓▓▓▓▓░░░░  3/5 (60%)
+🎯 v2 리팩토링   ▓▓▓▓▓▓▓▓░░  4/5 (80%)
 
 [🟢] 0. 결정 넷 확정        ← ④ 기본 답(비공개 방 삭제, 2026-09-07 운영자 확정), 나머지 기본 답
 [🟢] 1. C1 게이트웨이 밖 삭제 ← 커밋 2f6cd3f (WT-v2-model) · npm test 초록 254+102 · e2e 15/15 · grep 넷 0건
 [🟢] 2. A  봇 단위 모델      ← 커밋 b6ff9af (WT-v2-model) · SPEC-BOTMODEL-001 completed · npm test 초록 248+103 · grep 둘 0건 · e2e exit=1(정해진 빨강) · sync 감사 1회차 PASS 0.893
-[⬜] 3. B  봇→봇 멘션·역할   ← 바닐라 · 끝 조건 5개를 테스트로 먼저
+[🟢] 3. B  봇→봇 멘션·역할   ← 커밋 12deb70 (WT-v2-model) · 테스트 5 빨강→초록 · npm test 초록 253+103 · F1·F3 → C2
 [⬜] 4. C2 문서·테스트 정리   ← 바닐라 · SPEC 28→19 · e2e 러너 재작성
 ──────────────────────────────────────────────
 ```
