@@ -27,12 +27,16 @@ export function registerBotRoutes(app: FastifyInstance): void {
     return req.server.db.prepare('SELECT id, name, description FROM bots ORDER BY name').all()
   })
 
-  // 등록 — 평문 토큰은 이 응답에 한 번만 실린다. role 은 받아 저장할 뿐 A 단계는 읽지 않는다 (결정 ③)
+  // 등록 — 평문 토큰은 이 응답에 한 번만 실린다. role 은 orchestrator|worker 둘뿐이고 비우면 worker 다 —
+  // 게이트웨이의 역할 필터(worker 는 orchestrator 만 부른다)가 이 두 값만 안다 (v2 B, 결정 ③)
   app.post('/api/bots', { preHandler: [requireAuth] }, async (req, reply) => {
     const { name, description, role } = req.body as { name?: string; description?: string; role?: string }
     if (!name?.trim()) return reply.code(400).send({ error: '봇 이름이 필요합니다' })
-    const token = randomBytes(32).toString('hex')
     const storedRole = typeof role === 'string' && role.trim() ? role.trim() : 'worker'
+    if (storedRole !== 'orchestrator' && storedRole !== 'worker') {
+      return reply.code(400).send({ error: 'role 은 orchestrator 또는 worker 여야 합니다' })
+    }
+    const token = randomBytes(32).toString('hex')
     try {
       const r = req.server.db.prepare('INSERT INTO bots (name, description, token, role) VALUES (?, ?, ?, ?)')
         .run(name.trim(), description ?? '', token, storedRole)

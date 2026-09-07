@@ -1171,6 +1171,129 @@ describe('gateway', () => {
   })
 })
 
+// ── v2 B 단계 — 봇 → 봇 멘션 전달 + 역할 규칙 + 결정 ③ (가이드 §3 끝 조건 1~4) ──────
+// 봇 글의 @TO/@CC 도 사람 글과 같은 자리(room_bots)에서 타깃으로 풀린다. worker 는 orchestrator 만 부를 수 있고,
+// 마지막 사람 글 이후 봇 글이 N(6)개 이상 이어지면 @TO 는 cc 로 내려간다. 거부·강등은 응답 프레임이 없으므로 system 메시지 한 줄이다.
+describe('B: bot-to-bot mentions', () => {
+  function seedRoleBot(name: string, role: 'orchestrator' | 'worker'): number {
+    return db.prepare("INSERT INTO bots (name, description, token, role) VALUES (?, '', ?, ?)")
+      .run(name, randomBytes(32).toString('hex'), role).lastInsertRowid as number
+  }
+  function insBot(roomId: number, botId: number, body: string): number {
+    return db.prepare("INSERT INTO messages (room_id, author_type, author_bot_id, body) VALUES (?, 'bot', ?, ?)").run(roomId, botId, body).lastInsertRowid as number
+  }
+  function systemRows(roomId: number): { body: string }[] {
+    return db.prepare("SELECT body FROM messages WHERE room_id=? AND author_type='system' ORDER BY id").all(roomId) as { body: string }[]
+  }
+
+  // 끝 조건 1 — orchestrator 의 @TO(worker) → worker 접속에 delivery:'to' 프레임
+  it('B-1: an orchestrator @TO(worker) reaches the worker connection as delivery to', async () => {
+    const { app, port } = await build()
+    const room = seedRoom()
+    const lead = seedRoleBot('lead', 'orchestrator'), w1 = seedRoleBot('w1', 'worker')
+    joinRoom(room, lead); joinRoom(room, w1)
+    const leadWs = (await wsConnect(port, tokenOf(lead))).ws
+    const w1Ws = (await wsConnect(port, tokenOf(w1))).ws
+
+    leadWs.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w1) 이것 좀 봐 줘' }))
+    const frame = await nextMessage(w1Ws)
+
+    expect(frame.type).toBe('message')
+    expect(frame.room_id).toBe(room)
+    expect(frame.delivery).toBe('to')
+    expect(frame.author_name).toBe('lead')
+    expect(frame.body).toBe('@TO(w1) 이것 좀 봐 줘')
+    expect(systemRows(room)).toHaveLength(0)
+    // 재전송 근거가 남는다 — message_targets 한 행, 커서는 배달한 행만
+    expect(db.prepare('SELECT COUNT(*) c FROM message_targets WHERE bot_id=?').get(w1)).toEqual({ c: 1 })
+    expect(cursorOf(room, w1)).toBe(frame.id)
+    leadWs.close(); w1Ws.close()
+    await app.close()
+  })
+
+  // 끝 조건 2 — worker 의 @TO(다른 worker) → 전달 0, system 1, 원문은 그대로 저장·발행
+  it('B-2: a worker @TO(another worker) delivers nothing, leaves one system line, and the original body stays for humans', async () => {
+    const { app, published, port } = await build()
+    const room = seedRoom()
+    const w1 = seedRoleBot('w1', 'worker'), w2 = seedRoleBot('w2', 'worker')
+    joinRoom(room, w1); joinRoom(room, w2)
+    const w1Ws = (await wsConnect(port, tokenOf(w1))).ws
+    const w2Ws = (await wsConnect(port, tokenOf(w2))).ws
+
+    w1Ws.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w2) 네가 해' }))
+    await expectNoMessage(w2Ws)
+
+    const sys = systemRows(room)
+    expect(sys).toHaveLength(1)
+    expect(sys[0].body).toContain('w2')
+    expect(sys[0].body).toContain('부를 수 없습니다')
+    expect(db.prepare('SELECT COUNT(*) c FROM message_targets').get()).toEqual({ c: 0 })
+    const bot = published.filter(p => p.event === 'message' && p.data.author_type === 'bot')
+    expect(bot).toHaveLength(1)
+    expect(bot[0].data.body).toBe('@TO(w2) 네가 해')
+    expect(published.filter(p => p.event === 'message' && p.data.author_type === 'system')).toHaveLength(1)
+    w1Ws.close(); w2Ws.close()
+    await app.close()
+  })
+
+  // 끝 조건 3 — 참여하지 않은 봇 멘션 → 전달 0, system 1 (사람 경로의 400 에 해당하는 봇 경로의 형태)
+  it('B-3: mentioning a bot not in the room delivers nothing and leaves one system line', async () => {
+    const { app, port } = await build()
+    const room = seedRoom(), other = seedRoom('B')
+    const lead = seedRoleBot('lead', 'orchestrator'), w1 = seedRoleBot('w1', 'worker')
+    joinRoom(room, lead); joinRoom(other, w1)   // w1 은 다른 방에만 참여
+    const leadWs = (await wsConnect(port, tokenOf(lead))).ws
+    const w1Ws = (await wsConnect(port, tokenOf(w1))).ws
+
+    leadWs.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w1) 있니' }))
+    await expectNoMessage(w1Ws)
+
+    const sys = systemRows(room)
+    expect(sys).toHaveLength(1)
+    expect(sys[0].body).toContain('w1')
+    expect(sys[0].body).toContain('초대되지 않았습니다')
+    expect(db.prepare('SELECT COUNT(*) c FROM message_targets').get()).toEqual({ c: 0 })
+    expect(db.prepare("SELECT COUNT(*) c FROM messages WHERE room_id=? AND author_type='bot'").get(room)).toEqual({ c: 1 })
+    leadWs.close(); w1Ws.close()
+    await app.close()
+  })
+
+  // 끝 조건 4 — 결정 ③ N=6: 마지막 사람 글 이후 봇 글이 연속 N개(지금 글 포함) 이상이면 @TO 는 cc 로, system 1.
+  // 연속 N-1 개(앞 4 + 지금 1)에서는 to 그대로. system 글은 사람 글이 아니라 연속을 끊지 않는다.
+  it('B-4: the Nth consecutive bot message since the last human line demotes @TO to cc with one system line; the (N-1)th stays to', async () => {
+    const { app, port } = await build()
+    const room = seedRoom()
+    const lead = seedRoleBot('lead', 'orchestrator'), w1 = seedRoleBot('w1', 'worker')
+    joinRoom(room, lead); joinRoom(room, w1)
+    const leadWs = (await wsConnect(port, tokenOf(lead))).ws
+    const w1Ws = (await wsConnect(port, tokenOf(w1))).ws
+
+    // 앞에 봇 글 4개 (사람 글 뒤) → 지금 글이 5번째 = N-1 → to
+    ins(room, '사람이 시작')
+    for (let i = 0; i < 4; i++) insBot(room, w1, `봇 글 ${i}`)
+    leadWs.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w1) 다섯째' }))
+    const fifth = await nextMessage(w1Ws)
+    expect(fifth.delivery).toBe('to')
+    expect(systemRows(room)).toHaveLength(0)
+
+    // 이제 봇 글이 5개 → 지금 글이 6번째 = N → cc + system 1
+    leadWs.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w1) 여섯째' }))
+    const sixth = await nextMessage(w1Ws)
+    expect(sixth.delivery).toBe('cc')
+    expect(sixth.body).toBe('@TO(w1) 여섯째')
+    expect(systemRows(room)).toHaveLength(1)
+    expect(db.prepare('SELECT delivery FROM message_targets WHERE message_id=?').get(sixth.id)).toEqual({ delivery: 'cc' })
+
+    // 사람 글 하나가 연속을 끊는다 → 다시 to
+    ins(room, '사람이 끼어듦')
+    leadWs.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w1) 다시' }))
+    expect((await nextMessage(w1Ws)).delivery).toBe('to')
+    expect(systemRows(room)).toHaveLength(1)
+    leadWs.close(); w1Ws.close()
+    await app.close()
+  })
+})
+
 // ── 결함 D-8 (카드 t32, 이관) — 봇에 넘기는 local_path 는 절대 경로여야 한다 ──────
 // [HARD] local_path 를 채우는 자리는 **둘**이다 — deliver(실시간 배달)와 재접속 재전송. 한쪽만 고치면 다른 쪽이 조용히 상대 경로를 넘긴다.
 describe('D-8 absolute local_path in bot frames', () => {

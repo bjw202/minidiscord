@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync, statSync, realpathSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import type { FastifyInstance } from 'fastify'
+import { resolveTargets } from './targets.js'
 
 export interface MessageRow {
   id: number; room_id: number; author_type: string; author_name: string
@@ -42,6 +43,8 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
   const db = app.db
   const hub = app.hub
   const conns = new Map<WebSocket, Established>()
+  // 결정 ③ 기본 답 N=6 (가이드 §0)
+  const BOT_RUN_LIMIT = 6
   let permissionHandler: ((info: ConnInfo, params: any) => void) | null = null
 
   const wss = new WebSocketServer({ server: app.server, path: '/bot' })
@@ -211,7 +214,47 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     // stored_path 를 뽑지 않는다 — 이 프레임은 방을 구독한 로그인 사용자 전원에게 가므로
     // HTTP 응답과 같은 규칙이 적용돼야 한다 (sync-reaudit N-01). 봇 프레임은 deliver 가 따로 만든다.
     const attachments = db.prepare('SELECT id, filename FROM attachments WHERE message_id = ?').all(messageId)
-    hub.publish(roomId, 'message', { ...row, author_name: authorName(row), attachments })
+    const message = { ...row, author_name: authorName(row), attachments }
+    hub.publish(roomId, 'message', message)
+
+    // v2 B — 봇 글의 @TO/@CC 도 전달한다 (가이드 §3). 사람 경로와 같은 room_bots 조회를 지나되, 봇 경로는 응답
+    // 프레임이 없으므로 거부·강등을 system 메시지 한 줄로 알린다. 원문은 위에서 이미 저장·발행됐다 — 사람 화면엔 남는다.
+    const { targets, unknown } = resolveTargets(db, roomId, message.body)
+    if (unknown.length > 0) postSystem(roomId, `${unknown.join(', ')} 봇은 이 방에 초대되지 않았습니다`)
+    // 역할 규칙 — worker 는 orchestrator 와 사람만 부를 수 있다. 사람은 멘션 대상이 아니므로 여기서는 orchestrator 만 남긴다
+    const sender = db.prepare('SELECT role FROM bots WHERE id = ?').get(info.botId) as { role: string } | undefined
+    let allowed = targets
+    if (sender?.role === 'worker') {
+      const blocked = targets.filter(t => t.role !== 'orchestrator')
+      if (blocked.length > 0) {
+        postSystem(roomId, `worker 봇은 ${[...new Set(blocked.map(t => t.name))].join(', ')} 봇을 부를 수 없습니다`)
+        allowed = targets.filter(t => t.role === 'orchestrator')
+      }
+    }
+    // 결정 ③ — 마지막 사람 글 이후 봇 글이 연속 N개(지금 글 포함) 이상이면 @TO 를 cc 로 내린다. system 글은 연속을 끊지 않는다
+    if (allowed.some(t => t.delivery === 'to') && botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT) {
+      postSystem(roomId, `사람 글 없이 봇 글이 ${BOT_RUN_LIMIT}개 이어져 @TO 를 cc 로 내렸습니다`)
+      allowed = allowed.map(t => ({ ...t, delivery: 'cc' as const }))
+    }
+    for (const t of allowed) {
+      db.prepare('INSERT INTO message_targets (message_id, bot_id, delivery) VALUES (?, ?, ?)').run(messageId, t.botId, t.delivery)
+    }
+    deliverTo(roomId, message, allowed.map(t => ({ botId: t.botId, delivery: t.delivery })))
+  }
+
+  // system 메시지 저장 + 같은 방에 SSE 발행 — permissions.ts 의 postSystem 과 같은 형태 (이벤트 이름은 'message' 하나)
+  function postSystem(roomId: number, body: string): void {
+    const r = db.prepare("INSERT INTO messages (room_id, author_type, body) VALUES (?, 'system', ?)").run(roomId, body)
+    const row = db.prepare('SELECT * FROM messages WHERE id = ?').get(r.lastInsertRowid) as Record<string, unknown>
+    hub.publish(roomId, 'message', { ...row, author_name: '시스템', attachments: [] })
+  }
+
+  // 결정 ③ 의 세기 — 그 방에서 마지막 사람 글보다 뒤에 있는 봇 글 수. SQL 한 번. 사람 글이 없으면 방의 봇 글 전부
+  function botRunSinceLastHuman(roomId: number): number {
+    return (db.prepare(
+      `SELECT COUNT(*) c FROM messages WHERE room_id = ? AND author_type = 'bot'
+       AND id > COALESCE((SELECT MAX(id) FROM messages WHERE room_id = ? AND author_type = 'user'), 0)`,
+    ).get(roomId, roomId) as { c: number }).c
   }
 
   // 이력 조회 — 최근 N 개를 먼저 자른 뒤 필터를 적용한다. 응답은 요청한 접속 하나에만 간다 (REQ-BOTMODEL-014·021)
@@ -229,19 +272,21 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     })
   }
 
+  // 접속의 봇이 targets 에 있고 room_bots 에 (roomId, botId) 가 있을 때만 보낸다 (REQ-BOTMODEL-016).
+  // 커서는 배달한 그 (room_id, bot_id) 행만 올린다 — 같은 봇의 다른 방 커서는 움직이지 않는다 (REQ-BOTMODEL-017).
+  // 오프라인 타깃의 커서는 그대로여야 재전송이 성립한다. 사람 경로(deliver)와 봇 경로(handleBotMessage) 둘이 지난다.
+  function deliverTo(roomId: number, msg: MessageRow, targets: { botId: number; delivery: 'to' | 'cc' }[]): void {
+    for (const [ws, c] of conns) {
+      const tr = targets.find(t => t.botId === c.botId)
+      if (!tr) continue
+      if (!isMember(roomId, c.botId)) continue   // 참여 검사 — 위험 4 갈래 ㉯ 의 방벽
+      send(ws, messageFrame(roomId, msg, msg.author_name, tr.delivery))
+      advanceCursor(roomId, c.botId, msg.id)      // 자리 ② — replayMissed 의 방별 갱신과 짝
+    }
+  }
+
   return {
-    // 접속의 봇이 targets 에 있고 room_bots 에 (roomId, botId) 가 있을 때만 보낸다 (REQ-BOTMODEL-016).
-    // 커서는 배달한 그 (room_id, bot_id) 행만 올린다 — 같은 봇의 다른 방 커서는 움직이지 않는다 (REQ-BOTMODEL-017).
-    // 오프라인 타깃의 커서는 그대로여야 재전송이 성립한다.
-    deliver(roomId, msg, targets) {
-      for (const [ws, c] of conns) {
-        const tr = targets.find(t => t.botId === c.botId)
-        if (!tr) continue
-        if (!isMember(roomId, c.botId)) continue   // 참여 검사 — 위험 4 갈래 ㉯ 의 방벽
-        send(ws, messageFrame(roomId, msg, msg.author_name, tr.delivery))
-        advanceCursor(roomId, c.botId, msg.id)      // 자리 ② — replayMissed 의 방별 갱신과 짝
-      }
-    },
+    deliver: deliverTo,
     // 접속은 봇 단위라 방을 보관해도 닫을 소켓이 없다 — 보관된 방은 다음 welcome 의 rooms 에서 빠진다.
     // 훅 계약(방 보관 → closeRoom 1회)은 routes-rooms.ts 가 그대로 부른다 (REQ-BOTMODEL-010)
     closeRoom(_roomId) {},

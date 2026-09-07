@@ -5,7 +5,7 @@ import { pipeline } from 'node:stream/promises'
 import { basename, extname, join, resolve, sep } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { requireAuth } from './auth.js'
-import { parseMentions } from './mention.js'
+import { resolveTargets } from './targets.js'
 import type { Db } from './db.js'
 
 // 확장자 → MIME 표 (REQ-MSG-006). 비교는 소문자로 정규화한 뒤 하고 표에 없으면 application/octet-stream
@@ -69,18 +69,10 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       return reply.code(400).send({ error: '내용이나 파일이 필요합니다' })
     }
 
-    // 멘션 → 그 방에 참여한 봇으로만 매핑 (REQ-MSG-002, v2: room_bots — REQ-BOTMODEL-025). 미참여 이름이 하나라도 있으면
-    // 전체를 400 으로 거부하고 어떤 행도 남기지 않는다 (REQ-MSG-003). 디스크에 남는 고아 파일은 plan.md §D 6번이 수용한 위험이다.
-    const targets: { botId: number; delivery: 'to' | 'cc' }[] = []
-    const unknown: string[] = []
-    for (const m of parseMentions(body)) {
-      const bot = db.prepare(
-        `SELECT b.id FROM bots b JOIN room_bots rb ON rb.bot_id = b.id
-         WHERE b.name = ? AND rb.room_id = ?`,
-      ).get(m.bot, roomId) as { id: number } | undefined
-      if (!bot) { unknown.push(m.bot); continue }
-      targets.push({ botId: bot.id, delivery: m.delivery })
-    }
+    // 멘션 → 그 방에 참여한 봇으로만 매핑 (REQ-MSG-002, v2: room_bots — REQ-BOTMODEL-025). 조회는 targets.ts 가
+    // 봇 경로(gateway)와 함께 쓴다. 미참여 이름이 하나라도 있으면 전체를 400 으로 거부하고 어떤 행도 남기지 않는다
+    // (REQ-MSG-003). 디스크에 남는 고아 파일은 plan.md §D 6번이 수용한 위험이다.
+    const { targets, unknown } = resolveTargets(db, roomId, body)
     if (unknown.length > 0) {
       return reply.code(400).send({ error: `${unknown.join(', ')} 봇은 이 방에 초대되지 않았습니다` })
     }
@@ -113,7 +105,8 @@ export function registerMessageRoutes(app: FastifyInstance): void {
     // 팬아웃 — 저장이 끝나면 SSE 발행과 게이트웨이 전달을 각각 정확히 한 번 (REQ-MSG-010).
     // deliver 의 msg 는 실제 저장된 메시지여야 한다 — 게이트웨이가 이 id 로 last_delivered_id 를 올린다 (REQ-MSG-012)
     req.server.hub.publish(roomId, 'message', message)
-    req.server.gateway.deliver(roomId, message, targets)
+    // deliver 의 계약은 {botId, delivery} 둘뿐이다 — targets.ts 가 역할 필터용으로 얹은 name·role 은 여기서 벗긴다
+    req.server.gateway.deliver(roomId, message, targets.map(t => ({ botId: t.botId, delivery: t.delivery })))
 
     return reply.code(200).send({ ok: true, message })
   })

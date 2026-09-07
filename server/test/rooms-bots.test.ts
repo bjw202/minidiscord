@@ -181,6 +181,14 @@ describe('bots', () => {
     expect(blank.statusCode).toBe(400)
   })
 
+  // v2 B — role 은 orchestrator|worker 둘뿐. 그 밖의 값은 400 이고 행을 남기지 않는다 (가이드 §3 routes-bots.ts)
+  it('B: rejects a role outside orchestrator|worker with 400 and stores no row', async () => {
+    const { app, cookie } = await build()
+    const bad = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'x', role: 'admin' } })
+    expect(bad.statusCode).toBe(400)
+    expect(db.prepare("SELECT COUNT(*) c FROM bots WHERE name='x'").get()).toEqual({ c: 0 })
+  })
+
   it('registers and lists bots', async () => {
     const { app, cookie } = await build()
     const create = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: '코드리뷰어', description: '리뷰 전문' } })
