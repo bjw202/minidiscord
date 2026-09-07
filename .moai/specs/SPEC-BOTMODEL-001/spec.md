@@ -2,7 +2,7 @@
 id: SPEC-BOTMODEL-001
 title: "봇 단위 신원 · 방 참여 · 방 명시 프레임 — v2 리팩토링 A 단계"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

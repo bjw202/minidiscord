@@ -249,7 +249,41 @@ open_for_audit:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_\<pending sync-phase\>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-07
+sync_head_sha: 0ab8d13           # sync 편집의 기준 HEAD (run 종결 문서 커밋). 이 sync 커밋 자신의 SHA 는 아래
+sync_commit_sha: pending-backfill-sync   # 한 커밋 규칙(§E.3 commit_strategy)이라 자기 SHA 를 적을 수 없다 — git log --grep 'SPEC-BOTMODEL-001 sync' 로 확인
+branch: WT-v2-model
+worktree: .claude/worktrees/v2-model
+pr: none                          # v2 브랜치는 B·C2 단계로 이어진다 — 이 단계는 로컬 커밋만, 푸시 없음
+docs_touched:
+  - README.md                     # 첫 문단 · 설정 절 토큰 문구 · 웹 화면 항목 · API 표 봇 행 넷+보관 행 · «봇 등록 토큰» · «봇 게이트웨이» 통째 · «붙이기 전에» F-01/F-07/[배포 경계] · DB 표 bots 행 · 헤딩 포인터 둘
+  - ROADMAP.md                    # M2 · M3 «지금» 문단만
+  - .moai/project/codemaps/entry-points.md   # §6 통째(접속 mermaid · 프레임 표 둘) · §7 meta 다섯 키 · reply/fetch_history chat_id · INSTRUCTIONS 문장
+  - CHANGELOG.md                  # [Unreleased] 맨 위 한 항목
+  - .moai/specs/SPEC-BOTMODEL-001/spec.md      # frontmatter status/updated 만
+  - .moai/specs/SPEC-BOTMODEL-001/progress.md  # 이 절
+scope_beyond_plan_E:
+  - "README «봇 게이트웨이 (WebSocket)» 절 — plan §E 3번(«봇 초대» → «봇 등록·방 참여»)의 짝. 지워진 핸드셰이크 1~5단계·봉투·프레임 표를 spec-compact 프레임 표로 교체"
+  - "README «채널 플러그인을 붙이기 전에» — plan §E 1번의 확장. 지워진 기제(F-01 갈래 둘·봉투 억제·bot_tokens 검증자·타이밍 상수성)를 서술하는 불릿만 교체, t10·t11·t38 항목과 sender 사칭 수용·방 경계 절은 그대로"
+  - "README API 표 `POST /api/rooms/:id/archive` 행의 «봇 토큰 철회» 한 구절, 데이터베이스 표 `bots`/`bot_tokens` 행, «봇 초대 토큰» 헤딩을 가리키던 포인터 둘(명령어 절·폴더 구조 절) — 지시가 허용한 최소 교정"
+  - "codemaps §7 — meta 키가 나열돼 있어 다섯 키로 갱신 (지시의 조건부 허용)"
+plan_E_item_2_check: "MINIDISCORD_HOST 행 — server/src/config.ts 기본값 127.0.0.1 과 일치, 문구 «다른 PC 에서 붙으려면 0.0.0.0 …» 은 C1 커밋 2f6cd3f 이 넣은 것 그대로. 변경 없음"
+changelog_entry: true
+changelog_position: "[Unreleased] 첫 항목 (t35 위)"
+b12_self_test_a: "grep -c 'BOTMODEL' CHANGELOG.md → 0 (발행 전) → 1 (발행 후)"
+b12_self_test_b: "grep -oE 'AC-BOTMODEL-[0-9]+' acceptance.md | sort -u | wc -l → 25 (전체 패턴 36 은 같은 AC 의 단축 표기 AC-0NN 11건이 겹친 것)"
+b12_self_test_c: "CHANGELOG 에 적은 경로 22 건 ls 로 실재 확인"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (updated 2026-09-07) — 이 sync 커밋에서. plan.md·acceptance.md 에는 status 필드가 없어 손대지 않음"
+stale_term_sweep: "E2 결과는 sync 보고서에 — README 의 남은 적중은 sender 사칭 수용 줄(t23 언급, 지시로 보존)뿐이고, ROADMAP 의 «지금 어디까지 왔나»·카드 표·codemaps §5 초대 라우트 셋·§8 MINIDISCORD_TOKEN 행은 C2 소유"
+left_for_C2:
+  - "README: «방 구성원» 절·API 표의 구성원 열·«방 사이의 경계» 절·전송 스킴 안내(ws/wss 가드) — C1 이 지운 기제를 아직 서술"
+  - "README 폴더 구조 표의 routes-bots.ts 설명(«방 초대 발급·목록·철회») · scripts/live-env.sh invite 언급"
+  - "codemaps/entry-points.md §5 /invites 라우트 행 셋 · §8 MINIDISCORD_TOKEN «초대 토큰, v2 키 유도의 원천»"
+  - "ROADMAP «지금 어디까지 왔나» 서비스화 불릿(unbound 채널 바인딩) · M2 헤딩 «봇 초대» · 카드 표"
+```
 
 ## §F Phase 4 Mode Selection
 

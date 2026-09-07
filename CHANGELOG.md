@@ -4,6 +4,32 @@
 
 ## [Unreleased]
 
+### 봇의 신원을 방에서 봇으로 옮겼습니다 — v2 리팩토링 A 단계 (`SPEC-BOTMODEL-001`)
+
+**토큰이 봇의 것이 됐고, 방 참여는 표의 한 행이 됐으며, 모든 프레임이 자기 방을 말합니다.** 지금까지 봇은 방마다 초대받아 방별 토큰(`bot_tokens`)으로 붙었고, 소켓 하나가 곧 «어느 방의 어느 봇»이었습니다. 이제 봇은 등록할 때 토큰 하나를 받고(`POST /api/bots` — 평문 토큰은 그 응답에 한 번만 실리고 `bots` 표에 저장됩니다), 방은 `POST /api/rooms/:id/bots` 로 참여자를 받으며(`room_bots`, 멱등), 소켓은 봇마다 하나입니다. 초대 라우트 셋(`/api/rooms/:id/invites`)은 사라졌습니다. 어느 방의 일인지는 접속이 아니라 프레임이 말합니다 — 채널→서버 네 프레임(`bot_message`·`status`·`history_request`·`permission_request`)은 `room_id` 가 필수이고, 없으면 서버가 system 메시지 없이 조용히 버리되 소켓은 닫지 않습니다. 서버→채널의 `message`·`history_response` 는 `room_id` 를 항상 싣고, `welcome` 은 참여한 활성 방 목록을, `permission_verdict` 는 `request_id` 만 싣습니다.
+
+#### 핸드셰이크와 봉투를 지웠습니다 — 방어가 줄어든 것을 그대로 적습니다
+
+카드 `t15`·`t22` 의 상호 인증(토큰에서 키 유도·논스·서명·HMAC 봉투·순번)은 통째로 사라졌습니다. 접속은 맨몸 `hello{token}` → `welcome` 한 왕복이고 그 뒤 프레임도 전부 맨몸 JSON 입니다. **이것은 방어를 없앤 것입니다** — 토큰은 평문으로 전선에 나가고 `bots` 표에도 평문으로 저장되며, `hello` 를 받기만 하는 상대는 토큰을 그대로 얻습니다. 서버가 같은 PC 안에서만 열린다는 전제(`MINIDISCORD_HOST` 기본값 `127.0.0.1`)가 유일한 경계이고, README 「채널 플러그인을 붙이기 전에」의 F-01·F-07 과 [배포 경계] 를 그렇게 고쳐 적었습니다. 남긴 보안은 둘입니다 — 첨부 허용 뿌리의 `realpathSync` 검사(`server/src/gateway.ts`)와 문맥 봉투 무력화·절단(`channel/src/channel-server.ts`·`channel/src/truncate.ts`). 「봉투」는 둘이었고, 지운 것은 전선 봉투 하나뿐입니다.
+
+#### 재접속 커서가 방마다 따로 갑니다
+
+놓친 메시지 재전송은 쿼리 한 번으로 `message_targets ⋈ messages ⋈ room_bots` 에서 방별 `last_delivered_id` 이후를 읽고, 방마다 마지막 번호로 커서를 올립니다. `deliver` 도 배달한 그 `(room_id, bot_id)` 행만 올립니다 — 한쪽만 고치면 다른 쪽이 옛 방의 커서를 조용히 올리는 자리라, 둘 다 `advanceCursor` 한 함수를 지나게 했습니다. 참여가 끊긴 방의 메시지는 JOIN 에서 빠져 재전송되지 않고, `deliver` 는 `room_bots` 행이 있을 때만 보냅니다. `isOnline(botId)` 는 방과 무관하고, 방 보관은 봇 소켓을 닫지 않습니다 — 보관된 방은 다음 `welcome` 의 목록에서 빠질 뿐입니다.
+
+#### 채널 쪽 — `chat_id` 는 이제 방 번호입니다
+
+MCP 알림의 `meta` 는 다섯 키(`chat_id`·`message_id`·`delivery`·`sender`·`author_type`)이고 전부 무변형입니다. `chat_id` 는 방 번호, `message_id` 는 메시지 번호입니다. `reply`·`fetch_history` 는 `chat_id` 를 받고, 세션이 채우지 않으면 채널이 «마지막 `to` 방» 으로 채우며, 그것도 없으면 프레임은 `room_id` 없이 나가 서버가 버립니다. 세션이 실제로 알림의 `chat_id` 를 그대로 되돌려 준다는 것은 계획 단계의 실세션 관측(A-0, 2/2)으로 먼저 확인했습니다. 지시문의 커서 안내는 「`chat_id` 는 방 번호입니다. 이력 커서는 결과 JSON 의 cursor 를 쓰세요.」로 바꿨고, 이력 `cursor` 는 여전히 메시지 번호의 최댓값입니다. 권한 요청은 «마지막 `to` 방» 을 `room_id` 로 싣고, 서버 대기 맵은 `방:id` 와 `봇:id` 두 색인이라 다른 방에서 친 `yes` 도 같은 요청을 닫습니다.
+
+#### 잰 것
+
+수용 기준 **25/25 통과**(`acceptance.md` 기준, 리드 재실행 증거 `.moai/state/verify/a-run/lead/`). `npm test` 는 server 248·channel 103 이 초록입니다(기준선 254·102 — 줄어든 것은 삭제한 핸드셰이크 기준이고, 형제 파일별 증감은 `progress.md` §E.3 `sibling_breakage` 에 실측으로 있습니다). 끝 조건 넷은 `grep` 두 건 0건(`verifier_pub|server_confirm_key|handshakeTranscript|bot_tokens|revoked_at` 과 `다음에 since_id 로 넘기면`)과 `scripts/e2e.mts` 종료 코드 ≠ 0(예상값 — 재작성은 C2 소유)입니다. 변이 넷이 전부 예상대로 빨개졌습니다(한 자리만 바꾼 ㉢ 은 macOS 임시 폴더의 링크 때문에 7건이 걸렸고 `progress.md` §E.2.5 에 기록만 했습니다). 구현은 커밋 `eca2c3d` 한 개(32 파일)이고, `server/src/gateway.ts` 는 v1 위에 덧대지 않고 빈 파일에서 다시 썼습니다 — 옮겨 온 것은 첨부 블록과 `sendToOrigin` 뿐입니다.
+
+#### 이 단계가 하지 않는 것
+
+봇→봇 멘션·역할 필터·연속 봇 글 상한은 B 단계, SPEC 보관·`scripts/e2e.mts` 재작성·codemaps 5종 전면 갱신·ROADMAP v2 절은 C2 단계입니다. 그래서 이번 동기화는 일부러 가볍습니다 — README 의 첫 문단·설정 표·「봇 등록 토큰」·「봇 게이트웨이」·「채널 플러그인을 붙이기 전에」·데이터베이스 표, ROADMAP M2·M3 의 «지금» 문단, `codemaps/entry-points.md` §6·§7 만 v2 로 고쳤습니다. `scripts/live-env.sh invite` 와 그 README·codemaps 언급, 그리고 C1 이 이미 지운 방 구성원·전송 가드를 아직 서술하는 README 자리들은 C2 에 남깁니다. `GET /api/attachments/:id` 의 방 검사 부재는 새 구멍이 아니며(방 구성원 인가 자체가 C1 에서 사라졌습니다) 보류 카드 `t17` 소유입니다.
+
+바뀐 파일(구현 `eca2c3d`): `server/src/gateway.ts`(다시 씀)·`server/src/routes-bots.ts`·`server/src/db.ts`·`server/src/permissions.ts`·`channel/src/gateway-client.ts`·`channel/src/channel-server.ts`·`channel/src/index.ts`·`web/app.js`·`web/rich.js`·`web/index.html` 과 테스트(`server/test/gateway.test.ts`·`server/test/rooms-bots.test.ts`·`channel/test/channel-server.test.ts`·`channel/test/index-wiring.test.ts` 등). 문서(이 커밋): `README.md`·`ROADMAP.md`·`.moai/project/codemaps/entry-points.md`·`.moai/specs/` 의 이 SPEC 폴더(spec.md 상태 전이·progress.md §E.4).
+
 ### 라이브 검증 환경을 스크립트로 옮겼고, 사람 손이 다섯 자리라는 것을 찾았습니다 (카드 `t35`)
 
 **들어온 것은 새로 놓은 파일들과 기존 파일 세 자리의 최소 편집입니다.** 새로 놓은 것은 검증 환경 스크립트 `scripts/live-env.sh`(하위 명령 `paths`·`up`·`down`·`status`·`invite`·`bot`·`token-sweep`), 증거 추출기 `scripts/live-extract.mts`, 가짜 채널 예행 `scripts/live-dryrun.mts`, 그리고 추출기의 순수 함수와 그 인프로세스 회귀(`server/test/live-extract-lib.ts`·`server/test/live-extract.test.ts`)에 합성 fixture 두 벌입니다. 기존 파일에 손댄 것은 세 자리뿐이에요 — `.gitignore` 한 줄(`bot-01/`), 루트 `package.json` 한 줄(`live-dryrun`), 그리고 예행이 사본을 만들지 않고 헬퍼를 가져다 쓰도록 `scripts/e2e.mts` 의 헬퍼 다섯을 `export` 로 연 것입니다. 시나리오 수와 `[n/15]` 진행 표지는 건드리지 않았습니다.
