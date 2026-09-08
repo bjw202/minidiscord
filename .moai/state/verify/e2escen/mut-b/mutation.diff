@@ -1,0 +1,4 @@
+152c152
+<   assert(f2.delivery === 'to' && f2.author_type === 'bot' && f2.author_name === 'A' && f2.body === '@TO(B) 1' && f2.room_id === R1,
+---
+>   assert(f2.delivery === 'cc' && f2.author_type === 'bot' && f2.author_name === 'A' && f2.body === '@TO(B) 1' && f2.room_id === R1,

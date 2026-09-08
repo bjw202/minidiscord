@@ -1,0 +1,4 @@
+minidiscord listening on 127.0.0.1:59753
+[1/20]
+[fail] step2 G1 (ㄱ) B 가 받은 프레임이 A 의 to 봇 글이 아니다
+[elapsed] 637 ms

@@ -1,0 +1,4 @@
+505c505
+<   observe('permission.no-expiry', { unanswered: 20, consumed: revive.body?.consumed_by === 'permission', first_still_resolves: firstStillResolves })
+---
+>   observe('permission.no-expiry', { unanswered: 20, consumed: revive.body?.consumed_by === 'permission', first_still_resolves: !firstStillResolves })

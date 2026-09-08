@@ -1,0 +1,12 @@
+
+> e2e:scenario
+> npx tsx scripts/e2e-scenario.mts
+
+minidiscord listening on 127.0.0.1:59436
+[1/20]
+[2/20]
+[3/20]
+[4/20]
+[5/20]
+[fail] step6 G2 전달 열이 to,to,to,to,to,cc 가 아니다 — to,to,to,to,to,to
+[elapsed] 3685 ms

@@ -1,0 +1,38 @@
+
+> e2e:scenario
+> npx tsx scripts/e2e-scenario.mts
+
+minidiscord listening on 127.0.0.1:59456
+[1/20]
+[2/20]
+[3/20]
+[4/20]
+[5/20]
+[6/20]
+[7/20]
+[8/20]
+[9/20]
+[observe] history.cursor-walk: {"backlog":504,"limit":100,"steps":1,"missed_ids":404}
+[10/20]
+[11/20]
+[observe] permission.cross-room-outcome-room: {"request_room":1,"reply_room":2,"outcome_in_request_room":1,"outcome_in_reply_room":0}
+[12/20]
+[13/20]
+[14/20]
+[observe] permission.no-expiry: {"unanswered":20,"consumed":true,"first_still_resolves":true}
+[15/20]
+minidiscord listening on 127.0.0.1:59466
+[16/20]
+[observe] bots.delete-while-connected-close-ms: {"ms":6}
+[17/20]
+[18/20]
+[observe] mention.duplicate-live-frames: {"frames":1,"deliveries":["to"]}
+[observe] mention.duplicate-replay-frames: {"frames":2,"deliveries":["to","cc"]}
+[observe] identity.same-token-two-sockets: {"sockets_received":2,"second_hello_rejected":false,"history_reply_to_requester_only":true}
+[observe] identity.zero-width-name: {"plain_status":409,"zero_width_status":201,"mention_post_status":400,"mention_error":"B​ 봇은 이 방에 초대되지 않았습니다"}
+[19/20]
+[skip] G7 — --with-channel 없음
+[observe-summary] 8 items
+[20/20]
+[elapsed] 14160 ms
+E2E-SCENARIO PASS — 20 단계 전부 통과 (봇 둘 · 방 둘 · 관측자 하나)

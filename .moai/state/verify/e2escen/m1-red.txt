@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a71f790b9899a7d67/server
+
+ ❯ test/e2e-lib.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/e2e-lib.test.ts [ test/e2e-lib.test.ts ]
+Error: Cannot find module '../../scripts/e2e-lib.mts' imported from /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a71f790b9899a7d67/server/test/e2e-lib.test.ts
+ ❯ test/e2e-lib.test.ts:7:1
+      5|
+      6| import { describe, expect, it, vi } from 'vitest'
+      7| import { E2eError, QUIET_MS, api, expectQuiet, nextFrame, registerInbo…
+       | ^
+      8|
+      9| describe('e2e-lib', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  15:18:36
+   Duration  92ms (transform 19ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)
+
+exit=1

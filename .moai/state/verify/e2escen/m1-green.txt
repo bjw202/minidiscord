@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a71f790b9899a7d67/server
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:20:35
+   Duration  787ms (transform 22ms, setup 0ms, import 29ms, tests 694ms, environment 0ms)
+

@@ -1,0 +1,42 @@
+
+> test
+> npm test --workspaces --if-present
+
+
+> pretest
+> npm run typecheck
+
+
+> typecheck
+> tsc --noEmit
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a71f790b9899a7d67/server
+
+
+ Test Files  18 passed (18)
+      Tests  213 passed (213)
+   Start at  15:45:06
+   Duration  17.60s (transform 889ms, setup 0ms, import 2.69s, tests 31.05s, environment 1.62s)
+
+
+> @minidiscord/channel@0.1.0 pretest
+> tsc
+
+
+> @minidiscord/channel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a71f790b9899a7d67/channel
+
+
+ Test Files  6 passed (6)
+      Tests  103 passed (103)
+   Start at  15:45:24
+   Duration  2.28s (transform 236ms, setup 0ms, import 706ms, tests 5.20s, environment 0ms)
+
