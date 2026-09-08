@@ -4,7 +4,7 @@
 // (server/test/web-rich.test.ts 11행 관례 그대로).
 // A 그룹 = 문법별 렌더(AC-001~005·013), B 그룹 = 안전성(AC-006~010·014·015),
 // C 그룹 = 통합·회귀(AC-011·012·016, M4 에서 더한다).
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -361,5 +361,220 @@ describe('AC-WEBMD-015 module surface and type declaration', () => {
     expect(renderInline('x', document)).toBeInstanceOf(DocumentFragment)
     expect(Array.isArray(parseBlocks(['x'], 0))).toBe(true)
     expect(readFileSync(join(webDir, 'markdown.d.ts'), 'utf8').length).toBeGreaterThan(0)
+  })
+})
+
+// ── C 그룹 — 통합·회귀 (M4) ──────────────────────────────────────────
+// server/test/web-chat.test.ts 의 jsdom 골격(loadApp·baseHandler·flush·msg)을
+// 같은 모양으로 갖춘다 —
+// AC-WEBMD-011·012·016 이 app.js 통합 경로를 실제로 도는지 보는 그룹이다.
+// (골격은 web-chat.test.ts 가 소유한 헬퍼를 부를 수 없어 각 테스트 파일이
+// 자기 복제본을 갖는다 — 두 파일이 서로를 import 하지 않는 것이 관례다.)
+import { createRichContext } from '../../web/rich.js'
+
+// ── 가짜 EventSource (web-chat.test.ts 골격과 같은 모양) ────────────
+class FakeEventSource {
+  static instances: FakeEventSource[] = []
+  url: string
+  closed = false
+  onerror: ((e: unknown) => void) | null = null
+  onopen: ((e: unknown) => void) | null = null
+  private ls: Record<string, ((e: { data: string }) => void)[]> = {}
+  constructor(url: string) { this.url = url; FakeEventSource.instances.push(this) }
+  addEventListener(type: string, fn: (e: { data: string }) => void) { (this.ls[type] ??= []).push(fn) }
+  close() { this.closed = true }
+  emit(type: string, data: unknown) { for (const f of this.ls[type] ?? []) f({ data: JSON.stringify(data) }) }
+  static last() { return FakeEventSource.instances[FakeEventSource.instances.length - 1] }
+}
+
+// ── 가짜 fetch (web-chat.test.ts 골격과 같은 모양) ──────────────────
+interface Call { url: string; method: string; body: unknown }
+let calls: Call[] = []
+type Handler = (url: string, opts: { method?: string; body?: unknown }) =>
+  unknown | Promise<unknown>
+
+function installFetch(handler: Handler) {
+  calls = []
+  ;(globalThis as { fetch: unknown }).fetch = async (url: unknown, opts: { method?: string; body?: unknown } = {}) => {
+    calls.push({ url: String(url), method: opts.method ?? 'GET', body: opts.body })
+    const out = (await handler(String(url), opts)) as { ok?: boolean; status?: number; data?: unknown } | undefined
+    return {
+      ok: out?.ok !== false,
+      status: out?.status ?? (out?.ok === false ? 400 : 200),
+      json: async () => out?.data ?? {},
+    }
+  }
+}
+
+async function flush(times = 20) { for (let i = 0; i < times; i++) await Promise.resolve() }
+
+interface AppModule {
+  state: Record<string, unknown>
+  openRoom: (id: number) => Promise<void>
+  renderMessage: (m: unknown) => void
+  sendMessage: () => Promise<void>
+  refreshRoomBots: () => Promise<void>
+  registerMessageDecorator: (factory: unknown) => void
+  loadRooms: () => Promise<void>
+}
+
+async function loadApp(handler: Handler, opts: { decorator?: unknown } = {}) {
+  FakeEventSource.instances = []
+  installFetch(handler)
+  ;(globalThis as { EventSource?: unknown }).EventSource = FakeEventSource
+
+  const html = readFileSync(join(webDir, 'index.html'), 'utf8')
+  document.body.innerHTML = html.replace(/[\s\S]*?<body[^>]*>/, '').replace(/<\/body>[\s\S]*/, '')
+
+  vi.resetModules()
+  // @ts-expect-error web/app.js 는 브라우저가 직접 읽는 ES 모듈이라 타입 선언을 두지 않는다
+  const mod = (await import('../../web/app.js')) as unknown as AppModule
+
+  await mod.loadRooms()
+  if (opts.decorator) mod.registerMessageDecorator(opts.decorator)
+  await flush()
+  return mod
+}
+
+// 메시지 하나 만들기 — 실제 서버 페이로드 모양
+function msg(over: Record<string, unknown> = {}) {
+  return {
+    id: 1, room_id: 1, author_type: 'user', author_user_id: 1, author_bot_id: null,
+    body: '본문', created_at: '2026-08-27 10:00:00', author_name: 'u', attachments: [],
+    ...over,
+  }
+}
+
+// 방 하나만 있는 기본 핸들러. 필요한 응답만 덮어쓴다.
+function baseHandler(over: Record<string, unknown> = {}): Handler {
+  return url => {
+    for (const [k, v] of Object.entries(over)) if (url.startsWith(k)) return { data: v }
+    if (url.startsWith('/api/rooms/1/messages')) return { data: { messages: [] } }
+    if (url.startsWith('/api/rooms/2/messages')) return { data: { messages: [] } }
+    if (/^\/api\/rooms\/[0-9]+\/bots/.test(url)) return { data: [] }
+    if (url.startsWith('/api/rooms')) return { data: { active: [{ id: 1, name: '방1' }, { id: 2, name: '방2' }], archived: [] } }
+    if (url.startsWith('/api/bots')) return { data: [] }
+    return { data: {} }
+  }
+}
+
+describe('AC-WEBMD-011 permission relay regression', () => {
+  let warn: ReturnType<typeof vi.spyOn>
+  beforeEach(() => { warn = vi.spyOn(console, 'warn').mockImplementation(() => {}) })
+  afterEach(() => {
+    warn.mockRestore()
+    document.body.innerHTML = ''
+    FakeEventSource.instances = []
+  })
+
+  it('keeps the permission verdict buttons regardless of markdown in the body', async () => {
+    const rid = 'abcde'
+    const request = [
+      '봇 pm 이 도구 사용 권한을 요청했습니다.',
+      '도구: Bash',
+      '명령: ls -la',
+      `승인하려면 "yes ${rid}", 거절하려면 "no ${rid}" 라고 답해주세요.`,
+    ].join('\n')
+
+    // (1) 실물 4줄 요청 — 버튼 둘
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, author_type: 'system', body: request })] },
+    }))
+    app.registerMessageDecorator(createRichContext)
+    await app.openRoom(1); await flush()
+    expect(document.querySelectorAll('#messages .verdict-row button').length).toBe(2)
+    // 버튼은 .msg-body 밖 형제다 (장식 훅 계약 불변)
+    expect(document.querySelectorAll('#messages .msg-body .verdict-row').length).toBe(0)
+
+    // (2) 미닫힘 펜스를 앞에 붙인 변형 — 요청 줄이 코드블록 안에 그려져도 버튼은 그대로
+    const fenced = '```\n' + request
+    document.body.innerHTML = ''
+    const app2 = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, author_type: 'system', body: fenced })] },
+    }))
+    app2.registerMessageDecorator(createRichContext)
+    await app2.openRoom(1); await flush()
+    expect(document.querySelectorAll('#messages .verdict-row button').length).toBe(2)
+
+    // (3) renderMarkdown 은 인자로 받은 doc 를 변형하지 않는다 — 만든 노드는 반환하는
+    //     fragment 안에만 들어간다. (문자열 축은 검사하지 않는다: 자바스크립트 문자열은
+    //     불변이라 `expect(src).toBe(before)` 류는 어떤 구현에서도 참이고, 잡는 구현이
+    //     존재하지 않는 단언은 커버리지가 아니라 공허한 확신이다.)
+    const probe = document.createElement('div')
+    probe.id = 'md-doc-probe'
+    document.body.appendChild(probe)
+    const bodyChildrenBefore = document.body.childElementCount
+    const frag = renderMarkdown('# 제목\n\n본문 [링크](https://good.example/x)', document)
+    expect(document.body.childElementCount).toBe(bodyChildrenBefore)          // doc 에 직접 붙이지 않았다
+    expect(document.getElementById('md-doc-probe')!.childElementCount).toBe(0)
+    expect(frag.childNodes.length).toBeGreaterThan(0)                          // 빈 fragment 로 공허하게 통과하지 않게
+
+    // (4) 파서 상태는 메시지마다 초기화된다 — 크로스-메시지 펜스 오염이 구조적으로 불가능하다
+    renderMarkdown('```\n열린 채 끝남', document)
+    const after = render('# 다음 메시지')
+    expect(after.querySelectorAll('h1').length).toBe(1)
+    expect(after.querySelectorAll('pre').length).toBe(0)
+  })
+})
+
+describe('AC-WEBMD-012 fallback path', () => {
+  let warn: ReturnType<typeof vi.spyOn>
+  beforeEach(() => { warn = vi.spyOn(console, 'warn').mockImplementation(() => {}) })
+  afterEach(() => {
+    warn.mockRestore()
+    document.body.innerHTML = ''
+    FakeEventSource.instances = []
+  })
+
+  it('falls back to raw text without losing the message or the ones after it', async () => {
+    // renderMarkdown 이 던지도록 대체한다 — app.js 의 폴백 경로(REQ-WEBMD-011)만 격리해 본다.
+    // doMock 은 끌어올려지지 않으므로 이 it 안에서만 유효하고, finally 로 반드시 푼다.
+    vi.doMock('../../web/markdown.js', async importOriginal => {
+      const actual = await importOriginal<typeof import('../../web/markdown.js')>()
+      return { ...actual, renderMarkdown: () => { throw new Error('주입된 실패') } }
+    })
+    try {
+      const app = await loadApp(baseHandler({
+        '/api/rooms/1/messages': { messages: [msg({ id: 1, body: '첫째' }), msg({ id: 2, body: '둘째' })] },
+      }))
+      await app.openRoom(1); await flush()
+
+      const bodies = [...document.querySelectorAll('#messages .msg-body')]
+      expect(bodies.length).toBe(2)                                   // 뒤 메시지가 사라지지 않는다
+      expect(bodies[0].textContent).toBe('첫째')                       // 원문이 남는다
+      expect(bodies[1].textContent).toBe('둘째')
+      expect(bodies.every(n => n.classList.contains('md-fallback'))).toBe(true)   // 조용히 삼키지 않는다
+      expect(warn).toHaveBeenCalled()                                  // console.warn 스파이
+    } finally {
+      vi.doUnmock('../../web/markdown.js')
+    }
+  })
+})
+
+describe('AC-WEBMD-016 existing tests untouched and hook coexistence', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+    FakeEventSource.instances = []
+  })
+
+  it('keeps decorator nodes as siblings outside .msg-body', async () => {
+    // 준비 — web-chat.test.ts 의 대역 장식 훅과 같은 모양으로 figure 를 더한다
+    const factory = (deps: { api: unknown; doc: Document }) => {
+      expect(deps.doc).toBe(document)
+      return {
+        decorate(el: Element, m: { id: number }) {
+          el.appendChild(document.createElement('figure'))   // 훅은 자손을 더할 수 있다
+        },
+      }
+    }
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, body: '그림 하나' }), msg({ id: 2, body: '그림 둘' })] },
+    }), { decorator: factory })
+    await app.openRoom(1); await flush()
+
+    // 훅이 더한 figure 는 .message 의 직계 자식이고 .msg-body 안에 있지 않다
+    expect(document.querySelectorAll('#messages .message > figure').length).toBe(2)
+    expect(document.querySelectorAll('#messages .msg-body figure').length).toBe(0)
+    expect(document.querySelectorAll('#messages .message > .msg-body').length).toBe(2)
   })
 })

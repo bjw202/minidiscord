@@ -381,7 +381,19 @@ export function renderMessage(m) {
 
   const body = document.createElement('div')
   body.className = 'msg-body'
-  body.textContent = m.body ?? ''
+  // 본문만 마크다운으로 그린다 (REQ-WEBMD-002). 작성자 이름·시각·봇 이름·방 이름은
+  // 여전히 textContent 전용이다 — 마크다운은 .msg-body 안쪽에서만 산다.
+  // 렌더가 던지면 원문 텍스트로 되돌린다 (REQ-WEBMD-011): renderMessage 는 이력 루프(:265)와
+  // SSE 수신(:445·:466)의 동기 경로라, 여기서 예외가 나가면 메시지 한 개가 아니라 그 뒤 전부가 사라진다.
+  // 조용히 삼키지는 않는다 — md-fallback 클래스와 console.warn 으로 흔적을 남긴다.
+  const raw = m.body ?? ''
+  try {
+    body.appendChild(renderMarkdown(raw, document))
+  } catch (err) {
+    body.textContent = raw
+    body.classList.add('md-fallback')
+    console.warn('markdown 렌더 실패 — 원문 텍스트로 되돌림', err)
+  }
 
   wrap.appendChild(head)
   wrap.appendChild(body)
@@ -726,6 +738,7 @@ function notifyError(err) {
 // 이 SPEC 이 app.js 에 더하는 것은 이 블록 전부다 — renderMessage 본체는 한 줄도
 // 건드리지 않는다 (REQ-WEBRICH-002). 모듈 최상위가 배선의 자리다.
 import { createRichContext, buildInviteChoices, applyInviteResult, clearInviteResult, copyText } from './rich.js'
+import { renderMarkdown } from './markdown.js'
 
 // 배선 계약 (spec.md REQ-WEBRICH-002) — 방을 열 때마다 openRoom 3-1단계가
 // factory({ api, doc }) 를 불러 그 방 전용 컨텍스트를 새로 만든다. 넘기는 값은 팩토리
