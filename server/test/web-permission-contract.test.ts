@@ -257,7 +257,8 @@ describe('AC-WEBRICH-001..004 permission & registration contract', () => {
     expect(commandEl.textContent).toBe(reg.command)
 
     // 화면 문자열에서 토큰을 되뽑아 그 토큰만으로 게이트웨이에 붙는다 — 맨몸 hello 로
-    const token = /MINIDISCORD_TOKEN=([0-9a-f]{64})/.exec(commandEl.textContent!)![1]
+    // (B) 통일 뒤 토큰은 안내의 .mcp.json 본문 안 "MINIDISCORD_TOKEN": "…" 에 실린다 (2026-09-08)
+    const token = /"MINIDISCORD_TOKEN": "([0-9a-f]{64})"/.exec(commandEl.textContent!)![1]
     const { welcome } = await wsConnect(c.port, token)
     expect(welcome).toMatchObject({ type: 'welcome', bot_id: reg.id, bot_name: 'pm', rooms: [] })
 

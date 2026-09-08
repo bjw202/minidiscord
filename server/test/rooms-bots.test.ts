@@ -176,13 +176,21 @@ describe('bots', () => {
     expect((await app.inject({ method: 'DELETE', url: '/api/bots/abc', headers: { cookie } })).statusCode).toBe(404)
   })
 
-  // MCP 서버 이름은 [A-Za-z0-9_-] 만 안전하다 — 한글 등은 지우고, 비면 bot<id> 로 대체한다
-  it('registration command uses a safe MCP name: latin names keep their letters, others fall back to bot<id>', async () => {
+  // (B) 통일 (2026-09-08 사용자 결정) — MCP 서버 이름은 봇 이름과 무관하게 minidiscord-channel 하나다. 한글 이름이든
+  // 공백 섞인 이름이든 안내의 .mcp.json 은 같은 모양이고, 그 JSON 은 그대로 파일로 저장해 쓸 수 있어야 한다(파싱 가능).
+  it('registration command embeds a parseable .mcp.json with the fixed server name, whatever the bot name is', async () => {
     const { app, cookie } = await build()
-    const ko = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: '연구원' } })).json()
-    expect(ko.command).toContain(`server:bot${ko.id}-channel`)
-    const mixed = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'PM 봇 2' } })).json()
-    expect(mixed.command).toContain('server:PM-2-channel')
+    for (const name of ['연구원', 'PM 봇 2']) {
+      const body = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name } })).json()
+      const m = /<<'EOF'\n([\s\S]*?)\nEOF\n/.exec(body.command)
+      expect(m, name).not.toBeNull()
+      const parsed = JSON.parse(m![1])
+      expect(Object.keys(parsed.mcpServers)).toEqual(['minidiscord-channel'])
+      expect(Object.keys(parsed.mcpServers['minidiscord-channel'])).toEqual(['command', 'args', 'env'])
+      expect(parsed.mcpServers['minidiscord-channel'].env.MINIDISCORD_TOKEN).toBe(body.token)
+      expect(body.command).toContain('server:minidiscord-channel')
+      expect(body.command).not.toContain('-channel ')   // 봇별 이름(<slug>-channel) 은 더 이상 없다
+    }
   })
   // AC-BOTMODEL-011 — POST /api/bots 응답 네 키, 토큰은 이 응답에 한 번만 (REQ-BOTMODEL-004·005)
   it('AC-011: registration answers 201 {id, name, token, command}; the token matches bots.token and never shows again', async () => {
@@ -197,24 +205,24 @@ describe('bots', () => {
     const row = db.prepare('SELECT token, role FROM bots WHERE id=?').get(body.id) as { token: string; role: string }
     expect(row.token).toBe(body.token)
     expect(row.role).toBe('worker')
-    // 안내문은 «권장 방법» 하나다 (2026-09-08 운영자 지시): 페르소나 폴더에서 봇 이름별 MCP 서버를 --scope local 로,
-    // 토큰과 주소는 --env 로 박아 두어 다음 세션부터는 실행 명령 한 줄이면 된다. 채널 경로는 저장소 안 빌드 산출물의
-    // 절대 경로 — PATH 의 전역 명령(minidiscord-channel)이나 셸 export 에 기대지 않는다 (맥북 첫 설치 실측)
+    // 안내문은 «권장 방법» 하나다 (2026-09-08 운영자 지시; 같은 날 사용자 결정으로 (B) 로 통일): 페르소나 폴더의 .mcp.json 에
+    // 토큰·주소·채널 절대 경로를 적고, --strict-mcp-config --mcp-config 로 띄운다. 서버 이름은 minidiscord-channel 고정.
+    // 채널 경로는 저장소 안 빌드 산출물의 절대 경로 — PATH 의 전역 명령이나 셸 export 에 기대지 않는다 (맥북 첫 설치 실측)
     const { fileURLToPath } = await import('node:url')
     const entry = fileURLToPath(new URL('../../channel/dist/index.js', import.meta.url))
     expect(entry.startsWith('/')).toBe(true)
-    expect(body.command).toContain('claude mcp add --scope local b1-channel')
-    expect(body.command).toContain(`--env MINIDISCORD_TOKEN=${body.token}`)
-    expect(body.command).toContain(`--env MINIDISCORD_SERVER=ws://${config.host}:${config.port}/bot`)
-    expect(body.command).toContain(`-- node ${entry}`)
-    expect(body.command).toContain('claude mcp remove b1-channel -s local')
-    expect(body.command).toContain('claude mcp get b1-channel')
-    expect(body.command).toContain('claude --dangerously-load-development-channels server:b1-channel')
+    const m = /<<'EOF'\n([\s\S]*?)\nEOF\n/.exec(body.command)
+    expect(m).not.toBeNull()
+    expect(JSON.parse(m![1])).toEqual({ mcpServers: { 'minidiscord-channel': {
+      command: 'node', args: [entry], env: { MINIDISCORD_TOKEN: body.token, MINIDISCORD_SERVER: `ws://${config.host}:${config.port}/bot` },
+    } } })
+    expect(body.command).toContain("cat > .mcp.json <<'EOF'")
+    expect(body.command).toContain('claude --strict-mcp-config --mcp-config .mcp.json --dangerously-load-development-channels server:minidiscord-channel')
     expect(body.command).toContain('npm run build -w channel')
     expect(body.command).toContain('봇 참여')
     expect(body.command).not.toContain('export MINIDISCORD_TOKEN')
-    expect(body.command).not.toContain('-- minidiscord-channel')
-    expect(body.command).not.toContain('--scope user')
+    expect(body.command).not.toContain('claude mcp add')
+    expect(body.command).not.toContain('--scope')
     // 같은 이름으로 다시 부르면 409
     const dup = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'b1' } })
     expect(dup.statusCode).toBe(409)
