@@ -25,3 +25,4 @@
 - [「못 한다」는 관측이고 증거를 진다](an-impossibility-claim-carries-evidence.md) — t35 5회차: 「이 수리는 시험으로 못 잡는다」의 [HARD] 이유가 같은 파일 400줄 아래의 이음매로 반증됨; 반증은 같은 파일에서 먼저 찾을 것 (2026-09-07)
 - [채점 모드가 어느 루브릭 규칙이 걸리는지 정한다](scoring-mode-decides-which-rubric-rule-binds.md) — 「앵커만 합법·보간 금지」는 계층형 규칙; hierarchical 0건이면 {n}/100 이 형식이고 앵커는 보정용 (t35 5회차)
 - [요구된 수리는 절반만 집행된다](a-required-repair-is-usually-half-executed.md) — t35 6회차: B1 의 진리값 넷은 닫혔고 같은 요구의 줄 인용 일곱은 그대로; 개폐표에 「부분 폐쇄」 칸을 둘 것 (2026-09-07)
+- [다시 쓴 줄은 이웃의 거짓을 함께 실어 낸다](a-rewritten-line-carries-forward-its-neighbors-falsehood.md) — BOTMODEL sync 가 ROADMAP:53 을 재작성하며 C1 이 지운 «구성원 인가» 절을 그대로 냄; + 줄은 «이 SPEC 이 바꾼 낱말» 이 아니라 «지금 트리에서 참인가» 로 훑을 것 (2026-09-07)

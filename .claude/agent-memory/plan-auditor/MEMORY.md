@@ -33,3 +33,4 @@
 - [잇는 매개가 배달 경로를 탄다](linking-token-travels-the-delivery-path.md) — 운영자가 요청에 실은 고유 문자열은 붙은 소켓 전부의 화면에 뜬다; 그 기준은 생산이 아니라 수신을 잰다 (t32 3회차, 2026-09-02)
 - [판별자를 수신 통로 하나에만 대고 검증했다](discriminator-checked-against-one-inbound-channel.md) — 대괄호 규칙은 알림 통로에서만 참이고 도구 결과에서 거짓; 소스는 발신 지점을 다섯으로 세는데 산문 목록은 셋이었다 (t32 4회차, 2026-09-02)
 - [Move the observation point, not the fence](feedback_move-the-observation-point-not-the-fence.md) — when a criterion breaks round after round on "the path list missed one", grade the outbound act instead of the surface
+- [어간 미적중은 결함이 아니다](stem-miss-is-not-a-defect.md) — MP-2 훑기에서 25 중 8 미적중을 FAIL 로 낼 뻔했으나 전부 shall 형; 한국어 활용이 어간을 가른다 (SPEC-BOTMODEL-001 3회차, 2026-09-07)
