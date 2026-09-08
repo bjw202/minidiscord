@@ -214,7 +214,7 @@ minidiscord v2 리팩토링 4단계(C2). 가이드 .moai/reports/v2-refactoring-
 [🟢] 2. A  봇 단위 모델      ← 커밋 b6ff9af (WT-v2-model) · SPEC-BOTMODEL-001 completed · npm test 초록 248+103 · grep 둘 0건 · e2e exit=1(정해진 빨강) · sync 감사 1회차 PASS 0.893
 [🟢] 3. B  봇→봇 멘션·역할   ← 커밋 12deb70 (WT-v2-model) · 테스트 5 빨강→초록 · npm test 초록 253+103 · F1·F3 → C2
 [🟢] 4. C2 문서·테스트 정리   ← 커밋 74ff7c9·867e853 (WT-v2-model) · SPEC 19+보관 11 · npm test 197+103 · e2e 15/15 · README grep 0 · F1·F3 종결
-   └─ 병합(2026-09-07): WT-v2-model → main fast-forward. 같은 커밋에 structure/tech.md 를 v2 로 다시 쓰고 OD-8 처분(봇 글만 막는 카드)을 ROADMAP 에 적었다. 남은 것: OD-8 카드 실행(코드), product.md 의 v1 문장(방 구성원·재초대·상호 인증)
+   └─ 병합(2026-09-07): WT-v2-model → main fast-forward. 같은 커밋에 structure/tech.md 를 v2 로 다시 쓰고 OD-8 처분(봇 글만 막는 카드)을 ROADMAP 에 적었다. 2026-09-08: t43(OD-8) 착지 `18b866f` · product.md v1 문장 11자리 v2 로. 남은 것: 푸시 여부(운영자) · 워크트리 v2-model 정리
 ──────────────────────────────────────────────
 ```
 
