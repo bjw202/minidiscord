@@ -29,6 +29,9 @@ function registrationCommand(token: string): string {
     `export MINIDISCORD_TOKEN=${token}`,
     `export MINIDISCORD_SERVER=ws://${config.host}:${config.port}/bot`,
     'claude --dangerously-load-development-channels server:minidiscord-channel',
+    '',
+    '# 그다음 — 세션이 붙어도 방에 참여시키기 전에는 그 방에 보이지 않습니다:',
+    '#   웹 화면에서 방 머리의 «봇 참여» 버튼으로 이 봇을 방에 넣고, @TO(봇이름) 으로 부르세요.',
   ].join('\n')
 }
 

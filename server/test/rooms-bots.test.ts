@@ -172,6 +172,8 @@ describe('bots', () => {
     expect(body.command).toContain('npm run build -w channel')
     expect(body.command).toContain('claude mcp remove minidiscord-channel')
     expect(body.command).toContain('claude mcp get minidiscord-channel')
+    // 안내문 끝에 «방 참여» 단계가 있다 — 세션이 붙어도 참여 전에는 방에 보이지 않는다 (2026-09-08 bob 실측)
+    expect(body.command).toContain('봇 참여')
     // 같은 이름으로 다시 부르면 409
     const dup = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'b1' } })
     expect(dup.statusCode).toBe(409)
