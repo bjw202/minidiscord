@@ -46,7 +46,82 @@ EXIT=0
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### 사전 확인 (Pre-flight, M1 전)
+
+```
+$ git branch --show-current && git rev-parse --short HEAD
+worktree-agent-a3f0544490db16e73
+c0026ce
+```
+
+런타임이 이 세션을 격리 워크트리(`.claude/worktrees/agent-a3f0544490db16e73`)에서 구동했다.
+트리는 운영자가 지시한 기점 `main` @ `c0026ce` 와 동일한 커밋에서 시작했고, 커밋은 이 나무의
+브랜치에 쌓으며 `git push origin HEAD:main` 으로 main 에 올린다(격리 훅이 공유 체크아웃 대상
+git 을 거부하기 때문). 파일 경로와 내용은 `c0026ce` 기준 main 과 동일하다.
+
+```
+$ ls web/
+app.js  design-tokens.css  index.html  rich.d.ts  rich.js  style.css
+
+$ grep -n "pre-wrap" web/style.css
+309:  white-space: pre-wrap;
+
+$ ls server/test/web-rich.test.ts && sed -n '1,15p' server/test/web-rich.test.ts
+server/test/web-rich.test.ts
+// @vitest-environment jsdom
+// ^ 이 도크블록이 이 파일만 jsdom 환경으로 가른다 — 서버 계약 테스트(web-permission-contract 포함)는
+// node 환경을 유지한다 (plan.md §C). 선행 web-shell.test.ts·web-chat.test.ts 가 같은 방식을 쓴다.
+import { describe, it, expect, afterEach, vi } from 'vitest'
+...
+```
+
+### 기준선 (이 나무, `c0026ce` 에서 직접 실행)
+
+```
+$ npm test
+# server
+ Test Files  18 passed (18)
+      Tests  222 passed (222)
+# channel
+ Test Files  6 passed (6)
+      Tests  103 passed (103)
+EXIT=0
+```
+
+### M1 — RED (구현이 존재하기 전)
+
+새 테스트 파일 `server/test/web-markdown.test.ts` 를 먼저 썼다. `web/markdown.js` 는 아직
+존재하지 않는다. it 수는 눈이 아니라 명령으로 셌다.
+
+```
+$ grep -c "^\s*it(" server/test/web-markdown.test.ts
+13
+```
+
+RED 실행 원문 (구현 커밋 이전, 이 나무 `c0026ce` + 신규 테스트 파일 상태):
+
+```
+$ cd server && npx vitest run test/web-markdown.test.ts
+ ❯ test/web-markdown.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/web-markdown.test.ts [ test/web-markdown.test.ts ]
+Error: Failed to resolve import "../../web/markdown.js" from "test/web-markdown.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a3f0544490db16e73/server/test/web-markdown.test.ts:11:83
+  9  |  import { join, dirname } from "node:path";
+  10  |  import { fileURLToPath } from "node:url";
+  11  |  import { renderMarkdown, parseBlocks, renderInline, safeHref, codeLangToken } from "../../web/markdown.js";
+      |                                                                                      ^
+
+ Test Files  1 failed (1)
+      Tests  no tests
+VITEST_EXIT=1
+```
+
+판정: 파일 적재 자체가 실패한다 — 구현 모듈이 없어 열세 개 it 전부가 아직 만족된 바 없음을
+러너가 증명한다. 기존 테스트는 이 시점에도 전부 통과(위 기준선)다.
 
 ---
 
