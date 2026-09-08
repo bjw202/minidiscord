@@ -79,7 +79,7 @@ sequenceDiagram
 7. `sse.ts publish` 가 방의 모든 구독 `ServerResponse` 에 `event: message\ndata: …\n\n`.
 8. `web/app.js openStream` 의 `EventSource` 리스너 → `renderMessage`, 스크롤, `state.lastEventId` 갱신. `status:idle` 은 `bot_status` 이벤트로 와서 「입력 중」 표시를 지운다.
 
-`gateway.ts` 는 `rooms.status` 를 이 경로에서 읽지 않는다 — 참여 행이 남아 있으면 보관된 방에도 봇 글이 저장·발행된다 (사람 경로만 409).
+`handleWsMessage` 는 참여 검사 뒤에 `bot_message`·`status` 에 한해 `rooms.status = 'active'` 를 본다(`isActiveRoom`, t43) — 보관된 방으로 온 봇 글은 행·발행·응답 없이 버려지고 소켓은 유지된다 (사람 경로는 409).
 
 ## 4. 흐름 (c) — 봇 재접속과 놓친 메시지
 
@@ -140,7 +140,7 @@ sequenceDiagram
 3. 한 트랜잭션: `SELECT status` → `missing`/`conflict`/`ok`. `ok` 일 때만 `UPDATE rooms SET status='archived', archived_at`. 철회할 방별 토큰이 없으므로 UPDATE 는 이것 하나다.
 4. `missing` → 404, `conflict` → 409 (본문 구분).
 5. **커밋 뒤에** `opts.onArchive(id)` — `index.ts` 가 `gateway.closeRoom(roomId)` 에 묶지만 v2 의 `closeRoom` 은 **빈 몸체**다. 접속이 봇 단위라 방을 보관해도 닫을 소켓이 없다.
-6. 보관의 효과는 셋뿐이다: 사람 전송 409 (`routes-messages.ts`), 참여 추가 409 (`routes-bots.ts`), 다음 `welcome` 의 `rooms` 에서 빠짐 (`handleHello` 의 `r.status = 'active'`). `room_bots` 행은 남으므로 봇의 `bot_message`·`history_request` 는 계속 처리된다. E2E 15단계가 «접속 유지·welcome 에서 빠짐·사람 전송 409» 를 단언한다.
+6. 보관의 효과는 넷이다: 사람 전송 409 (`routes-messages.ts`), 참여 추가 409 (`routes-bots.ts`), 다음 `welcome` 의 `rooms` 에서 빠짐 (`handleHello` 의 `r.status = 'active'`), 봇의 `bot_message`·`status` 조용히 버림 (`handleWsMessage` 의 `isActiveRoom`, t43). `room_bots` 행은 남으므로 `history_request` 는 계속 답한다 — 보관은 읽기 전용이다. E2E 15단계가 «접속 유지·welcome 에서 빠짐·사람 전송 409·봇 글 미저장» 을, `gateway.test.ts` t43 이 봇 글·상태 버림과 이력 응답을 단언한다.
 
 ## 8. 흐름 (g) — 봇 등록과 참여
 

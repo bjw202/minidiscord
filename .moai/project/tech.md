@@ -99,7 +99,6 @@
 | HTTP 평문·평문 토큰 | 서버가 TLS 를 종단하지 않고 토큰이 전선과 표에 평문이다 | 같은 PC 또는 서로 믿는 사내망에서만. 서비스화 전 t23(서버 TLS 종단) 필수 |
 | 참여 제거 = 커서 소멸 | `DELETE /api/rooms/:id/bots/:botId` 는 참여 행과 함께 `last_delivered_id` 를 지운다 | 다시 참여시키면 0 부터 시작해 그 방의 이 봇 타깃 메시지 전부가 다음 `hello` 때 재전송된다 |
 | 옛 DB 파일 | v1(방별 토큰·비밀번호) 시대의 `minidiscord.db` 는 `openDb` 가 거부한다 | 이전 경로 없음 — 파일을 지우고 봇을 다시 등록한다 |
-| 보관 방의 봇 글 | 게이트웨이는 `rooms.status` 를 welcome 목록에서만 읽어, 참여 행이 남은 보관 방에 봇 글이 저장된다 | ROADMAP OD-8 — 봇 글만 막는 후속 카드 |
 | Claude 인증 제약 | Channels 는 Bedrock/Vertex 등에서 불가, Team/Enterprise 는 관리자 활성화 필요 | 개인 계정 전제 |
 | 비저장소 `.mcp.json` | 봇 전용 `.mcp.json` 도 적재는 되나 **사람의 승인이 한 단계 더** 필요하다 (t35 실측) | 무인 접속 전제를 두지 않는다 |
 

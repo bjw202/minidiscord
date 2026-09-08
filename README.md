@@ -86,7 +86,7 @@ curl http://127.0.0.1:3000/api/health
 |---|---|---|
 | `GET /api/rooms` | 방 목록 `{ active: [...], archived: [...] }` | `200` |
 | `POST /api/rooms` | 방 만들기 (`name`) | `201` / 빈 이름 `400` |
-| `POST /api/rooms/:id/archive` | 방 보관 — 보관된 방은 봇 접속의 다음 `welcome` 방 목록에서 빠지고, 메시지 전송과 참여 추가가 `409`로 막힙니다. 봇 접속 자체는 끊기지 않아요 | `200` / 없는 방 `404` / 이미 보관됨 `409` |
+| `POST /api/rooms/:id/archive` | 방 보관 — 보관된 방은 봇 접속의 다음 `welcome` 방 목록에서 빠지고, 메시지 전송과 참여 추가가 `409`로 막힙니다. 봇이 보내는 글과 상태도 조용히 버려지고(이력 조회는 됩니다), 봇 접속 자체는 끊기지 않아요 | `200` / 없는 방 `404` / 이미 보관됨 `409` |
 | `GET /api/bots` | 등록된 봇 목록 (`id`·`name`·`description` — 토큰은 실리지 않습니다) | `200` |
 | `POST /api/bots` | 봇 등록 (`name`, `description`, `role?` = `orchestrator` 또는 `worker`, 비우면 `worker`) — 응답 `{ id, name, token, command }`에 **평문 토큰이 이 한 번만** 실립니다 | `201` / 빈 이름·모르는 role `400` / 이름 중복 `409` |
 | `POST /api/rooms/:id/bots` | 봇을 방에 참여시킵니다 (`bot_id`). 멱등이라 되풀이 불러도 같은 응답입니다 | `201 { room_id, bot_id, bot_name }` / 없는 방·없는 봇 `404` / 보관된 방 `409` |

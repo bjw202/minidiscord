@@ -84,6 +84,11 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     return db.prepare('SELECT 1 FROM room_bots WHERE room_id = ? AND bot_id = ?').get(roomId, botId) !== undefined
   }
 
+  // 보관 여부는 rooms.status 한 열이다 — welcome 목록의 r.status = 'active' 와 같은 판정 (t43)
+  function isActiveRoom(roomId: number): boolean {
+    return db.prepare("SELECT 1 FROM rooms WHERE id = ? AND status = 'active'").get(roomId) !== undefined
+  }
+
   // [HARD] 커서를 채우는 자리는 둘이다 — replayMissed(방별 마지막 id)와 deliver(배달한 그 (room_id, bot_id) 행).
   // 한쪽만 고치면 다른 쪽이 조용히 옛 방의 커서를 올린다 (위험 3). 양쪽 다 이 함수를 지난다.
   function advanceCursor(roomId: number, botId: number, lastId: number): void {
@@ -100,6 +105,9 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     // 참여하지 않은 방을 실은 프레임도 같은 자리에서 버린다 — 행·발행·응답 없이, 소켓은 열어 둔다 (A sync 감사 이월 F1, C2).
     // 이 검사가 없던 동안 봇 토큰 하나로 참여하지 않은 방에 글을 쓰고 이력을 읽을 수 있었다
     if (!isMember(roomId, info.botId)) return
+    // 보관된 방은 읽기 전용이다 — 봇 글과 상태는 사람 경로의 409 처럼 막되, 봇 쪽은 참여 검사와 같은 «조용히 버림» 이다.
+    // 이력 조회와 권한 요청은 그대로 지나간다 (t43, ROADMAP OD-8 처분 2026-09-07)
+    if ((msg.type === 'bot_message' || msg.type === 'status') && !isActiveRoom(roomId)) return
     switch (msg.type) {
       case 'bot_message': return handleBotMessage(info, roomId, msg)
       case 'status': {

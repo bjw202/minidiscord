@@ -1053,6 +1053,38 @@ describe('gateway', () => {
     await app.close()
   })
 
+  // t43 (ROADMAP OD-8) — 보관된 방은 읽기 전용이다. 참여 행이 남아 있어도 봇 글과 상태는 버리고(행·발행·응답 없이, 소켓 유지),
+  // 이력 조회는 그대로 답한다. 사람 경로의 409 와 대칭이되 봇 쪽은 참여 검사와 같은 «조용히 버림» 이다.
+  it('t43: bot_message and status to an archived room are dropped silently, while history_request still answers', async () => {
+    const { app, published, port } = await build()
+    const r1 = seedRoom('R1'), r2 = seedRoom('R2')
+    const pm = seedBot('pm')
+    joinRoom(r1, pm); joinRoom(r2, pm)
+    ins(r1, '보관 전 글')
+    const count = (r: number) => (db.prepare('SELECT COUNT(*) c FROM messages WHERE room_id=?').get(r) as { c: number }).c
+    const { ws } = await wsConnect(port, tokenOf(pm))
+    db.prepare("UPDATE rooms SET status='archived' WHERE id=?").run(r1)
+    const before1 = count(r1), before2 = count(r2)
+
+    ws.send(JSON.stringify({ type: 'bot_message', room_id: r1, body: '보관 뒤 봇 글' }))
+    ws.send(JSON.stringify({ type: 'status', room_id: r1, state: 'working' }))
+    ws.send(JSON.stringify({ type: 'bot_message', room_id: r2, body: '활성 방 봇 글' }))
+    await new Promise(r => setTimeout(r, 300))
+
+    expect(count(r1)).toBe(before1)
+    expect(count(r2)).toBe(before2 + 1)
+    expect(published.filter(p => p.roomId === r1)).toHaveLength(0)
+    expect(ws.readyState).toBe(WebSocket.OPEN)
+
+    ws.send(JSON.stringify({ type: 'history_request', room_id: r1, rid: 'archived', limit: 10 }))
+    const res = await nextMessage(ws)
+    expect(res.type).toBe('history_response')
+    expect(res.rid).toBe('archived')
+    expect(res.messages.map((m: any) => m.body)).toEqual(['보관 전 글'])
+    ws.close()
+    await app.close()
+  })
+
   // AC-GW-017 (이관) · REQ-BOTMODEL-022 — 권한 요청의 방은 접속이 아니라 프레임에서 온다
   it('relays permission_request to the handler with the room from the frame, and stops after the handler is cleared', async () => {
     const { app, gateway, port } = await build()
