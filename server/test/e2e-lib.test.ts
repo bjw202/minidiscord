@@ -27,7 +27,8 @@ describe('e2e-lib', () => {
     const t0 = performance.now()
     await expectQuiet(quiet, '조용하다')
     const elapsed = performance.now() - t0
-    expect(elapsed).toBeGreaterThanOrEqual(QUIET_MS)
+    // setTimeout 은 예약 시각보다 1 ms 남짓 일찍 깰 수 있다(실측 599.87 ms, 2026-09-08 커밋 게이트) — 5 ms 여유를 둔다
+    expect(elapsed).toBeGreaterThanOrEqual(QUIET_MS - 5)
     expect(elapsed).toBeLessThan(QUIET_MS + 200)
     errSpy.mockRestore()
   })
