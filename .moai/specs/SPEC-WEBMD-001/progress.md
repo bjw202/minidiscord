@@ -318,7 +318,7 @@ All files |       0 |        0 |       0 |       0 |          # 같은 0/0
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-09-09
-- sync_commit_sha: pending-backfill-webmd-sync (후속 커밋에서 실측 SHA 로 되돌려 씀 — 커밋은 자기 SHA 를 모른다)
+- sync_commit_sha: 4125944 (backfill — sync 커밋 `41259446b9fd36140aadc79cd795e611b8cb6f1d`, 후속 커밋에서 되돌려 씀)
 - sync_status: complete — Route A (Tier M, main 직접 단일 sync 커밋, PR 없음)
 - sync scope:
   - `CHANGELOG.md` — `[Unreleased]` 에 2026-09-09 마크다운 렌더링 항목 1건 (작성 전 `grep -c 'SPEC-WEBMD-001'` 0건 확인, 구현 파일 원문(`web/markdown.js`·`web/app.js` 렌더 지점·`web/style.css` `.md-*` 블록)을 읽고 작성)
