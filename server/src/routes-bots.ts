@@ -15,23 +15,35 @@ function channelEntry(): string {
   return fileURLToPath(new URL('../../channel/dist/index.js', import.meta.url))
 }
 
-// @MX:NOTE: [AUTO] 세션 실행 명령 안내 문자열 — 주소는 config.host 를, 채널 경로는 이 저장소의 빌드 산출물 절대 경로를 반영한다 (REQ-BOTMODEL-005)
-function registrationCommand(token: string): string {
-  const CHANNEL_ENTRY = channelEntry()
+// MCP 서버 이름은 [A-Za-z0-9_-] 만 안전하다. 봇 이름에서 그 밖의 글자를 지우고(연속 공백·기호는 - 하나), 비면 bot<id> 로 대체
+function mcpName(id: number, name: string): string {
+  const slug = name.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '')
+  return `${slug || `bot${id}`}-channel`
+}
+
+// @MX:NOTE: [AUTO] 세션 실행 명령 안내 문자열 — 권장 방법 하나만 싣는다 (REQ-BOTMODEL-005, 2026-09-08 운영자 지시):
+// 페르소나 폴더에서 봇 이름별 MCP 서버를 --scope local 로 등록하고 토큰·주소를 --env 로 박아, 다음 세션부터는 실행 한 줄이면 된다.
+// 토큰을 전역(--scope user)에 두면 다른 봇 폴더의 셸 export 를 덮은 실측이 있어 폴더 범위에만 둔다. 채널 경로는 저장소 안 빌드 산출물의 절대 경로다
+function registrationCommand(id: number, name: string, token: string): string {
+  const entry = channelEntry()
+  const mcp = mcpName(id, name)
   return [
-    '# 1회 등록 (이 PC 에서 최초 한 번만 — 저장소 뿌리에서):',
-    'npm run build -w channel',
-    'claude mcp remove minidiscord-channel -s user 2>/dev/null; \\',
-    `claude mcp add --scope user minidiscord-channel -- node ${CHANNEL_ENTRY}`,
-    'claude mcp get minidiscord-channel   # Status: ✔ Connected 여야 합니다',
+    `# ① 이 봇의 페르소나 폴더(CLAUDE.md 를 둘 곳)로 가서, 한 번만 등록합니다. 토큰이 그 폴더의 설정에 남습니다.`,
+    `#    (저장소 뿌리에서 npm run build -w channel 을 먼저 한 번 — channel/dist/index.js 가 있어야 합니다)`,
+    `cd <이 봇의 페르소나 폴더>`,
+    `claude mcp remove ${mcp} -s local 2>/dev/null; \\`,
+    `claude mcp add --scope local ${mcp} \\`,
+    `  --env MINIDISCORD_TOKEN=${token} \\`,
+    `  --env MINIDISCORD_SERVER=ws://${config.host}:${config.port}/bot \\`,
+    `  -- node ${entry}`,
+    `claude mcp get ${mcp}   # Status: ✔ Connected 여야 합니다`,
     '',
-    '# 세션 실행 (원하는 페르소나 디렉터리에서):',
-    `export MINIDISCORD_TOKEN=${token}`,
-    `export MINIDISCORD_SERVER=ws://${config.host}:${config.port}/bot`,
-    'claude --dangerously-load-development-channels server:minidiscord-channel',
+    `# ② 이후 이 폴더에서 세션을 띄울 때마다 — 토큰을 다시 넣을 필요가 없습니다:`,
+    `claude --dangerously-load-development-channels server:${mcp}`,
     '',
-    '# 그다음 — 세션이 붙어도 방에 참여시키기 전에는 그 방에 보이지 않습니다:',
-    '#   웹 화면에서 방 머리의 «봇 참여» 버튼으로 이 봇을 방에 넣고, @TO(봇이름) 으로 부르세요.',
+    `# ③ 세션이 붙어도 방에 참여시키기 전에는 그 방에 보이지 않습니다:`,
+    `#    웹 화면에서 방 머리의 «봇 참여» 버튼으로 이 봇을 방에 넣고, @TO(${name}) 으로 부르세요.`,
+    `#    페르소나 폴더의 CLAUDE.md 첫 줄에 «너는 이 방에서 ${name} 이라는 봇이다» 를 적어 두면 세션이 제 이름을 압니다.`,
   ].join('\n')
 }
 
@@ -44,7 +56,7 @@ export function registerBotRoutes(app: FastifyInstance): void {
   })
 
   // 등록 — 평문 토큰은 이 응답에 한 번만 실린다. role 은 orchestrator|worker 둘뿐이고 비우면 worker 다 —
-  // 게이트웨이의 역할 필터(worker 는 orchestrator 만 부른다)가 이 두 값만 안다 (v2 B, 결정 ③)
+  // 기록용 이름표다 (게이트웨이의 역할 필터는 2026-09-08 삭제)
   app.post('/api/bots', { preHandler: [requireAuth] }, async (req, reply) => {
     const { name, description, role } = req.body as { name?: string; description?: string; role?: string }
     if (!name?.trim()) return reply.code(400).send({ error: '봇 이름이 필요합니다' })
@@ -56,7 +68,7 @@ export function registerBotRoutes(app: FastifyInstance): void {
     try {
       const r = req.server.db.prepare('INSERT INTO bots (name, description, token, role) VALUES (?, ?, ?, ?)')
         .run(name.trim(), description ?? '', token, storedRole)
-      return reply.code(201).send({ id: r.lastInsertRowid as number, name: name.trim(), token, command: registrationCommand(token) })
+      return reply.code(201).send({ id: r.lastInsertRowid as number, name: name.trim(), token, command: registrationCommand(r.lastInsertRowid as number, name.trim(), token) })
     } catch {
       // @MX:NOTE: [AUTO] UNIQUE 위반을 포함한 DB 오류를 전부 409 로 바꾼다 — 이름 UNIQUE 밖의 제약(토큰 UNIQUE)은 32바이트 난수라 실질적으로 닿지 않는다
       return reply.code(409).send({ error: '이미 있는 봇 이름입니다' })

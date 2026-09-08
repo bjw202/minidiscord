@@ -143,6 +143,15 @@ describe('rooms', () => {
 })
 
 describe('bots', () => {
+
+  // MCP 서버 이름은 [A-Za-z0-9_-] 만 안전하다 — 한글 등은 지우고, 비면 bot<id> 로 대체한다
+  it('registration command uses a safe MCP name: latin names keep their letters, others fall back to bot<id>', async () => {
+    const { app, cookie } = await build()
+    const ko = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: '연구원' } })).json()
+    expect(ko.command).toContain(`server:bot${ko.id}-channel`)
+    const mixed = (await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'PM 봇 2' } })).json()
+    expect(mixed.command).toContain('server:PM-2-channel')
+  })
   // AC-BOTMODEL-011 — POST /api/bots 응답 네 키, 토큰은 이 응답에 한 번만 (REQ-BOTMODEL-004·005)
   it('AC-011: registration answers 201 {id, name, token, command}; the token matches bots.token and never shows again', async () => {
     const { config } = await import('../src/config.js')
@@ -156,24 +165,24 @@ describe('bots', () => {
     const row = db.prepare('SELECT token, role FROM bots WHERE id=?').get(body.id) as { token: string; role: string }
     expect(row.token).toBe(body.token)
     expect(row.role).toBe('worker')
-    // command 는 inviteCommand 문안 그대로이고 주소의 host 가 config.host 를 반영한다
-    expect(body.command).toContain(`export MINIDISCORD_TOKEN=${body.token}`)
-    expect(body.command).toContain(`export MINIDISCORD_SERVER=ws://${config.host}:${config.port}/bot`)
-    expect(body.command).toContain('--dangerously-load-development-channels')
-    expect(body.command).toContain('claude mcp add --scope user minidiscord-channel')
-    // 안내 첫 토막은 PATH 의 전역 명령이 아니라 저장소 안 빌드 산출물의 절대 경로를 등록한다 — 다른 PC 에서
-    // «minidiscord-channel not found» 와 «옛 경로 항목이 남아 add 가 무시됨» 을 되풀이하지 않기 위해
-    // (2026-09-08 맥북 실측). 빌드·기존 항목 제거·연결 확인 명령이 함께 실린다
+    // 안내문은 «권장 방법» 하나다 (2026-09-08 운영자 지시): 페르소나 폴더에서 봇 이름별 MCP 서버를 --scope local 로,
+    // 토큰과 주소는 --env 로 박아 두어 다음 세션부터는 실행 명령 한 줄이면 된다. 채널 경로는 저장소 안 빌드 산출물의
+    // 절대 경로 — PATH 의 전역 명령(minidiscord-channel)이나 셸 export 에 기대지 않는다 (맥북 첫 설치 실측)
     const { fileURLToPath } = await import('node:url')
     const entry = fileURLToPath(new URL('../../channel/dist/index.js', import.meta.url))
-    expect(body.command).toContain(`-- node ${entry}`)
     expect(entry.startsWith('/')).toBe(true)
-    expect(body.command).not.toContain('-- minidiscord-channel')
+    expect(body.command).toContain('claude mcp add --scope local b1-channel')
+    expect(body.command).toContain(`--env MINIDISCORD_TOKEN=${body.token}`)
+    expect(body.command).toContain(`--env MINIDISCORD_SERVER=ws://${config.host}:${config.port}/bot`)
+    expect(body.command).toContain(`-- node ${entry}`)
+    expect(body.command).toContain('claude mcp remove b1-channel -s local')
+    expect(body.command).toContain('claude mcp get b1-channel')
+    expect(body.command).toContain('claude --dangerously-load-development-channels server:b1-channel')
     expect(body.command).toContain('npm run build -w channel')
-    expect(body.command).toContain('claude mcp remove minidiscord-channel')
-    expect(body.command).toContain('claude mcp get minidiscord-channel')
-    // 안내문 끝에 «방 참여» 단계가 있다 — 세션이 붙어도 참여 전에는 방에 보이지 않는다 (2026-09-08 bob 실측)
     expect(body.command).toContain('봇 참여')
+    expect(body.command).not.toContain('export MINIDISCORD_TOKEN')
+    expect(body.command).not.toContain('-- minidiscord-channel')
+    expect(body.command).not.toContain('--scope user')
     // 같은 이름으로 다시 부르면 409
     const dup = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'b1' } })
     expect(dup.statusCode).toBe(409)

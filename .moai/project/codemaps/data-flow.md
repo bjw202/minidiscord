@@ -145,6 +145,6 @@ sequenceDiagram
 ## 8. 흐름 (g) — 봇 등록과 참여
 
 1. `POST /api/bots {name, description?, role?}` — `role` 은 `orchestrator`|`worker` 만 (비우면 `worker`). 웹 폼은 `role` 을 보내지 않으므로 웹에서 등록한 봇은 전부 `worker` 다 (`web/app.js createBot`).
-2. `randomBytes(32).toString('hex')` 토큰을 `bots.token` 에 **평문으로** 저장하고 응답 `{id, name, token, command}` 에 **한 번만** 싣는다. 이후 어떤 조회 응답(`GET /api/bots`, 참여 목록)에도 토큰은 없다. `command` 는 `claude mcp add …` + `export MINIDISCORD_TOKEN/SERVER` + `claude --dangerously-load-development-channels …` 세 토막이며, 웹의 봇 다이얼로그가 `명령 복사` 버튼과 함께 보여 주고 닫힐 때 DOM 에서 지운다.
+2. `randomBytes(32).toString('hex')` 토큰을 `bots.token` 에 **평문으로** 저장하고 응답 `{id, name, token, command}` 에 **한 번만** 싣는다. 이후 어떤 조회 응답(`GET /api/bots`, 참여 목록)에도 토큰은 없다. `command` 는 «페르소나 폴더에서 `claude mcp add --scope local <봇이름>-channel --env MINIDISCORD_TOKEN/SERVER -- node <저장소>/channel/dist/index.js`» + `claude --dangerously-load-development-channels server:<봇이름>-channel` + «방 참여» 안내의 세 토막(2026-09-08 권장 방법)이며, 웹의 봇 다이얼로그가 `명령 복사` 버튼과 함께 보여 주고 닫힐 때 DOM 에서 지운다.
 3. `POST /api/rooms/:id/bots {bot_id}` — `INSERT OR IGNORE INTO room_bots`. 토큰은 오가지 않는다. 같은 봇을 여러 방에 참여시켜도 접속은 하나이고, `welcome.rooms` 와 프레임의 `room_id` 가 방을 가른다.
 4. `DELETE /api/rooms/:id/bots/:botId` — 그 방의 참여 행만 지운다. 커서(`last_delivered_id`)도 함께 사라지므로 다시 참여시키면 0 부터 시작한다 — 즉 그 방의 이 봇 타깃 메시지 전부가 다음 `hello` 때 재전송된다.
