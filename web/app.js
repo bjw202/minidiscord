@@ -109,7 +109,32 @@ export function renderBots() {
     const item = document.createElement('li')
     item.className = 'bot-item'
     item.textContent = bot.name
+    // 삭제 버튼 — 방 목록의 보관 버튼과 같은 모양·자리. 확인 창을 거쳐 deleteBot 으로 (2026-09-08)
+    const delBtn = document.createElement('button')
+    delBtn.type = 'button'
+    delBtn.className = 'delete-bot-btn'
+    delBtn.textContent = '삭제'
+    delBtn.title = '봇 삭제 — 모든 방의 참여가 함께 지워지고 세션 접속이 끊깁니다'
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      if (window.confirm(`봇 «${bot.name}» 을(를) 지울까요?\n모든 방의 참여가 함께 지워지고, 붙어 있는 세션은 끊깁니다. 옛 글은 남습니다.`)) deleteBot(bot.id)
+    })
+    item.appendChild(delBtn)
     botList.appendChild(item)
+  }
+}
+
+// 봇 삭제 — DELETE 뒤 목록을 다시 적재하고, 열린 방이 있으면 참여 칩도 다시 그린다 (2026-09-08)
+export async function deleteBot(id) {
+  try {
+    await api(`/api/bots/${id}`, { method: 'DELETE' })
+  } catch (err) {
+    toastError(err)
+    return
+  }
+  await loadBots()
+  if (state.currentRoomId !== null && typeof refreshRoomBots === 'function') {
+    try { await refreshRoomBots() } catch { /* 참여 칩 갱신 실패는 목록 갱신을 막지 않는다 */ }
   }
 }
 

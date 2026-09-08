@@ -170,7 +170,7 @@ function displayName(
   }
   if (m.author_type === 'bot') {
     const b = db.prepare('SELECT name FROM bots WHERE id = ?').get(m.author_bot_id) as { name: string } | undefined
-    return b?.name ?? '봇'
+    return b?.name ?? '(삭제된 봇)'
   }
   return '시스템'
 }

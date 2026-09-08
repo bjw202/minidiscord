@@ -320,6 +320,26 @@ describe('AC-WEBSHELL-011 room create/archive', () => {
 })
 
 describe('AC-WEBSHELL-012 bots', () => {
+
+  it('renders a delete button per bot and deleteBot calls DELETE then reloads the list', async () => {
+    const app = await loadApp()
+    app.state.bots = [{ id: 1, name: 'pm', description: '' }]
+    app.renderBots()
+    const item = document.getElementById('bot-list')!.children[0]
+    expect(item.textContent).toContain('pm')
+    const btn = item.querySelector('button.delete-bot-btn') as HTMLButtonElement
+    expect(btn).toBeTruthy()
+
+    const calls = stubFetch({
+      'DELETE /api/bots/1': { status: 200, body: { ok: true } },
+      'GET /api/bots': { status: 200, body: [] },
+    })
+    await app.deleteBot(1)
+    expect(calls[0].path).toBe('/api/bots/1')
+    expect(calls[0].opts.method).toBe('DELETE')
+    expect(calls[1].path).toBe('/api/bots')
+    expect(document.getElementById('bot-list')!.children).toHaveLength(0)
+  })
   it('renders bots and registers a new one', async () => {
     const app = await loadApp()
     app.state.bots = [{ id: 1, name: 'pm', description: '' }, { id: 2, name: '코드리뷰어', description: '리뷰' }]

@@ -27,6 +27,8 @@ export interface Gateway {
   closeRoom(roomId: number): void
   // 판정 근거는 접속의 존재다 — 방과 무관하다 (REQ-BOTMODEL-019)
   isOnline(botId: number): boolean
+  // 봇 삭제 — 그 봇의 소켓 전부를 닫는다 (토큰이 사라졌으니 재접속은 hello 에서 거절된다). 2026-09-08
+  dropBot(botId: number): void
   // 판정을 «요청한 접속 하나» 에게만 되돌리는 통로 (REQ-PERMROUTE-004)
   sendToOrigin(connId: string, payload: object): boolean
   setPermissionHandler(fn: ((info: ConnInfo, params: any) => void) | null): void
@@ -67,6 +69,11 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
   function dropConn(ws: WebSocket): void {
     conns.delete(ws)
     ws.close()
+  }
+
+  // 봇 삭제 뒤 호출 — 접속 맵을 돌며 그 봇의 소켓만 닫는다. 다른 봇의 접속은 건드리지 않는다
+  function dropBot(botId: number): void {
+    for (const [ws, info] of [...conns]) if (info.botId === botId) dropConn(ws)
   }
 
   function send(ws: WebSocket, payload: object): void {
@@ -186,7 +193,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     }
     if (m.author_type === 'bot') {
       const b = db.prepare('SELECT name FROM bots WHERE id = ?').get(m.author_bot_id) as any
-      return b?.name ?? '봇'
+      return b?.name ?? '(삭제된 봇)'
     }
     return '시스템'
   }
@@ -299,6 +306,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       for (const c of conns.values()) if (c.botId === botId) return true
       return false
     },
+    dropBot,
     // REQ-PERMROUTE-004 — «그 connId 를 가진 살아 있는 접속 하나» 에게만 보낸다. 다른 어떤 접속에도 보내지 않는다
     sendToOrigin(connId, payload) {
       for (const [ws, c] of conns) if (c.connId === connId) { send(ws, payload); return true }

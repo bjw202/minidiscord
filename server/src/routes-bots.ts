@@ -102,6 +102,26 @@ export function registerBotRoutes(app: FastifyInstance): void {
     return rows.map(r => ({ ...r, online: (req.server as { gateway?: Gateway }).gateway?.isOnline(r.bot_id) ?? false }))
   })
 
+  // 봇 삭제 — 완전 삭제 (2026-09-08 운영자 결정). 봇 행·모든 방의 참여·message_targets 를 한 트랜잭션에 지우고,
+  // 붙어 있던 소켓은 게이트웨이가 끊는다. 옛 글(messages.author_bot_id)은 남기되 작성자는 «(삭제된 봇)» 으로 보인다.
+  // 이름은 UNIQUE 라 지우면 바로 다시 쓸 수 있다. 토큰 재발급 API 는 없으므로 «지우고 다시 등록» 이 그 자리다
+  app.delete('/api/bots/:id', { preHandler: [requireAuth] }, async (req, reply) => {
+    const id = Number((req.params as { id: string }).id)
+    const db = req.server.db
+    const bot = Number.isInteger(id) ? db.prepare('SELECT id FROM bots WHERE id = ?').get(id) as { id: number } | undefined : undefined
+    if (!bot) return reply.code(404).send({ error: '봇을 찾을 수 없습니다' })
+    db.transaction(() => {
+      // 외래키가 켜져 있다(better-sqlite3 기본) — 옛 글은 남기고 작성자 참조만 푼다. author_type 은 'bot' 그대로라 «(삭제된 봇)» 으로 보인다
+      db.prepare('UPDATE messages SET author_bot_id = NULL WHERE author_bot_id = ?').run(id)
+      db.prepare('DELETE FROM message_targets WHERE bot_id = ?').run(id)
+      db.prepare('DELETE FROM room_bots WHERE bot_id = ?').run(id)
+      db.prepare('DELETE FROM bots WHERE id = ?').run(id)
+    })()
+    // 커밋 뒤에 끊는다 — 소켓이 재접속해도 토큰이 이미 없다
+    ;(req.server as { gateway?: Gateway }).gateway?.dropBot(id)
+    return { ok: true }
+  })
+
   // 참여 제거 — 그 방의 그 봇 행만. 다른 방의 같은 봇 참여는 남는다. 멱등이다 (REQ-BOTMODEL-008)
   app.delete('/api/rooms/:id/bots/:botId', { preHandler: [requireAuth] }, async req => {
     const { id, botId } = req.params as { id: string; botId: string }

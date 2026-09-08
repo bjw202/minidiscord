@@ -30,14 +30,16 @@ function setCookieOf(res: { headers: { 'set-cookie'?: string | string[] } }): st
 
 // 로그인까지 마친 { app, cookie } 를 돌려준다. online 판정은 게이트웨이 스텁으로 가짜 접속을 건다 —
 // 이 파일은 소켓을 열지 않는다 (실제 접속의 online 은 gateway.test.ts AC-018 이 잰다)
-async function build(opts?: { onArchive?: (roomId: number) => void; online?: Set<number> }) {
+async function build(opts?: { onArchive?: (roomId: number) => void; online?: Set<number>; gateway?: Partial<Gateway> }) {
   const app = Fastify()
   app.db = db
   await app.register(cookie)
   registerAuthRoutes(app, db)
   registerRoomRoutes(app, opts?.onArchive ? { onArchive: opts.onArchive } : undefined)
   registerBotRoutes(app)
-  if (opts?.online) {
+  if (opts?.gateway) {
+    app.decorate('gateway', opts.gateway as unknown as Gateway)
+  } else if (opts?.online) {
     const online = opts.online
     app.decorate('gateway', { isOnline: (botId: number) => online.has(botId) } as unknown as Gateway)
   }
@@ -134,6 +136,7 @@ describe('rooms', () => {
       ['POST', '/api/rooms/1/bots'],
       ['GET', '/api/rooms/1/bots'],
       ['DELETE', '/api/rooms/1/bots/1'],
+      ['DELETE', '/api/bots/1'],
     ]
     for (const [method, url] of calls) {
       const res = await app.inject({ method: method as any, url, payload: {} })
@@ -143,6 +146,35 @@ describe('rooms', () => {
 })
 
 describe('bots', () => {
+
+  // 2026-09-08 운영자 결정 — 완전 삭제. 봇 행·모든 방의 참여·message_targets 를 한 트랜잭션에 지우고, 이름은 다시 쓸 수 있다.
+  // 옛 글은 남되 작성자는 «(삭제된 봇)» 으로 보인다. 붙어 있던 소켓은 게이트웨이 dropBot 이 끊는다 (gateway.test.ts)
+  it('DELETE /api/bots/:id removes the bot, its participations and targets, frees the name, and 404s afterwards', async () => {
+    const dropped: number[] = []
+    const { app, cookie } = await build({ gateway: { isOnline: () => false, dropBot: (id: number) => { dropped.push(id) } } })
+    const room = await makeRoom(app, cookie)
+    const bot = await makeBot(app, cookie, 'temp')
+    await app.inject({ method: 'POST', url: `/api/rooms/${room.id}/bots`, headers: { cookie }, payload: { bot_id: bot.id } })
+    const msg = db.prepare("INSERT INTO messages (room_id, author_type, author_bot_id, body) VALUES (?, 'bot', ?, '남는 글')").run(room.id, bot.id)
+    db.prepare("INSERT INTO message_targets (message_id, bot_id, delivery) VALUES (?, ?, 'to')").run(msg.lastInsertRowid, bot.id)
+
+    const res = await app.inject({ method: 'DELETE', url: `/api/bots/${bot.id}`, headers: { cookie } })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ ok: true })
+    expect(dropped).toEqual([bot.id])
+    expect(db.prepare('SELECT COUNT(*) c FROM bots WHERE id=?').get(bot.id)).toEqual({ c: 0 })
+    expect(db.prepare('SELECT COUNT(*) c FROM room_bots WHERE bot_id=?').get(bot.id)).toEqual({ c: 0 })
+    expect(db.prepare('SELECT COUNT(*) c FROM message_targets WHERE bot_id=?').get(bot.id)).toEqual({ c: 0 })
+    // 글은 남는다
+    expect(db.prepare('SELECT COUNT(*) c FROM messages WHERE id=?').get(msg.lastInsertRowid)).toEqual({ c: 1 })
+    expect(db.prepare('SELECT author_type t, author_bot_id b FROM messages WHERE id=?').get(msg.lastInsertRowid)).toEqual({ t: 'bot', b: null })
+    // 이름은 다시 쓸 수 있다
+    const again = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'temp' } })
+    expect(again.statusCode).toBe(201)
+    // 없는 봇·정수 아닌 id 는 404
+    expect((await app.inject({ method: 'DELETE', url: `/api/bots/${bot.id}`, headers: { cookie } })).statusCode).toBe(404)
+    expect((await app.inject({ method: 'DELETE', url: '/api/bots/abc', headers: { cookie } })).statusCode).toBe(404)
+  })
 
   // MCP 서버 이름은 [A-Za-z0-9_-] 만 안전하다 — 한글 등은 지우고, 비면 bot<id> 로 대체한다
   it('registration command uses a safe MCP name: latin names keep their letters, others fall back to bot<id>', async () => {

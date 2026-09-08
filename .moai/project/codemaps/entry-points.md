@@ -79,6 +79,7 @@ CI(`.github/workflows/ci.yml`)는 `npm ci` → `typecheck -w server` → `typech
 | POST | `/api/rooms/:id/bots` | routes-bots.ts | requireAuth | 참여 추가 `{bot_id}`. 방 없음 404, 보관 409, 봇 없음 404, 멱등(`INSERT OR IGNORE`) → 201 `{room_id, bot_id, bot_name}` |
 | GET | `/api/rooms/:id/bots` | routes-bots.ts | requireAuth | 참여 목록 `[{bot_id, bot_name, online}]` — `online` 은 봇 단위(방 무관) |
 | DELETE | `/api/rooms/:id/bots/:botId` | routes-bots.ts | requireAuth | 참여 제거, 멱등. 다른 방의 같은 봇 참여는 남는다 |
+| DELETE | `/api/bots/:id` | routes-bots.ts | requireAuth | 봇 완전 삭제(2026-09-08). 한 트랜잭션: `messages.author_bot_id` NULL(외래키) → `message_targets`·`room_bots`·`bots` 삭제 → 커밋 뒤 `gateway.dropBot(id)` 로 그 봇의 소켓 전부 close. 없는 봇·정수 아닌 id 404 |
 | POST | `/api/rooms/:id/messages` | routes-messages.ts | requireAuth | multipart 전송. 방 404/보관 409 → 파일 저장 → 권한 회신 가로채기 → 빈 전송 400 → `resolveTargets`(미참여 이름 있으면 400) → 저장 → SSE + 게이트웨이 팬아웃 |
 | GET | `/api/rooms/:id/messages` | routes-messages.ts | requireAuth | `?after=<id>` 커서, 오름차순, LIMIT 200. 방을 조회하지 않으므로 없는 방은 빈 배열 |
 | GET | `/api/attachments/:id` | routes-messages.ts | requireAuth | 다운로드 (기록된 mime, RFC 5987 `filename*`, 경로 봉인·파일 부재 404) |

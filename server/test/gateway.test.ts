@@ -871,6 +871,38 @@ describe('gateway', () => {
   })
 
   // AC-BOTMODEL-018 — isOnline(botId) 는 접속의 존재로 판정한다 — 방과 무관하다 (REQ-019)
+  // 2026-09-08 봇 삭제 — dropBot(botId) 은 그 봇의 소켓 전부를 닫고 다른 봇은 두며, 지워진 토큰의 재접속은 무응답 close 다
+  it('dropBot closes every connection of that bot only; a hello with the deleted token is refused', async () => {
+    const { app, gateway, port } = await build()
+    const room = seedRoom()
+    const a = seedBot('a'), b = seedBot('b')
+    joinRoom(room, a); joinRoom(room, b)
+    const a1 = (await wsConnect(port, tokenOf(a))).ws
+    const a2 = (await wsConnect(port, tokenOf(a))).ws
+    const b1 = (await wsConnect(port, tokenOf(b))).ws
+    const tokenA = tokenOf(a)
+    db.prepare('DELETE FROM room_bots WHERE bot_id=?').run(a)   // 외래키가 켜져 있어 참여 행부터
+    db.prepare('DELETE FROM bots WHERE id=?').run(a)
+    // close 리스너는 dropBot 전에 붙인다 — 하나를 기다리는 사이 다른 소켓이 먼저 닫히면 늦게 붙인 리스너는 영원히 기다린다
+    const closedA1 = closedPromise(a1), closedA2 = closedPromise(a2)
+    gateway.dropBot(a)
+    await closedA1; await closedA2
+    expect(a1.readyState).toBe(WebSocket.CLOSED)
+    expect(a2.readyState).toBe(WebSocket.CLOSED)
+    expect(b1.readyState).toBe(WebSocket.OPEN)
+    expect(gateway.isOnline(a)).toBe(false)
+    expect(gateway.isOnline(b)).toBe(true)
+    const again = new WebSocket(`ws://127.0.0.1:${port}/bot`)
+    let frames = 0
+    const closedAgain = closedPromise(again)
+    again.on('open', () => again.send(JSON.stringify({ type: 'hello', token: tokenA })))
+    again.on('message', () => { frames++ })
+    await closedAgain
+    expect(frames).toBe(0)
+    b1.close()
+    await app.close()
+  })
+
   it('AC-018: isOnline is per bot — both rooms report online with one connection, and offline right after it closes', async () => {
     const { app, gateway, port } = await build()
     const r1 = seedRoom('R1'), r2 = seedRoom('R2')
