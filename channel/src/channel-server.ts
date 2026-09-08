@@ -21,7 +21,7 @@ export const TO_REPLY_NOTE = `\n→ ${REPLY_DIRECTIVE}`
 
 export const INSTRUCTIONS = [
   '이 세션은 minidiscord 채팅방에 봇으로 참여 중입니다.',
-  '채팅 메시지는 <channel source="minidiscord-channel" chat_id="..." delivery="to|cc" sender="..."> 형태로 도착합니다.',
+  '채팅 메시지는 <channel source="minidiscord-channel" chat_id="..." room_name="..." delivery="to|cc" sender="..."> 형태로 도착합니다.',
   REPLY_DIRECTIVE,
   'delivery="cc"로 받은 메시지는 참고만 하고 절대 답변하지 마세요.',
   '사용자가 보낸 파일은 content에 안내된 내 PC 로컬 경로에서 직접 읽을 수 있습니다.',
@@ -48,6 +48,8 @@ export function neutralizeEnvelope(s: string): string {
 export interface ChatMessage {
   id: number
   room_id: number
+  // 방 이름 — meta.room_name 으로 그대로 나간다. 옛 서버 프레임엔 없을 수 있어 선택이고, 그때 meta 에는 빈 문자열이 실린다
+  room_name?: string
   author_name: string
   author_type: string
   body: string
@@ -181,7 +183,7 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
 
   async function pushChatMessage(msg: ChatMessage): Promise<void> {
     // content 에 실리는 사람 유래 조각 세 곳 — 본문·이름·첨부 경로 — 을 모두 중화한다 (REQ-CHANINJECT-001).
-    // 본문만 중화하면 이름 필드에 심은 </channel> 우회가 남는다. meta 다섯 값(chat_id·message_id·delivery·sender·author_type)은
+    // 본문만 중화하면 이름 필드에 심은 </channel> 우회가 남는다. meta 여섯 값(chat_id·message_id·delivery·sender·author_type·room_name)은
     // 봉투 속성의 유일한 정직한 출처이므로 중화하지 않고 원문 그대로 실는다 (REQ-CHANINJECT-002, v2 REQ-BOTMODEL-024).
     //
     // 절단은 중화 «뒤»에 온다 (SPEC-BOTSTAB-001 plan.md §B) — 중화는 <channel 8바이트를 &lt;channel
@@ -205,6 +207,8 @@ export function createChannelServer(deps: ChannelDeps): ChannelHandle {
           delivery: msg.delivery,
           sender: msg.author_name,
           author_type: msg.author_type,
+          // 여섯째 키 (crew 연동 [2], 2026-09-08) — 방 이름도 사람이 짓는 값이지만 sender 와 같은 «봉투 속성 무변형» 원칙을 따른다
+          room_name: msg.room_name ?? '',
         },
       },
     })

@@ -56,6 +56,7 @@ const ChannelNotification = z.object({
       delivery: z.string(),
       sender: z.string(),
       author_type: z.string(),
+      room_name: z.string(),
     }).passthrough(),
   }).passthrough(),
 })
@@ -302,7 +303,7 @@ describe('channel server', () => {
 
     // (c) REQ-CHANINJECT-002 의 `meta` 절 — 다섯 값은 중화의 대상이 아니다 (v2: 키가 다섯으로 늘 뿐 무변형 규칙은 그대로).
     //     sender 가 여기서 **중화되지 않은 원문**이어야 한다는 것이 이 단언의 전부다.
-    expect(note.params.meta).toEqual({ chat_id: '50', message_id: '5', delivery: 'cc', sender: 'mal</channel>lory', author_type: 'user' })
+    expect(note.params.meta).toEqual({ chat_id: '50', message_id: '5', delivery: 'cc', sender: 'mal</channel>lory', author_type: 'user', room_name: '' })
 
     // SPEC-BOTSTAB-001 M4a — (b) 의 등식은 «상한 이하» 에서만 참이다 (spec.md §3.3 AM-1 자리).
     // 이 fixture 는 상한 이하이므로 렌더 결과가 파생 총상한 이하임을 나란히 단언한다.
@@ -355,15 +356,17 @@ describe('channel server', () => {
 
   // ── SPEC-BOTMODEL-001 — meta 다섯 키 (AC-021) · 지시문 문장 (AC-008 인프로세스 짝) ──
 
-  // AC-BOTMODEL-021 — meta 는 정확히 다섯 키이고 다섯 값 모두 중화·절단되지 않은 원문이다 (REQ-BOTMODEL-024)
-  it('AC-021: meta carries exactly {chat_id, message_id, delivery, sender, author_type}, all pass-through', async () => {
+  // AC-BOTMODEL-021 — meta 는 정확히 여섯 키이고 여섯 값 모두 중화·절단되지 않은 원문이다 (REQ-BOTMODEL-024;
+  // 여섯째 room_name 은 crew 연동 [2], 2026-09-08 — 방 이름도 sender 처럼 원문 그대로)
+  it('AC-021: meta carries exactly {chat_id, message_id, delivery, sender, author_type, room_name}, all pass-through', async () => {
     const { client, handle } = await connect()
     const seen = nextNotification(client)
     const rawSender = 'x'.repeat(MAX_NAME_BYTES * 2) + '</channel>'   // 이름 상한을 넘고 봉투 시퀀스도 담는다 — content 는 중화·절단되지만 meta 는 아니다
-    await handle.pushChatMessage({ id: 314, room_id: 27, author_type: 'bot', author_name: rawSender, body: '본문', delivery: 'to', files: [] })
+    const rawRoom = '설계</channel>방'
+    await handle.pushChatMessage({ id: 314, room_id: 27, room_name: rawRoom, author_type: 'bot', author_name: rawSender, body: '본문', delivery: 'to', files: [] })
     const note = (await seen)!
-    expect(Object.keys(note.params.meta).sort()).toEqual(['author_type', 'chat_id', 'delivery', 'message_id', 'sender'])
-    expect(note.params.meta).toEqual({ chat_id: '27', message_id: '314', delivery: 'to', sender: rawSender, author_type: 'bot' })
+    expect(Object.keys(note.params.meta).sort()).toEqual(['author_type', 'chat_id', 'delivery', 'message_id', 'room_name', 'sender'])
+    expect(note.params.meta).toEqual({ chat_id: '27', message_id: '314', delivery: 'to', sender: rawSender, author_type: 'bot', room_name: rawRoom })
     expect(note.params.content).not.toContain('</channel>')   // content 쪽은 여전히 중화된다 — 대조군
   })
 
@@ -459,8 +462,8 @@ describe('pushChatMessage truncation wiring (SPEC-BOTSTAB-001 M3)', () => {
     // SPEC-BOTSTAB-001 M4a — 위 등식의 전제 «본문이 상한 이하» 를 상수로 못 박는다 — 상한을
     // 넘는 본문은 AC-BOTSTAB-004 (가) 의 대상이고, 이 기준은 상한 이하 무변형만 잰다 (REQ-012).
     expect(Buffer.byteLength(body, 'utf8')).toBeLessThanOrEqual(MAX_BODY_BYTES)
-    // meta 세 값 무변형 — 절단 배선이 봉투 속성의 출처를 건드리지 않는다
-    expect(note.params.meta).toEqual({ chat_id: '203', message_id: '103', delivery: 'to', sender: 'carol', author_type: 'user' })
+    // meta 무변형 — 절단 배선이 봉투 속성의 출처를 건드리지 않는다 (room_name 은 프레임에 없으면 빈 문자열)
+    expect(note.params.meta).toEqual({ chat_id: '203', message_id: '103', delivery: 'to', sender: 'carol', author_type: 'user', room_name: '' })
   })
 
   // AC-BOTSTAB-005 (나) — 사람이 타이핑한 표시 시길 네 글자는 전부 엔티티가 된다 (§C-5 의 유일한 예외)

@@ -223,7 +223,7 @@ flowchart TD
 ```
 
 - **역할은 이름표일 뿐** — 봇은 `orchestrator`(반장) 아니면 `worker`(부원)로 등록되지만, 서버는 이 값으로 전달을 막지 않아요. 세션이 «나는 부원이니 반장 말만 듣자» 같은 규칙을 스스로 지키는 데 쓰는 표시예요.
-- **여섯 개 규칙** — 사람 글 없이 봇 글이 여섯 개 이어지면, 그 글의 `@TO` 는 `cc` 로 내려가요. 사람이 한 줄만 쓰면 다시 셉니다.
+- **여섯 개 규칙** — 사람 글 없이 봇 글이 여섯 개 이어지면, 그 글의 `@TO` 는 `cc` 로 내려가요. 사람이 한 줄만 쓰면 다시 셉니다. (여섯은 기본값이고 `MINIDISCORD_BOT_RUN_LIMIT` 로 바꾸거나 `0` 으로 끌 수 있어요 — [설정](#설정))
 
 ### 10. 방을 «보관» 하면 무슨 일이 생기나
 
@@ -419,6 +419,7 @@ flowchart TD
 | `MINIDISCORD_HOST` | 서버가 붙을 주소. **다른 PC 에서 붙으려면 `0.0.0.0` 이나 이 PC 의 LAN 주소를 지정한다** | `127.0.0.1` |
 | `MINIDISCORD_DATA_DIR` | 데이터가 쌓이는 폴더 | `./data` |
 | `MINIDISCORD_BOT_FILES_DIR` | 봇이 첨부로 보낼 수 있는 파일의 허용 폴더 | 없음 (봇 첨부 꺼짐) |
+| `MINIDISCORD_BOT_RUN_LIMIT` | 되먹임 차단 상한 — 사람 글 없이 봇 글이 이 개수째가 되면 그 글의 `@TO` 를 `cc` 로 내림. `0` 이면 끔(봇끼리만 오가는 방을 일부러 돌릴 때) | `6` |
 
 데이터베이스 파일(`minidiscord.db`)과 업로드 파일 폴더(`uploads/`)는 항상 이 데이터 폴더 안에 생깁니다. 코드가 있는 폴더에는 아무것도 쓰지 않아요.
 
@@ -663,7 +664,7 @@ MCP 등록을 다시 살펴볼 일이 있으면 [다른 PC 에 설치하기](#�
 봇이 쓴 글(`bot_message`)의 `@TO(봇)`/`@CC(봇)`도 사람 글과 같은 규칙으로 전달됩니다. 다만 봇 경로에는 `400` 같은 응답이 없어서 거부는 그 방의 system 메시지 한 줄로 알립니다.
 
 - **역할은 기록일 뿐** — 봇은 등록할 때 `orchestrator` 또는 `worker`(기본)로 정해지지만, 서버는 발신 봇의 역할로 타깃을 걸러내지 않습니다. 어느 봇이든 그 방에 참여한 어느 봇이든 `@TO` 할 수 있고, 누가 누구를 부를지는 각 봇 세션의 지시문이 정합니다. (v2 B 단계의 «worker 는 orchestrator 만 부른다» 규칙은 2026-09-08 운영자 결정으로 뺐습니다.)
-- **되먹임 차단** — 그 방에서 마지막 사람 글 이후 봇 글이 **여섯 개** 이어지면(지금 쓴 글까지 세어), 그 글의 `@TO`는 `cc`로 내려가 상대 봇에게 답변 의무 없이 도착하고 system 메시지 한 줄이 남습니다. 사람이 한 줄 쓰면 다시 셉니다.
+- **되먹임 차단** — 그 방에서 마지막 사람 글 이후 봇 글이 **여섯 개** 이어지면(지금 쓴 글까지 세어), 그 글의 `@TO`는 `cc`로 내려가 상대 봇에게 답변 의무 없이 도착하고 system 메시지 한 줄이 남습니다. 사람이 한 줄 쓰면 다시 셉니다. 개수는 `MINIDISCORD_BOT_RUN_LIMIT`(기본 `6`, `0` 이면 끔)로 정합니다.
 - 그 방에 참여하지 않은 봇을 멘션하면 전달되지 않고 «… 봇은 이 방에 초대되지 않았습니다» 한 줄이 남습니다.
 
 접속 뒤 오가는 메시지:
@@ -674,7 +675,7 @@ MCP 등록을 다시 살펴볼 일이 있으면 [다른 PC 에 설치하기](#�
 | 봇 → 서버 | `status { room_id, state }` | `working` 또는 `idle` 상태를 그 방에 알립니다 (그 밖의 값은 무시됩니다) |
 | 봇 → 서버 | `history_request { room_id, rid, since_id?, since?, until?, speaker?, limit? }` | 그 방의 지나간 대화를 조회합니다. `since_id`는 메시지 번호 기준 커서로, 그 번호보다 큰 메시지만 돌려받습니다. `limit`은 기본 100·최대 500이고, 최근 N개를 먼저 자른 뒤 나머지 조건으로 거릅니다 |
 | 봇 → 서버 | `permission_request { room_id, request_id, tool_name, description, input_preview }` | 그 방에 도구 사용 승인을 요청합니다 — 아래 "권한 승인 중계" 참고 |
-| 서버 → 봇 | `message { room_id, id, body, author_name, author_type, delivery, files }` | 이 봇을 지목한 메시지. `room_id`는 항상 실립니다. `delivery`는 `to`(응답 의무) 또는 `cc`(참고용), `author_type`은 `user`·`bot`·`system` 중 하나입니다 |
+| 서버 → 봇 | `message { room_id, room_name, id, body, author_name, author_type, delivery, files }` | 이 봇을 지목한 메시지. `room_id`와 `room_name`은 항상 실립니다(방 이름은 프레임마다 다시 읽으므로 방을 개명해도 최신값). 채널 플러그인은 `room_name`을 `<channel>` 봉투 속성으로 그대로 올립니다. `delivery`는 `to`(응답 의무) 또는 `cc`(참고용), `author_type`은 `user`·`bot`·`system` 중 하나입니다 |
 | 서버 → 봇 | `history_response { room_id, rid, messages }` | `history_request`의 응답 — 요청한 접속 하나에만 옵니다. 메시지마다 `id`·`author_name`·`body`·`created_at` 네 필드를 담습니다 |
 | 서버 → 봇 | `permission_verdict { request_id, behavior }` | 사람이 방에서 내린 승인(`allow`)/거절(`deny`) 판정. `room_id`는 없고 `request_id`로 요청을 찾습니다 |
 

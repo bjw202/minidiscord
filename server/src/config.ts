@@ -1,5 +1,5 @@
 // 서버 설정: 포트와 데이터 경로
-// @MX:NOTE: [AUTO] 서버 환경변수 넷(PORT·HOST·DATA_DIR·BOT_FILES_DIR)의 단일 판독 자리 — README 설정 표가 같은 기본값을 적는다. 정적 루트 MINIDISCORD_WEB_DIR 만 예외로 index.ts 가 직접 읽는다
+// @MX:NOTE: [AUTO] 서버 환경변수 다섯(PORT·HOST·DATA_DIR·BOT_FILES_DIR·BOT_RUN_LIMIT)의 단일 판독 자리 — README 설정 표가 같은 기본값을 적는다. 정적 루트 MINIDISCORD_WEB_DIR 만 예외로 index.ts 가 직접 읽는다
 export const config = {
   port: Number(process.env.MINIDISCORD_PORT ?? 3000),
   // 기본은 루프백이다. 배치 목표는 사내망·과제원이지만, 가입 게이트가 선행되기 전까지는 기본 바인드를 루프백으로 유지한다
@@ -12,4 +12,12 @@ export const config = {
   // 봇이 bot_message 로 첨부할 수 있는 파일의 허용 뿌리. 미설정이면 봇 첨부는 전부 거부된다
   // (fail-closed, sync-audit F-01). 봇 세션의 작업 폴더를 여기에 지정해서 켠다.
   get botFilesDir() { return process.env.MINIDISCORD_BOT_FILES_DIR },
+  // 되먹임 차단 상한 — 마지막 사람 글 이후 봇 글이 연속 이 개수에 닿으면 @TO 를 cc 로 내린다 (결정 ③ 기본 6).
+  // 0 이면 무제한(봇끼리만 오가는 방을 돌리는 crew 같은 배치용). 음수·숫자 아님은 기본 6 으로 되돌린다.
+  get botRunLimit() {
+    const raw = process.env.MINIDISCORD_BOT_RUN_LIMIT
+    if (raw === undefined || raw === '') return 6
+    const n = Number(raw)
+    return Number.isInteger(n) && n >= 0 ? n : 6
+  },
 }

@@ -81,7 +81,7 @@ function wsupgradePersistCapture(record: CaptureRecord): void {
 }
 
 // hub.publish 를 감싸 발행 내역을 기록한다. SseHub 가 publish 를 속성으로 갖는 평범한 객체라는 계약에 의존한다.
-async function build(opts: { botFiles?: 'off'; messages?: true } = {}) {
+async function build(opts: { botFiles?: 'off'; messages?: true; botRunLimit?: number } = {}) {
   const app = Fastify()
   app.db = db
   await app.register(cookie)
@@ -113,6 +113,7 @@ async function build(opts: { botFiles?: 'off'; messages?: true } = {}) {
   const gateway = createGateway(app, {
     uploadsDir: join(dir, 'up'),
     botFilesDir: opts.botFiles === 'off' ? undefined : dir,
+    botRunLimit: opts.botRunLimit,
   })
   app.decorate('gateway', gateway)
   // SPEC-WSUPGRADE-001 M1 — 창1: 소비하지 않는 upgrade 리스너 (관측이 대상을 바꾸지 않는다, G-1)
@@ -574,7 +575,8 @@ describe('gateway', () => {
     expect(ccMsg.delivery).toBe('cc')
     expect(toMsg.files).toEqual([{ name: '보고서.md', local_path: stored }])
     expect(ccMsg.files).toEqual([{ name: '보고서.md', local_path: stored }])
-    expect(Object.keys(toMsg).sort()).toEqual(['author_name', 'author_type', 'body', 'delivery', 'files', 'id', 'room_id', 'type'])
+    expect(Object.keys(toMsg).sort()).toEqual(['author_name', 'author_type', 'body', 'delivery', 'files', 'id', 'room_id', 'room_name', 'type'])
+    expect(toMsg.room_name).toBe((db.prepare('SELECT name FROM rooms WHERE id = ?').get(room) as any).name)
 
     wsPm.ws.close(); wsQa.ws.close()
     await app.close()
@@ -1363,6 +1365,41 @@ describe('B: bot-to-bot mentions', () => {
     ins(room, '사람이 끼어듦')
     leadWs.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w1) 다시' }))
     expect((await nextMessage(w1Ws)).delivery).toBe('to')
+    expect(systemRows(room)).toHaveLength(1)
+    leadWs.close(); w1Ws.close()
+    await app.close()
+  })
+
+  // crew 연동 [3] (2026-09-08) — 상한은 MINIDISCORD_BOT_RUN_LIMIT 로 받고, 0 은 «끔» 이다.
+  // 0 을 «0개째부터 강등» 으로 읽으면 첫 봇 글부터 cc 가 되므로, 0 이 반대 뜻(무제한)임을 이 테스트가 고정한다.
+  it('B-4b: botRunLimit 0 disables the demotion — the 8th consecutive bot message is still to, no system line', async () => {
+    const { app, port } = await build({ botRunLimit: 0 })
+    const room = seedRoom()
+    const lead = seedRoleBot('lead', 'orchestrator'), w1 = seedRoleBot('w1', 'worker')
+    joinRoom(room, lead); joinRoom(room, w1)
+    const leadWs = (await wsConnect(port, tokenOf(lead))).ws
+    const w1Ws = (await wsConnect(port, tokenOf(w1))).ws
+    ins(room, '사람이 시작')
+    for (let i = 0; i < 7; i++) insBot(room, w1, `봇 글 ${i}`)
+    leadWs.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w1) 여덟째' }))
+    expect((await nextMessage(w1Ws)).delivery).toBe('to')
+    expect(systemRows(room)).toHaveLength(0)
+    leadWs.close(); w1Ws.close()
+    await app.close()
+  })
+
+  // 상한 2 — 기본 6 과 다른 값이 실제로 판정에 쓰인다 (env 가 상수를 덮는 경로의 대조군)
+  it('B-4c: botRunLimit 2 demotes the 2nd consecutive bot message', async () => {
+    const { app, port } = await build({ botRunLimit: 2 })
+    const room = seedRoom()
+    const lead = seedRoleBot('lead', 'orchestrator'), w1 = seedRoleBot('w1', 'worker')
+    joinRoom(room, lead); joinRoom(room, w1)
+    const leadWs = (await wsConnect(port, tokenOf(lead))).ws
+    const w1Ws = (await wsConnect(port, tokenOf(w1))).ws
+    ins(room, '사람이 시작')
+    insBot(room, w1, '봇 글 0')
+    leadWs.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w1) 둘째' }))
+    expect((await nextMessage(w1Ws)).delivery).toBe('cc')
     expect(systemRows(room)).toHaveLength(1)
     leadWs.close(); w1Ws.close()
     await app.close()

@@ -15,6 +15,18 @@ describe('config', () => {
     expect(config.host).toBe('127.0.0.1')
     // 미설정이면 undefined 여야 한다 — 게이트웨이가 이 값으로 봇 첨부를 통째로 거부한다 (F-01).
     expect(config.botFilesDir).toBeUndefined()
+    // 되먹임 차단 기본 6 (결정 ③) — env 가 없으면 예전 상수와 같은 값
+    expect(config.botRunLimit).toBe(6)
+  })
+
+  it('MINIDISCORD_BOT_RUN_LIMIT: 0 means off, positive integer is taken, garbage falls back to 6', async () => {
+    for (const [raw, want] of [['0', 0], ['12', 12], ['-1', 6], ['abc', 6], ['2.5', 6], ['', 6]] as const) {
+      process.env.MINIDISCORD_BOT_RUN_LIMIT = raw
+      vi.resetModules()
+      const { config } = await import('../src/config.js')
+      expect(config.botRunLimit, `raw=${JSON.stringify(raw)}`).toBe(want)
+    }
+    delete process.env.MINIDISCORD_BOT_RUN_LIMIT
   })
 
   it('env overrides', async () => {

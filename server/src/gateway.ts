@@ -41,12 +41,13 @@ type Established = { botId: number; connId: string }
 // botFilesDir: 봇이 bot_message 로 첨부할 수 있는 파일의 허용 뿌리. 미지정이면 봇 첨부를 전부
 // 거부한다(fail-closed) — 검사가 없던 동안 봇 토큰 하나로 서버가 읽는 임의 파일을 uploads 안으로
 // 복사해 내려받을 수 있었다 (sync-audit F-01, 유출 재현됨).
-export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; botFilesDir?: string }): Gateway {
+// botRunLimit: 되먹임 차단 상한 (config.botRunLimit). 미지정이면 6, 0 이면 무제한.
+export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; botFilesDir?: string; botRunLimit?: number }): Gateway {
   const db = app.db
   const hub = app.hub
   const conns = new Map<WebSocket, Established>()
-  // 결정 ③ 기본 답 N=6 (가이드 §0)
-  const BOT_RUN_LIMIT = 6
+  // 결정 ③ 기본 답 N=6 (가이드 §0). 2026-09-08 crew 연동으로 MINIDISCORD_BOT_RUN_LIMIT 에서 받는다 — 0 이면 끈다
+  const BOT_RUN_LIMIT = opts.botRunLimit ?? 6
   let permissionHandler: ((info: ConnInfo, params: any) => void) | null = null
 
   const wss = new WebSocketServer({ server: app.server, path: '/bot' })
@@ -178,8 +179,11 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
   // 채우는 자리는 replayMissed 와 deliver 둘이고 둘 다 이 함수를 지난다.
   function messageFrame(roomId: number, m: { id: number; body: string; author_type: string }, author: string, delivery: 'to' | 'cc'): object {
     const attachments = db.prepare('SELECT id, filename, stored_path FROM attachments WHERE message_id = ?').all(m.id) as any[]
+    // room_name — 봇 세션이 방 이름으로 작업 폴더를 고를 수 있게 매 프레임에 싣는다 (crew 연동 [2], 2026-09-08).
+    // welcome 의 rooms 에도 있지만 접속 뒤 이름이 바뀌면 낡으므로 프레임마다 다시 읽는다. 방이 사라졌으면 빈 문자열.
+    const room = db.prepare('SELECT name FROM rooms WHERE id = ?').get(roomId) as { name: string } | undefined
     return {
-      type: 'message', room_id: roomId, id: m.id, body: m.body,
+      type: 'message', room_id: roomId, room_name: room?.name ?? '', id: m.id, body: m.body,
       author_name: author, author_type: m.author_type, delivery,
       files: attachments.map(a => ({ name: a.filename, local_path: resolve(a.stored_path) })),
     }
@@ -243,7 +247,7 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     // 정하고, 서버는 방향을 제한하지 않는다. bots.role 은 기록으로만 남는다. 되먹임 방어는 아래 연속 봇 글 상한 하나다
     let allowed = targets
     // 결정 ③ — 마지막 사람 글 이후 봇 글이 연속 N개(지금 글 포함) 이상이면 @TO 를 cc 로 내린다. system 글은 연속을 끊지 않는다
-    if (allowed.some(t => t.delivery === 'to') && botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT) {
+    if (BOT_RUN_LIMIT > 0 && allowed.some(t => t.delivery === 'to') && botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT) {
       postSystem(roomId, `사람 글 없이 봇 글이 ${BOT_RUN_LIMIT}개 이어져 @TO 를 cc 로 내렸습니다`)
       allowed = allowed.map(t => ({ ...t, delivery: 'cc' as const }))
     }

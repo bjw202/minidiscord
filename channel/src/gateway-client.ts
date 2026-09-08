@@ -6,9 +6,10 @@ import { WebSocket } from 'ws'
 
 export type UrlRef = string | (() => string)
 
-// 서버가 봇 접속으로 보내는 message 프레임 — room_id 와 author_type 을 항상 싣는다 (REQ-BOTMODEL-014, spec.md §3.3)
+// 서버가 봇 접속으로 보내는 message 프레임 — room_id 와 author_type 을 항상 싣는다 (REQ-BOTMODEL-014, spec.md §3.3).
+// room_name 은 crew 연동 [2](2026-09-08)로 더해졌다 — 방 이름으로 작업 폴더를 고르는 세션용. 옛 서버 프레임엔 없을 수 있다
 export interface GatewayMessage {
-  type: 'message'; room_id: number; id: number; body: string; author_name: string; author_type: string
+  type: 'message'; room_id: number; room_name?: string; id: number; body: string; author_name: string; author_type: string
   delivery: 'to' | 'cc'; files?: { name: string; local_path: string }[]
 }
 
