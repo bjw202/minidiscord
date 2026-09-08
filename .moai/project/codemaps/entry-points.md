@@ -63,7 +63,7 @@ CI(`.github/workflows/ci.yml`)는 `npm ci` → `typecheck -w server` → `typech
 
 ## 4. 웹 로딩
 
-`index.html` → `<link href="/style.css">` (안에서 `@import './design-tokens.css'`) → 인라인 `<script type="module">import {initApp} from '/app.js'; initApp()`. `app.js` 는 606행에서 `./rich.js` 를 import 한 뒤 `registerMessageDecorator(createRichContext)` 로 첨부·권한 버튼 장식을 등록하고 봇 다이얼로그(`#invite-dialog`)를 배선한다 — 다이얼로그는 «참여 추가»(봇 고르기 → `POST /api/rooms/:id/bots`)와 «등록 명령 표시»(등록 응답의 `command` 를 한 번 보여 주고 닫힐 때 지움) 두 일을 한다. 번들러·빌드 없음.
+`index.html` → `<link href="/style.css">` (안에서 `@import './design-tokens.css'`) → 인라인 `<script type="module">import {initApp} from '/app.js'; initApp()`. `app.js` 는 741행에서 `./rich.js` 와 `./markdown.js` 를 import 한 뒤 `registerMessageDecorator(createRichContext)` 로 첨부·권한 버튼 장식을 등록하고 봇 다이얼로그(`#invite-dialog`)를 배선한다 — 다이얼로그는 «참여 추가»(봇 고르기 → `POST /api/rooms/:id/bots`)와 «등록 명령 표시»(등록 응답의 `command` 를 한 번 보여 주고 닫힐 때 지움) 두 일을 한다. 번들러·빌드 없음.
 
 ## 5. HTTP API
 

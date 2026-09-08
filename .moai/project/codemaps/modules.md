@@ -31,15 +31,17 @@
 | `gateway-client.ts` | 135 | WebSocket 클라이언트. `open` 마다 `hello{token}`, `message`·`permission_verdict`·`history_response` 세 종류만 분기, 1초→30초 지수 백오프 재접속, `history_request` RPC(`rid` 대조, 10초 타임아웃) | `createGatewayClient(input): GatewayClient`, `interface GatewayClient/GatewayClientOpts/GatewayMessage/HistoryParams`, `type UrlRef` | 없음 |
 | `truncate.ts` | 82 | 바이트 예산 절단 원시 함수와 상수. 시질(`⟪` `⟫`)을 먼저 이스케이프하고 코드포인트 경계에서 자른 뒤 `⟪잘림: N바이트 생략⟫` 표식 | `truncateToBudget`, `escapeSigils`, `formatMarker`, `MAX_BODY_BYTES=4000`, `MAX_ATTACHMENTS=20`, `MAX_PATH_BYTES=512`, `MAX_HISTORY_BYTES=16000`, `MAX_NAME_BYTES=256`, 시질·표식 상수, `SIBLING_SWEEP_ASSERT_REGEX` | 없음 |
 
-## web/ — 6 파일, 1,582 줄 (빌드 없음, 서버가 그대로 서빙)
+## web/ — 8 파일, 2,471 줄 (빌드 없음, 서버가 그대로 서빙)
 
 | 파일 | 줄 | 책임 | 비고 |
 |---|---|---|---|
 | `index.html` | 98 | 껍데기 마크업. 인라인 `<script type="module">` 이 `/app.js` 의 `initApp()` 을 호출 | `/style.css` 링크 |
-| `app.js` | 680 | 인증·방·봇 상태(`state`), `api()` fetch 래퍼, 채팅 뷰(`openStream` 의 `EventSource` 구독, `renderMessage`, `@` 자동완성, 전송), 참여 목록 칩(`refreshRoomBots`), 메시지 장식자 등록(`registerMessageDecorator`), 봇 다이얼로그 배선(참여 추가·등록 명령 표시) | 606행에서 `./rich.js` import (의도적, SPEC-WEBRICH-001). 봇 등록 폼은 `name`·`description` 만 보내므로 웹에서 등록한 봇은 항상 `worker` 다 |
+| `app.js` | 815 | 인증·방·봇 상태(`state`), `api()` fetch 래퍼, 채팅 뷰(`openStream` 의 `EventSource` 구독, `renderMessage`, `@` 자동완성, 전송), 참여 목록 칩(`refreshRoomBots`), 메시지 장식자 등록(`registerMessageDecorator`), 봇 다이얼로그 배선(참여 추가·등록 명령 표시) | 741행에서 `./rich.js`·`./markdown.js` import. `renderMessage` 는 본문만 `renderMarkdown` 으로 그리고 실패하면 원문 텍스트 폴백(SPEC-WEBMD-001). 봇 등록 폼은 `name`·`description` 만 보내므로 웹에서 등록한 봇은 항상 `worker` 다 |
 | `rich.js` | 214 | 첨부 노드(이미지 인라인/링크), 권한 요청·판정 정규식과 승인/거절 버튼, 봇 고르기 목록·등록 결과 표시 헬퍼, 클립보드 복사 | 내보내기: `createRichContext`, `buildAttachmentNode`, `permissionRequestId`, `permissionResolutionId`, `verdictBody`, `verdictForm`, `buildInviteChoices`, `applyInviteResult`, `clearInviteResult`, `copyText`, `isImageFilename`, `attachmentUrl` |
 | `rich.d.ts` | 41 | `server/tsconfig.json` 이 `allowJs` 없이 `rich.js` 를 타입 검사하기 위한 수기 선언 | `rich.js` 와 어긋나도 시험이 잡지 못한다 |
-| `style.css` | 490 | 레이아웃·컴포넌트 스타일 | 6행에서 `./design-tokens.css` `@import` |
+| `markdown.js` | 555 | 채팅 본문 마크다운 렌더러 (SPEC-WEBMD-001) — 제목·강조·취소선·코드스팬·펜스 코드블록(언어 라벨)·목록·인용·GFM 표·안전 링크. `innerHTML` 0건, `createElement`+`textContent` 전용, 문자 단위 단일 패스 인라인 스캐너 | 내보내기: `renderMarkdown`(유일 진입점, 실패는 예외 — 호출부 폴백 계약), `parseBlocks`, `renderInline`, `safeHref`(스킴 화이트리스트 3겹 검사), `codeLangToken`. 상한: 본문 20,000자·중첩 깊이·표 크기 |
+| `markdown.d.ts` | 25 | `rich.d.ts` 와 같은 역할 — `allowJs` 없이 `markdown.js` 를 타입 검사하기 위한 수기 선언 | `markdown.js` 와 어긋나도 시험이 잡지 못한다 |
+| `style.css` | 662 | 레이아웃·컴포넌트 스타일·마크다운 블록 스타일(`.md-h`~`.md-link-host`) | 6행에서 `./design-tokens.css` `@import` |
 | `design-tokens.css` | 59 | `--md-*` 색·간격·글꼴 토큰 | 근거: `.moai/project/design-dna-discord.md` |
 
 ## scripts/ — 실행 대상 1 파일, 477 줄

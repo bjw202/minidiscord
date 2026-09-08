@@ -63,8 +63,9 @@ channel/src/truncate.ts       -> (없음)
 
 web/index.html  -> /app.js, /style.css
 web/style.css   -> ./design-tokens.css (@import, 6행)
-web/app.js      -> ./rich.js          ← 606행에서 import, 의도적 (SPEC-WEBRICH-001)
+web/app.js      -> ./rich.js, ./markdown.js ← 741행에서 import, 의도적 (SPEC-WEBRICH-001 · SPEC-WEBMD-001)
 web/rich.js     -> (없음)
+web/markdown.js -> (없음)
 
 scripts/e2e.mts          -> ./e2e-lib.mts
 scripts/e2e-scenario.mts -> ./e2e-lib.mts

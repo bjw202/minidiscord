@@ -11,6 +11,9 @@
  *     끝나는 이유다 (REQ-WEBMD-013)
  *
  * 파이프라인: normalizeSource → parseBlocks(순수 AST) → buildBlock(DOM) → renderInline
+ *
+ * @MX:NOTE — 모듈 계약·안전 설계의 근거는 SPEC-WEBMD-001 (`.moai/specs/SPEC-WEBMD-001/spec.md`).
+ *   요구사항 번호(REQ-WEBMD-*)는 그 본문이 소유한다 — 문구를 고칠 때 SPEC 본문과 함께 볼 것.
  */
 
 // ── 상한 (REQ-WEBMD-013) ─────────────────────────────────────────────

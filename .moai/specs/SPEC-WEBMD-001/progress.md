@@ -317,7 +317,32 @@ All files |       0 |        0 |       0 |       0 |          # 같은 0/0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_complete_at: 2026-09-09
+- sync_commit_sha: pending-backfill-webmd-sync (후속 커밋에서 실측 SHA 로 되돌려 씀 — 커밋은 자기 SHA 를 모른다)
+- sync_status: complete — Route A (Tier M, main 직접 단일 sync 커밋, PR 없음)
+- sync scope:
+  - `CHANGELOG.md` — `[Unreleased]` 에 2026-09-09 마크다운 렌더링 항목 1건 (작성 전 `grep -c 'SPEC-WEBMD-001'` 0건 확인, 구현 파일 원문(`web/markdown.js`·`web/app.js` 렌더 지점·`web/style.css` `.md-*` 블록)을 읽고 작성)
+  - `.moai/project/structure.md` — web/ 파일 목록에 `markdown.js`·`markdown.d.ts` 추가
+  - `.moai/project/codemaps/{modules,overview,dependencies,entry-points,data-flow}.md` — `grep -l "rich\.js\|app\.js"` 로 고른 다섯 파일의 web/ 열거 갱신(파일 수 6→8, 줄 수, 의존성 간선, import 지점 606→741행)
+  - `.moai/specs/SPEC-WEBMD-001/spec.md` — frontmatter `status: in-progress → completed`, `updated: 2026-09-09` (본문 무변경)
+  - `.moai/specs/SPEC-WEBCHAT-001/spec.md` — 오케스트레이터가 운영자 인계 지시로 미리 작성한 통지 HISTORY 행 + `updated:` 날짜 그대로 커밋 (본문 무변경, diff 2줄)
+  - `web/markdown.js` — 헤더 주석에 모듈 수준 `@MX:NOTE`(SPEC-WEBMD-001 지시) 한 줄 추가
+- b12_self_test:
+  - a_pre_emission_grep: `grep -c 'SPEC-WEBMD-001' CHANGELOG.md` → 작성 전 0건, 작성 후 1건
+  - b_ac_count: acceptance.md AC 16개 중 15 PASS — CHANGELOG 항목은 AC 개수를 다시 세지 않는 서술형(결함 열람 아님), §E.3 표가 근거
+  - c_file_paths: `CHANGELOG.md` 가 언급한 경로 `web/markdown.js`·`web/markdown.d.ts`·`web/app.js`·`web/style.css`·`server/test/web-markdown.test.ts` 전부 실존 확인
+- mx_validation: P1(내보낸 함수 fan_in≥3 @MX:ANCHOR)·P2(비동기/goroutine 패턴) 훑기 결과 위반 0건. `renderMarkdown` 호출부는 `web/app.js` + 시험 파일 둘뿐(<3, ANCHOR 불요). 기존 `@MX:ANCHOR` 3개(`safeHref`·`renderInline`·`renderMarkdown`) 유효. 모듈 수준 `@MX:NOTE` 1건 추가
+- changelog_entry_position: `[Unreleased]` 섹션 최상단 신설 `### 2026-09-09` 소제목 아래 첫 항목
+
+### 차이(Divergence) 결산 — 갭 넷
+
+1. **AC-WEBMD-016 `npm run e2e` 절 FAIL** — 기준선 결함(e2e step3 ③, 이전 crew 연동 작업이 바꾼 봇 등록 안내 형식). 이 SPEC 변경이 원인 아님 — 귀속 근거는 §E.2 넷. 수리는 백로그 카드 `t44` 로 큐에 들어 있음. 나머지 두 절(네 파일 diff 0줄·`npm test` 238+103)은 PASS
+2. **커버리지 수치 미산출** — 브라우저 소스 모듈(`web/`, 워크스페이스 밖)이라 이 vitest 설정에서 v8 귀속이 만들어지지 않음(§E.3 Gaps 2번, 시도 세 번의 원문 §E.2). 제한 문서화로 종결
+3. **M6 수동 브라우저 확인** — 운영자 대기 중 (§E.2 M6)
+4. **sync_commit_sha 자기참조** — 위 placeholder, 후속 커밋에서 되돌려 씀
+
+frontmatter_status_transitions: in-progress → completed (단일 sync 커밋, 3-phase close)
+canary_compliance_check: 해당 없음 — 이 SPEC 은 앞으로의 정책을 정의하지 않는다
 
 ### plan 감사 2회차 — 수리 검증 (2026-09-08)
 

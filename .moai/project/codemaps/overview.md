@@ -14,7 +14,7 @@ minidiscord 는 npm workspaces 로 묶인 TypeScript 모노레포다. **서버**
 |---|---|---|---|
 | 서버 | `server/src/` (13 파일) | 1,121 | Fastify 앱 조립, 이름 로그인, 방·봇·참여·메시지 API, SSE 허브, WebSocket 봇 게이트웨이(맨몸 JSON 프레임, 연속 봇 글 상한), 권한 릴레이 브로커 |
 | 채널 플러그인 | `channel/src/` (4 파일) | 592 | 공식 Channels 계약을 구현한 MCP 서버, 게이트웨이 WebSocket 클라이언트(`hello`/`welcome` 한 왕복·지수 백오프 재접속), 바이트 예산 절단 |
-| 웹 UI | `web/` (6 파일) | 1,582 | 이름 로그인·방 목록·채팅·SSE 수신·`@` 자동완성·첨부·봇 등록/참여 다이얼로그·권한 승인 버튼 |
+| 웹 UI | `web/` (8 파일) | 2,471 | 이름 로그인·방 목록·채팅·SSE 수신·`@` 자동완성·첨부·본문 마크다운 렌더링(`web/markdown.js`)·봇 등록/참여 다이얼로그·권한 승인 버튼 |
 | 스크립트 | `scripts/e2e.mts` · `e2e-lib.mts` · `e2e-scenario.mts` (3 파일) | 1,309 | E2E 러너 둘 — 15단계 «봇 하나·방 둘»(267줄)과 20단계 «봇 둘·방 둘·관측자 하나»(709줄) — 그리고 둘이 나눠 쓰는 도우미 `e2e-lib.mts`(333줄). `scripts/_archive/` 에 퇴역한 live-* 도구 4 파일이 남아 있다 (실행 대상 아님) |
 | 테스트 헬퍼 | `server/test/*.ts` (`.test.ts` 제외 3 파일) | 203 | 404 응답자 판정기, WAL·인덱스 관측, import 만으로 listen 하지 않음 증명 |
 

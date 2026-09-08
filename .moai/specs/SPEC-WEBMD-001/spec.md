@@ -2,9 +2,9 @@
 id: SPEC-WEBMD-001
 title: "웹 채팅 본문 마크다운 렌더링 — 라이브러리 없이, innerHTML 없이"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-09-08
-updated: 2026-09-08
+updated: 2026-09-09
 author: manager-spec
 priority: P2
 phase: "v2.2.0 target"

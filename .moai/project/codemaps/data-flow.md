@@ -77,7 +77,7 @@ sequenceDiagram
    - 남은 타깃에 `to` 가 있고 `BOT_RUN_LIMIT > 0 && botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT` 이면 (`BOT_RUN_LIMIT` 은 `opts.botRunLimit` ← `config.botRunLimit` ← `MINIDISCORD_BOT_RUN_LIMIT`, 기본 6, `0` 이면 끔) (마지막 사람 글 이후 봇 글 수, 지금 글 포함, system 글은 연속을 끊지 않음) 전부 `cc` 로 내리고 `«사람 글 없이 봇 글이 6개 이어져 @TO 를 cc 로 내렸습니다»` 를 남긴다.
    - 남은 타깃마다 `message_targets` 행을 쓰고 `deliverTo` 로 보낸다 — 사람 경로와 같은 자리다.
 7. `sse.ts publish` 가 방의 모든 구독 `ServerResponse` 에 `event: message\ndata: …\n\n`.
-8. `web/app.js openStream` 의 `EventSource` 리스너 → `renderMessage`, 스크롤, `state.lastEventId` 갱신. `status:idle` 은 `bot_status` 이벤트로 와서 「입력 중」 표시를 지운다.
+8. `web/app.js openStream` 의 `EventSource` 리스너 → `renderMessage`, 스크롤, `state.lastEventId` 갱신. `renderMessage` 는 본문을 `web/markdown.js` 의 `renderMarkdown` 으로 그리고 실패하면 원문 텍스트로 되돌린다. `status:idle` 은 `bot_status` 이벤트로 와서 「입력 중」 표시를 지운다.
 
 `handleWsMessage` 는 참여 검사 뒤에 `bot_message`·`status` 에 한해 `rooms.status = 'active'` 를 본다(`isActiveRoom`, t43) — 보관된 방으로 온 봇 글은 행·발행·응답 없이 버려지고 소켓은 유지된다 (사람 경로는 409).
 

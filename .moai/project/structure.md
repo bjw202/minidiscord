@@ -74,7 +74,7 @@ minidiscord/
 │   │   └── truncate.ts           # 바이트 예산 절단 · 시질 이스케이프
 │   └── test/                     # .test.ts 6개
 ├── web/
-│   ├── index.html · app.js · rich.js · rich.d.ts · style.css · design-tokens.css
+│   ├── index.html · app.js · rich.js · rich.d.ts · markdown.js · markdown.d.ts · style.css · design-tokens.css
 ├── scripts/
 │   ├── e2e.mts                   # 15단계 E2E «봇 하나·방 둘» (실제 서버 프로세스)
 │   ├── e2e-lib.mts               # 두 러너가 나눠 쓰는 도우미 (HTTP · WebSocket · 시한 대기 · 서버 spawn)
