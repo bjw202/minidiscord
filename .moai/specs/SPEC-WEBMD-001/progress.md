@@ -277,7 +277,7 @@ All files |       0 |        0 |       0 |       0 |          # 같은 0/0
 - ac_fail_count: 0 — 단, AC-016 의 셋 중 «npm run e2e 종료 코드 0» 한 절만 기준선 결함으로 FAIL 귀속(아래). AC-016 의 나머지 두 절(네 테스트 파일 diff 0줄 · npm test 초록 · 훅 노드가 .msg-body 밖 형제)은 관측 PASS
 - preserve_list_post_run_count: 5 — `server/src/**`(0줄 변경), `web/rich.js`(0), `web/design-tokens.css`(0), `web/index.html`(0), 기존 웹 테스트 네 파일(0줄, `git diff --stat` 출력 없음으로 확인)
 - l44_pre_commit_fetch: 이 세션은 런타임 격리 워크트리에서 구동 — 커밋은 워크트리 브랜치에 쌓고 `git push origin HEAD:main` 으로 적재했다(격리 훅이 공유 체크아웃 대상 git 을 거부). 파일 내용은 `c0026ce` 기점 main 과 동일한 나무에서 시작
-- l44_post_push_fetch: (아래 최종 push 뒤 기입)
+- l44_post_push_fetch: push 후 `git fetch origin main && git rev-list --count --left-right origin/main...HEAD` → `0	0` (원격과 동기. push 기록 `c0026ce..0177894 HEAD -> main`, pre-push 훅의 «No Makefile found» 는 예상된 warn-only 줄) — 본 필드는 커밋이 자신의 push 결과를 알 수 없어 후속 커밋에서 backfill 했다(D3 예외 절)
 - new_warnings_or_lints_introduced: 0 — `npm run typecheck -w server`·`-w channel` 모두 exit 0. 이 저장소에는 JS 전용 린터가 없다 — typecheck 가 린트 게이트다(§E.5 서술)
 - cross_platform_build.node: n/a — 이 저장소는 Node/npm 워크스페이스(server·channel)다. 빌드 산출물 channel/dist 는 워크트리에서 `npm run build -w channel` 로 새로 만들어 확인(exit 0)
 - total_run_phase_files: 7 — 신규 `web/markdown.js`·`web/markdown.d.ts`·`server/test/web-markdown.test.ts` / 수정 `web/app.js`·`web/style.css` / SPEC 산출물 `progress.md`·`spec.md`(frontmatter status·updated 만)
