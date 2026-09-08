@@ -100,7 +100,7 @@ index.ts                                          ← 조립
 - `gateway.ts` 가 import 하는 내부 모듈은 `targets.ts` 하나다. 그 밖은 ws·node 내장뿐이다.
 - `routes-messages.ts` 와 `permissions.ts` 는 게이트웨이를 `req.server.gateway` 데코레이터로만 부른다. 순환 import 는 없다.
 - `mention.ts` 는 import 0 을 요구사항(REQ-MENTION-006)으로 갖는다.
-- 멘션 대조(`targets.ts resolveTargets`)는 사람 경로와 봇 경로가 함께 지나지만, 연속 봇 글 상한(`BOT_RUN_LIMIT = 6`, 넘으면 `@TO` 를 `cc` 로 강등)은 봇 경로(`gateway.ts handleBotMessage`)에만 있다. 발신 봇의 역할로 타깃을 거르지는 않는다(2026-09-08 운영자 결정으로 역할 필터 삭제 — `bots.role` 은 기록).
+- 멘션 대조(`targets.ts resolveTargets`)는 사람 경로와 봇 경로가 함께 지나지만, 연속 봇 글 상한(`MINIDISCORD_BOT_RUN_LIMIT` → `config.botRunLimit`, 기본 6, `0` 이면 끔; 닿으면 `@TO` 를 `cc` 로 강등)은 봇 경로(`gateway.ts handleBotMessage`)에만 있다. 발신 봇의 역할로 타깃을 거르지는 않는다(2026-09-08 운영자 결정으로 역할 필터 삭제 — `bots.role` 은 기록).
 - 팬인이 높은 모듈: `auth.ts`(5), `db.ts`(4), `gateway.ts`(3). 이들의 시그니처 변경은 라우트 전부에 번진다.
 
 ## 인가 경계
@@ -154,7 +154,7 @@ v2 봇 모델(SPEC-BOTMODEL-001). 모든 프레임은 `type` 을 가진 **맨몸
 |---|---|
 | 게이트웨이 프레임 `type` 집합과 필드명 (`room_id`·`rid`·`local_path`) | `server/src/gateway.ts` ↔ `channel/src/gateway-client.ts`·`index.ts` ↔ `scripts/e2e.mts` — 알 수 없는 프레임은 양쪽 다 조용히 무시되므로 E2E 만 잡는다 |
 | 권한 시스템 메시지 문구 ↔ 브라우저 정규식 | `server/src/permissions.ts` ↔ `web/rich.js` (`전달하지 못했습니다 (<id>)` 꼬리는 `[HARD]`) |
-| 알림 `meta` 다섯 키 (`chat_id`=방 번호, `message_id`, `delivery`, `sender`, `author_type`) | `channel/src/channel-server.ts` ↔ 세션이 `reply`/`fetch_history` 에 되돌리는 `chat_id` |
+| 알림 `meta` 여섯 키 (`chat_id`=방 번호, `message_id`, `delivery`, `sender`, `author_type`, `room_name`) | `channel/src/channel-server.ts` ↔ 세션이 `reply`/`fetch_history` 에 되돌리는 `chat_id` |
 | `rich.js` 시그니처 ↔ 수기 선언 | `web/rich.js` ↔ `web/rich.d.ts` |
 
 전체 목록은 [codemaps/dependencies.md](./codemaps/dependencies.md) §6.

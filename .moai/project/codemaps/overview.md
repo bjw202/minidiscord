@@ -59,7 +59,7 @@ index.ts   wire()  ──▶ channel-server.ts (MCP 도구 reply/fetch_history �
 
 ## 눈에 띄는 점 (검토 시 먼저 볼 자리)
 
-1. **멘션 대조는 한 자리, 정책은 봇 경로에만.** `targets.ts` `resolveTargets` 를 사람 경로(`routes-messages.ts`)와 봇 경로(`gateway.ts handleBotMessage`)가 함께 지나지만, 연속 봇 글 상한(`BOT_RUN_LIMIT = 6`, `@TO` → `cc` 강등)은 봇 경로에만 있다. 발신 봇의 역할로는 거르지 않는다(역할 필터는 2026-09-08 삭제, `bots.role` 은 기록). 사람도 봇도 그 방의 어느 봇이든 `@TO` 할 수 있다.
+1. **멘션 대조는 한 자리, 정책은 봇 경로에만.** `targets.ts` `resolveTargets` 를 사람 경로(`routes-messages.ts`)와 봇 경로(`gateway.ts handleBotMessage`)가 함께 지나지만, 연속 봇 글 상한(`BOT_RUN_LIMIT` — `MINIDISCORD_BOT_RUN_LIMIT`, 기본 6, `0` 이면 끔, `@TO` → `cc` 강등)은 봇 경로에만 있다. 발신 봇의 역할로는 거르지 않는다(역할 필터는 2026-09-08 삭제, `bots.role` 은 기록). 사람도 봇도 그 방의 어느 봇이든 `@TO` 할 수 있다.
 2. **인가는 로그인뿐이다.** 방 구성원 표가 없으므로 모든 라우트가 `requireAuth` 하나로 열린다. `GET /api/rooms` 는 모든 방을 돌려주고, 보관·첨부 다운로드도 로그인만 본다. 봇 쪽은 `room_bots` 행이 유일한 경계다 — 참여하지 않은 방을 실은 프레임은 `handleWsMessage` 에서 조용히 버려진다.
 3. **보관된 방은 봇에게도 읽기 전용이다.** `gateway.ts` 가 `rooms.status` 를 읽는 자리는 둘 — `handleHello` 의 `welcome.rooms` 조회와 `handleWsMessage` 의 `isActiveRoom`(t43). 후자는 `bot_message`·`status` 만 막고(조용히 버림, 소켓 유지) `history_request` 는 통과시킨다. `closeRoom` 은 빈 몸체다. 사람 경로는 409 로 막는다 (`routes-messages.ts`).
 4. **서버 문자열과 브라우저 정규식의 결합.** `permissions.ts` 가 만드는 한국어 시스템 메시지를 `web/rich.js` 가 정규식(`REQUEST_LINE_RE`·`RESOLUTION_RE`)으로 읽는다. `전달하지 못했습니다 (<id>)` 꼬리는 코드에 `[HARD]` 로 표시돼 있다 — 문구를 바꾸면 승인 버튼 잠금이 조용히 깨진다.

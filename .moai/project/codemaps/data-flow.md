@@ -74,7 +74,7 @@ sequenceDiagram
 6. **봇 → 봇 전달 (v2 B).** 같은 함수가 이어서 `resolveTargets(db, roomId, body)` 를 부른다. 봇 경로는 응답 프레임이 없으므로 거부·강등을 system 메시지 한 줄로 알린다 (원문은 이미 저장·발행됐다):
    - `unknown` 이 있으면 `«<이름> 봇은 이 방에 초대되지 않았습니다»` — 나머지 타깃은 계속 간다.
    - 발신 봇의 역할로는 거르지 않는다 (역할 필터는 2026-09-08 운영자 결정으로 삭제 — 봇 간 규칙은 세션이 정한다).
-   - 남은 타깃에 `to` 가 있고 `botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT(6)` 이면 (마지막 사람 글 이후 봇 글 수, 지금 글 포함, system 글은 연속을 끊지 않음) 전부 `cc` 로 내리고 `«사람 글 없이 봇 글이 6개 이어져 @TO 를 cc 로 내렸습니다»` 를 남긴다.
+   - 남은 타깃에 `to` 가 있고 `BOT_RUN_LIMIT > 0 && botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT` 이면 (`BOT_RUN_LIMIT` 은 `opts.botRunLimit` ← `config.botRunLimit` ← `MINIDISCORD_BOT_RUN_LIMIT`, 기본 6, `0` 이면 끔) (마지막 사람 글 이후 봇 글 수, 지금 글 포함, system 글은 연속을 끊지 않음) 전부 `cc` 로 내리고 `«사람 글 없이 봇 글이 6개 이어져 @TO 를 cc 로 내렸습니다»` 를 남긴다.
    - 남은 타깃마다 `message_targets` 행을 쓰고 `deliverTo` 로 보낸다 — 사람 경로와 같은 자리다.
 7. `sse.ts publish` 가 방의 모든 구독 `ServerResponse` 에 `event: message\ndata: …\n\n`.
 8. `web/app.js openStream` 의 `EventSource` 리스너 → `renderMessage`, 스크롤, `state.lastEventId` 갱신. `status:idle` 은 `bot_status` 이벤트로 와서 「입력 중」 표시를 지운다.
@@ -145,6 +145,6 @@ sequenceDiagram
 ## 8. 흐름 (g) — 봇 등록과 참여
 
 1. `POST /api/bots {name, description?, role?}` — `role` 은 `orchestrator`|`worker` 만 (비우면 `worker`). 웹 폼은 `role` 을 보내지 않으므로 웹에서 등록한 봇은 전부 `worker` 다 (`web/app.js createBot`).
-2. `randomBytes(32).toString('hex')` 토큰을 `bots.token` 에 **평문으로** 저장하고 응답 `{id, name, token, command}` 에 **한 번만** 싣는다. 이후 어떤 조회 응답(`GET /api/bots`, 참여 목록)에도 토큰은 없다. `command` 는 «페르소나 폴더에서 `claude mcp add --scope local <봇이름>-channel --env MINIDISCORD_TOKEN/SERVER -- node <저장소>/channel/dist/index.js`» + `claude --dangerously-load-development-channels server:<봇이름>-channel` + «방 참여» 안내의 세 토막(2026-09-08 권장 방법)이며, 웹의 봇 다이얼로그가 `명령 복사` 버튼과 함께 보여 주고 닫힐 때 DOM 에서 지운다.
+2. `randomBytes(32).toString('hex')` 토큰을 `bots.token` 에 **평문으로** 저장하고 응답 `{id, name, token, command}` 에 **한 번만** 싣는다. 이후 어떤 조회 응답(`GET /api/bots`, 참여 목록)에도 토큰은 없다. `command` 는 «페르소나 폴더에 `.mcp.json` 만들기(heredoc — `mcpServers.minidiscord-channel` 에 `command: node`·`args: [<저장소>/channel/dist/index.js]`·`env: {MINIDISCORD_TOKEN, MINIDISCORD_SERVER}`)» + `claude --strict-mcp-config --mcp-config .mcp.json --dangerously-load-development-channels server:minidiscord-channel` + «방 참여» 안내의 세 토막(2026-09-08 사용자 결정으로 crew 와 통일; MCP 서버 이름은 봇과 무관하게 `minidiscord-channel` 고정)이며, 웹의 봇 다이얼로그가 `명령 복사` 버튼과 함께 보여 주고 닫힐 때 DOM 에서 지운다.
 3. `POST /api/rooms/:id/bots {bot_id}` — `INSERT OR IGNORE INTO room_bots`. 토큰은 오가지 않는다. 같은 봇을 여러 방에 참여시켜도 접속은 하나이고, `welcome.rooms` 와 프레임의 `room_id` 가 방을 가른다.
 4. `DELETE /api/rooms/:id/bots/:botId` — 그 방의 참여 행만 지운다. 커서(`last_delivered_id`)도 함께 사라지므로 다시 참여시키면 0 부터 시작한다 — 즉 그 방의 이 봇 타깃 메시지 전부가 다음 `hello` 때 재전송된다.

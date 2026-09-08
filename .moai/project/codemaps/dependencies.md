@@ -152,4 +152,4 @@ import 그래프에는 안 보이지만 함께 바꿔야 하는 자리들이다.
 | `rich.js` 시그니처 | `web/rich.js` | `web/rich.d.ts` | 타입 검사는 통과하면서 런타임이 어긋남 (시험이 못 잡음) |
 | SSE 이벤트 이름 `message`·`bot_status` | `server/src/sse.ts`·`gateway.ts`·`permissions.ts` (발행) | `web/app.js` `openStream` 리스너 | 화면이 조용히 멈춤 |
 | 참여 목록 응답 `[{bot_id, bot_name, online}]`·등록 응답 `{id, name, token, command}` | `server/src/routes-bots.ts` | `web/app.js` `refreshRoomBots`, `web/rich.js` `applyInviteResult` | 칩·등록 명령 표시가 빈 채로 남음 |
-| 알림 `meta` 다섯 키 (`chat_id`=방 번호, `message_id`, `delivery`, `sender`, `author_type`) | `channel/src/channel-server.ts` `pushChatMessage` | Claude Code 세션이 `reply`/`fetch_history` 의 `chat_id` 로 되돌림 | `chat_id` 가 비면 배선이 «마지막 to 방» 으로 채우고, 그것도 없으면 서버가 프레임을 버림 |
+| 알림 `meta` 여섯 키 (`chat_id`=방 번호, `message_id`, `delivery`, `sender`, `author_type`, `room_name`=방 이름 원문) | `channel/src/channel-server.ts` `pushChatMessage` | Claude Code 세션이 `reply`/`fetch_history` 의 `chat_id` 로 되돌림 | `chat_id` 가 비면 배선이 «마지막 to 방» 으로 채우고, 그것도 없으면 서버가 프레임을 버림 |
