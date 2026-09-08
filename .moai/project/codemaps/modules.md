@@ -19,7 +19,7 @@
 | `routes-rooms.ts` | 55 | 방 목록(모든 방, `{active, archived}`)·생성·보관(상태 전이 UPDATE 하나 + 커밋 뒤 `onArchive` 훅) | `registerRoomRoutes(app, opts?: {onArchive})` | auth |
 | `routes-bots.ts` | 83 | 봇 등록(`role` 은 `orchestrator`\|`worker`, 비우면 `worker`; 평문 토큰과 세션 실행 명령은 이 응답 한 번)·목록, 참여 추가(멱등)·참여 목록(`online` 포함)·참여 제거 | `registerBotRoutes(app)` | auth, config, gateway (타입) |
 | `routes-messages.ts` | 176 | multipart 전송, 권한 회신 가로채기, `resolveTargets` 로 대상 매핑(미참여 이름 있으면 400), SSE+게이트웨이 팬아웃, 커서 목록, 첨부 다운로드 | `registerMessageRoutes(app)` | auth, targets, db (타입) |
-| `gateway.ts` | 308 | `/bot` WebSocket 서버. `hello{token}` → `welcome`, 프레임마다 `room_id`·참여 검사, 봇 글 저장 → 발행 → 멘션 대조 → 역할 필터 → 연속 봇 글 상한(`BOT_RUN_LIMIT = 6`) → 전달, 방별 커서 재전송, 이력 조회, 봇 첨부 경로 봉인(`realpathSync`), 판정 회신 통로 | `createGateway(app, opts): Gateway`, `interface Gateway`, `interface ConnInfo`, `interface MessageRow` | targets |
+| `gateway.ts` | 308 | `/bot` WebSocket 서버. `hello{token}` → `welcome`, 프레임마다 `room_id`·참여 검사, 봇 글 저장 → 발행 → 멘션 대조 → 연속 봇 글 상한(`BOT_RUN_LIMIT = 6`, 역할 필터는 2026-09-08 삭제) → 전달, 방별 커서 재전송, 이력 조회, 봇 첨부 경로 봉인(`realpathSync`), 판정 회신 통로 | `createGateway(app, opts): Gateway`, `interface Gateway`, `interface ConnInfo`, `interface MessageRow` | targets |
 | `permissions.ts` | 132 | 권한 릴레이 브로커. 봇의 `permission_request` → 시스템 메시지 4줄, 사람의 `yes/no <id>` → 요청한 접속(`connId`)에만 판정 회신. 대기 맵은 `방:id` 와 `봇:id` 두 색인 | `createPermissionBroker(app)`, `PERMISSION_REPLY_RE`, `interface PermissionBroker` | gateway (타입) |
 
 ## channel/src — 4 파일, 592 줄

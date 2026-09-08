@@ -232,16 +232,9 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
     // 프레임이 없으므로 거부·강등을 system 메시지 한 줄로 알린다. 원문은 위에서 이미 저장·발행됐다 — 사람 화면엔 남는다.
     const { targets, unknown } = resolveTargets(db, roomId, message.body)
     if (unknown.length > 0) postSystem(roomId, `${unknown.join(', ')} 봇은 이 방에 초대되지 않았습니다`)
-    // 역할 규칙 — worker 는 orchestrator 와 사람만 부를 수 있다. 사람은 멘션 대상이 아니므로 여기서는 orchestrator 만 남긴다
-    const sender = db.prepare('SELECT role FROM bots WHERE id = ?').get(info.botId) as { role: string } | undefined
+    // 역할 규칙(worker 는 orchestrator 만 부른다)은 2026-09-08 운영자 결정으로 뺐다 — 봇 간 규칙은 각 Claude Code 세션이
+    // 정하고, 서버는 방향을 제한하지 않는다. bots.role 은 기록으로만 남는다. 되먹임 방어는 아래 연속 봇 글 상한 하나다
     let allowed = targets
-    if (sender?.role === 'worker') {
-      const blocked = targets.filter(t => t.role !== 'orchestrator')
-      if (blocked.length > 0) {
-        postSystem(roomId, `worker 봇은 ${[...new Set(blocked.map(t => t.name))].join(', ')} 봇을 부를 수 없습니다`)
-        allowed = targets.filter(t => t.role === 'orchestrator')
-      }
-    }
     // 결정 ③ — 마지막 사람 글 이후 봇 글이 연속 N개(지금 글 포함) 이상이면 @TO 를 cc 로 내린다. system 글은 연속을 끊지 않는다
     if (allowed.some(t => t.delivery === 'to') && botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT) {
       postSystem(roomId, `사람 글 없이 봇 글이 ${BOT_RUN_LIMIT}개 이어져 @TO 를 cc 로 내렸습니다`)

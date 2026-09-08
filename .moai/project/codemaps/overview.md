@@ -12,7 +12,7 @@ minidiscord 는 npm workspaces 로 묶인 TypeScript 모노레포다. **서버**
 
 | 구성 요소 | 경로 | 소스 줄 수 | 역할 |
 |---|---|---|---|
-| 서버 | `server/src/` (13 파일) | 1,121 | Fastify 앱 조립, 이름 로그인, 방·봇·참여·메시지 API, SSE 허브, WebSocket 봇 게이트웨이(맨몸 JSON 프레임, 역할 필터, 연속 봇 글 상한), 권한 릴레이 브로커 |
+| 서버 | `server/src/` (13 파일) | 1,121 | Fastify 앱 조립, 이름 로그인, 방·봇·참여·메시지 API, SSE 허브, WebSocket 봇 게이트웨이(맨몸 JSON 프레임, 연속 봇 글 상한), 권한 릴레이 브로커 |
 | 채널 플러그인 | `channel/src/` (4 파일) | 592 | 공식 Channels 계약을 구현한 MCP 서버, 게이트웨이 WebSocket 클라이언트(`hello`/`welcome` 한 왕복·지수 백오프 재접속), 바이트 예산 절단 |
 | 웹 UI | `web/` (6 파일) | 1,582 | 이름 로그인·방 목록·채팅·SSE 수신·`@` 자동완성·첨부·봇 등록/참여 다이얼로그·권한 승인 버튼 |
 | 스크립트 | `scripts/e2e.mts` (1 파일) | 477 | 15단계 «봇 하나·방 둘» E2E 러너. `scripts/_archive/` 에 퇴역한 live-* 도구 4 파일이 남아 있다 (실행 대상 아님) |
@@ -59,7 +59,7 @@ index.ts   wire()  ──▶ channel-server.ts (MCP 도구 reply/fetch_history �
 
 ## 눈에 띄는 점 (검토 시 먼저 볼 자리)
 
-1. **멘션 대조는 한 자리, 정책은 봇 경로에만.** `targets.ts` `resolveTargets` 를 사람 경로(`routes-messages.ts`)와 봇 경로(`gateway.ts handleBotMessage`)가 함께 지나지만, 역할 필터(worker 는 orchestrator 만 부름)와 연속 봇 글 상한(`BOT_RUN_LIMIT = 6`, `@TO` → `cc` 강등)은 봇 경로에만 있다. 사람은 어느 봇이든 `@TO` 할 수 있다.
+1. **멘션 대조는 한 자리, 정책은 봇 경로에만.** `targets.ts` `resolveTargets` 를 사람 경로(`routes-messages.ts`)와 봇 경로(`gateway.ts handleBotMessage`)가 함께 지나지만, 연속 봇 글 상한(`BOT_RUN_LIMIT = 6`, `@TO` → `cc` 강등)은 봇 경로에만 있다. 발신 봇의 역할로는 거르지 않는다(역할 필터는 2026-09-08 삭제, `bots.role` 은 기록). 사람도 봇도 그 방의 어느 봇이든 `@TO` 할 수 있다.
 2. **인가는 로그인뿐이다.** 방 구성원 표가 없으므로 모든 라우트가 `requireAuth` 하나로 열린다. `GET /api/rooms` 는 모든 방을 돌려주고, 보관·첨부 다운로드도 로그인만 본다. 봇 쪽은 `room_bots` 행이 유일한 경계다 — 참여하지 않은 방을 실은 프레임은 `handleWsMessage` 에서 조용히 버려진다.
 3. **보관된 방은 봇에게도 읽기 전용이다.** `gateway.ts` 가 `rooms.status` 를 읽는 자리는 둘 — `handleHello` 의 `welcome.rooms` 조회와 `handleWsMessage` 의 `isActiveRoom`(t43). 후자는 `bot_message`·`status` 만 막고(조용히 버림, 소켓 유지) `history_request` 는 통과시킨다. `closeRoom` 은 빈 몸체다. 사람 경로는 409 로 막는다 (`routes-messages.ts`).
 4. **서버 문자열과 브라우저 정규식의 결합.** `permissions.ts` 가 만드는 한국어 시스템 메시지를 `web/rich.js` 가 정규식(`REQUEST_LINE_RE`·`RESOLUTION_RE`)으로 읽는다. `전달하지 못했습니다 (<id>)` 꼬리는 코드에 `[HARD]` 로 표시돼 있다 — 문구를 바꾸면 승인 버튼 잠금이 조용히 깨진다.

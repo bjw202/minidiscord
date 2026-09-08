@@ -116,7 +116,7 @@ sequenceDiagram
 | type | 처리 | 용도 |
 |---|---|---|
 | `hello {token}` | `handleHello` | 토큰 조회 → 등록 → `welcome` → `replayMissed` |
-| `bot_message {room_id, body, files?}` | `handleBotMessage` | 봇 글. 저장 → 발행 → `resolveTargets` → 역할 필터 → 연속 봇 글 상한 → `message_targets` → `deliverTo`. `files[].local_path` 는 `realpathSync` 결과가 `botFilesDir` 아래일 때만 복사 (미설정이면 전부 거부) |
+| `bot_message {room_id, body, files?}` | `handleBotMessage` | 봇 글. 저장 → 발행 → `resolveTargets` → 연속 봇 글 상한 → `message_targets` → `deliverTo`. `files[].local_path` 는 `realpathSync` 결과가 `botFilesDir` 아래일 때만 복사 (미설정이면 전부 거부) |
 | `status {room_id, state}` | 인라인 (`handleWsMessage`) | `state` 가 `working`/`idle` 일 때만 그 방의 SSE `bot_status` 로 |
 | `history_request {room_id, rid, limit?, speaker?, since_id?, since?, until?}` | `handleHistory` | 요청한 소켓 하나에만 `history_response` |
 | `permission_request {room_id, request_id, tool_name, description, input_preview}` | `permissionHandler` | `{roomId, botId, connId}` 와 함께 브로커로 — `roomId` 는 프레임의 것 |

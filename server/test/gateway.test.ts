@@ -1253,7 +1253,9 @@ describe('B: bot-to-bot mentions', () => {
   })
 
   // 끝 조건 2 — worker 의 @TO(다른 worker) → 전달 0, system 1, 원문은 그대로 저장·발행
-  it('B-2: a worker @TO(another worker) delivers nothing, leaves one system line, and the original body stays for humans', async () => {
+  // 2026-09-08 운영자 결정 — 역할 규칙(worker 는 orchestrator 만 부른다)을 뺐다. 봇 간 규칙은 각 Claude Code 세션이 정하고,
+  // 서버의 되먹임 방어는 B-4 의 연속 봇 글 상한 하나로 남긴다. role 열은 기록으로만 남는다
+  it('B-2: a worker @TO(another worker) delivers as to — the role of the sender does not filter targets', async () => {
     const { app, published, port } = await build()
     const room = seedRoom()
     const w1 = seedRoleBot('w1', 'worker'), w2 = seedRoleBot('w2', 'worker')
@@ -1262,17 +1264,17 @@ describe('B: bot-to-bot mentions', () => {
     const w2Ws = (await wsConnect(port, tokenOf(w2))).ws
 
     w1Ws.send(JSON.stringify({ type: 'bot_message', room_id: room, body: '@TO(w2) 네가 해' }))
-    await expectNoMessage(w2Ws)
+    const frame = await nextMessage(w2Ws)
+    expect(frame.type).toBe('message')
+    expect(frame.delivery).toBe('to')
+    expect(frame.author_name).toBe('w1')
+    expect(frame.body).toBe('@TO(w2) 네가 해')
 
-    const sys = systemRows(room)
-    expect(sys).toHaveLength(1)
-    expect(sys[0].body).toContain('w2')
-    expect(sys[0].body).toContain('부를 수 없습니다')
-    expect(db.prepare('SELECT COUNT(*) c FROM message_targets').get()).toEqual({ c: 0 })
+    expect(systemRows(room)).toHaveLength(0)
+    expect(db.prepare('SELECT COUNT(*) c FROM message_targets WHERE bot_id = ?').get(w2)).toEqual({ c: 1 })
     const bot = published.filter(p => p.event === 'message' && p.data.author_type === 'bot')
     expect(bot).toHaveLength(1)
-    expect(bot[0].data.body).toBe('@TO(w2) 네가 해')
-    expect(published.filter(p => p.event === 'message' && p.data.author_type === 'system')).toHaveLength(1)
+    expect(published.filter(p => p.event === 'message' && p.data.author_type === 'system')).toHaveLength(0)
     w1Ws.close(); w2Ws.close()
     await app.close()
   })

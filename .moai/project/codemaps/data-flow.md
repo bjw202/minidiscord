@@ -13,9 +13,9 @@ SQLite 파일 하나(`MINIDISCORD_DATA_DIR/minidiscord.db`, `journal_mode = WAL`
 | `users` | `id`, `username` UNIQUE, `created_at` | 열 셋 — 비밀번호 없음. 로그인 때 `INSERT OR IGNORE` 로 생성 |
 | `sessions` | `token` PK, `user_id` → users, `created_at` | `md_session` 쿠키 값 |
 | `rooms` | `id`, `name`, `status` (`active`/`archived`), `created_at`, `archived_at` | 구성원 표 없음 — 모든 사람이 모든 방을 본다 |
-| `bots` | `id`, `name` UNIQUE, `description`, **`token`** UNIQUE, **`role`** (기본 `'worker'`), `created_at` | 봇 = 신원. 토큰은 평문으로 저장. `role` 은 등록 라우트가 `orchestrator`\|`worker` 로 검증하고 게이트웨이 역할 필터가 읽는다 |
+| `bots` | `id`, `name` UNIQUE, `description`, **`token`** UNIQUE, **`role`** (기본 `'worker'`), `created_at` | 봇 = 신원. 토큰은 평문으로 저장. `role` 은 등록 라우트가 `orchestrator`\|`worker` 로 검증만 한다 — 게이트웨이는 읽지 않는다(역할 필터 2026-09-08 삭제, 기록용) |
 | `room_bots` | `room_id` → rooms, `bot_id` → bots, **`last_delivered_id`** (기본 0), **PK (room_id, bot_id)** | 참여 = 행 하나. 재접속 재전송 커서가 참여 행에 산다 — 방마다 따로 |
-| `messages` | `id`, `room_id`, `author_type` (`user`/`bot`/`system`), `author_user_id`, `author_bot_id`, `body`, `created_at` | 시스템 메시지(승인 요청·결과·미참여 거절·역할 거절·강등 안내)도 여기 |
+| `messages` | `id`, `room_id`, `author_type` (`user`/`bot`/`system`), `author_user_id`, `author_bot_id`, `body`, `created_at` | 시스템 메시지(승인 요청·결과·미참여 거절·강등 안내)도 여기 |
 | `message_targets` | `message_id`, `bot_id`, `delivery` (`to`/`cc`) | **PK 없음** — 같은 봇이 TO 와 CC 에 함께 있으면 두 행 (의도). 사람 글·봇 글 둘 다 여기 남긴다 |
 | `attachments` | `id`, `message_id`, `filename`, `stored_path`, `size`, `mime` | 실제 파일은 `uploads/<uuid>-<basename>` |
 
@@ -62,7 +62,7 @@ sequenceDiagram
   Note over C: to 면 lastToRoom 기억 + status:working 먼저 → pushChatMessage → notifications/claude/channel
 ```
 
-멘션이 없는 메시지는 어느 봇에게도 가지 않는다 (`targets` 가 비면 `deliverTo` 가 아무것도 보내지 않음). 사람 경로에는 역할 필터도 연속 봇 글 상한도 없다 — 사람은 어느 참여 봇이든 `@TO` 할 수 있다.
+멘션이 없는 메시지는 어느 봇에게도 가지 않는다 (`targets` 가 비면 `deliverTo` 가 아무것도 보내지 않음). 사람 경로에는 연속 봇 글 상한이 없다 — 사람은 어느 참여 봇이든 `@TO` 할 수 있다.
 
 ## 3. 흐름 (b) — 봇 글이 브라우저에 뜨고, 다른 봇에게 닿기까지
 
@@ -73,7 +73,7 @@ sequenceDiagram
 5. `hub.publish(roomId, 'message', {…row, author_name, attachments})` — `attachments` 는 `id, filename` 만, `stored_path` 는 절대 내보내지 않음.
 6. **봇 → 봇 전달 (v2 B).** 같은 함수가 이어서 `resolveTargets(db, roomId, body)` 를 부른다. 봇 경로는 응답 프레임이 없으므로 거부·강등을 system 메시지 한 줄로 알린다 (원문은 이미 저장·발행됐다):
    - `unknown` 이 있으면 `«<이름> 봇은 이 방에 초대되지 않았습니다»` — 나머지 타깃은 계속 간다.
-   - 발신 봇의 `bots.role` 이 `worker` 면 타깃 중 `role !== 'orchestrator'` 를 걸러내고 `«worker 봇은 <이름> 봇을 부를 수 없습니다»` 를 남긴다.
+   - 발신 봇의 역할로는 거르지 않는다 (역할 필터는 2026-09-08 운영자 결정으로 삭제 — 봇 간 규칙은 세션이 정한다).
    - 남은 타깃에 `to` 가 있고 `botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT(6)` 이면 (마지막 사람 글 이후 봇 글 수, 지금 글 포함, system 글은 연속을 끊지 않음) 전부 `cc` 로 내리고 `«사람 글 없이 봇 글이 6개 이어져 @TO 를 cc 로 내렸습니다»` 를 남긴다.
    - 남은 타깃마다 `message_targets` 행을 쓰고 `deliverTo` 로 보낸다 — 사람 경로와 같은 자리다.
 7. `sse.ts publish` 가 방의 모든 구독 `ServerResponse` 에 `event: message\ndata: …\n\n`.

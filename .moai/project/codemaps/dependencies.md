@@ -148,7 +148,7 @@ import 그래프에는 안 보이지만 함께 바꿔야 하는 자리들이다.
 | 게이트웨이 프레임 `type` 집합과 필드명 (`hello`·`welcome`·`message`·`bot_message`·`status`·`history_request/response`·`permission_request/verdict`, `room_id`·`rid`·`local_path`) | `server/src/gateway.ts` `handleWsMessage`·`messageFrame` | `channel/src/gateway-client.ts`, `channel/src/index.ts`, `scripts/e2e.mts` | 알 수 없는 프레임은 양쪽 다 조용히 무시된다 — 시험이 아니라 E2E 만 잡는다 |
 | 권한 시스템 메시지 문구 | `server/src/permissions.ts` (한국어 4줄 본문, `전달하지 못했습니다 (<id>)` 꼬리 `[HARD]`) | `web/rich.js` `REQUEST_LINE_RE` / `RESOLUTION_RE` 정규식 | 승인 버튼이 안 뜨거나 잠기지 않음 |
 | 판정 답 형식 `yes <id>` / `no <id>` | `server/src/permissions.ts` `PERMISSION_REPLY_RE` (`/^\s*(y\|yes\|n\|no)\s+([a-km-z]{5})\s*$/i`) | `web/rich.js` `verdictBody` | 버튼이 보낸 답이 사용자 메시지로 저장되고 판정은 흐르지 않음 |
-| 역할 값 `orchestrator` / `worker` | `server/src/routes-bots.ts` 등록 검증 | `server/src/gateway.ts` 역할 필터 (`sender?.role === 'worker'`, `t.role !== 'orchestrator'`) | 새 역할을 등록에만 더하면 필터가 그 역할을 orchestrator 가 아닌 것으로 취급한다 |
+| 역할 값 `orchestrator` / `worker` | `server/src/routes-bots.ts` 등록 검증 | `targets.ts` 가 `role` 을 실어 오지만 `gateway.ts` 는 더 이상 읽지 않는다 (역할 필터 2026-09-08 삭제) | 지금은 어긋날 소비자가 없다 — 역할을 다시 읽는 코드를 넣으면 이 행을 되살릴 것 |
 | `rich.js` 시그니처 | `web/rich.js` | `web/rich.d.ts` | 타입 검사는 통과하면서 런타임이 어긋남 (시험이 못 잡음) |
 | SSE 이벤트 이름 `message`·`bot_status` | `server/src/sse.ts`·`gateway.ts`·`permissions.ts` (발행) | `web/app.js` `openStream` 리스너 | 화면이 조용히 멈춤 |
 | 참여 목록 응답 `[{bot_id, bot_name, online}]`·등록 응답 `{id, name, token, command}` | `server/src/routes-bots.ts` | `web/app.js` `refreshRoomBots`, `web/rich.js` `applyInviteResult` | 칩·등록 명령 표시가 빈 채로 남음 |

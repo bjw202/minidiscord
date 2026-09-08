@@ -28,7 +28,7 @@
 
 1. **봇은 신원이고, 방은 프레임이 실어 온다.** 봇마다 토큰 하나(`bots.token`)로 게이트웨이에 한 번 접속하고, 참여한 방(`room_bots`)이 여럿이면 같은 소켓으로 그 방들의 메시지를 전부 받는다. 방을 가르는 것은 접속이 아니라 프레임의 `room_id` 다 — 채널 알림의 `meta.chat_id` 가 방 번호이고, 세션의 `reply` 가 그 `chat_id` 로 돌아온다. (v1 의 「세션은 정확히 한 방에만」 원칙은 방별 토큰과 함께 v2 에서 사라졌다 — 경위는 `v2-review.md`.)
 2. **서버는 세션을 직접 조종하지 않는다.** 채널 플러그인이 등록 때 받은 토큰을 들고 `hello` 를 보내면 그 봇이 있는 것으로 취급한다. 세션이 죽으면 서버는 봇을 오프라인으로 표시할 뿐 메시지는 계속 DB 에 쌓고, 재접속하면 놓친 메시지를 방마다 커서 뒤부터 다시 보낸다.
-3. **서버는 페르소나를 모른다.** 봇의 성격·지식은 각 봇의 작업 디렉터리(`CLAUDE.md`, `.claude/`)가 책임진다. 서버가 갖는 봇 정보는 표시용 이름·설명과 역할(`orchestrator`/`worker`)뿐이다.
+3. **서버는 페르소나를 모른다.** 봇의 성격·지식은 각 봇의 작업 디렉터리(`CLAUDE.md`, `.claude/`)가 책임진다. 서버가 갖는 봇 정보는 표시용 이름·설명과 역할 이름표(`orchestrator`/`worker` — 서버가 전달을 거르는 데 쓰지 않는 기록)뿐이다.
 
 ### 다중 봇 접속이 어떻게 가능한가
 
@@ -61,7 +61,7 @@ minidiscord/
 │   │   ├── routes-rooms.ts       # 방 목록(모든 방)/생성/보관
 │   │   ├── routes-bots.ts        # 봇 등록(토큰 발급 한 번)/목록, 참여 추가/목록/제거
 │   │   ├── routes-messages.ts    # multipart 전송, 멘션 팬아웃, 목록 커서, 첨부 다운로드
-│   │   ├── gateway.ts            # WebSocket /bot — hello/welcome, 방별 재전송, 봇 글 전달·역할 필터, 이력, 봇 첨부 봉인
+│   │   ├── gateway.ts            # WebSocket /bot — hello/welcome, 방별 재전송, 봇 글 전달·연속 봇 글 상한, 이력, 봇 첨부 봉인
 │   │   └── permissions.ts        # 권한 릴레이 브로커
 │   └── test/                     # .test.ts 17개 + 헬퍼 3개 (wsupgrade-judgment, probe-db, no-listen)
 ├── channel/
@@ -100,7 +100,7 @@ index.ts                                          ← 조립
 - `gateway.ts` 가 import 하는 내부 모듈은 `targets.ts` 하나다. 그 밖은 ws·node 내장뿐이다.
 - `routes-messages.ts` 와 `permissions.ts` 는 게이트웨이를 `req.server.gateway` 데코레이터로만 부른다. 순환 import 는 없다.
 - `mention.ts` 는 import 0 을 요구사항(REQ-MENTION-006)으로 갖는다.
-- 멘션 대조(`targets.ts resolveTargets`)는 사람 경로와 봇 경로가 함께 지나지만, 역할 필터(worker 는 orchestrator 만 부른다)와 연속 봇 글 상한(`BOT_RUN_LIMIT = 6`, 넘으면 `@TO` 를 `cc` 로 강등)은 봇 경로(`gateway.ts handleBotMessage`)에만 있다.
+- 멘션 대조(`targets.ts resolveTargets`)는 사람 경로와 봇 경로가 함께 지나지만, 연속 봇 글 상한(`BOT_RUN_LIMIT = 6`, 넘으면 `@TO` 를 `cc` 로 강등)은 봇 경로(`gateway.ts handleBotMessage`)에만 있다. 발신 봇의 역할로 타깃을 거르지는 않는다(2026-09-08 운영자 결정으로 역할 필터 삭제 — `bots.role` 은 기록).
 - 팬인이 높은 모듈: `auth.ts`(5), `db.ts`(4), `gateway.ts`(3). 이들의 시그니처 변경은 라우트 전부에 번진다.
 
 ## 인가 경계
@@ -138,7 +138,7 @@ v2 봇 모델(SPEC-BOTMODEL-001). 모든 프레임은 `type` 을 가진 **맨몸
 
 | 방향 | type | 용도 |
 |---|---|---|
-| 채널 → 서버 | `bot_message` | 봇 글. 저장 → 발행 → 멘션 대조 → 역할 필터 → 연속 봇 글 상한 → 다른 봇에게 전달. `files[].local_path` 는 `MINIDISCORD_BOT_FILES_DIR` 아래일 때만 복사 |
+| 채널 → 서버 | `bot_message` | 봇 글. 저장 → 발행 → 멘션 대조 → 연속 봇 글 상한 → 다른 봇에게 전달(역할과 무관). `files[].local_path` 는 `MINIDISCORD_BOT_FILES_DIR` 아래일 때만 복사 |
 | 채널 → 서버 | `status` | `working`/`idle` → 그 방의 SSE `bot_status` (「입력 중」 표시) |
 | 채널 → 서버 | `history_request` | `rid`·`since_id`·`speaker`·`since`·`until`·`limit(≤500)` |
 | 채널 → 서버 | `permission_request` | 도구 승인 요청 (요청한 접속의 `connId` 와 함께 브로커로) |
@@ -153,7 +153,6 @@ v2 봇 모델(SPEC-BOTMODEL-001). 모든 프레임은 `type` 을 가진 **맨몸
 | 결합 | 자리 |
 |---|---|
 | 게이트웨이 프레임 `type` 집합과 필드명 (`room_id`·`rid`·`local_path`) | `server/src/gateway.ts` ↔ `channel/src/gateway-client.ts`·`index.ts` ↔ `scripts/e2e.mts` — 알 수 없는 프레임은 양쪽 다 조용히 무시되므로 E2E 만 잡는다 |
-| 역할 값 `orchestrator`/`worker` | `server/src/routes-bots.ts`(등록 검증) ↔ `server/src/gateway.ts`(역할 필터) |
 | 권한 시스템 메시지 문구 ↔ 브라우저 정규식 | `server/src/permissions.ts` ↔ `web/rich.js` (`전달하지 못했습니다 (<id>)` 꼬리는 `[HARD]`) |
 | 알림 `meta` 다섯 키 (`chat_id`=방 번호, `message_id`, `delivery`, `sender`, `author_type`) | `channel/src/channel-server.ts` ↔ 세션이 `reply`/`fetch_history` 에 되돌리는 `chat_id` |
 | `rich.js` 시그니처 ↔ 수기 선언 | `web/rich.js` ↔ `web/rich.d.ts` |

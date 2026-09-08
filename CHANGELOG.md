@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### 2026-09-08 — v2 를 main 에 합친 뒤 실제로 써 보며 고친 것들
+
+- **봇끼리 부르는 데 역할 제한이 없어졌습니다.** v2 B 단계의 «worker 봇은 orchestrator 봇만 부른다» 규칙을 운영자 결정으로 뺐습니다 — 누가 누구를 부를지는 각 Claude Code 세션의 지시문이 정하고, 서버는 방향을 제한하지 않습니다. `bots.role` 은 기록으로만 남고, 되먹임 방어는 «사람 글 없이 봇 글 6개 이어지면 `@TO` 를 `cc` 로» 하나입니다. (`server/src/gateway.ts`, 시험 B-2 뒤집음)
+- **보관된 방은 봇에게도 읽기 전용입니다** (카드 t43, ROADMAP OD-8). 참여 행이 남은 보관 방으로 온 `bot_message`·`status` 는 조용히 버리고, `history_request` 는 계속 답합니다. 사람 경로의 409 와 대칭이 됐습니다.
+- **봇 등록 안내문이 «다른 PC 에서도 그대로 되는» 모양이 됐습니다.** 첫 줄이 PATH 의 전역 명령 대신 이 저장소의 `channel/dist/index.js` 절대 경로를 등록하고, 빌드·기존 항목 제거·`claude mcp get` 확인·«방 참여» 단계가 함께 실립니다 — 맥북 첫 설치 때 막힌 자리 그대로입니다.
+- **README** 에 «그림으로 먼저 보기»(중학생 눈높이 설명 13소절 + mermaid 12개)와 «다른 PC 에 설치하기»(8단계 + 막혔을 때 표)를 더했습니다. `.moai/project/{product,structure,tech}.md` 는 v2 코드 기준으로 다시 썼습니다.
+
 ### 봇이 봇을 부를 수 있게 됐고, 문서와 시험을 v2 에 맞췄습니다 — v2 리팩토링 B·C2 단계
 
 **B — 봇 → 봇 멘션 전달, 역할 규칙, 되먹임 차단** (커밋 `12deb70`). 지금까지 봇이 쓴 글의 `@TO(다른봇)` 은 아무에게도 가지 않았습니다(사람 글만 파싱했습니다). 이제 봇 글도 사람 글과 같은 자리에서 타깃을 풉니다 — 멘션 → `room_bots` 조회를 `server/src/targets.ts` 의 `resolveTargets` 로 뽑아 사람 경로(`routes-messages.ts`)와 봇 경로(`gateway.ts` `handleBotMessage`)가 함께 씁니다. 그 위에 규칙 둘을 얹었습니다. **역할** — 봇은 등록할 때 `orchestrator` 또는 `worker`(기본)이고(`POST /api/bots` 는 그 밖의 값을 `400` 으로 거절), worker 봇은 orchestrator 봇과 사람만 부를 수 있습니다. worker 가 다른 worker 를 `@TO` 하면 전달되지 않고 system 메시지 한 줄이 남으며, 원문은 사람 화면에 그대로 있습니다. **되먹임 차단**(가이드 §0 결정 ③, N=6) — 그 방에서 마지막 사람 글 이후 봇 글이 여섯 개 이어지면(지금 저장한 글까지 세어) 그 글의 `@TO` 는 `cc` 로 내려가 상대 봇에게 답변 의무 없이 도착하고 system 메시지 한 줄이 남습니다. 봇 경로에는 `400` 같은 응답이 없으므로 참여하지 않은 봇 멘션도 system 메시지 한 줄로 알립니다. 끝 조건 넷은 `server/test/gateway.test.ts` 의 `B-1`~`B-4` 로, role 검증은 `rooms-bots.test.ts` 로 먼저 써서 다섯이 빨간 것을 보고 구현했습니다.
