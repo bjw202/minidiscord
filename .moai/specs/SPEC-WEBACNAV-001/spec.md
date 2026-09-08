@@ -1,8 +1,8 @@
 ---
 id: SPEC-WEBACNAV-001
 title: "@ 멘션 헬퍼 — 키보드 이동(↑/↓/Enter/Esc/Tab)과 TO/CC 배지"
-version: "0.2.0"
-status: in-progress
+version: "1.0.0"
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec
@@ -24,6 +24,7 @@ related_specs: [SPEC-WEBRICH-001]
 |------|------|-----------|--------|
 | 0.1.0 | 2026-09-08 | 최초 작성. 승인된 구현 계획 `.moai/plans/floating-stargazing-hamming.md` 를 GEARS 요구사항 8개와 수용 기준 8개로 옮겼다(Tier S 상한 8/8). 계획서가 적은 행 번호는 전부 현재 코드와 대조해 확인했다 — `web/app.js` 494~574행(자동완성 절), 429~431행(`hideAutocomplete`), 346~348행(이벤트 배선), `web/style.css` 324~356행, `web/index.html` 57행. 계획서가 따로 적지 않은 것 하나를 못 박았다: 선택 가능한 후보가 하나도 없는 채로 드롭다운이 열려 있을 때의 `Tab` 은 기존 `Enter` 와 같이 드롭다운을 닫는다(REQ-WEBACNAV-004). 수용 기준은 오케스트레이터가 열거한 관측 열 가지를 여덟으로 묶었다 — 배지 마크업과 초기 선택(AC-001), 닫힌 상태 통과와 IME 조합 중 통과(AC-005), `Tab` 확정은 AC-002 안에. | manager-spec |
 | 0.2.0 | 2026-09-08 | **plan 단계 감사 교정 라운드.** 근거: `.moai/reports/webacnav/plan-audit.md` (plan-auditor, CONDITIONAL PASS 0.91, 통과선 0.75). MUST-FIX 둘 — **D1** `plan.md`·`acceptance.md` 다섯 자리의 «새 8개 실패»는 수용 기준 수를 `it` 수로 잘못 옮긴 것이었다(감사 시점 `it` 은 7개 — AC-008 은 파일 전체 실행 + bash 검사라 `it` 이 없다). 다섯 자리를 «`it` 블록 전부, `grep -c "^it('" acceptance.md` 로 센 수»로 고쳤다. O-3 가 `it` 하나를 더해 지금 그 수는 8이며, 수용 기준 8개와 같은 수이지만 다른 셈임을 자리마다 적었다. **D2** `plan.md` 두 자리에 CSS 블록의 닫는 주석 `/* /SPEC-WEBACNAV-001 */` 지시를 더해 AC-008 (4) 의 `sed` 범위가 닫히게 했다. 관찰 셋 — **O-1** `style.css` 색 규약 주석의 행 번호를 371~373 에서 실제 373~375 로 고쳤다(승인 계획서의 371 이 틀린 것이었고 `plan.md` §A 의 «어긋난 자리 없음» 문장도 그에 맞게 고쳤다). **O-2** `Tab` 은 `Shift` 여부와 무관하게 가로챈다(`Shift+Tab` 도 확정)고 REQ-004 와 `plan.md` §B.2 에 명시했다. **O-3** 선택 가능한 항목이 없을 때의 `Tab`(닫기만)에 관측이 없던 것을 AC-002 에 둘째 `it` 으로 접어 넣었다(봇 `['코드 리뷰어']` 만 있을 때 `@코` → disabled 행 하나, `Tab` → 숨김·값 불변·POST 0). 요구사항 8개·수용 기준 8개 불변. | manager-spec |
+| 1.0.0 | 2026-09-08 | run 종결(커밋 323d239) · sync 감사 PASS 0.92 (`.moai/reports/webacnav/sync-audit.md`) · 비차단 F1~F8 기록, 코드 변경 없음 | manager-docs |
 
 ---
 

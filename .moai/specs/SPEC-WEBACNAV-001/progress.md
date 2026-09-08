@@ -9,7 +9,7 @@
 | 관련 SPEC | `SPEC-WEBRICH-001` (같은 파일 `web/app.js`·`web/style.css` 를 공유, 범위는 겹치지 않음) |
 | 손대는 파일 | `web/app.js` · `web/style.css` · `server/test/web-chat.test.ts` |
 | 개발 방식 | TDD — M1 이 RED (`quality.yaml` `development_mode: tdd`) |
-| 현재 상태 | `in-progress` — run 단계 구현 완료, 오케스트레이터 검증·커밋 대기 |
+| 현재 상태 | `completed` — run 커밋 `323d239` · sync 감사 PASS 0.92 · sync 커밋 대기(오케스트레이터) |
 | spec_base_sha | `5087a49` (`git rev-parse --short HEAD`, run 단계 시작 시점) |
 
 ---
@@ -103,7 +103,7 @@ AssertionError: expected [] to deeply equal [ <div class="ac-item"></div> ]
 
 ```yaml
 run_complete_at: 2026-09-08T14:10:00+09:00
-run_commit_sha: <pending — orchestrator commits after verification>
+run_commit_sha: 323d239
 run_status: audit-ready
 ac_pass_count: 8
 ac_fail_count: 0
@@ -128,4 +128,25 @@ worktree: .claude/worktrees/agent-a722b267af9ecf932
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08T00:00:00+09:00
+sync_commit_sha: (이 항목을 담은 sync 커밋)
+sync_status: audit-ready
+sync_audit: .moai/reports/webacnav/sync-audit.md   # 회차 1, 감사 대상 323d239
+sync_audit_verdict: PASS
+sync_audit_score: 0.92
+sync_audit_blocking: 0
+sync_audit_nonblocking: 8   # F1~F8 기록만, 코드 변경 없음
+docs_touched:
+  - README.md            # «`@` 자동완성» 항목 확장 + 설치 절차 ⑧ 힌트
+  - CHANGELOG.md         # [Unreleased] 2026-09-08 절 첫 항목
+docs_commit_sha: (이 항목을 담은 sync 커밋)
+b12_self_test_a: pass   # grep -c 'SPEC-WEBACNAV-001' CHANGELOG.md → 0 (기입 전)
+b12_self_test_b: pass   # acceptance.md 의 AC-WEBACNAV-NNN 고유 8개 = CHANGELOG «시험 8개»·spec.md §7 8행
+b12_self_test_c: pass   # web/app.js · web/style.css · server/test/web-chat.test.ts · web/design-tokens.css ls 확인
+changelog_entry_position: '[Unreleased] › ### 2026-09-08 절 첫 번째 항목'
+frontmatter_status_transitions:
+  spec.md: in-progress → completed (version 0.2.0 → 1.0.0, HISTORY 1.0.0 행 추가)
+  plan.md: n/a   # frontmatter 없음
+  acceptance.md: n/a   # frontmatter 없음
+```
