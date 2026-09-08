@@ -355,6 +355,46 @@ input:focus { outline: 1px solid var(--md-accent); }
 
 .ac-item.disabled:hover { background: none; }
 
+/* SPEC-WEBACNAV-001 */
+/* 키보드 이동과 TO/CC 배지 — 색은 design-tokens 의 var(--md-*) 만 쓴다 (REQ-WEBACNAV-008) */
+
+/* 배지와 이름이 한 줄에 나란히 */
+.ac-item {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-2);
+}
+
+/* 키보드 강조 — :hover 와 별개로, 지금 Enter 가 고를 항목 */
+.ac-item.selected {
+  background: var(--md-bg-hover);
+  outline: 1px solid var(--md-accent);
+}
+
+/* 작은 배지 — 고정 min-width 로 이름이 세로로 정렬된다 */
+.ac-kind {
+  min-width: 2.2em;
+  padding: 0 var(--md-space-1);
+  border-radius: var(--md-radius-badge);
+  font-size: var(--md-font-size-label);
+  font-weight: var(--md-font-weight-name);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* TO — 채운 블러플 */
+.ac-kind.to {
+  background: var(--md-accent);
+  color: var(--md-text-primary);
+}
+
+/* CC — 흐린 글자에 테두리만 */
+.ac-kind.cc {
+  color: var(--md-text-muted);
+  border: var(--md-border-width) solid var(--md-divider);
+}
+/* /SPEC-WEBACNAV-001 */
+
 /* 입력창 — 둥근 사각형에 채팅 배경보다 밝은 배경 (design DNA §4) */
 #msg-input {
   flex: 1;

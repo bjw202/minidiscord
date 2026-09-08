@@ -428,6 +428,7 @@ function scrollMessages() {
 
 function hideAutocomplete() {
   $('autocomplete').hidden = true
+  acIndex = 0   // 숨기면 옛 선택 위치는 뜻이 없다 (REQ-WEBACNAV-001)
 }
 
 // ── 실시간 수신 ───────────────────────────────────────────────────────
@@ -497,6 +498,9 @@ function markBotStatus(botId, botState) {
 // UI 가 맞춘다 (REQ-WEBCHAT-010·011, plan.md §B).
 const MENTION_TOKEN_RE = /(^|\s)@([^\s(]*)$/
 const MENTIONABLE_RE = /^[^()\s]+$/
+// 키보드 선택 상태 — 선택 가능한 항목(.ac-item:not(.disabled))들 사이의 인덱스 하나.
+// 렌더 끝과 숨김에서 0 으로 되돌린다 (REQ-WEBACNAV-001, plan.md §B.1).
+let acIndex = 0
 
 // 커서 앞의 미완성 멘션 낱말. 없으면 null.
 function currentMentionToken() {
@@ -513,6 +517,8 @@ function onComposerInput() {
   const prefix = token.toLowerCase()
   const box = $('autocomplete')
   box.innerHTML = ''
+  acIndex = 0   // 후보 집합이 바뀌면 옛 인덱스는 뜻이 없다 (REQ-WEBACNAV-001)
+  box.setAttribute('role', 'listbox')   // index.html 은 고치지 않는다 — role 은 렌더가 붙인다 (REQ-WEBACNAV-002)
   const matched = state.roomBots.filter(b => b.bot_name.toLowerCase().startsWith(prefix))
   if (matched.length === 0) { hideAutocomplete(); return }
   for (const bot of matched) {
@@ -529,12 +535,58 @@ function onComposerInput() {
     for (const kind of ['TO', 'CC']) {
       const item = document.createElement('div')
       item.className = 'ac-item'
-      item.textContent = `${kind} ${bot.bot_name}`
+      item.setAttribute('role', 'option')
+      item.dataset.kind = kind
+      // 배지가 앞, 이름은 텍스트 노드로 뒤 — textContent 는 여전히 'TO pm' 이라 기존
+      // AC-WEBCHAT-010 의 startsWith 탐색이 그대로 맞고, innerHTML 은 쓰지 않는다 (REQ-WEBACNAV-002).
+      const badge = document.createElement('span')
+      badge.className = `ac-kind ${kind.toLowerCase()}`
+      badge.textContent = kind
+      item.appendChild(badge)
+      item.appendChild(document.createTextNode(` ${bot.bot_name}`))
       item.addEventListener('click', () => commitMention(kind, bot.bot_name))
+      // 마우스 강조와 키보드 강조가 다른 항목을 가리키면 Enter 가 어느 쪽을 고르는지 알 수 없다 (REQ-WEBACNAV-001)
+      item.addEventListener('mouseenter', () => {
+        acIndex = acItems().indexOf(item)
+        applySelection()
+      })
       box.appendChild(item)
     }
   }
+  applySelection()
   box.hidden = false
+}
+
+// 선택 가능한 항목들 — 멘션 불가 행은 결코 선택 상태가 되지 않는다 (REQ-WEBACNAV-002).
+function acItems() {
+  return Array.from($('autocomplete').querySelectorAll('.ac-item:not(.disabled)'))
+}
+
+// acIndex 를 DOM 에 반영한다 — selected 클래스와 aria-selected 를 함께 토글한다.
+function applySelection() {
+  acItems().forEach((item, i) => {
+    const on = i === acIndex
+    item.classList.toggle('selected', on)
+    item.setAttribute('aria-selected', on ? 'true' : 'false')
+  })
+}
+
+// 선택된 항목을 확정한다 — Enter 와 Tab 의 공통 경로. 「첫 항목」이 아니라 「선택된 항목」이며,
+// 선택 가능한 항목이 없으면 키가 삼켜진 채 드롭다운이 남지 않도록 닫기만 한다 (REQ-WEBACNAV-004).
+function commitSelected() {
+  const pick = acItems()[acIndex] ?? acItems()[0]
+  if (pick) pick.click()
+  else hideAutocomplete()
+}
+
+// 선택을 delta 만큼 옮긴다. 끝에서는 감긴다 (REQ-WEBACNAV-003).
+function moveSelection(delta) {
+  const n = acItems().length
+  if (n === 0) return
+  acIndex = (acIndex + delta + n) % n
+  applySelection()
+  // jsdom 에는 scrollIntoView 가 없다 — 옵셔널 호출 (plan.md §F)
+  acItems()[acIndex].scrollIntoView?.({ block: 'nearest' })
 }
 
 // 후보 확정 — 커서 앞의 미완성 토큰을 완성된 멘션 문자열로 바꾼다.
@@ -554,6 +606,20 @@ function commitMention(kind, name) {
 // keydown — 드롭다운이 보이는 동안 Enter 는 전송이 아니다 (REQ-WEBCHAT-012).
 // '@pm' 까지 치고 Enter 를 누른 사용자는 완성을 기대하지, 깨진 멘션 전송을 기대하지 않는다.
 function onComposerKeyDown(e) {
+  // 드롭다운이 열려 있는 동안만 방향키·Esc·Tab 을 가로챈다. 닫혀 있으면 아래 첫 줄로 흘러가
+  // 아무것도 하지 않는다 — 커서 이동·포커스 이동은 브라우저 몫이다 (REQ-WEBACNAV-006).
+  const ac = $('autocomplete')
+  if (!ac.hidden && ['ArrowDown', 'ArrowUp', 'Escape', 'Tab'].includes(e.key)) {
+    // [HARD] 조합 중의 return 은 preventDefault 보다 앞이어야 한다 — 아래 Enter 경로와 같은
+    // 순서다. 조합 중의 방향키를 가로채면 한글 조합이 깨진다 (REQ-WEBACNAV-007).
+    if (e.isComposing || e.keyCode === 229) return
+    e.preventDefault()
+    if (e.key === 'Escape') { hideAutocomplete(); return }   // 입력값·커서는 그대로 (REQ-WEBACNAV-005)
+    // Tab 은 Shift 여부와 무관 — 열린 동안 포커스 이동은 어느 방향이든 가로챈다 (REQ-WEBACNAV-004)
+    if (e.key === 'Tab') { commitSelected(); return }
+    moveSelection(e.key === 'ArrowDown' ? 1 : -1)
+    return
+  }
   if (e.key !== 'Enter' || e.shiftKey) return
   // 한글·일본어 등 조합 중의 Enter 는 전송이 아니라 조합 확정이다 (카드 t32 결함 D-6).
   // 여기서 전송하면 조합 중 글자를 포함한 본문이 나간 뒤 입력창이 비워지고, 확정된
@@ -563,13 +629,7 @@ function onComposerKeyDown(e) {
   // 막혀 한글 입력이 깨진다.
   if (e.isComposing || e.keyCode === 229) return
   e.preventDefault()
-  const box = $('autocomplete')
-  if (!box.hidden) {
-    const first = box.querySelector('.ac-item:not(.disabled)')
-    if (first) first.click()
-    else hideAutocomplete()
-    return
-  }
+  if (!ac.hidden) { commitSelected(); return }
   sendMessage()
 }
 

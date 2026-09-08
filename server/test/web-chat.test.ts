@@ -123,6 +123,13 @@ function pressEnter(shift = false) {
   input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: shift, bubbles: true, cancelable: true }))
 }
 
+// keydown 하나를 보내고 이벤트를 돌려준다 — defaultPrevented 를 관측하는 기준(AC-WEBACNAV-005)이 쓴다
+function pressKey(key: string, init: KeyboardEventInit = {}) {
+  const ev = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init })
+  input().dispatchEvent(ev)
+  return ev
+}
+
 // 메시지 하나 만들기 — 실제 서버 페이로드 모양 (spec.md §3.1)
 function msg(over: Record<string, unknown> = {}) {
   return {
@@ -713,5 +720,187 @@ describe('AC-WEBCHAT-014 late response isolation', () => {
 
     const bodies = $$('#messages .msg-body').map(n => n.textContent)
     expect(bodies).toEqual(['방2 메시지'])
+  })
+})
+
+// ── SPEC-WEBACNAV-001 — @ 멘션 헬퍼의 키보드 이동과 TO/CC 배지 ────────
+// 여덟 it 은 acceptance.md 의 코드 그대로다. 빈 구현과 «전부 막기» 구현이 둘 다 떨어지도록
+// AC-005 전반(닫힌 상태 통과)과 AC-004 후반(Esc 뒤 Enter 전송)이 짝을 이룬다.
+const selectable = () => $$('#autocomplete .ac-item:not(.disabled)') as HTMLElement[]
+const selected = () => $$('#autocomplete .ac-item.selected') as HTMLElement[]
+const onePmBot = () => baseHandler({ '/api/rooms/1/bots': [{ bot_id: 1, bot_name: 'pm', online: true }] })
+
+describe('SPEC-WEBACNAV-001 keyboard navigation and TO/CC badges', () => {
+  // AC-WEBACNAV-001
+  it('renders TO/CC badges with listbox roles and selects the first item', async () => {
+    const app = await loadApp(onePmBot())
+    await app.openRoom(1); await flush()
+
+    type('@p'); await flush()
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(false)
+    expect(el('autocomplete').getAttribute('role')).toBe('listbox')
+
+    expect($$('#autocomplete .ac-item .ac-kind.to').length).toBe(1)
+    expect($$('#autocomplete .ac-item .ac-kind.cc').length).toBe(1)
+
+    const items = selectable()
+    expect(items.length).toBe(2)
+    expect(items.map(n => n.getAttribute('role'))).toEqual(['option', 'option'])
+    expect(items.map(n => n.dataset.kind)).toEqual(['TO', 'CC'])
+    // 배지가 맨 앞 — 기존 AC-WEBCHAT-010 의 startsWith('TO') 탐색이 그대로 맞는다
+    expect(items.map(n => n.textContent)).toEqual(['TO pm', 'CC pm'])
+
+    expect(items[0].classList.contains('selected')).toBe(true)
+    expect(items[0].getAttribute('aria-selected')).toBe('true')
+    expect(items[1].classList.contains('selected')).toBe(false)
+    expect(items[1].getAttribute('aria-selected')).toBe('false')
+  })
+
+  // AC-WEBACNAV-002 (1/2)
+  it('ArrowDown then Enter (or Tab) commits the selected CC candidate without sending', async () => {
+    const app = await loadApp(onePmBot())
+    await app.openRoom(1); await flush()
+
+    type('@p'); await flush()
+    pressKey('ArrowDown'); await flush()
+    expect(selected()[0]?.dataset.kind).toBe('CC')
+    pressEnter(); await flush()
+
+    expect(input().value.endsWith('@CC(pm) ')).toBe(true)
+    // 실제 서버 파서가 그 봇·그 전달 종류로 해석한다 — 문자열 비교로 대체하지 않는다
+    expect(parseMentions(input().value + 'x')).toEqual([{ bot: 'pm', delivery: 'cc' }])
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(true)
+
+    // Tab 도 같은 확정 경로다
+    type('@p'); await flush()
+    pressKey('ArrowDown'); await flush()
+    const tab = pressKey('Tab'); await flush()
+    expect(tab.defaultPrevented).toBe(true)
+    expect(parseMentions(input().value + 'x')).toEqual([{ bot: 'pm', delivery: 'cc' }])
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+  })
+
+  // AC-WEBACNAV-002 (2/2)
+  it('Tab with no selectable candidate only closes the dropdown', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/bots': [{ bot_id: 1, bot_name: '코드 리뷰어', online: true }],
+    }))
+    await app.openRoom(1); await flush()
+
+    type('@코'); await flush()
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(false)   // 열려는 있다
+    expect($$('#autocomplete .ac-item.disabled').length).toBe(1)   // disabled 행 하나뿐
+    expect(selectable().length).toBe(0)
+
+    const tab = pressKey('Tab'); await flush()
+    expect(tab.defaultPrevented).toBe(true)
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(true)
+    expect(input().value).toBe('@코')
+    expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+  })
+
+  // AC-WEBACNAV-003
+  it('wraps the selection at both ends', async () => {
+    const app = await loadApp(onePmBot())
+    await app.openRoom(1); await flush()
+    type('@p'); await flush()
+    const items = selectable()
+    expect(items.length).toBe(2)
+
+    pressKey('ArrowUp'); await flush()          // 첫 → 마지막
+    expect(selected()).toEqual([items[items.length - 1]])
+    expect(items[items.length - 1].getAttribute('aria-selected')).toBe('true')
+
+    pressKey('ArrowDown'); await flush()        // 마지막 → 첫
+    expect(selected()).toEqual([items[0]])
+    expect(items[0].getAttribute('aria-selected')).toBe('true')
+    expect(items[1].getAttribute('aria-selected')).toBe('false')
+  })
+
+  // AC-WEBACNAV-004
+  it('Escape hides the dropdown without touching the value; a following Enter sends normally', async () => {
+    const app = await loadApp(onePmBot())
+    await app.openRoom(1); await flush()
+    type('@p'); await flush()
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(false)
+
+    const esc = pressKey('Escape'); await flush()
+    expect(esc.defaultPrevented).toBe(true)
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(true)
+    expect(input().value).toBe('@p')
+
+    // AC-WEBCHAT-012 의 후반과 같은 뜻 — «전부 막기» 구현을 배제한다
+    pressEnter(); await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(1)
+  })
+
+  // AC-WEBACNAV-005
+  it('does not intercept arrows/Tab/Escape when closed, nor while composing', async () => {
+    const app = await loadApp(onePmBot())
+    await app.openRoom(1); await flush()
+
+    // 전반 — 닫힌 상태: 커서 이동·포커스 이동은 브라우저 몫
+    type('그냥 텍스트'); await flush()
+    expect(el('autocomplete').hasAttribute('hidden')).toBe(true)
+    expect(pressKey('ArrowDown').defaultPrevented).toBe(false)
+    expect(pressKey('ArrowUp').defaultPrevented).toBe(false)
+    expect(pressKey('Tab').defaultPrevented).toBe(false)
+    expect(pressKey('Escape').defaultPrevented).toBe(false)
+
+    // 후반 — 열린 상태의 조합 중 keydown: 새 분기도 preventDefault 앞에서 돌아간다
+    type('@p'); await flush()
+    const before = selected()[0]
+    expect(before?.dataset.kind).toBe('TO')
+    const composing = pressKey('ArrowDown', { isComposing: true }); await flush()
+    expect(composing.defaultPrevented).toBe(false)
+    expect(selected()).toEqual([before])
+    const legacy = pressKey('ArrowDown', { keyCode: 229 } as KeyboardEventInit); await flush()
+    expect(legacy.defaultPrevented).toBe(false)
+    expect(selected()).toEqual([before])
+  })
+
+  // AC-WEBACNAV-006
+  it('never selects a disabled row while cycling', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/bots': [
+        { bot_id: 1, bot_name: '코드 리뷰어', online: true },
+        { bot_id: 2, bot_name: 'pm', online: true },
+      ],
+    }))
+    await app.openRoom(1); await flush()
+    type('@'); await flush()
+
+    expect($$('#autocomplete .ac-item.disabled').length).toBe(1)   // disabled 행이 실제로 있다
+    expect(selectable().length).toBe(2)
+
+    const seen = new Set<string>()
+    for (const key of ['ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowUp', 'ArrowUp', 'ArrowUp']) {
+      pressKey(key); await flush()
+      const cur = selected()
+      expect(cur.length).toBe(1)
+      expect(cur[0].classList.contains('disabled')).toBe(false)
+      expect(cur[0].getAttribute('aria-selected')).toBe('true')
+      seen.add(cur[0].dataset.kind ?? '')
+    }
+    expect([...seen].sort()).toEqual(['CC', 'TO'])   // 두 선택 가능 항목을 실제로 오갔다
+  })
+
+  // AC-WEBACNAV-007
+  it('mouseenter moves the selection to that item and Enter commits it', async () => {
+    const app = await loadApp(onePmBot())
+    await app.openRoom(1); await flush()
+    type('@p'); await flush()
+    const items = selectable()
+    expect(selected()).toEqual([items[0]])
+
+    items[1].dispatchEvent(new MouseEvent('mouseenter'))
+    await flush()
+    expect(selected()).toEqual([items[1]])
+    expect(items[0].getAttribute('aria-selected')).toBe('false')
+    expect(items[1].getAttribute('aria-selected')).toBe('true')
+
+    pressEnter(); await flush()
+    expect(parseMentions(input().value + 'x')).toEqual([{ bot: 'pm', delivery: 'cc' }])
   })
 })
