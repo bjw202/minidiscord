@@ -2,7 +2,7 @@
 id: SPEC-E2ESCEN-001
 title: "전체 구동 시나리오 러너 — 봇 둘·방 둘·웹 관측자 하나로 전달·되먹임·SSE·권한·이력·경계를 전선에서 점검"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec

@@ -732,6 +732,7 @@ ID 형식(소문자 5글자, `l` 제외)에 맞지 않는 승인 요청은 대�
 | `npm test -w server` | 서버 테스트 실행 |
 | `npm test` | 전체 워크스페이스 테스트 실행 |
 | `npm run e2e` | 종단 간 시나리오 검증 — 실제 서버를 띄워 «봇 하나·방 둘» 15단계(방별 전달·이력·재전송·재시작 영속성·보관)를 확인합니다 |
+| `npm run e2e:scenario` | 둘째 종단 간 러너 — 실제 서버를 띄워 «봇 둘·방 둘·관측자 하나» 20단계(봇 간 전달·되먹임 차단 N=6·SSE 관측·권한 릴레이 전 경로·이력 필터·재시작·봇 삭제·경계)를 확인합니다. 서버의 현재 동작 중 판정하지 않는 여덟 가지는 `[observe]` 줄로 찍고, 끝에 `[elapsed]`(실측 약 14초)를 남깁니다 |
 | `npm run typecheck -w server` | 타입 검사 (코드 실행 없이 타입만 확인) |
 | `npm run build -w channel` | 채널 플러그인 빌드 — `channel/dist/index.js`가 생깁니다 |
 | `npm test -w channel` | 채널 플러그인 테스트 실행 |
@@ -781,7 +782,9 @@ minidiscord/
 │  ├─ style.css          레이아웃과 컴포넌트
 │  └─ design-tokens.css  색·간격 토큰 (색은 여기서만 나옵니다)
 ├─ scripts/
+│  ├─ e2e-lib.mts        두 러너가 나눠 쓰는 도우미
 │  ├─ e2e.mts            «봇 하나·방 둘» 15단계 종단 간 러너
+│  ├─ e2e-scenario.mts   «봇 둘·방 둘·관측자 하나» 20단계 러너
 │  └─ _archive/          v2 이전 라이브 검증 도구 (보관)
 └─ .moai/          SPEC 문서와 작업 기록 (보관된 SPEC 은 .moai/specs/_archive/)
 ```

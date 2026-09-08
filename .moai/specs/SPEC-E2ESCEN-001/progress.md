@@ -8,7 +8,7 @@
 | 관련 SPEC | (없음 — `SPEC-CHANCLIENT-001`·`SPEC-GATEWAY-001` 은 BOTMODEL-001 로 대체된 스텁, `spec.md` §8) |
 | 손대는 파일 | `scripts/e2e-lib.mts`(신설) · `scripts/e2e.mts` · `scripts/e2e-scenario.mts`(신설) · `package.json` · `server/test/e2e-lib.test.ts`(신설) · `ROADMAP.md`(sync) |
 | 개발 방식 | TDD — M1 이 RED (`quality.yaml` `development_mode: tdd`) |
-| 현재 상태 | `in-progress` — plan 감사 1회차 FAIL 0.75 → v0.2.0 · 2회차 CONDITIONAL PASS 0.857 → v0.3.0(`.moai/reports/e2escen/plan-audit.md`); run 단계 M1 착수 |
+| 현재 상태 | `completed` — plan 감사 1회차 FAIL 0.75 → v0.2.0 · 2회차 CONDITIONAL PASS 0.857 → v0.3.0(`.moai/reports/e2escen/plan-audit.md`); run 단계 M1~M6 착지(M7 은 운영자 결정으로 미착수); sync 감사 **PASS 0.865**(차단 0 · F1~F10 전부 비차단, `.moai/reports/e2escen/sync-audit.md`) |
 | spec_base_sha | `66267ca` — plan 단계 작성 시점 HEAD. **행 번호 인용의 닻으로만 쓴다** (diff 기준이 아니다) |
 | run_base_sha | `d98ad7b` — run 단계 첫 행동으로 `git rev-parse --short HEAD` 를 읽어 적었다 (AC-014·DoD·`plan.md` §D 의 diff 기준) |
 
@@ -194,9 +194,15 @@ $ npm run e2e:scenario→ exit 0 · E2E-SCENARIO PASS — 20 단계 전부 통�
 run_complete_at: 2026-09-08T15:52:00+09:00
 run_status: audit-ready
 run_base_sha: d98ad7b
-run_commits:
-  - 56815bc   # M1 공용 도우미 추출
-  - c4f778e   # M2~M6 둘째 러너
+run_commits:               # main 에 실제로 착지한 다섯 (sync 감사 F2 교정)
+  - ee40b40   # M1 공용 도우미 e2e-lib.mts 추출
+  - ec4f3c1   # M2~M6 둘째 러너 e2e-scenario.mts
+  - b7e94fd   # run 단계 증거와 audit-ready 신호 — §E.2 · §E.3
+  - b430cee   # run 단계 검증 증거 — .moai/state/verify/e2escen/
+  - 511b149   # AC-014 변경 파일 목록을 고정 수 대신 규칙으로
+run_commits_worktree:      # 위 다섯의 원본이 된 격리 워크트리 SHA (미푸시 · main 의 조상이 아니다)
+  - 56815bc   # → ee40b40
+  - c4f778e   # → ec4f3c1
 run_pushed: false          # 격리 워크트리 — main 착지는 오케스트레이터 몫
 evidence_dir: .moai/state/verify/e2escen/
 ac_pass_count: 14          # AC-001~012 · 014 · 015
@@ -223,4 +229,38 @@ OD-6 행에 실측 `[elapsed] 14,098 ms` 를 적는다. 이 run 은 `ROADMAP.md`
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08T17:20:00+09:00
+sync_status: audit-ready
+sync_audit: ".moai/reports/e2escen/sync-audit.md — PASS 0.865 (차단 0, F1~F10 optional)"
+sync_audit_dimensions: "Functionality 0.90 / Security 0.90 / Craft 0.75 / Consistency 0.90"
+sync_commit_sha: pending-backfill-sync   # 격리 워크트리 커밋 — main 착지 뒤 오케스트레이터가 채운다
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+docs_touched:
+  - README.md            # 명령어 표에 npm run e2e:scenario 행 · 폴더 구조에 e2e-lib.mts·e2e-scenario.mts
+  - CHANGELOG.md         # [Unreleased] 2026-09-08 절 맨 위에 둘째 러너 항목 하나
+  - ROADMAP.md           # 후속 후보 OD-9~OD-15 추가 · OD-6 에 [elapsed] 실측 · 절 머리글 한 문장
+  - .moai/specs/SPEC-E2ESCEN-001/spec.md        # frontmatter status 만
+  - .moai/specs/SPEC-E2ESCEN-001/progress.md    # 현재 상태 · §E.3 run_commits · 이 §E.4
+```
+
+**감사 발견 처분** (`.moai/reports/e2escen/sync-audit.md` §7)
+
+- **F1** (AC-014 (2) 의 기준 명령이 작업 나무를 본다) — 세션 하네스가 쓰는 파일이 허용 집합 밖에 뜨는 것은 사실이나,
+  커밋된 diff(`git diff --name-only d98ad7b HEAD`)는 전부 허용 집합 안이고 보호 경로 diff 는 0 줄이라 기준의 **의도는
+  만족**된다. `acceptance.md` 본문은 sync 단계 소유가 아니므로 고치지 않고 여기에 적어 둔다.
+- **F2** (`run_commits` 가 워크트리 SHA) — **여기서 닫았다.** §E.3 을 착지 SHA 다섯으로 갱신하고 워크트리 SHA 둘은
+  `run_commits_worktree` 로 옮겨 «미푸시·main 의 조상 아님» 을 명시했다.
+- **F3 · F10** (`spawnChannel()` 호출부 없음 · `--with-channel` 이 `[skip] G7` 한 줄만 찍음) — ROADMAP **OD-14** 로 올렸다.
+- **F4** (소비자 없는 export 다섯) — OD-14 와 같은 자리(M7)의 부수 항목이라 따로 카드를 열지 않았다.
+- **F5** (AC-012 (2b) 화이트리스트가 부분 문자열 대조) — 판별력 자체는 있음이 실측됐고 `acceptance.md` 본문 수정은
+  sync 단계 소유가 아니라 손대지 않았다.
+- **F6** (`@ts-ignore` 안전성의 인용 근거) — §E.2 가 인용한 `QUIET_MS: string` 변이는 오류를 시험 파일에 띄우므로
+  «도우미 본문이 strict 로 검사된다» 를 **가르지 못한다.** 가르는 증거는 감사가 도우미 본문에 심은
+  `../scripts/e2e-lib.mts(330,9): error TS2322` 다. 주장 자체는 참이고, 근거만 이것으로 읽어야 한다.
+- **F7** (eslint/prettier 설정 없음) — 이미 보류 카드 `t35` ②에 있는 항목이라 새 카드를 열지 않았다.
+- **F8** (`npm audit` 의 `qs` moderate 2건) — 이 SPEC 이 들여온 것이 아니다(`package-lock.json` 이 `d98ad7b` 대비 무변경).
+  별도 카드 몫.
+- **F9** (M2~M6 의 RED 증거가 하나) — 감사의 변이 열넷이 사후로 그 공백을 메웠다. 기록만 남긴다.
+- **OD-15** (`server/tsconfig.json` 의 `outDir`) — ROADMAP 후속 후보로 새로 올렸다.
