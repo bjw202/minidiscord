@@ -335,3 +335,41 @@ _<pending sync-phase>_
 - **AC-WEBMD-008 에 「맨 호스트」 절 추가.** 기존 절은 스킴 없는 방향으로 슬래시형과 `www.`형만 먹였다. 술어를 그 둘로 좁힌 구현은 `[good.example](https://evil.example)` 를 놓치면서도 모든 절을 통과한다 — REQ-WEBMD-008 위반이 기계로 잡히지 않는 상태였다. 술어의 정의역 전체를 기준 안으로 들였다
 - **Definition of Done 의 과대주장 정정.** 「테스트가 하나도 실행되지 않아도 종료 코드가 0 이 되는 경로를 이 조건이 막는다」는 거짓이었다 — 0건 실행은 `failed` 0 과 skip 조건을 그대로 만족한다. 이 조건이 실제로 막는 것(목록 밖 skip)과 0건 실행을 떨어뜨리는 자리(AC 각각의 노드 계수)를 갈라 적었다
 - 예산 불변: REQ 15 / AC 16. 새 절은 AC-WEBMD-008 **안**이다
+
+### plan 감사 3회차 — run 게이트 재실행 (2026-09-08)
+
+- 보고서: `.moai/reports/plan-audit/SPEC-WEBMD-001-3.md`
+- 촉발: 2회차 판정(0.2.0 대상) **뒤에** 잔여 둘이 반영돼(0.2.1) «판정 뒤 산출물 무변경» 건너뛰기 조건이 어긋남 → 스티키 캐시 미스, 게이트 재실행. delta 재검증(적용 수리 둘) + 현재 산출물 새 판정 병행
+- 판정: **PASS 0.949** (2회차 0.936 대비 상승, Tier M 통과선 0.80 이상). must-pass 7항목 통과(MP-4 N/A), 남은 차단 0건
+- 수리 둘 착지 확인 — 맨 호스트 절은 «좁힌 술어» 실행으로 REQ 위반이 이제 기계로 잡힘까지 검증; DoD 문장은 정확한 서술로 교체. 경계 넷(평문 무힌트·같은 호스트 무힌트·자동링크 무힌트·파싱 실패 fail-loud) 전부 생존
+- 신규 발견 1건(minor·optional): HISTORY 표 0.2.1 행이 빈 줄(spec.md:27)에 가로막혀 표에서 분리 — 내용 온전, 렌더링만 파손. **판정 뒤 오케스트레이터가 기계 수리 1줄(빈 줄 제거)을 별도 커밋(docs(SPEC-WEBMD-001), c0026ce)으로 착지** — 본 판정은 수리 전 본문 기준임을 여기에 명시
+- 한때 제기됐던 «스킴 없는 위장 절 둘 = 낡은 계수» 의심은 열거 검증으로 기각(허위 발견 회피 기록은 보고서 3회차 참조)
+- 코드 앵커 12부류 전부 내용 앵커로 재탐색해 현행 나무와 일치 확인
+
+## §F Phase 4 Mode Selection
+
+Decision: Scale-based mode: serial (files: 5, domains: 1) — Standard envelope, cycle_type=tdd
+
+- 기록 시점: 2026-09-08, run 세션 0eb896e5. Kickoff 게이트 통과(운영자 승인: run 진입 + 표준 진행) 직후, 첫 run-phase `Agent()` 스폰 전.
+- 이 기록은 워크트리 갈라짐으로 유실됐다가 재결합됐다 — 구현 에이전트가 c0026ce 기점 워크트리에서 §E.2/§E.3 만 실어 push 했고, 본 절과 위 감사 3회차 기록은 공유 체크아웃에 미커밋으로 남아 `git merge --ff-only` 를 막았다. 복사본 `.moai/state/verify/webmd-run/progress-local-pre-ff.md` 보관 뒤 ff(d008b8f) 하고 이 자리에 재결합했다.
+
+### Input parameters
+
+- tier: M · scope: 5파일 (신규 3 — `web/markdown.js`, `web/markdown.d.ts`, `server/test/web-markdown.test.ts`; 수정 2 — `web/app.js`, `web/style.css`)
+- domain count: 1 (웹 프런트 — vanilla JS DOM 렌더러와 그 테스트)
+- file language mix: JS(바닐라 ES 모듈) + TS(선언·테스트) + CSS
+- concurrency benefit: LOW (코딩 중심 — Anthropic coding-task parallelism caveat)
+- agent-team 사전조건: 해당 없음 (요청 플래그 없음)
+
+### Mode evaluation table
+
+| mode | 선택 | 근거 |
+|---|---|---|
+| direct | not selected | 한 줄·오타 수준이 아님 — 신규 모듈 구현 |
+| serial | **selected** | 코딩 중심 단일 도메인 — 순차 서브에이전트 기본 |
+| fanout | not selected | 조사 중심 다중 도메인이 아님; 코딩 병렬화 caveat |
+| sweep | not selected | 5파일, 균일 기계 변형 아님, 파일 간 의존 존재 |
+
+### Justification
+
+구현이 서로 의존하는 소수 파일(렌더러 → 형 선언 → 테스트 → 통합 → CSS)의 신규 작성이고 TDD RED-GREEN 순서(M1→M5)가 스스로 직렬 의존을 갖는다. Anthropic 의 코딩 과제 병렬화 caveat 에 따라 serial 이 기본이다. fanout 의 전제(조사 중심 ≥3 도메인), sweep 의 전제(≥~30파일 균일 기계 변형·파일 간 무의존)가 어느 쪽도 성립하지 않는다. harness level = standard (Complexity Estimator: 파일 >3·feature) — 자동 선택 그대로. Implementation Kickoff Approval 통과 + 선호 drained(진행축: 표준 진행) 확인.
