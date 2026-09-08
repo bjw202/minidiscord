@@ -58,8 +58,10 @@
         <textarea id="msg-input" rows="1" placeholder="메시지 보내기"></textarea>
         <!-- 파일 첨부 — 카드 t32 결함 D-7. 자리(#file-input)는 REQ-WEBCHAT-001 이 두었으나
              그것을 여는 UI 와 전송 결합을 어느 SPEC 도 소유하지 않아 사람이 파일을 올릴 수 없었다.
-             label[for] 은 스크립트 없이 파일 선택창을 연다 — 여는 코드를 따로 두지 않는다. -->
-        <input id="file-input" type="file" hidden>
+             label[for] 은 스크립트 없이 파일 선택창을 연다 — 여는 코드를 따로 두지 않는다.
+             multiple 로 한 번에 여러 개를 고를 수 있고, 실제로 보낼 목록은 app.js 의 배열이
+             소유한다 — input.files 로는 고른 것 하나만 빼는 수단이 없기 때문이다. -->
+        <input id="file-input" type="file" multiple hidden>
         <label id="attach-btn" for="file-input" role="button" tabindex="0" title="파일 첨부">📎</label>
         <span id="file-chosen"></span>
         <button id="send-btn" type="button">보내기</button>

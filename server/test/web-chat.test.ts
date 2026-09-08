@@ -596,13 +596,29 @@ describe('D-6 enter during IME composition', () => {
 // 실패, attachments 표 0행 — evidence/D01-defect-register-silent.txt §23).
 // 서버는 이미 받는다: routes-messages.ts 의 `req.parts()` 는 `part.type === 'file'` 인
 // 파트를 필드명과 무관하게 저장하고, 파일이 아닌 파트는 전부 body 로 이어 붙인다.
-function pickFile(name = 'note.txt', content = '자몽샐러드-7391') {
-  const f = new File([content], name, { type: 'text/plain' })
+// 한 번의 change 로 파일 여러 개를 고른다. picker.files 는 읽기 전용이라 defineProperty 로 심는다.
+// 문자열을 주면 그 이름의 File 을 만들고, File 을 그대로 주면 그 객체를 쓴다 — 같은 파일을 다시
+// 고르는 상황(중복 제거 기준)을 재현하려면 같은 File 객체를 두 번 넘기면 된다.
+// lastModified 를 고정하는 이유: 이름·크기·lastModified 세 값으로 같은 파일을 판정하므로
+// 시각이 흔들리면 «같은 파일» 재선택이 재현되지 않는다.
+function pickFiles(...specs: Array<string | File>) {
+  const files = specs.map(s =>
+    typeof s === 'string'
+      ? new File([`내용-${s}`], s, { type: 'text/plain', lastModified: 1_700_000_000_000 })
+      : s)
   const picker = document.getElementById('file-input') as HTMLInputElement
-  Object.defineProperty(picker, 'files', { value: [f], configurable: true })
+  Object.defineProperty(picker, 'files', { value: files, configurable: true })
   picker.dispatchEvent(new Event('change', { bubbles: true }))
-  return f
+  return files
 }
+
+function pickFile(name = 'note.txt', content = '자몽샐러드-7391') {
+  return pickFiles(new File([content], name, { type: 'text/plain', lastModified: 1_700_000_000_000 }))[0]
+}
+
+// 화면에 그려진 첨부 칩의 이름들. 칩 안에는 이름 텍스트 노드와 ✕ 버튼이 함께 있으므로
+// textContent 전체가 아니라 버튼의 aria-label 이 아닌 첫 텍스트 노드를 읽는다.
+const chipNames = () => $$('#file-chosen .file-chip').map(c => (c.firstChild?.textContent ?? '').trim())
 
 describe('D-7 attaching a file from the web composer', () => {
   it('sends the picked file as a file part alongside the body', async () => {
@@ -651,6 +667,97 @@ describe('D-7 attaching a file from the web composer', () => {
 
     pressEnter(); await flush()
     expect(calls.filter(c => c.method === 'POST').length).toBe(0)
+  })
+})
+
+// ── 첨부 여러 개 + 하나씩 빼기 (운영자 결정 2026-09-08) ─────────────────
+// 브라우저의 input.files 는 항목 하나만 빼는 수단이 없다. 그래서 «보낼 목록» 을
+// app.js 안의 배열이 소유하고, picker 는 고르는 창구로만 쓴다. 이 블록은 그 소유 이전이
+// 실제로 관측되는지를 본다: 여러 개 고르기·두 번에 나눠 고르기·중복 방지·하나만 빼기.
+describe('attach-multi — several files, remove one', () => {
+  it('lets the file picker take several files at once', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    expect((el('file-input') as HTMLInputElement).hasAttribute('multiple')).toBe(true)
+  })
+
+  it('renders one chip per file picked in a single change', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    pickFiles('가.txt', '나.txt')
+    expect(chipNames()).toEqual(['가.txt', '나.txt'])
+  })
+
+  it('accumulates across two changes and does not add the same file twice', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    const [first] = pickFiles('가.txt')
+    pickFiles('나.txt')
+    expect(chipNames()).toEqual(['가.txt', '나.txt'])
+
+    // 같은 파일(이름·크기·lastModified 동일)을 다시 골라도 목록은 그대로다
+    pickFiles(first)
+    expect(chipNames()).toEqual(['가.txt', '나.txt'])
+  })
+
+  it('removes only the clicked file, and sends the remaining one', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    pickFiles('가.txt', '나.txt')
+    const removes = $$('#file-chosen .file-chip-remove') as HTMLButtonElement[]
+    expect(removes.length).toBe(2)
+    removes[0].click()
+    expect(chipNames()).toEqual(['나.txt'])
+
+    pressEnter(); await flush()
+
+    const posts = calls.filter(c => c.method === 'POST')
+    expect(posts.length).toBe(1)
+    const fd = posts[0].body as FormData
+    const parts = [...fd.values()].filter(v => v instanceof File) as File[]
+    expect(parts.map(f => f.name)).toEqual(['나.txt'])
+    // 파일 아닌 파트를 서버가 전부 body 로 이어 붙이므로 텍스트 파트는 하나뿐이어야 한다
+    expect(fd.getAll('body')).toEqual([''])
+  })
+
+  it('clears the chips after a successful send, so the next Enter sends nothing', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1)
+    await flush()
+
+    pickFiles('가.txt', '나.txt')
+    pressEnter(); await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(1)
+    expect(chipNames()).toEqual([])
+    expect(el('file-chosen').textContent).toBe('')
+
+    // 목록이 비었으니 본문 없는 두 번째 Enter 는 아무것도 보내지 않는다
+    pressEnter(); await flush()
+    expect(calls.filter(c => c.method === 'POST').length).toBe(1)
+  })
+
+  it('keeps the chips when the send fails', async () => {
+    const app = await loadApp((url, opts) =>
+      opts.method === 'POST' && url === '/api/rooms/1/messages'
+        ? { ok: false, status: 500, data: { error: '보내지 못했습니다' } }
+        : baseHandler()(url, opts))
+    await app.openRoom(1)
+    await flush()
+
+    pickFiles('가.txt', '나.txt')
+    pressEnter(); await flush()
+
+    expect(calls.filter(c => c.method === 'POST').length).toBe(1)
+    // 실패하면 선택이 남아 다시 보내기로 그대로 나간다 (기존 D-7 규칙과 같은 방향)
+    expect(chipNames()).toEqual(['가.txt', '나.txt'])
   })
 })
 

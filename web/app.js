@@ -347,7 +347,7 @@ export function initChat() {
   composer.addEventListener('input', onComposerInput)
   composer.addEventListener('keydown', onComposerKeyDown)
   // 첨부 선택 표시 — 무엇이 함께 나갈지 보이지 않으면 사용자는 첨부 여부를 알 수 없다 (카드 t32 D-7)
-  $('file-input').addEventListener('change', showPickedFile)
+  $('file-input').addEventListener('change', onFilePicked)
   $('send-btn').addEventListener('click', () => { sendMessage() })
   chatReady = true
 }
@@ -639,8 +639,8 @@ function onComposerKeyDown(e) {
 // 응답을 그리면 자기 메시지가 두 번 보인다. 실패하면 화면 요소로 알리고 입력을 복원한다.
 export async function sendMessage() {
   const box = $('msg-input')
-  const picker = $('file-input')
-  const files = Array.from(picker.files ?? [])
+  // 보낼 목록은 picker 가 아니라 pickedFiles 가 소유한다 — ✕ 로 하나를 뺀 결과가 여기 담긴다
+  const files = pickedFiles.slice()
   const body = box.value
   // 본문도 파일도 없을 때만 아무것도 하지 않는다 — 파일만 보내는 것은 서버가 받는다
   // (routes-messages.ts REQ-MSG-005: body 도 파일도 없으면 400)
@@ -654,7 +654,7 @@ export async function sendMessage() {
   for (const f of files) form.append('file', f)
   try {
     await api(`/api/rooms/${state.currentRoomId}/messages`, { method: 'POST', body: form })
-    clearPickedFile()   // 성공했을 때만 비운다 — 실패하면 선택이 남아 다시 보내기로 그대로 나간다
+    clearPickedFiles()  // 성공했을 때만 비운다 — 실패하면 선택이 남아 다시 보내기로 그대로 나간다
   } catch (err) {
     notifyError(err)
     // 그 사이 사용자가 다음 메시지를 치고 있을 수 있다 — 빈 칸일 때만 되살린다 (plan.md §D 9번)
@@ -662,19 +662,56 @@ export async function sendMessage() {
   }
 }
 
-// 선택된 파일 이름을 입력창 옆에 한 줄로 보인다. 여러 개면 «이름 외 N».
-function showPickedFile() {
-  const files = Array.from($('file-input').files ?? [])
-  const label = $('file-chosen')
-  label.textContent = files.length === 0 ? ''
-    : files.length === 1 ? `📎 ${files[0].name}`
-    : `📎 ${files[0].name} 외 ${files.length - 1}`
+// 함께 보낼 파일 목록. picker.files 는 항목 하나만 빼는 수단이 없으므로(읽기 전용 FileList)
+// «무엇이 나갈지» 의 단일 출처는 이 배열이고, picker 는 고르는 창구로만 쓴다.
+let pickedFiles = []
+
+// 새로 고른 파일을 목록에 잇는다. 두 번에 나눠 골라도 쌓이고, 같은 파일은 두 번 담지 않는다.
+function onFilePicked() {
+  const picker = $('file-input')
+  for (const f of Array.from(picker.files ?? [])) {
+    if (!pickedFiles.some(p => isSameFile(p, f))) pickedFiles.push(f)
+  }
+  // 같은 파일을 다시 고를 수 있게 창구를 비운다 — 비우지 않으면 change 가 다시 오지 않는다
+  picker.value = ''
+  renderPickedFiles()
 }
 
-// 선택을 비운다. input.value = '' 가 files 를 비우는 표준 경로다.
-function clearPickedFile() {
+// 이름·크기·수정시각이 모두 같으면 같은 파일로 본다 — File 객체는 고를 때마다 새로 생긴다
+function isSameFile(a, b) {
+  return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified
+}
+
+// 고른 파일을 칩 한 줄로 보인다. 이름은 textContent 로만 넣는다 — 파일명은 사용자 입력이라
+// innerHTML 로 넣으면 그대로 마크업이 된다(REQ-WEBCHAT-003 과 같은 이유).
+function renderPickedFiles() {
+  const box = $('file-chosen')
+  box.textContent = ''
+  for (const f of pickedFiles) {
+    const chip = document.createElement('span')
+    chip.className = 'file-chip'
+    // 📎 는 옆의 첨부 버튼이 이미 달고 있다 — 칩마다 되풀이하지 않고 이름만 둔다
+    chip.append(f.name)
+    const remove = document.createElement('button')
+    remove.type = 'button'
+    remove.className = 'file-chip-remove'
+    remove.setAttribute('aria-label', `${f.name} 첨부 제거`)
+    remove.textContent = '✕'
+    // 인덱스가 아니라 파일 자체로 지운다 — 다시 그리는 사이 인덱스는 어긋날 수 있다
+    remove.addEventListener('click', () => {
+      pickedFiles = pickedFiles.filter(p => p !== f)
+      renderPickedFiles()
+    })
+    chip.appendChild(remove)
+    box.appendChild(chip)
+  }
+}
+
+// 선택을 통째로 비운다. 전송에 성공했을 때만 부른다.
+function clearPickedFiles() {
+  pickedFiles = []
   $('file-input').value = ''
-  $('file-chosen').textContent = ''
+  renderPickedFiles()
 }
 
 // 전송 실패 알림 — alert 대신 화면 안의 요소로 낸다. jsdom 이 alert 를 던지지 않고

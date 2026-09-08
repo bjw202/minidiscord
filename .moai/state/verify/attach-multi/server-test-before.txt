@@ -1,0 +1,21 @@
+
+> pretest
+> npm run typecheck
+
+
+> typecheck
+> tsc --noEmit
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a4a830018f02ca171/server
+
+
+ Test Files  18 passed (18)
+      Tests  216 passed (216)
+   Start at  19:19:58
+   Duration  18.10s (transform 992ms, setup 0ms, import 2.71s, tests 34.19s, environment 1.56s)
+

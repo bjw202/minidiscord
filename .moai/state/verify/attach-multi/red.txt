@@ -1,0 +1,161 @@
+
+> pretest
+> npm run typecheck
+
+
+> typecheck
+> tsc --noEmit
+
+
+> test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a4a830018f02ca171/server
+
+ ❯ test/web-chat.test.ts (37 tests | 6 failed) 145ms
+     × lets the file picker take several files at once 4ms
+     × renders one chip per file picked in a single change 2ms
+     × accumulates across two changes and does not add the same file twice 2ms
+     × removes only the clicked file, and sends the remaining one 1ms
+     × clears the chips after a successful send, so the next Enter sends nothing 2ms
+     × keeps the chips when the send fails 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/web-chat.test.ts > attach-multi — several files, remove one > lets the file picker take several files at once
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/web-chat.test.ts:683:77
+    681|     await flush()
+    682|
+    683|     expect((el('file-input') as HTMLInputElement).hasAttribute('multip…
+       |                                                                             ^
+    684|   })
+    685|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/web-chat.test.ts > attach-multi — several files, remove one > renders one chip per file picked in a single change
+AssertionError: expected [] to deeply equal [ '가.txt', '나.txt' ]
+
+- Expected
++ Received
+
+- [
+-   "가.txt",
+-   "나.txt",
+- ]
++ []
+
+ ❯ test/web-chat.test.ts:692:25
+    690|
+    691|     pickFiles('가.txt', '나.txt')
+    692|     expect(chipNames()).toEqual(['가.txt', '나.txt'])
+       |                         ^
+    693|   })
+    694|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/web-chat.test.ts > attach-multi — several files, remove one > accumulates across two changes and does not add the same file twice
+AssertionError: expected [] to deeply equal [ '가.txt', '나.txt' ]
+
+- Expected
++ Received
+
+- [
+-   "가.txt",
+-   "나.txt",
+- ]
++ []
+
+ ❯ test/web-chat.test.ts:702:25
+    700|     const [first] = pickFiles('가.txt')
+    701|     pickFiles('나.txt')
+    702|     expect(chipNames()).toEqual(['가.txt', '나.txt'])
+       |                         ^
+    703|
+    704|     // 같은 파일(이름·크기·lastModified 동일)을 다시 골라도 목록은 그대로다
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/web-chat.test.ts > attach-multi — several files, remove one > removes only the clicked file, and sends the remaining one
+AssertionError: expected +0 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 0
+
+ ❯ test/web-chat.test.ts:716:28
+    714|     pickFiles('가.txt', '나.txt')
+    715|     const removes = $$('#file-chosen .file-chip-remove') as HTMLButton…
+    716|     expect(removes.length).toBe(2)
+       |                            ^
+    717|     removes[0].click()
+    718|     expect(chipNames()).toEqual(['나.txt'])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  test/web-chat.test.ts > attach-multi — several files, remove one > clears the chips after a successful send, so the next Enter sends nothing
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ test/web-chat.test.ts:744:59
+    742|     // 목록이 비었으니 본문 없는 두 번째 Enter 는 아무것도 보내지 않는다
+    743|     pressEnter(); await flush()
+    744|     expect(calls.filter(c => c.method === 'POST').length).toBe(1)
+       |                                                           ^
+    745|   })
+    746|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  test/web-chat.test.ts > attach-multi — several files, remove one > keeps the chips when the send fails
+AssertionError: expected [] to deeply equal [ '가.txt', '나.txt' ]
+
+- Expected
++ Received
+
+- [
+-   "가.txt",
+-   "나.txt",
+- ]
++ []
+
+ ❯ test/web-chat.test.ts:760:25
+    758|     expect(calls.filter(c => c.method === 'POST').length).toBe(1)
+    759|     // 실패하면 선택이 남아 다시 보내기로 그대로 나간다 (기존 D-7 규칙과 같은 방향)
+    760|     expect(chipNames()).toEqual(['가.txt', '나.txt'])
+       |                         ^
+    761|   })
+    762| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed | 17 passed (18)
+      Tests  6 failed | 216 passed (222)
+   Start at  19:21:41
+   Duration  17.68s (transform 1.47s, setup 0ms, import 3.58s, tests 31.15s, environment 1.43s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a4a830018f02ca171/server
+npm error workspace @minidiscord/server
+npm error location /Users/byunjungwon/Dev/my-project-04/minidiscord/.claude/worktrees/agent-a4a830018f02ca171/server
+npm error command failed
+npm error command sh -c vitest run

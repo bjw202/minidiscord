@@ -408,7 +408,37 @@ input:focus { outline: 1px solid var(--md-accent); }
 #send-btn, #attach-btn { align-self: flex-end; }
 /* 📎 는 label 이지만 버튼처럼 보이고 눌린다 — #send-btn 과 같은 정렬을 공유한다 (카드 t32 D-7) */
 #attach-btn { cursor: pointer; user-select: none; padding: 0 0.4rem; }
-#file-chosen { align-self: flex-end; font-size: 0.85em; opacity: 0.8; }
+/* 고른 파일이 여러 개면 칩이 여러 개 늘어선다 — 좁아지면 다음 줄로 접힌다 */
+#file-chosen {
+  align-self: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--md-space-1);
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
+/* 첨부 칩 — 이름 + ✕ 버튼 한 쌍. 색은 design-tokens 의 var(--md-*) 만 쓴다 */
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-space-1);
+  padding: var(--md-space-1) var(--md-space-2);
+  background: var(--md-bg-input);
+  border-radius: var(--md-radius-badge);
+  font-size: 0.85em;
+}
+
+/* ✕ 는 칩 안의 버튼이지만 테두리·배경 없이 글자처럼 보인다 */
+.file-chip-remove {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--md-text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+.file-chip-remove:hover { color: var(--md-text-primary); }
 
 /* SPEC-WEBRICH-001 */
 /* 리치 표면 — 첨부 칩·권한 버튼·초대 다이얼로그. 색은 design-tokens 의 var(--md-*) 만 쓴다
