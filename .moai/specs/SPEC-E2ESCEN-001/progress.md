@@ -234,7 +234,7 @@ sync_complete_at: 2026-09-08T17:20:00+09:00
 sync_status: audit-ready
 sync_audit: ".moai/reports/e2escen/sync-audit.md — PASS 0.865 (차단 0, F1~F10 optional)"
 sync_audit_dimensions: "Functionality 0.90 / Security 0.90 / Craft 0.75 / Consistency 0.90"
-sync_commit_sha: pending-backfill-sync   # 격리 워크트리 커밋 — main 착지 뒤 오케스트레이터가 채운다
+sync_commit_sha: bcd1e53   # 격리 워크트리 커밋 — main 착지 뒤 오케스트레이터가 채운다
 frontmatter_status_transitions:
   spec_md: "in-progress → completed"
 docs_touched:
