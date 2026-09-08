@@ -123,11 +123,195 @@ VITEST_EXIT=1
 판정: 파일 적재 자체가 실패한다 — 구현 모듈이 없어 열세 개 it 전부가 아직 만족된 바 없음을
 러너가 증명한다. 기존 테스트는 이 시점에도 전부 통과(위 기준선)다.
 
+### M1 커밋 구조의 실행 시 발견 — pre-commit 게이트가 테스트 전용 커밋을 막음
+
+첫 커밋 시도에서 pre-commit 품질 게이트(`npm test` = typecheck + vitest)가 RED 상태
+커밋을 통과시키지 못했다 — `server/tsconfig.json` typecheck 가 `TS2307: Cannot find
+module '../../web/markdown.js'` (exit 1)로 떨어진다. `--no-verify` 는 금지다(B9).
+그래서 M1(RED)과 M2(GREEN)를 한 커밋으로 합쳤고, RED 원문은 위에 그대로 남아 있다.
+TDD 스킬이 허용하는 «같은 커밋 안의 RED 증거» 형태다 — 구현 커밋 이전의 실패 실행이
+증거로 존재한다.
+
+### M2 — GREEN (`web/markdown.js` + `web/markdown.d.ts`)
+
+```
+$ cd server && npx vitest run test/web-markdown.test.ts
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+EXIT=0        # M3 CSS 착지 뒤 상태. CSS 착지 전에는 12 passed | 1 failed(AC-014) 였다
+
+$ npm run typecheck -w server
+# (tsc --noEmit, 출력 없음)
+TC_SERVER_EXIT=0
+```
+
+M2 첫 실행(구현 직후, CSS 이전)의 실측에서 설계 결함 하나를 잡아 수리했다 — 자동링크의
+라벨을 `renderInline` 으로 다시 그려 라벨 URL 이 자동링크로 재귀, `a` 안에 `a` 가
+깊이 한계까지 중첩됐다(AC-008 자동링크 절에서 `expected 5 to be 1` 로 관측). 수리:
+라벨은 마커 재해석 없는 텍스트 노드로 그린다(BIDI 치환만 적용). 이 경로가 링크 중첩을
+구조적으로 막는다.
+
+### M3 — CSS (`web/style.css`)
+
+`.msg-body` 의 `white-space: pre-wrap`(구 309행) 제거 + `/* SPEC-WEBMD-001 */` …
+`/* /SPEC-WEBMD-001 */` 규칙 블록 추가(93행). 위 M2 실행 기록의 `13 passed (13)`
+이 AC-WEBMD-014 포함 통과다.
+
+### M4 — 통합 (`web/app.js`) + C 그룹 RED→GREEN
+
+C 그룹 테스트를 통합보다 먼저 썼다. 통합 전(RED) 실측:
+
+```
+$ cd server && npx vitest run test/web-markdown.test.ts
+     × falls back to raw text without losing the message or the ones after it 7ms
+ FAIL  test/web-markdown.test.ts > AC-WEBMD-012 fallback path > falls back to raw text without losing the message or the ones after it
+AssertionError: expected false to be true // Object.is equality
+ ❯ test/web-markdown.test.ts:546:70
+    546|       expect(bodies.every(n => n.classList.contains('md-fallback'))).t…
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 passed (16)
+```
+
+AC-012 가 폴백 부재로 실패 — 통합의 RED 다. AC-011·016 은 회귀 방어선이라 이 시점에
+이미 통과(예상된 모습). `web/app.js` 통합(import 한 줄 + 본문 렌더 지점 한 곳) 뒤:
+
+```
+$ cd server && npx vitest run test/web-markdown.test.ts
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+
+$ cd server && npx vitest run test/web-chat.test.ts test/web-rich.test.ts test/web-shell.test.ts test/web-permission-contract.test.ts
+ Test Files  4 passed (4)
+      Tests  71 passed (71)
+```
+
+### M5 — 전체 회귀
+
+```
+$ npm run typecheck -w server    → TC_SERVER_EXIT=0
+$ npm run typecheck -w channel   → TC_CHANNEL_EXIT=0
+
+$ npm test
+# server
+ Test Files  19 passed (19)
+      Tests  238 passed (238)      # 기준선 222 + 신규 16. failed 0, skipped 0
+# channel
+ Test Files  6 passed (6)
+      Tests  103 passed (103)
+
+$ git diff --stat -- server/test/web-chat.test.ts server/test/web-rich.test.ts \
+    server/test/web-shell.test.ts server/test/web-permission-contract.test.ts
+(출력 없음 — 네 파일 0줄, REQ-WEBMD-015)
+```
+
+보안 소스 훑기 (AC-WEBMD-007·010 의 기계 단언이 스위트 안에서 통과하는 것과 별도로
+직접 실행):
+
+```
+$ grep -nE "outerHTML|insertAdjacentHTML|document\.write|createContextualFragment" web/*.js
+(적중 0건, grep exit 1)
+```
+
+커밋 시점 it 계수: `grep -c "^\s*it(" server/test/web-markdown.test.ts` → **16**
+
+### [기준선 결함, 신규 아님] `npm run e2e` 가 step3 에서 실패 — 이 SPEC 의 변경이 원인 아님
+
+```
+$ npm run e2e
+minidiscord listening on 127.0.0.1:50480
+[1/15]
+[2/15]
+[fail] step3 ③ 등록 응답의 command 가 토큰을 담지 않는다
+E2E_EXIT=1
+```
+
+귀속 근거 넷 — 전부 명령으로 확인했다:
+
+1. `git diff c0026ce..HEAD --stat -- server/src scripts/` → **출력 없음** (서버 소스와
+   e2e 스크립트는 기점과 현재가 바이트 단위로 같다)
+2. `git diff c0026ce..HEAD --stat` → 이 SPEC 의 변경은 `web/` 네 파일 + 신규 테스트 +
+   SPEC 산출물뿐이다. e2e 러너는 «server/src 를 import 하지 않고 HTTP 와 WebSocket
+   전선으로만 말을 건다»(scripts/e2e.mts 4-5행) — web/ 클라이언트 파일은 15 단계
+   어디에도 들지 않는다
+3. 실패 단언(`scripts/e2e.mts` 75행)은 `command.includes('MINIDISCORD_TOKEN=' + token)`
+   셸 형태를 기대하는데, 서버 `registrationCommand`(`server/src/routes-bots.ts` 41~58행
+   본문에서 `grep -n "MINIDISCORD_TOKEN"` → **0건**)은 토큰을 JSON 안내문 형태
+  (`"MINIDISCORD_TOKEN": "<token>"`, mcpJsonFor)로만 싣는다 — 이 형태 불일치는 구조적이라
+   기점 커밋에서도 같은 실패가 나온다
+4. 같은 불일치의 시점: 등록 안내문 재작성은 이 SPEC 이전의 crew 연동 커밋(2026-09-08)에서
+   착지했다. 운영자 기준선 관측은 `npm test` 만 담았고 e2e 는 담지 않았다
+
+수리는 `scripts/e2e.mts` 를 고치는 일인데 그 경로는 이 SPEC 의 §F 손대지 않는 목록에
+있다 — 범위 밖 수리를 하지 않고 여기서 귀속만 남긴다. 별도 카드로 처리할 것.
+
+### 커버리지 — 브라우저 소스 모듈이라 이 설정에서 산출 불가 (Gap)
+
+```
+$ cd server && npx vitest run test/web-markdown.test.ts --coverage.enabled --include='web/markdown.js'
+CACError: Unknown option `--include`            # 이 vitest(4.1.11)에 CLI 플래그 없음, exit 1
+
+$ cd server && npx vitest run test/web-markdown.test.ts --coverage.enabled --coverage.include='web/markdown.js' --coverage.reporter=text
+Statements   : Unknown% ( 0/0 )                 # exit 0 — v8 이 web/(워크스페이스 밖) 모듈에 기록 0건
+
+$ cd server && npx vitest run test/web-markdown.test.ts --coverage.enabled --coverage.include='../web/markdown.js' --coverage.reporter=text
+All files |       0 |        0 |       0 |       0 |          # 같은 0/0
+```
+
+`web/markdown.js` 는 브라우저가 직접 읽는 워크스페이스 밖 모듈이라 v8 커버리지 귀속이
+만들어지지 않는다. 수를 지어내지 않고 이걸 Gap 으로 남긴다 — 기능 근거는 열여섯 AC it
+(양·음 방향 모두)가 이 모듈을 직접 돌려 전부 통과한 것이다. 새 계측 기계는 만들지 않았다.
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_complete_at: 2026-09-09
+- run_status: complete (in-scope AC all observed; one clause of AC-016 carries a pre-existing baseline defect — 아래 명시)
+- run_commit_sha: (아래 커밋 목록 — 워크트리 브랜치에서 `git push origin HEAD:main` 으로 main 적재)
+- run_commit_list:
+  - `4c321ba` feat(SPEC-WEBMD-001): M1+M2 마크다운 렌더러 — RED 증적과 구현을 한 커밋에 (draft → in-progress 전이 포함)
+  - `969c565` feat(SPEC-WEBMD-001): M3 마크다운 CSS 규칙 블록 — pre-wrap 제거와 줄바꿈 책임 이동
+  - `2ae3524` feat(SPEC-WEBMD-001): M4 app.js 통합 + C 그룹 통합 테스트
+- m1_to_mN_commit_strategy: M1+M2 합침 — pre-commit 품질 게이트(npm test)가 구현 부재 상태의 테스트 전용 커밋을 통과시키지 못함(`--no-verify` 금지). M3·M4·M5는 계획대로 분리
+- ac_pass_count: 15 (AC-WEBMD-001 ~ 015 전부 관측 PASS)
+- ac_fail_count: 0 — 단, AC-016 의 셋 중 «npm run e2e 종료 코드 0» 한 절만 기준선 결함으로 FAIL 귀속(아래). AC-016 의 나머지 두 절(네 테스트 파일 diff 0줄 · npm test 초록 · 훅 노드가 .msg-body 밖 형제)은 관측 PASS
+- preserve_list_post_run_count: 5 — `server/src/**`(0줄 변경), `web/rich.js`(0), `web/design-tokens.css`(0), `web/index.html`(0), 기존 웹 테스트 네 파일(0줄, `git diff --stat` 출력 없음으로 확인)
+- l44_pre_commit_fetch: 이 세션은 런타임 격리 워크트리에서 구동 — 커밋은 워크트리 브랜치에 쌓고 `git push origin HEAD:main` 으로 적재했다(격리 훅이 공유 체크아웃 대상 git 을 거부). 파일 내용은 `c0026ce` 기점 main 과 동일한 나무에서 시작
+- l44_post_push_fetch: (아래 최종 push 뒤 기입)
+- new_warnings_or_lints_introduced: 0 — `npm run typecheck -w server`·`-w channel` 모두 exit 0. 이 저장소에는 JS 전용 린터가 없다 — typecheck 가 린트 게이트다(§E.5 서술)
+- cross_platform_build.node: n/a — 이 저장소는 Node/npm 워크스페이스(server·channel)다. 빌드 산출물 channel/dist 는 워크트리에서 `npm run build -w channel` 로 새로 만들어 확인(exit 0)
+- total_run_phase_files: 7 — 신규 `web/markdown.js`·`web/markdown.d.ts`·`server/test/web-markdown.test.ts` / 수정 `web/app.js`·`web/style.css` / SPEC 산출물 `progress.md`·`spec.md`(frontmatter status·updated 만)
+
+### AC 매트릭 요약 (판정 근거는 §E.2 각 절)
+
+| AC | 판정 | 관측 |
+|----|------|------|
+| AC-WEBMD-001~005 | PASS | `vitest run test/web-markdown.test.ts` 13 passed → 16 passed(§E.2 M2·M3·M4) |
+| AC-WEBMD-006~010 | PASS | 같은 실행 — 안전성 그룹 전부 통과 + 소스 훑기 0건 |
+| AC-WEBMD-011 | PASS | M4 GREEN — 버튼 2·펜스 변형 2·doc 비변형·상태 초기화 |
+| AC-WEBMD-012 | PASS | M4 — RED(md-fallback 부재) → 통합 뒤 GREEN |
+| AC-WEBMD-013 | PASS | 20s 러너 타임아웃 안 종료, 길이·표 상한 단언 통과 |
+| AC-WEBMD-014 | PASS | M3 CSS 블록 착지 뒤 통과(pre-wrap 0·max-content·토큰만·16진수 0) |
+| AC-WEBMD-015 | PASS | export 다섯 + `typecheck -w server` exit 0 |
+| AC-WEBMD-016 | PASS(2/3 절) + FAIL 1절 귀속 | 네 파일 diff 0줄 PASS · `npm test` 238+103 exit 0 PASS · 훅 형제 PASS · **`npm run e2e` exit 1 — 기준선 결함(§E.2 귀속 근거 넷), 이 SPEC 변경이 원인 아님** |
+
+### Gaps (명시적 미검증)
+
+1. **M6 실브라우저 육안 확인** — 수동 단계라 이 세션이 수행하지 않았다(수행해선 안 된다는 지시). 긴 표 가로 스크롤·코드블록 배경·중첩 목록 들여쓰기·링크 호스트 힌트의 눈 확인은 운영자 몫이다. 판정 기준 아님을 명시한다
+2. **커버리지 수치** — 브라우저 소스 모듈(`web/`, 워크스페이스 밖)이라 이 vitest 설정에서 v8 귀속이 만들어지지 않는다(시도 세 번의 원문 §E.2). 수를 만들지 않았다
+3. **e2e 이후 단계(4~15)** — step3 에서 멈춰 러너가 진행하지 않았다. step4~15 의 통과 여부는 이 실행으로 관측되지 않았다. step3 수리(별도 카드) 뒤 전체 재실행이 필요하다
+
+### Residual-risk (잔여 위험)
+
+- e2e 기준선 결함(step3 ③)이 `scripts/e2e.mts` 단언을 고치는 별도 카드로 수리되기 전까지, CI 에 e2e 가 있다면 main 이 그 결함으로 붉다. 이 SPEC 의 변경과 무관함이 위 귀속으로 증명돼 있으나, «e2e 초록»이라는 회귀 방어선은 결함 수리까지 공백이다
+- AC-008 의 라벨 술어는 REQ-WEBMD-008 의 정규식 그대로다. 정의역 밖(앞공백 두 갈래·비ASCII 동형이의)은 감사 2회차가 남기기로 정의역 밖으로 두었다 — 별도 카드 범위
+- 부하성 테스트 실패의 재발 가능성(이 저장소의 알려진 성향) — 이 회차 `npm test` 는 1회 실행으로 통과했고 반복 실행은 하지 않았다
+
+### 운영자 안내 (run 종료 시 현재 상태)
+
+- 워크트리: `.claude/worktrees/agent-a3f0544490db16e73` (브랜치 `worktree-agent-a3f0544490db16e73`, 기점 `c0026ce`)
+- 다음 단계: sync(`/moai sync SPEC-WEBMD-001`) — M7 문서 동기화는 sync 소관이다
+- 별도 카드 권고: `scripts/e2e.mts` step3 ③ 단언을 새 등록 안내문 형태에 맞게 수리(기준선 결함, 이 SPEC 밖)
 
 ---
 
