@@ -129,20 +129,16 @@ $ grep -nE 'setInterval\(|spawn\(' … | grep -vE 'spawnServer\(|spawnChannel\('
 
 ```
 $ git diff --stat d98ad7b -- server/src web channel/src .github | wc -l   → 0
-$ git diff --name-only d98ad7b | sort
-.moai/specs/SPEC-E2ESCEN-001/acceptance.md
-.moai/specs/SPEC-E2ESCEN-001/plan.md
-.moai/specs/SPEC-E2ESCEN-001/progress.md
-.moai/specs/SPEC-E2ESCEN-001/research.md
-.moai/specs/SPEC-E2ESCEN-001/spec.md
-package.json
-scripts/e2e-lib.mts
-scripts/e2e-scenario.mts
-scripts/e2e.mts
-server/test/e2e-lib.test.ts
+$ git diff --name-only d98ad7b | sort                                     → (아래 규칙을 만족)
 ```
 
-열 줄 전부 허용 목록 안이다(구현 파일 다섯 + 이 SPEC 디렉터리). `ROADMAP.md` 는 sync 단계 몫이라 손대지 않았다.
+(1) 보호 경로는 **두 시점에서 모두 0 줄**이었다 — 구현 커밋 뒤와 증거 커밋 뒤.
+
+(2) 는 **고정된 수를 적지 않는다.** 이 절 자신이 `.moai/state/verify/e2escen/` 안의 파일 수를 바꾸므로
+«N 줄» 이라고 쓰면 쓰는 순간 낡는다(자기를 세는 계수). 대신 규칙을 적는다 — **모든 줄이 다음 다섯 갈래 안이다**:
+`scripts/e2e{-lib,-scenario,}.mts` · `package.json` · `server/test/e2e-lib.test.ts` ·
+`.moai/specs/SPEC-E2ESCEN-001/*` · `.moai/state/verify/e2escen/*`. 감사자는 위 명령을 다시 돌려 확인한다.
+`ROADMAP.md` 는 sync 단계 몫이라 손대지 않았고, `server/src`·`web`·`channel/src`·`.github` 는 한 줄도 바뀌지 않았다.
 
 **AC-015 회귀 셋** — 차례로 돌렸다(동시에 돌리지 않았다).
 
