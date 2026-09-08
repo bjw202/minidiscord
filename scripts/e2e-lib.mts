@@ -147,12 +147,6 @@ export function withDeadline<T>(promise: Promise<T>, label: string, timeoutMs = 
   })
 }
 
-/** 고정 시간 대기 — 벽시계 초 넘김처럼 «지날 때까지» 를 재는 자리에서만 쓴다. 시한 있는 폴링(pollUntil)의
- *  간격 구현이기도 하다. 러너 파일이 setTimeout 을 직접 부르지 않도록 여기에 둔다. */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
 /** multipart 폼 하나 — 메시지 라우트는 req.parts() multipart 만 받는다 */
 export function messageForm(body: string): FormData {
   const fd = new FormData()
@@ -273,6 +267,63 @@ export function closeWs(ws: any, label: string): Promise<void> {
     ws.once('close', () => { clearTimeout(timer); resolve() })
     ws.close()
   })
+}
+
+/** 침묵 창 동안 온 프레임을 «세어서» 돌려준다 — expectQuiet 이 «0 이어야 한다» 를 단언하는 자리라면 이쪽은
+ *  «몇 개 왔는지» 가 관측값인 자리(REQ-E2ESCEN-011)에 쓴다. 큐를 비우므로 뒤의 단언과 섞이지 않는다. */
+export async function drainQuiet(ws: any): Promise<any[]> {
+  const inbox = inboxes.get(ws)!
+  await new Promise<void>(resolve => setTimeout(resolve, QUIET_MS))
+  return inbox.queue.splice(0, inbox.queue.length)
+}
+
+/** 웹 관측자 — 세션 쿠키로 SSE 를 구독해 «웹이 본 것» 을 순서대로 적는다. EventSource 는 쿠키를 싣지 못하고
+ *  Node 내장도 아니라 fetch 의 본문 스트림을 직접 읽는다. 프레임 경계는 '\n\n' 이며, 청크가 그 경계를
+ *  가로질러 와도 누적 버퍼가 이어 붙인다(sse.ts 의 프레임 모양). */
+export type ObserverRecord = {
+  connected: boolean
+  /** 첫 event 프레임을 넣을 때의 connected 값 — ': connected' 가 정말 앞섰는지의 증거다 */
+  connectedFirst: boolean
+  events: { event: string; data: any }[]
+}
+export type Observer = { record: ObserverRecord; abort(): void; closed: Promise<void> }
+
+export async function subscribeObserver(port: number, cookie: string, roomId: number, label: string): Promise<Observer> {
+  const ctrl = new AbortController()
+  const res = await fetch(`http://127.0.0.1:${port}/api/rooms/${roomId}/events`, { headers: { cookie }, signal: ctrl.signal })
+  if (res.status !== 200 || !res.body) fail(`${label} — 이벤트 스트림이 200 이 아니다 (${res.status})`)
+  const record: ObserverRecord = { connected: false, connectedFirst: false, events: [] }
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  const closed = (async () => {
+    try {
+      let streaming = true
+      while (streaming) {
+        const chunk = await reader.read()
+        if (chunk.done) { streaming = false; break }
+        buf += decoder.decode(chunk.value, { stream: true })
+        let cut = buf.indexOf('\n\n')
+        while (cut >= 0) {
+          const frame = buf.slice(0, cut)
+          buf = buf.slice(cut + 2)
+          if (frame.startsWith(':')) {
+            if (frame.startsWith(': connected')) record.connected = true
+          } else {
+            const lines = frame.split('\n')
+            const name = lines.find(l => l.startsWith('event: '))
+            const data = lines.find(l => l.startsWith('data: '))
+            if (name && data) {
+              if (record.events.length === 0) record.connectedFirst = record.connected
+              record.events.push({ event: name.slice('event: '.length), data: JSON.parse(data.slice('data: '.length)) })
+            }
+          }
+          cut = buf.indexOf('\n\n')
+        }
+      }
+    } catch { /* abort() 로 끝나는 것이 정상 경로다 */ }
+  })()
+  return { record, abort: () => ctrl.abort(), closed }
 }
 
 export async function listMessages(port: number, cookie: string, roomId: number): Promise<any[]> {

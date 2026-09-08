@@ -4,6 +4,7 @@
   "workspaces": ["server", "channel"],
   "scripts": {
     "e2e": "npx tsx scripts/e2e.mts",
+    "e2e:scenario": "npx tsx scripts/e2e-scenario.mts",
     "test": "npm test --workspaces --if-present"
   }
 }
