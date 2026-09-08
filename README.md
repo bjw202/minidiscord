@@ -9,7 +9,7 @@
 ## 차례
 
 - [그림으로 먼저 보기 (처음 읽는 분께)](#그림으로-먼저-보기-처음-읽는-분께) — 무엇인지, 어떻게 돌아가는지, 왜 이렇게 만들었는지
-- [필요한 것](#필요한-것) · [시작하기](#시작하기) · [설정](#설정) · [웹 화면](#웹-화면)
+- [필요한 것](#필요한-것) · [시작하기](#시작하기) · [다른 PC 에 설치하기](#다른-pc-에-설치하기-처음부터-끝까지) · [설정](#설정) · [웹 화면](#웹-화면)
 - [API](#api) · [봇 등록 토큰](#봇-등록-토큰) · [봇 게이트웨이 (WebSocket)](#봇-게이트웨이-websocket) · [권한 승인 중계](#권한-승인-중계)
 - [보안에 대해 알아둘 점](#보안에-대해-알아둘-점) · [명령어](#명령어) · [폴더 구조](#폴더-구조) · [데이터베이스](#데이터베이스) · [문서](#문서)
 
@@ -318,12 +318,12 @@ flowchart TD
     B --> C["3. «+ 새 방» 으로 방 만들기"]
     C --> D["4. «+ 봇 등록» → 실행 명령 복사<br/>(창 닫으면 다시 못 봄!)"]
     D --> E["5. 방 머리 «봇 참여» 로 그 봇을 방에 넣기"]
-    E --> F["6. 터미널에서 npm run build -w channel<br/>그리고 복사한 명령 붙여넣기"]
+    E --> F["6. 복사한 명령의 «1회 등록» 을 저장소 뿌리에서,<br/>«세션 실행» 을 봇 폴더에서 붙여넣기"]
     F --> G["7. 방에서 @TO(봇이름) 안녕? 하고 말 걸기"]
     G --> H["8. 봇 칩이 🟢 로, 답이 «똑» 하고 뜨면 성공"]
 ```
 
-막히면 [봇 등록 토큰](#봇-등록-토큰) 절에 명령 세 조각의 뜻이 하나씩 적혀 있어요.
+막히면 [다른 PC 에 설치하기](#다른-pc-에-설치하기-처음부터-끝까지) 절의 «막혔을 때» 표와 [봇 등록 토큰](#봇-등록-토큰) 절을 보세요.
 
 ### 낱말 풀이
 
@@ -364,6 +364,52 @@ npm run dev -w server   # 서버 실행 — 기본 http://127.0.0.1:3000
 curl http://127.0.0.1:3000/api/health
 # {"ok":true}
 ```
+
+## 다른 PC 에 설치하기 (처음부터 끝까지)
+
+서버만 띄우는 건 위 두 줄이면 끝이지만, **Claude Code 세션을 봇으로 붙이려면** 그 PC 에서 한 번 해 둘 일이 몇 가지 더 있습니다. 순서대로 하고, 각 단계의 «확인» 이 나와야 다음으로 넘어가세요. 이 절은 첫 설치 때 실제로 막혔던 자리들을 그대로 옮긴 것입니다.
+
+```mermaid
+flowchart TD
+    A["① Node 24 준비<br/>nvm use"] --> B["② npm install<br/>npm run build -w channel"]
+    B --> C["③ 서버 실행<br/>npm run dev -w server"]
+    C --> D["④ 브라우저 로그인 → 방 만들기<br/>→ + 봇 등록 → 명령 복사"]
+    D --> E["⑤ MCP 등록 (PC 마다 한 번)<br/>claude mcp remove … ; claude mcp add … -- node 절대경로"]
+    E --> F{"claude mcp get<br/>✔ Connected?"}
+    F -->|"아니오"| E
+    F -->|"예"| G["⑥ 방 머리 «봇 참여» 로<br/>봇을 방에 넣기"]
+    G --> H["⑦ 봇 폴더에서<br/>export TOKEN/SERVER → claude --dangerously-…"]
+    H --> I{"방 이름 옆 칩이<br/>🟢 인가?"}
+    I -->|"아니오"| H
+    I -->|"예"| J["⑧ @TO(봇이름) 으로 말 걸기"]
+```
+
+| 단계 | 명령 · 조작 | 확인 |
+|---|---|---|
+| ① Node | `nvm use` (저장소 뿌리, `.nvmrc` = 24) 또는 Node 20 이상 설치 | `node -v` 가 `v20` 이상 |
+| ② 설치·빌드 | `npm install` · `npm run build -w channel` | `channel/dist/index.js` 파일이 있음 |
+| ③ 서버 | `npm run dev -w server` | `curl http://127.0.0.1:3000/api/health` → `{"ok":true}` |
+| ④ 웹 | `http://127.0.0.1:3000` → 이름 로그인 → `+ 새 방` → `+ 봇 등록` → **`명령 복사`** | 복사한 명령에 64자 토큰과 `node /…/channel/dist/index.js` 가 들어 있음 (창을 닫으면 다시 못 봅니다) |
+| ⑤ MCP 등록 | 복사한 명령의 **1회 등록** 부분을 저장소 뿌리에서 실행 | `claude mcp get minidiscord-channel` → `Status: ✔ Connected` |
+| ⑥ 참여 | 방 머리의 `봇 참여` 버튼 → 봇 고르기 | 방 이름 옆에 `⚪ 봇이름` 칩이 생김 |
+| ⑦ 세션 | 봇의 작업 폴더(페르소나 폴더)로 가서 복사한 명령의 **세션 실행** 부분을 실행 | 칩이 `🟢` 로 바뀜 |
+| ⑧ 대화 | 입력창에 `@` → 자동완성 → `@TO(봇이름) 안녕?` | 봇이 답함. 처음엔 `fetch_history` 승인 요청이 먼저 뜰 수 있음 — 승인 버튼 |
+
+### 막혔을 때
+
+| 증상 | 원인 | 고치기 |
+|---|---|---|
+| `claude mcp get` 이 `✘ Failed to connect` | 등록된 경로에 파일이 없음 — 저장소를 옮겼거나, 워크트리를 지웠거나, 빌드를 안 함. 또는 옛 항목이 남아 `add` 가 무시됨 | `npm run build -w channel` 뒤 `claude mcp remove minidiscord-channel -s user` → `claude mcp add … -- node <현재 저장소의 절대 경로>/channel/dist/index.js` |
+| `claude mcp add` 가 «already exists» | 같은 이름 항목이 이미 있음 | 위와 같이 `remove` 먼저 |
+| `minidiscord-channel: command not found` | 전역 명령은 `npm link -w channel` 을 했을 때만 생김 | 절대 경로(`node …/channel/dist/index.js`)로 등록하면 이 단계가 필요 없음 |
+| 세션은 떴는데 칩이 `⚪` 그대로 | (a) `MINIDISCORD_TOKEN` 을 export 하지 않음 → 플러그인은 뜨되 게이트웨이에 안 붙음 · (b) 토큰이 다른 봇 것 · (c) 세션을 MCP 등록 **전에** 띄움 → 옛 설정을 잡고 있음 | (a)(b) `ps eww <claude pid> \| tr ' ' '\n' \| grep MINIDISCORD_` 로 확인 · (c) 세션을 끄고 다시 띄움 (MCP 설정은 시작 때 읽음) |
+| 칩은 `🟢` 인데 봇이 답을 안 함 | (a) 글이 `@봇이름` 형식 — 봇에게 가는 형식은 **`@TO(봇이름)`** · (b) 봇이 그 방에 참여돼 있지 않음(`GET /api/rooms/:id/bots` 가 `[]`) | (a) `@` 자동완성으로 다시 보냄 · (b) `봇 참여` 버튼 |
+| 서버가 «bots 가 옛 스키마» 라며 죽음 | v2 이전 데이터베이스 파일 | `data/minidiscord.db` 를 지우거나 옮기고 다시 시작. 봇은 다시 등록 |
+| 봇이 답하기 전에 매번 승인 요청이 뜸 | Claude Code 가 처음 쓰는 MCP 도구마다 허락을 물음 | 정상. 매번 누르기 싫으면 봇 폴더의 `.claude/settings.json` 허용 목록에 `mcp__minidiscord-channel__fetch_history`·`mcp__minidiscord-channel__reply` 추가 |
+| 다른 PC 에서 서버에 붙고 싶음 | 서버 기본 바인드가 `127.0.0.1` | 서버 쪽 `MINIDISCORD_HOST=0.0.0.0`(또는 LAN 주소), 봇 쪽 `MINIDISCORD_SERVER=ws://<서버 주소>:3000/bot`. 사내망 밖에는 열지 마세요 — [보안에 대해 알아둘 점](#보안에-대해-알아둘-점) |
+| 옛 `~/.claude.json` 에 `MINIDISCORD_TOKEN` 이 박혀 있어 셸의 export 를 덮음 | 예전 등록이 `--env` 로 토큰을 넣어 둔 경우 | `claude mcp get minidiscord-channel` 의 `Environment:` 에 토큰이 보이면 `remove` 뒤 `--env` 없이 다시 등록 |
+
+체크리스트로 줄이면: **빌드 있음 → MCP 절대 경로 등록 → Connected → 방 참여 → 토큰 export 한 세션 → `@TO(이름)`**. 이 여섯 중 하나라도 빠지면 «대화가 안 간다» 로 보입니다.
 
 ## 설정
 
@@ -441,11 +487,14 @@ curl http://127.0.0.1:3000/api/health
 
 봇을 등록하면(`POST /api/bots`, 화면에서는 `+ 봇 등록`) 응답에 **평문 토큰이 딱 한 번** 실립니다. 서버는 그 토큰을 `bots` 표에 평문 그대로 저장하지만 어떤 조회 응답에도 다시 싣지 않으므로, 창을 닫으면 다시 볼 수 없어요. 토큰을 다시 발급하거나 바꾸는 API는 지금 없습니다 — 잃어버렸다면 다른 이름으로 봇을 새로 등록하고 방에 다시 참여시켜야 합니다(봇 이름은 중복될 수 없고 봇을 지우는 API도 없습니다). 토큰은 방이 아니라 봇의 것이라, 한 봇을 여러 방에 참여시켜도 세션은 하나로 붙고 어느 방의 일인지는 프레임의 `room_id`가 알려 줍니다.
 
-등록 응답의 `command` 필드는 그 봇 세션을 띄우는 명령을 그대로 담고 있습니다:
+등록 응답의 `command` 필드는 그 봇 세션을 띄우는 명령을 그대로 담고 있습니다. 서버가 자기 저장소 위치에서 채널 플러그인의 **절대 경로**를 계산해 넣으므로, 화면에 뜨는 것을 그대로 복사하면 됩니다:
 
 ```bash
-# 1회 등록 (최초 한 번만):
-claude mcp add --scope user minidiscord-channel -- minidiscord-channel
+# 1회 등록 (이 PC 에서 최초 한 번만 — 저장소 뿌리에서):
+npm run build -w channel
+claude mcp remove minidiscord-channel -s user 2>/dev/null; \
+claude mcp add --scope user minidiscord-channel -- node /절대/경로/minidiscord/channel/dist/index.js
+claude mcp get minidiscord-channel   # Status: ✔ Connected 여야 합니다
 
 # 세션 실행 (원하는 페르소나 디렉터리에서):
 export MINIDISCORD_TOKEN=<발급된 토큰>
@@ -453,11 +502,16 @@ export MINIDISCORD_SERVER=ws://127.0.0.1:3000/bot
 claude --dangerously-load-development-channels server:minidiscord-channel
 ```
 
-이 명령의 세 조각이 각각 하는 일:
+각 줄이 하는 일:
 
-- `claude mcp add`는 `channel/`이 내보내는 `minidiscord-channel` 실행 파일을 MCP 서버로 등록합니다. 저장소 안에서 쓴다면 먼저 `npm run build -w channel`로 `channel/dist/index.js`를 만들어 두세요.
+- `npm run build -w channel` 은 `channel/dist/index.js` 를 만듭니다. `npm test` 가 이걸 대신 해 주기도 하지만, 등록 전에 한 번은 있어야 합니다.
+- `claude mcp remove … ; claude mcp add … -- node <절대 경로>` 는 그 파일을 Claude Code 의 MCP 서버로 등록합니다. **`remove` 를 먼저 하는 이유**: 같은 이름의 항목이 이미 있으면 `add` 가 새 경로를 쓰지 않고 옛 항목이 그대로 남습니다 — 저장소를 옮기거나 워크트리를 지운 뒤 «Failed to connect» 가 나는 원인이 이것이었습니다. **`node <절대 경로>` 로 등록하는 이유**: `minidiscord-channel` 이라는 전역 명령은 `npm link -w channel` 을 따로 했을 때만 PATH 에 생깁니다. 절대 경로는 그 단계가 없어도 됩니다.
+- `claude mcp get minidiscord-channel` 로 `Status: ✔ Connected` 를 확인하세요. `✘ Failed to connect` 면 경로가 틀렸거나 빌드가 없는 것입니다.
 - `MINIDISCORD_TOKEN`은 등록 응답으로 받은 평문 토큰입니다. 이 값이 없으면 프로세스는 뜨지만 게이트웨이에 붙지 않습니다 — Claude Code 쪽에는 정상으로 보이는데 방에는 들어오지 않는 상태가 되니 주의하세요.
 - `MINIDISCORD_SERVER`는 붙을 게이트웨이 주소입니다. 안 넘기면 `ws://127.0.0.1:3000/bot`이고, 서버가 사내망 다른 PC에 있으면 그 주소의 `ws://`를 적습니다.
+- 등록은 Claude Code 사용자 설정(`~/.claude.json`)에 남으므로 **PC 마다 한 번**이고, 봇마다 다시 할 필요는 없습니다. 봇이 여럿이면 세션 실행의 `MINIDISCORD_TOKEN` 만 봇마다 다릅니다.
+
+MCP 등록을 다시 살펴볼 일이 있으면 [다른 PC 에 설치하기](#다른-pc-에-설치하기-처음부터-끝까지) 절의 «막혔을 때» 표를 보세요.
 
 세션이 방에 들어오면 이렇게 움직입니다.
 
@@ -561,7 +615,7 @@ ID 형식(소문자 5글자, `l` 제외)에 맞지 않는 승인 요청은 대�
 
 **`npm test`는 server의 타입 검사도 함께 돌립니다.** `server`의 `pretest` 훅이 `npm run typecheck`를 부르므로, `npm test` 한 명령과 커밋 전 품질 게이트(`moai gate`) 양쪽에서 server의 타입 오류가 잡힙니다. 그 전에는 게이트가 도는 단계에 server 타입 검사가 들어 있지 않아, 타입 오류가 있는 트리에서도 게이트가 조용히 통과했습니다. `channel`과 훅의 모양이 다른 것은 의도한 것입니다 — `channel`은 `dist/`를 실제로 만들어야 하지만 `server`는 빌드 산출물이 없어야 하고, 이름 붙은 `typecheck` 스크립트를 거치면 CI가 돌리는 명령과 같은 자리를 참조하게 됩니다.
 
-**`npm test`는 이제 채널을 스스로 먼저 빌드합니다.** `channel`의 `pretest` 훅이 `tsc`를 돌리므로, 갓 받아온 체크아웃이나 새로 만든 워크트리에서도 `npm run build -w channel`을 앞서 돌릴 필요 없이 `npm test` 한 명령이면 됩니다. (`claude mcp add`로 채널을 등록하기 전에는 여전히 빌드가 필요합니다 — 위 "봇 등록 토큰"의 안내가 그대로 유효합니다.)
+**`npm test`는 이제 채널을 스스로 먼저 빌드합니다.** `channel`의 `pretest` 훅이 `tsc`를 돌리므로, 갓 받아온 체크아웃이나 새로 만든 워크트리에서도 `npm run build -w channel`을 앞서 돌릴 필요 없이 `npm test` 한 명령이면 됩니다. (`claude mcp add`로 채널을 등록하기 전에는 여전히 빌드가 필요합니다 — 등록 응답의 안내가 `npm run build -w channel` 을 첫 줄에 싣는 이유입니다.)
 
 ### 라이브 검증 도구는 보관했습니다
 
@@ -606,7 +660,7 @@ minidiscord/
 └─ .moai/          SPEC 문서와 작업 기록 (보관된 SPEC 은 .moai/specs/_archive/)
 ```
 
-`channel/`은 `minidiscord-channel` 실행 파일 하나를 내보내는 MCP 서버입니다. `npm run build -w channel`로 `channel/dist/index.js`를 만든 뒤 `claude mcp add`로 등록하면, 그 세션이 봇으로 방에 들어옵니다 — 등록과 실행 순서는 위 "봇 등록 토큰"에 있습니다. 붙이기 전에 "채널 플러그인을 붙이기 전에"를 먼저 읽어 주세요.
+`channel/`은 MCP 서버 하나입니다. `npm run build -w channel`로 `channel/dist/index.js`를 만든 뒤 `claude mcp add … -- node <절대 경로>/channel/dist/index.js`로 등록하면, 그 세션이 봇으로 방에 들어옵니다 — 등록과 실행 순서는 위 "봇 등록 토큰"과 "다른 PC 에 설치하기"에 있습니다. 붙이기 전에 "채널 플러그인을 붙이기 전에"를 먼저 읽어 주세요.
 
 ## 데이터베이스
 

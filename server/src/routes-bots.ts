@@ -2,15 +2,28 @@
 // 참여(방 × 봇)는 room_bots 행이다. 초대 라우트 셋(/invites)은 없다 — 방별 토큰이 없기 때문이다.
 import type { FastifyInstance } from 'fastify'
 import { randomBytes } from 'node:crypto'
+import { fileURLToPath } from 'node:url'
 import { requireAuth } from './auth.js'
 import { config } from './config.js'
 import type { Gateway } from './gateway.js'
 
-// @MX:NOTE: [AUTO] 세션 실행 명령 안내 문자열 — v1 inviteCommand 의 문안 그대로이되 주소는 config.host 를 반영한다 (REQ-BOTMODEL-005)
+// 채널 플러그인 진입 파일의 절대 경로 — 이 서버 소스의 위치(server/src)에서 저장소 뿌리를 거슬러 계산한다.
+// 안내문이 PATH 의 전역 명령(minidiscord-channel)을 가리키면 전역 설치가 없는 PC 에서 «not found» 로 막히고,
+// 이미 있는 항목은 claude mcp add 가 덮어쓰지 않아 옛 경로가 남는다 (2026-09-08 맥북 실측). 그래서 절대 경로를 싣는다.
+// 호출 시점에 계산한다 — jsdom 환경의 웹 시험은 모듈 적재 때 import.meta.url 이 file: 이 아니다 (index.ts 의 web 루트와 같은 이유)
+function channelEntry(): string {
+  return fileURLToPath(new URL('../../channel/dist/index.js', import.meta.url))
+}
+
+// @MX:NOTE: [AUTO] 세션 실행 명령 안내 문자열 — 주소는 config.host 를, 채널 경로는 이 저장소의 빌드 산출물 절대 경로를 반영한다 (REQ-BOTMODEL-005)
 function registrationCommand(token: string): string {
+  const CHANNEL_ENTRY = channelEntry()
   return [
-    '# 1회 등록 (최초 한 번만):',
-    'claude mcp add --scope user minidiscord-channel -- minidiscord-channel',
+    '# 1회 등록 (이 PC 에서 최초 한 번만 — 저장소 뿌리에서):',
+    'npm run build -w channel',
+    'claude mcp remove minidiscord-channel -s user 2>/dev/null; \\',
+    `claude mcp add --scope user minidiscord-channel -- node ${CHANNEL_ENTRY}`,
+    'claude mcp get minidiscord-channel   # Status: ✔ Connected 여야 합니다',
     '',
     '# 세션 실행 (원하는 페르소나 디렉터리에서):',
     `export MINIDISCORD_TOKEN=${token}`,

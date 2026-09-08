@@ -161,6 +161,17 @@ describe('bots', () => {
     expect(body.command).toContain(`export MINIDISCORD_SERVER=ws://${config.host}:${config.port}/bot`)
     expect(body.command).toContain('--dangerously-load-development-channels')
     expect(body.command).toContain('claude mcp add --scope user minidiscord-channel')
+    // 안내 첫 토막은 PATH 의 전역 명령이 아니라 저장소 안 빌드 산출물의 절대 경로를 등록한다 — 다른 PC 에서
+    // «minidiscord-channel not found» 와 «옛 경로 항목이 남아 add 가 무시됨» 을 되풀이하지 않기 위해
+    // (2026-09-08 맥북 실측). 빌드·기존 항목 제거·연결 확인 명령이 함께 실린다
+    const { fileURLToPath } = await import('node:url')
+    const entry = fileURLToPath(new URL('../../channel/dist/index.js', import.meta.url))
+    expect(body.command).toContain(`-- node ${entry}`)
+    expect(entry.startsWith('/')).toBe(true)
+    expect(body.command).not.toContain('-- minidiscord-channel')
+    expect(body.command).toContain('npm run build -w channel')
+    expect(body.command).toContain('claude mcp remove minidiscord-channel')
+    expect(body.command).toContain('claude mcp get minidiscord-channel')
     // 같은 이름으로 다시 부르면 409
     const dup = await app.inject({ method: 'POST', url: '/api/bots', headers: { cookie }, payload: { name: 'b1' } })
     expect(dup.statusCode).toBe(409)
