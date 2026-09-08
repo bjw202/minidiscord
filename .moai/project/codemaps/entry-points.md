@@ -57,6 +57,7 @@
 | 명령 | 파일 | 하는 일 | 종료 코드 |
 |---|---|---|---|
 | `npm run e2e` | `scripts/e2e.mts` | 빈 포트 확보 → 임시 데이터 폴더·봇 파일 루트 생성 → 실제 서버 spawn → `/api/health` 30초 폴링 → «봇 하나·방 둘» 15단계 시나리오 (①이름 로그인 ②방 둘 ③봇 등록 ④두 방 참여 ⑤hello→welcome ⑥모르는 토큰 ⑦R1 @TO ⑧봇 답변+첨부 → R2 에만 ⑨내려받기 ⑩멘션 없는 글 ⑪방별 이력 ⑫권한 릴레이 ⑬오프라인 재전송 ⑭재시작 영속성 ⑮R1 보관) | 0 성공 · **9 부팅 시간 초과** · 1 그 밖의 실패. `E2E_FORCE_PORT` 로 포트 고정. `process.exit` 대신 `exitCode` |
+| `npm run e2e:scenario` | `scripts/e2e-scenario.mts` | 빈 포트 확보 → 임시 데이터 폴더·봇 파일 루트 생성 → 실제 서버 spawn → `/api/health` 폴링 → 준비 단계(사람 로그인 · 방 둘 · 봇 A·B·C 등록, C 는 등록만 · A·B 를 두 방에 참여 · A·B 접속 후 `welcome.rooms` 확인 · R1 에 SSE 관측자 구독) → G1 봇 간 전달 → G2 되먹임 차단 → G3 SSE 관측자 → G4 권한 릴레이 → G5 이력 필터·재시작·봇 삭제 → G6 경계 → G7 은 미착수라 `[skip]` → `[observe-summary] 8 items` → `[elapsed] <ms>` → 마지막 줄 «E2E-SCENARIO PASS — 20 단계 전부 통과 (봇 둘 · 방 둘 · 관측자 하나)» | 0 정상 · 1 단언 실패 · **9 부팅 시한** |
 
 CI(`.github/workflows/ci.yml`)는 `npm ci` → `typecheck -w server` → `typecheck -w channel` → `npm test` 만 돌린다 (Node 버전은 `.nvmrc` = 24). `e2e` 는 **수동 게이트**다. `scripts/_archive/` 의 live-* 도구는 퇴역했고 어떤 명령에도 걸려 있지 않다.
 
@@ -154,4 +155,4 @@ sequenceDiagram
 | `MINIDISCORD_WEB_DIR` | `../../web` (소스 기준) | `server/src/index.ts` | 정적 루트 덮어쓰기 — README 설정 표에는 **없다** (`grep MINIDISCORD_WEB_DIR README.md` 0건) |
 | `MINIDISCORD_TOKEN` | 없음 (게이트웨이 미접속) | `channel/src/index.ts` | 등록 응답으로 받은 평문 토큰, `hello` 에 그대로 실림 |
 | `MINIDISCORD_SERVER` | `ws://127.0.0.1:3000/bot` | `channel/src/index.ts` | 게이트웨이 주소. 스킴 검사 없음 |
-| `E2E_FORCE_PORT` | 없음 | `scripts/e2e.mts` | E2E 포트 고정 |
+| `E2E_FORCE_PORT` | 없음 | `scripts/e2e-lib.mts` (러너 둘 `scripts/e2e.mts`·`scripts/e2e-scenario.mts` 가 함께 읽는다) | E2E 포트 고정 |

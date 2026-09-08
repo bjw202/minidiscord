@@ -39,7 +39,7 @@
 | `MINIDISCORD_WEB_DIR` | 소스 기준 `../../web` | 정적 루트 덮어쓰기 (README 표에는 없음 — ROADMAP OD-7) |
 | `MINIDISCORD_TOKEN` | 없음 | 채널: 등록 때 받은 평문 토큰, `hello` 에 그대로 실림. 없으면 프로세스는 뜨되 게이트웨이에 안 붙음 |
 | `MINIDISCORD_SERVER` | `ws://127.0.0.1:3000/bot` | 채널: 게이트웨이 주소. 전송 스킴 검사는 없다 (v2 에서 삭제 — 사내망의 `ws://` 가 표준 사용법) |
-| `E2E_FORCE_PORT` | 없음 | `scripts/e2e.mts` 의 포트 고정 |
+| `E2E_FORCE_PORT` | 없음 | 러너 둘(`scripts/e2e.mts`·`scripts/e2e-scenario.mts`)의 포트 고정 — 확보 함수를 `scripts/e2e-lib.mts` 에서 나눠 쓴다 |
 
 채널 플러그인은 **무상태**다 — 환경변수 둘만 읽고 디스크에 아무것도 쓰지 않는다. 공식 플러그인이 `~/.claude/channels/<이름>/.env` 에 상태를 저장해 여러 세션이 같이 못 쓰는 문제를 피하기 위한 결정이다 (`structure.md` 「다중 봇 접속」).
 
@@ -60,6 +60,7 @@
 | `npm test` | vitest 두 워크스페이스 | 루트 |
 | CI (`.github/workflows/ci.yml`) | `npm ci` → `typecheck -w server` → `typecheck -w channel` → `npm test`. push·PR 마다, Node 는 `.nvmrc`, 20분 제한, 동시 실행 취소 | GitHub Actions |
 | `npm run e2e` | 실제 서버 프로세스 + «봇 하나·방 둘» 15단계 시나리오 (부팅 시간 초과는 종료 코드 9) | **수동** — CI 미포함 (ROADMAP OD-6) |
+| `npm run e2e:scenario` | 실제 서버 프로세스 + «봇 둘·방 둘·관측자 하나» 20단계 시나리오. 관측 항목은 `[observe]` 8줄로 찍기만 하고 판정에 닿지 않으며, 끝에 `[elapsed]` 실측(≈14초)이 남는다. 부팅 시간 초과는 종료 코드 9 | **수동** — CI 미포함 (ROADMAP OD-6, 운영자 결정 2026-09-08) |
 
 커버리지는 channel 에서 보고만 되고 어느 쪽에도 임계값이 없다. 린터·포매터를 부르는 배선은 없다 (보류 카드 t35 ②).
 
@@ -73,6 +74,8 @@
 | 채널 플러그인 | `channel/test/*.test.ts` 6개 | 가짜 게이트웨이. 서버 소스를 import 하는 채널 시험은 없다 — 두 끝의 프레임 계약은 E2E 가 잰다 |
 | 웹 UI | `server/test/web-{shell,chat,rich,permission-contract}.test.ts` (jsdom), `web-visual.test.ts` (Playwright 실브라우저, 부재 시 건너뜀) | `MINIDISCORD_WEB_DIR` 로 정적 루트 지정 |
 | E2E | `scripts/e2e.mts` | 실제 서버 프로세스, 15단계 (재시작 영속성은 14단계, 보관은 15단계 — 접속 유지·welcome 에서 빠짐·사람 전송 409) |
+| E2E (둘째 러너) | `scripts/e2e-scenario.mts` | 실제 서버 프로세스, 20단계 — G1 봇 간 전달·G2 되먹임 차단(N=6)·G3 SSE 관측자·G4 권한 릴레이·G5 이력 필터와 재시작·봇 삭제·G6 경계. G7 채널 잘림은 미착수라 `[skip]` 한 줄만 찍는다 |
+| E2E 도우미 | `server/test/e2e-lib.test.ts` | 두 러너가 나눠 쓰는 `scripts/e2e-lib.mts` 의 인프로세스 시험 3개 — `expectQuiet`·`nextFrame`·`api` |
 | 영속성 | `server/test/restart-persistence.test.ts` | E2E 14단계의 인프로세스 짝 |
 | 원시 부품·조립 | `auth-name`, `config`, `db`, `mention`, `sse`, `health`, `no-listen.ts` | 이름 로그인 검증, 지연 getter, 옛 파일 거절, 파서, 허브, import 만으로 listen 하지 않음 |
 | 관측 하네스 | `server/test/wsupgrade-judgment.ts` + `gateway.test.ts` 안 관측 창 | 병렬 실행 중 나온 404 의 응답자 규명 (SPEC-WSUPGRADE-001, 수리 아님) |

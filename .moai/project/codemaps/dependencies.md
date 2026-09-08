@@ -66,7 +66,9 @@ web/style.css   -> ./design-tokens.css (@import, 6행)
 web/app.js      -> ./rich.js          ← 606행에서 import, 의도적 (SPEC-WEBRICH-001)
 web/rich.js     -> (없음)
 
-scripts/e2e.mts -> (내부 없음) node 내장 + ws (동적 import)
+scripts/e2e.mts          -> ./e2e-lib.mts
+scripts/e2e-scenario.mts -> ./e2e-lib.mts
+scripts/e2e-lib.mts      -> (내부 없음) node 내장 + ws (동적 import)
 ```
 
 ## 3. 워크스페이스 사이의 경계
@@ -79,7 +81,7 @@ graph LR
     web[web/]
   end
   subgraph 도구
-    scripts[scripts/e2e.mts]
+    scripts["scripts/e2e*.mts"]
     stest[server/test]
     ctest[channel/test]
   end
@@ -91,8 +93,8 @@ graph LR
 ```
 
 - **런타임 세 컴포넌트 사이에 코드 import 는 없다.** 만나는 자리는 프로토콜뿐이다.
-- `scripts/e2e.mts` 는 `server/src` 도 `server/test` 도 import 하지 않는다 (`grep -n "server/" scripts/e2e.mts` 는 주석 1건뿐). 실제 서버 프로세스를 spawn 하고 HTTP·WebSocket 으로만 말한다.
-- `channel/test` 6 파일은 `channel/src` 넷만 import 한다 (`grep -rn "server/src" channel/` 0건). 서버 게이트웨이를 상대로 하는 채널 시험은 없다 — 두 끝의 프레임 계약은 `scripts/e2e.mts` 가 잰다.
+- `scripts/` 의 세 파일(`e2e.mts`·`e2e-lib.mts`·`e2e-scenario.mts`)은 `server/src` 도 `server/test` 도 import 하지 않는다 (`grep -cE "^import .*server/" scripts/e2e.mts scripts/e2e-lib.mts scripts/e2e-scenario.mts` → 셋 다 0). 실제 서버 프로세스를 spawn 하고 HTTP·WebSocket 으로만 말한다.
+- `channel/test` 6 파일은 `channel/src` 넷만 import 한다 (`grep -rn "server/src" channel/` 0건). 서버 게이트웨이를 상대로 하는 채널 시험은 없다 — 두 끝의 프레임 계약은 러너 둘(`scripts/e2e.mts`·`scripts/e2e-scenario.mts`)이 잰다.
 - `server/test` 는 이제 공유 라이브러리가 아니다. 헬퍼 3 파일은 서버 시험만 쓴다.
 
 ## 4. 순환을 끊은 자리
@@ -137,7 +139,7 @@ graph LR
 
 ### scripts / server/test 헬퍼
 
-`scripts/e2e.mts`: node 내장(`child_process`, `fs`, `os`, `path`, `url`, `net`) + `ws`(동적 import). `wsupgrade-judgment.ts` 는 import 0 인 순수 모듈이고, `probe-db.ts`·`no-listen.ts` 는 `../src/db.js`·`../src/index.js` 만 import 한다.
+`scripts/` 는 세 파일이다. 서드파티·node 내장 의존은 도우미 한 곳에 모여 있다 — `scripts/e2e-lib.mts` 가 node 내장(`child_process`, `fs`, `path`, `url`, `net`) + `ws`(동적 import)를 쓰고, 러너 둘(`scripts/e2e.mts`·`scripts/e2e-scenario.mts`)은 그 도우미와 node 내장(`fs`, `os`, `path`, `url`, `child_process` 타입)만 import 한다. 반대 방향으로 경계를 한 번 넘는 것은 `server/test/e2e-lib.test.ts` 뿐이다 — 이 파일이 `../../scripts/e2e-lib.mjs` 를 import 해 server 의 `pretest`(tsc --noEmit, strict)가 도우미까지 검사하게 만든다. import 자리에 `@ts-ignore` 가 붙어 있는데, 억제하는 것은 «scripts/ 가 server 의 추론 rootDir 밖» 이라는 TS6059 배치 불평 하나뿐이다 (ROADMAP OD-15). `wsupgrade-judgment.ts` 는 import 0 인 순수 모듈이고, `probe-db.ts`·`no-listen.ts` 는 `../src/db.js`·`../src/index.js` 만 import 한다.
 
 ## 6. 코드로 잡히지 않는 결합
 
@@ -145,7 +147,7 @@ import 그래프에는 안 보이지만 함께 바꿔야 하는 자리들이다.
 
 | 결합 | 한쪽 | 다른 쪽 | 어긋나면 |
 |---|---|---|---|
-| 게이트웨이 프레임 `type` 집합과 필드명 (`hello`·`welcome`·`message`·`bot_message`·`status`·`history_request/response`·`permission_request/verdict`, `room_id`·`rid`·`local_path`) | `server/src/gateway.ts` `handleWsMessage`·`messageFrame` | `channel/src/gateway-client.ts`, `channel/src/index.ts`, `scripts/e2e.mts` | 알 수 없는 프레임은 양쪽 다 조용히 무시된다 — 시험이 아니라 E2E 만 잡는다 |
+| 게이트웨이 프레임 `type` 집합과 필드명 (`hello`·`welcome`·`message`·`bot_message`·`status`·`history_request/response`·`permission_request/verdict`, `room_id`·`rid`·`local_path`) | `server/src/gateway.ts` `handleWsMessage`·`messageFrame` | `channel/src/gateway-client.ts`, `channel/src/index.ts`, `scripts/e2e.mts`, `scripts/e2e-scenario.mts` | 알 수 없는 프레임은 양쪽 다 조용히 무시된다 — 시험이 아니라 E2E 만 잡는다 |
 | 권한 시스템 메시지 문구 | `server/src/permissions.ts` (한국어 4줄 본문, `전달하지 못했습니다 (<id>)` 꼬리 `[HARD]`) | `web/rich.js` `REQUEST_LINE_RE` / `RESOLUTION_RE` 정규식 | 승인 버튼이 안 뜨거나 잠기지 않음 |
 | 판정 답 형식 `yes <id>` / `no <id>` | `server/src/permissions.ts` `PERMISSION_REPLY_RE` (`/^\s*(y\|yes\|n\|no)\s+([a-km-z]{5})\s*$/i`) | `web/rich.js` `verdictBody` | 버튼이 보낸 답이 사용자 메시지로 저장되고 판정은 흐르지 않음 |
 | 역할 값 `orchestrator` / `worker` | `server/src/routes-bots.ts` 등록 검증 | `targets.ts` 가 `role` 을 실어 오지만 `gateway.ts` 는 더 이상 읽지 않는다 (역할 필터 2026-09-08 삭제) | 지금은 어긋날 소비자가 없다 — 역할을 다시 읽는 코드를 넣으면 이 행을 되살릴 것 |

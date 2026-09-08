@@ -10,7 +10,7 @@
 | **채널 플러그인** (`minidiscord-channel`) | `channel/` — Claude Code 세션마다 하나 | 공식 Channels 계약을 구현한 MCP 서버(stdio). 위로는 세션에 알림을 push 하고, 아래로는 게이트웨이에 WebSocket 으로 붙는다 | 소스 4개 592줄 |
 | **웹 UI** | `web/` — 브라우저 | 디스코드형 2단 레이아웃. 이름 로그인, 방·봇 목록, 채팅(SSE), `@` 자동완성, 첨부, 봇 등록·참여 다이얼로그, 권한 승인 버튼. 빌드 없음 | 6개 1,582줄 |
 
-여기에 종단 간 러너 `scripts/e2e.mts`(477줄)와 `server/test/` 의 헬퍼 셋(203줄)이 있다. 옛 라이브 검증 도구 넷은 `scripts/_archive/` 에 보관돼 있고 어떤 명령에도 걸려 있지 않다. 세 컴포넌트 사이에 코드 import 는 없고, 만나는 자리는 프로토콜뿐이다.
+여기에 종단 간 러너 둘(`scripts/e2e.mts` 267줄 · `scripts/e2e-scenario.mts` 709줄)과 둘이 나눠 쓰는 도우미 `scripts/e2e-lib.mts`(333줄), 그리고 `server/test/` 의 헬퍼 셋(203줄)이 있다. 옛 라이브 검증 도구 넷은 `scripts/_archive/` 에 보관돼 있고 어떤 명령에도 걸려 있지 않다. 세 컴포넌트 사이에 코드 import 는 없고, 만나는 자리는 프로토콜뿐이다.
 
 ### 연결 흐름
 
@@ -44,7 +44,7 @@
 
 ```
 minidiscord/
-├── package.json                  # npm workspaces: server, channel · 스크립트 e2e / test
+├── package.json                  # npm workspaces: server, channel · 스크립트 e2e / e2e:scenario / test
 ├── .nvmrc                        # Node 24 — 로컬과 CI 의 단일 출처
 ├── .github/workflows/ci.yml      # npm ci → typecheck(server, channel) → npm test
 ├── server/
@@ -77,6 +77,8 @@ minidiscord/
 │   ├── index.html · app.js · rich.js · rich.d.ts · style.css · design-tokens.css
 ├── scripts/
 │   ├── e2e.mts                   # 15단계 E2E «봇 하나·방 둘» (실제 서버 프로세스)
+│   ├── e2e-lib.mts               # 두 러너가 나눠 쓰는 도우미 (HTTP · WebSocket · 시한 대기 · 서버 spawn)
+│   ├── e2e-scenario.mts          # 20단계 E2E «봇 둘·방 둘·관측자 하나» + 관측 항목 8
 │   └── _archive/                 # 퇴역한 라이브 검증 도구 (live-env.sh · live-dryrun.mts · live-extract.mts · live-extract/)
 ├── README.md · ROADMAP.md · CHANGELOG.md
 └── .moai/                        # SPEC 19개(`specs/`) + 보관 11개(`specs/_archive/`), 설계 원문(`plan/`), 이 문서들(`project/`)
@@ -152,7 +154,7 @@ v2 봇 모델(SPEC-BOTMODEL-001). 모든 프레임은 `type` 을 가진 **맨몸
 
 | 결합 | 자리 |
 |---|---|
-| 게이트웨이 프레임 `type` 집합과 필드명 (`room_id`·`rid`·`local_path`) | `server/src/gateway.ts` ↔ `channel/src/gateway-client.ts`·`index.ts` ↔ `scripts/e2e.mts` — 알 수 없는 프레임은 양쪽 다 조용히 무시되므로 E2E 만 잡는다 |
+| 게이트웨이 프레임 `type` 집합과 필드명 (`room_id`·`rid`·`local_path`) | `server/src/gateway.ts` ↔ `channel/src/gateway-client.ts`·`index.ts` ↔ `scripts/e2e.mts`·`scripts/e2e-scenario.mts` — 알 수 없는 프레임은 양쪽 다 조용히 무시되므로 E2E 만 잡는다 |
 | 권한 시스템 메시지 문구 ↔ 브라우저 정규식 | `server/src/permissions.ts` ↔ `web/rich.js` (`전달하지 못했습니다 (<id>)` 꼬리는 `[HARD]`) |
 | 알림 `meta` 여섯 키 (`chat_id`=방 번호, `message_id`, `delivery`, `sender`, `author_type`, `room_name`) | `channel/src/channel-server.ts` ↔ 세션이 `reply`/`fetch_history` 에 되돌리는 `chat_id` |
 | `rich.js` 시그니처 ↔ 수기 선언 | `web/rich.js` ↔ `web/rich.d.ts` |
