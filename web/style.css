@@ -307,6 +307,9 @@ input:focus { outline: 1px solid var(--md-accent); }
 .msg-body {
   margin: var(--md-space-1) 0 0;
   overflow-wrap: anywhere;
+  /* 가독성 — 2026-09-09 운영자 피드백(자간·행간이 빽빽하다)으로 지정. 행간이 체감의 대부분 */
+  line-height: 1.7;
+  letter-spacing: 0.02em;
 }
 
 /* 봇 작성자 이름 색 — author_bot_id 로 다섯 색을 순환 배정한다 (design DNA §1) */
@@ -622,9 +625,11 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
   padding: 0 var(--md-space-1);
 }
 
-/* 목록 — 중첩 목록은 간격을 축소한다 */
+/* 목록 — 중첩 목록은 간격을 축소한다. 항목 사이 4px — 2026-09-09 가독성 피드백 */
 .md-ul, .md-ol { margin: 0 0 var(--md-space-2); padding-left: var(--md-space-5); }
 .md-ul:last-child, .md-ol:last-child { margin-bottom: 0; }
+.md-li { margin: 0 0 var(--md-space-1); }
+.md-li:last-child { margin-bottom: 0; }
 .md-li .md-ul, .md-li .md-ol { margin: var(--md-space-1) 0 0; }
 
 /* 인용 — 왼쪽 막대와 흐린 글씨 */
@@ -643,7 +648,7 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
 .md-table { border-collapse: collapse; width: 100%; }
 .md-table th, .md-table td {
   border: var(--md-border-width) solid var(--md-divider);
-  padding: var(--md-space-1) var(--md-space-2);
+  padding: var(--md-space-2);
   overflow-wrap: anywhere;
   text-align: left;
 }
