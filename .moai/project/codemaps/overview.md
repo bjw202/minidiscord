@@ -1,6 +1,6 @@
 # minidiscord 코드맵 — 전체 개요
 
-> 기준 커밋 `74ff7c9` (WT-v2-model, 2026-09-07). 생성 방법: 소스 전수 판독 + `grep '^import'` import 그래프 + `wc -l`. 줄 수와 파일 수는 이 커밋 시점의 값이며, 코드가 바뀌면 이 문서를 다시 생성한다 (`/moai codemaps --force`).
+> 기준 커밋 `19eb524` (2026-09-09). 생성 방법: 소스 전수 판독 + `grep '^import'` import 그래프 + `wc -l`. 줄 수와 파일 수는 이 커밋 시점의 값이며, 코드가 바뀌면 이 문서를 다시 생성한다 (`/moai codemaps --force`).
 >
 > 다른 코드맵: [modules.md](./modules.md) (모듈 카탈로그) · [dependencies.md](./dependencies.md) (의존 그래프) · [entry-points.md](./entry-points.md) (진입점·API·프로토콜) · [data-flow.md](./data-flow.md) (핵심 흐름·데이터 모델)
 
@@ -12,13 +12,13 @@ minidiscord 는 npm workspaces 로 묶인 TypeScript 모노레포다. **서버**
 
 | 구성 요소 | 경로 | 소스 줄 수 | 역할 |
 |---|---|---|---|
-| 서버 | `server/src/` (13 파일) | 1,121 | Fastify 앱 조립, 이름 로그인, 방·봇·참여·메시지 API, SSE 허브, WebSocket 봇 게이트웨이(맨몸 JSON 프레임, 연속 봇 글 상한), 권한 릴레이 브로커 |
-| 채널 플러그인 | `channel/src/` (4 파일) | 592 | 공식 Channels 계약을 구현한 MCP 서버, 게이트웨이 WebSocket 클라이언트(`hello`/`welcome` 한 왕복·지수 백오프 재접속), 바이트 예산 절단 |
-| 웹 UI | `web/` (8 파일) | 2,471 | 이름 로그인·방 목록·채팅·SSE 수신·`@` 자동완성·첨부·본문 마크다운 렌더링(`web/markdown.js`)·봇 등록/참여 다이얼로그·권한 승인 버튼 |
+| 서버 | `server/src/` (13 파일) | 1,198 | Fastify 앱 조립, 이름 로그인, 방·봇·참여·메시지 API, SSE 허브, WebSocket 봇 게이트웨이(맨몸 JSON 프레임, 연속 봇 글 상한), 권한 릴레이 브로커 |
+| 채널 플러그인 | `channel/src/` (4 파일) | 597 | 공식 Channels 계약을 구현한 MCP 서버, 게이트웨이 WebSocket 클라이언트(`hello`/`welcome` 한 왕복·지수 백오프 재접속), 바이트 예산 절단 |
+| 웹 UI | `web/` (8 파일) | 2,516 | 이름 로그인·방 목록·채팅·SSE 수신·`@` 자동완성·첨부·본문 마크다운 렌더링(`web/markdown.js`)·봇 등록/참여 다이얼로그·권한 승인 버튼·작성자 그룹핑 턴 구분 |
 | 스크립트 | `scripts/e2e.mts` · `e2e-lib.mts` · `e2e-scenario.mts` (3 파일) | 1,309 | E2E 러너 둘 — 15단계 «봇 하나·방 둘»(267줄)과 20단계 «봇 둘·방 둘·관측자 하나»(709줄) — 그리고 둘이 나눠 쓰는 도우미 `e2e-lib.mts`(333줄). `scripts/_archive/` 에 퇴역한 live-* 도구 4 파일이 남아 있다 (실행 대상 아님) |
 | 테스트 헬퍼 | `server/test/*.ts` (`.test.ts` 제외 3 파일) | 203 | 404 응답자 판정기, WAL·인덱스 관측, import 만으로 listen 하지 않음 증명 |
 
-테스트: `server/test` 17개 `.test.ts` (5,368줄), `channel/test` 6개 (2,551줄). 제품 코드(1,713줄)보다 테스트(7,919줄)가 네 배 이상 많다.
+테스트: `server/test` 19개 `.test.ts` (6,549줄), `channel/test` 6개 (2,554줄). 제품 코드(1,795줄)보다 테스트(9,103줄)가 다섯 배 이상 많다.
 
 ## 연결 흐름
 

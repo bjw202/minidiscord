@@ -6,9 +6,9 @@
 
 | 컴포넌트 | 위치 | 역할 | 규모 |
 |---|---|---|---|
-| **서버** | `server/` — 단일 Node 프로세스 | 웹 UI 정적 서빙, REST API, SSE 실시간 push, 봇 게이트웨이(WebSocket `/bot`, 토큰 인증·맨몸 JSON 프레임), 권한 릴레이, SQLite/파일 저장 | 소스 13개 1,121줄 |
-| **채널 플러그인** (`minidiscord-channel`) | `channel/` — Claude Code 세션마다 하나 | 공식 Channels 계약을 구현한 MCP 서버(stdio). 위로는 세션에 알림을 push 하고, 아래로는 게이트웨이에 WebSocket 으로 붙는다 | 소스 4개 592줄 |
-| **웹 UI** | `web/` — 브라우저 | 디스코드형 2단 레이아웃. 이름 로그인, 방·봇 목록, 채팅(SSE), `@` 자동완성, 첨부, 봇 등록·참여 다이얼로그, 권한 승인 버튼. 빌드 없음 | 6개 1,582줄 |
+| **서버** | `server/` — 단일 Node 프로세스 | 웹 UI 정적 서빙, REST API, SSE 실시간 push, 봇 게이트웨이(WebSocket `/bot`, 토큰 인증·맨몸 JSON 프레임), 권한 릴레이, SQLite/파일 저장 | 소스 13개 1,198줄 |
+| **채널 플러그인** (`minidiscord-channel`) | `channel/` — Claude Code 세션마다 하나 | 공식 Channels 계약을 구현한 MCP 서버(stdio). 위로는 세션에 알림을 push 하고, 아래로는 게이트웨이에 WebSocket 으로 붙는다 | 소스 4개 597줄 |
+| **웹 UI** | `web/` — 브라우저 | 디스코드형 2단 레이아웃. 이름 로그인, 방·봇 목록, 채팅(SSE), `@` 자동완성, 첨부, 봇 등록·참여 다이얼로그, 권한 승인 버튼. 빌드 없음 | 8개 2,516줄 |
 
 여기에 종단 간 러너 둘(`scripts/e2e.mts` 267줄 · `scripts/e2e-scenario.mts` 709줄)과 둘이 나눠 쓰는 도우미 `scripts/e2e-lib.mts`(333줄), 그리고 `server/test/` 의 헬퍼 셋(203줄)이 있다. 옛 라이브 검증 도구 넷은 `scripts/_archive/` 에 보관돼 있고 어떤 명령에도 걸려 있지 않다. 세 컴포넌트 사이에 코드 import 는 없고, 만나는 자리는 프로토콜뿐이다.
 
