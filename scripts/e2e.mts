@@ -72,7 +72,7 @@ async function runScenarios(port: number, dataDir: string, botFilesDir: string, 
   // ③ 봇 등록 — 평문 토큰은 이 응답에 한 번만 실린다 (64자 hex). 목록 응답에는 토큰이 없다
   const bot = await api(port, 'POST', '/api/bots', { cookie, json: { name: BOT_NAME, description: 'e2e scenario bot', role: 'orchestrator' } })
   assert(bot.status === 201 && typeof bot.body?.id === 'number' && /^[0-9a-f]{64}$/.test(bot.body?.token ?? ''), 'step3 ③ 봇 등록 응답의 토큰이 64자 hex 가 아니다')
-  assert(typeof bot.body.command === 'string' && bot.body.command.includes(`MINIDISCORD_TOKEN=${bot.body.token}`), 'step3 ③ 등록 응답의 command 가 토큰을 담지 않는다')
+  assert(typeof bot.body.command === 'string' && bot.body.command.includes(`"MINIDISCORD_TOKEN": "${bot.body.token}"`), 'step3 ③ 등록 안내문(.mcp.json)이 토큰을 담지 않는다')
   const botId = bot.body.id as number
   const token = bot.body.token as string
   const bots = await api(port, 'GET', '/api/bots', { cookie })
