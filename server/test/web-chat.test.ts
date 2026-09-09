@@ -201,19 +201,12 @@ describe('AC-WEBCHAT-001 openRoom renders history', () => {
   })
 })
 
-// ── 시각 표시 회귀 — UTC 문자열을 그대로 찍던 결함 (운영자 관측 2026-09-09) ──
-// 서버는 SQLite datetime('now') 로 UTC 를 'YYYY-MM-DD HH:MM:SS' 로 준다. 시간대 표기가
-// 없어 그대로 찍으면 한국에서 9시간 과거로 보였다. TZ 는 vitest 프로세스의 것을 그대로 쓰고,
-// 기대값도 같은 Date 계산으로 만든다 — 특정 시간대를 고정값으로 박으면 CI 에서만 깨진다.
-describe('message time renders in the viewer timezone', () => {
-  // UTC 문자열 하나를 보는 사람의 시간대로 옮긴 «YYYY-MM-DD HH:MM:SS»
-  function expectedLocal(utc: string) {
-    const d = new Date(`${utc.replace(' ', 'T')}Z`)
-    const p = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
-  }
-
-  it('converts the UTC created_at to local time', async () => {
+// ── 시각 표시 — 기준을 UTC 하나로 통일하고 화면에 밝힌다 (운영자 결정 2026-09-09) ──
+// 서버는 SQLite datetime('now') 로 UTC 를 'YYYY-MM-DD HH:MM:SS' 로 준다. 시간대 표기가 없어
+// 그대로 찍으면 어느 기준인지 알 수 없었다. 시간대를 옮기는 대신 «(UTC)» 를 붙이기로 했다 —
+// 화면·DB·봇 이력이 같은 기준을 쓰고, 화면이 그 기준을 밝힌다.
+describe('message time is labelled UTC rather than converted', () => {
+  it('appends the (UTC) marker and leaves the value untouched', async () => {
     const utc = '2026-09-09 05:00:52'
     const app = await loadApp(baseHandler({
       '/api/rooms/1/messages': { messages: [msg({ id: 1, created_at: utc })] },
@@ -222,12 +215,22 @@ describe('message time renders in the viewer timezone', () => {
     await flush()
 
     const shown = document.querySelector('#messages .msg-time')!.textContent
-    expect(shown).toBe(expectedLocal(utc))
-    // 시간대가 UTC 인 환경에서는 두 값이 같아 이 시험이 아무것도 재지 못한다 — 그 사실을 드러낸다
-    if (new Date().getTimezoneOffset() !== 0) expect(shown).not.toBe(utc)
+    expect(shown).toBe(`${utc} (UTC)`)
+    // 값 자체는 옮기지 않는다 — 실행 환경 시간대가 무엇이든 저장된 숫자가 그대로 보여야 한다
+    expect(shown).toContain(utc)
   })
 
-  it('leaves an unparsable timestamp as-is instead of blanking it', async () => {
+  it('does not label a timestamp that carries a non-UTC offset', async () => {
+    // 틀린 기준을 붙이는 것은 아무것도 안 붙이는 것보다 나쁘다
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, created_at: '2026-09-09T14:00:52+09:00' })] },
+    }))
+    await app.openRoom(1)
+    await flush()
+    expect(document.querySelector('#messages .msg-time')!.textContent).toBe('2026-09-09T14:00:52+09:00')
+  })
+
+  it('leaves an unparsable timestamp as-is instead of labelling or blanking it', async () => {
     const app = await loadApp(baseHandler({
       '/api/rooms/1/messages': { messages: [msg({ id: 1, created_at: '언제인지 모름' })] },
     }))
@@ -238,7 +241,7 @@ describe('message time renders in the viewer timezone', () => {
 
   it('groups a turn by the real gap, whichever timestamp form arrives', async () => {
     // 한쪽은 표기 없는 UTC, 다른 쪽은 같은 순간의 Z 표기 — 간격 0 이므로 같은 턴이어야 한다.
-    // 한쪽에만 시간대를 붙이면 9시간 차이로 읽혀 턴이 갈린다.
+    // 한쪽에만 시간대를 붙여 읽으면 9시간 차이로 보여 턴이 갈린다 (표시와 별개인 파싱 축).
     const app = await loadApp(baseHandler({
       '/api/rooms/1/messages': { messages: [
         msg({ id: 1, created_at: '2026-09-09 05:00:00' }),

@@ -393,15 +393,16 @@ function parseServerTime(raw) {
   return Date.parse(/[Zz]$|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`)
 }
 
-// 화면에 찍을 시각 — 저장 형태와 같은 «YYYY-MM-DD HH:MM:SS» 모양을 유지하되 보는 사람의
-// 시간대로 되돌린다 (2026-09-09 운영자 결정). DB·서버 API 는 UTC 그대로다 — 바꾸는 것은 표시뿐이다.
-// 읽지 못한 값은 원문을 그대로 내보낸다: 빈 칸보다 «이상한 값이 왔다» 가 보이는 편이 낫다.
-function localTime(raw) {
-  const t = parseServerTime(raw)
-  if (!Number.isFinite(t)) return String(raw ?? '')
-  const d = new Date(t)
-  const p = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+// 화면에 찍을 시각 — 저장된 UTC 값을 그대로 두고 «(UTC)» 표기만 붙인다 (2026-09-09 운영자
+// 결정). 보는 사람의 시간대로 옮기면 화면·DB·봇 이력이 저마다 다른 기준을 쓰게 돼 어느 쪽이
+// 기준인지 헷갈린다 — 기준 하나로 통일하고 그 기준을 화면에 밝히는 쪽을 택했다.
+// 표기를 붙이지 않는 경우 둘: UTC 가 아닌 오프셋(+09:00 등)이 붙어 온 값과 읽지 못하는 값이다.
+// 틀린 기준을 붙이는 것은 아무것도 안 붙이는 것보다 나쁘고, 읽지 못한 값은 원문이 그대로 보여야 한다.
+function displayTime(raw) {
+  const s = String(raw ?? '').trim()
+  if (!s) return ''
+  if (/[+-]\d\d:?\d\d$/.test(s)) return s
+  return Number.isFinite(parseServerTime(s)) ? `${s} (UTC)` : s
 }
 
 // 메시지는 승인·상태 전이 하나하나가 눈에 띄어야 하므로 묶지 않고, 시각 파싱에 실패하면
@@ -435,7 +436,7 @@ export function renderMessage(m, prev = lastRenderedMsg) {
   }
   const time = document.createElement('span')
   time.className = 'msg-time'
-  time.textContent = localTime(m.created_at)
+  time.textContent = displayTime(m.created_at)
   head.appendChild(author)
   head.appendChild(time)
 
