@@ -201,6 +201,56 @@ describe('AC-WEBCHAT-001 openRoom renders history', () => {
   })
 })
 
+// ── 시각 표시 회귀 — UTC 문자열을 그대로 찍던 결함 (운영자 관측 2026-09-09) ──
+// 서버는 SQLite datetime('now') 로 UTC 를 'YYYY-MM-DD HH:MM:SS' 로 준다. 시간대 표기가
+// 없어 그대로 찍으면 한국에서 9시간 과거로 보였다. TZ 는 vitest 프로세스의 것을 그대로 쓰고,
+// 기대값도 같은 Date 계산으로 만든다 — 특정 시간대를 고정값으로 박으면 CI 에서만 깨진다.
+describe('message time renders in the viewer timezone', () => {
+  // UTC 문자열 하나를 보는 사람의 시간대로 옮긴 «YYYY-MM-DD HH:MM:SS»
+  function expectedLocal(utc: string) {
+    const d = new Date(`${utc.replace(' ', 'T')}Z`)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  }
+
+  it('converts the UTC created_at to local time', async () => {
+    const utc = '2026-09-09 05:00:52'
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, created_at: utc })] },
+    }))
+    await app.openRoom(1)
+    await flush()
+
+    const shown = document.querySelector('#messages .msg-time')!.textContent
+    expect(shown).toBe(expectedLocal(utc))
+    // 시간대가 UTC 인 환경에서는 두 값이 같아 이 시험이 아무것도 재지 못한다 — 그 사실을 드러낸다
+    if (new Date().getTimezoneOffset() !== 0) expect(shown).not.toBe(utc)
+  })
+
+  it('leaves an unparsable timestamp as-is instead of blanking it', async () => {
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, created_at: '언제인지 모름' })] },
+    }))
+    await app.openRoom(1)
+    await flush()
+    expect(document.querySelector('#messages .msg-time')!.textContent).toBe('언제인지 모름')
+  })
+
+  it('groups a turn by the real gap, whichever timestamp form arrives', async () => {
+    // 한쪽은 표기 없는 UTC, 다른 쪽은 같은 순간의 Z 표기 — 간격 0 이므로 같은 턴이어야 한다.
+    // 한쪽에만 시간대를 붙이면 9시간 차이로 읽혀 턴이 갈린다.
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [
+        msg({ id: 1, created_at: '2026-09-09 05:00:00' }),
+        msg({ id: 2, created_at: '2026-09-09T05:00:00Z' }),
+      ] },
+    }))
+    await app.openRoom(1)
+    await flush()
+    expect($$('#messages .message.turn-cont')).toHaveLength(1)
+  })
+})
+
 // ── 초기 로드 커서 회귀 — 200건 상한에서 끊기던 결함 (crew-team-58 진단 2026-09-09) ──
 // 서버는 한 번에 최대 200건만 준다. 초기 로드가 한 번만 부르면 그 뒤 구간은 SSE 로도
 // 오지 않아 DB 에는 있는데 화면에서만 사라졌다. 방 하나에 243건을 두고 관측한다.

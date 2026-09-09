@@ -382,6 +382,28 @@ export function registerMessageDecorator(factory) {
 let lastRenderedMsg = null
 
 // 같은 턴인가 — 작성자 신원이 같고 5분 안의 연속이면 한 뭉치로 본다(디스코드 관례). 시스템
+// 서버 시각 파싱 — 서버는 created_at 을 SQLite `datetime('now')` 로 만들어 «UTC» 를
+// 'YYYY-MM-DD HH:MM:SS' 로 준다. 이 문자열에는 시간대 표기가 없어 브라우저가 «로컬 시각» 으로
+// 해석하므로, 표기를 붙여 UTC 로 못박는다. 이미 표기가 붙어 있으면(Z 또는 ±HH:MM) 그대로 쓴다.
+// 읽지 못하면 NaN 을 돌려 부르는 쪽이 실패 방향을 고르게 한다 — 조용히 지금 시각으로 때우지 않는다.
+function parseServerTime(raw) {
+  const s = String(raw ?? '').trim()
+  if (!s) return NaN
+  const iso = s.replace(' ', 'T')
+  return Date.parse(/[Zz]$|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`)
+}
+
+// 화면에 찍을 시각 — 저장 형태와 같은 «YYYY-MM-DD HH:MM:SS» 모양을 유지하되 보는 사람의
+// 시간대로 되돌린다 (2026-09-09 운영자 결정). DB·서버 API 는 UTC 그대로다 — 바꾸는 것은 표시뿐이다.
+// 읽지 못한 값은 원문을 그대로 내보낸다: 빈 칸보다 «이상한 값이 왔다» 가 보이는 편이 낫다.
+function localTime(raw) {
+  const t = parseServerTime(raw)
+  if (!Number.isFinite(t)) return String(raw ?? '')
+  const d = new Date(t)
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 // 메시지는 승인·상태 전이 하나하나가 눈에 띄어야 하므로 묶지 않고, 시각 파싱에 실패하면
 // 실패 방향인 «다른 턴» 으로 본다 (2026-09-09 운영자 결정: 말풍선 대신 그룹핑으로 턴을 구분).
 function sameTurn(a, b) {
@@ -390,8 +412,8 @@ function sameTurn(a, b) {
   if ((a.author_name ?? '') !== (b.author_name ?? '')) return false
   if (a.author_type === 'bot' && (a.author_bot_id ?? 0) !== (b.author_bot_id ?? 0)) return false
   if (a.author_type === 'system') return false
-  const ta = Date.parse(String(a.created_at ?? '').replace(' ', 'T'))
-  const tb = Date.parse(String(b.created_at ?? '').replace(' ', 'T'))
+  const ta = parseServerTime(a.created_at)
+  const tb = parseServerTime(b.created_at)
   if (!Number.isFinite(ta) || !Number.isFinite(tb)) return false
   return Math.abs(tb - ta) <= 5 * 60 * 1000
 }
@@ -413,7 +435,7 @@ export function renderMessage(m, prev = lastRenderedMsg) {
   }
   const time = document.createElement('span')
   time.className = 'msg-time'
-  time.textContent = m.created_at ?? ''
+  time.textContent = localTime(m.created_at)
   head.appendChild(author)
   head.appendChild(time)
 
