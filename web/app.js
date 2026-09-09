@@ -260,10 +260,24 @@ export async function openRoom(id) {
   $('messages').innerHTML = ''
   lastRenderedMsg = null   // 턴 그룹핑 기준점도 새 방에서 다시 산다
   hideAutocomplete()
-  // 6단계 — 과거 대화를 받아 순서대로 그린다
-  const history = await api(`/api/rooms/${id}/messages`)
-  if (generation !== state.roomGeneration) return   // 늦게 도착한 응답은 버린다 (REQ-WEBCHAT-014)
-  for (const m of history.messages) renderMessage(m)
+  // 6단계 — 과거 대화를 받아 순서대로 그린다. 서버는 한 번에 최대 200건만 준다
+  // (routes-messages.ts REQ-MSG-011) — 한 번만 부르면 가장 오래된 200건에서 끊기고, 그 뒤
+  // 구간은 SSE 로도 오지 않아 DB 에는 있는데 화면에서만 사라진다. 그래서 응답이 꽉 차 있으면
+  // 마지막 id 를 커서로 삼아 다 받을 때까지 이어 받는다. 서버의 LIMIT 은 올리지 않는다 —
+  // 상한을 키우는 방식은 방이 커질수록 같은 결함이 다시 난다.
+  const PAGE = 200        // 서버 LIMIT 과 같은 값. 서버가 더 적게 주면 첫 쪽에서 멈추고, 더 주면 한 번 더 부른다
+  let cursor = 0          // 마지막으로 그린 메시지의 id. 첫 요청은 커서 없이 보낸다(after=0 과 같은 뜻)
+  for (;;) {
+    const page = await api(`/api/rooms/${id}/messages${cursor ? `?after=${cursor}` : ''}`)
+    if (generation !== state.roomGeneration) return   // 늦게 도착한 응답은 버린다 (REQ-WEBCHAT-014)
+    for (const m of page.messages) renderMessage(m)
+    if (page.messages.length === 0) break
+    cursor = page.messages[page.messages.length - 1].id   // id 는 오름차순이라 커서는 반드시 오른다 — 무한 반복이 없다
+    if (page.messages.length < PAGE) break
+  }
+  // 초기 로드가 그린 마지막 id 를 재연결 백필의 커서로 세운다 (REQ-WEBCHAT-008).
+  // 0 으로 두면 재연결이 after=0 으로 나가 앞 200건을 다시 그린다.
+  state.lastEventId = cursor
   // 7단계 — 맨 아래로 스크롤한다
   scrollMessages()
   // 8단계 — 초대 목록을 받아 캐시하고 봇 칩을 그린다

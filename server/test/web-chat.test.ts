@@ -201,6 +201,56 @@ describe('AC-WEBCHAT-001 openRoom renders history', () => {
   })
 })
 
+// ── 초기 로드 커서 회귀 — 200건 상한에서 끊기던 결함 (crew-team-58 진단 2026-09-09) ──
+// 서버는 한 번에 최대 200건만 준다. 초기 로드가 한 번만 부르면 그 뒤 구간은 SSE 로도
+// 오지 않아 DB 에는 있는데 화면에서만 사라졌다. 방 하나에 243건을 두고 관측한다.
+describe('openRoom pages past the server LIMIT', () => {
+  // id 1..243 을 200 + 43 두 쪽으로 나눠 주는 핸들러. 첫 요청은 커서 없이 온다.
+  function pagedHandler(total: number) {
+    const all = Array.from({ length: total }, (_, i) => msg({ id: i + 1, body: `본문${i + 1}` }))
+    return (url: string) => {
+      if (url.startsWith('/api/rooms/1/messages')) {
+        const m = /[?&]after=([0-9]+)/.exec(url)
+        const after = m ? Number(m[1]) : 0
+        return { data: { messages: all.filter(x => x.id > after).slice(0, 200) } }
+      }
+      if (/^\/api\/rooms\/[0-9]+\/bots/.test(url)) return { data: [] }
+      if (url.startsWith('/api/rooms')) return { data: { active: [{ id: 1, name: '방1' }], archived: [] } }
+      return { data: {} }
+    }
+  }
+
+  it('renders every message when the room holds more than one page', async () => {
+    const app = await loadApp(pagedHandler(243))
+    await app.openRoom(1)
+    await flush()
+
+    const bodies = $$('#messages .message .msg-body').map(n => n.textContent)
+    expect(bodies).toHaveLength(243)
+    expect(bodies[0]).toBe('본문1')
+    expect(bodies[200]).toBe('본문201')    // 첫 쪽 바로 다음 — 이 결함이 정확히 지우던 구간
+    expect(bodies[242]).toBe('본문243')
+  })
+
+  it('leaves the reconnect cursor on the last rendered id, not 0', async () => {
+    const app = await loadApp(pagedHandler(243))
+    await app.openRoom(1)
+    await flush()
+    expect((app.state as { lastEventId: number }).lastEventId).toBe(243)
+  })
+
+  it('asks once when the first page is not full', async () => {
+    const calls: string[] = []
+    const base = baseHandler({ '/api/rooms/1/messages': { messages: [msg({ id: 7, body: '한 건' })] } })
+    const app = await loadApp(url => { calls.push(url); return base(url) })
+    await app.openRoom(1)
+    await flush()
+
+    expect(calls.filter(u => u.startsWith('/api/rooms/1/messages'))).toEqual(['/api/rooms/1/messages'])
+    expect((app.state as { lastEventId: number }).lastEventId).toBe(7)
+  })
+})
+
 // ── AC-WEBCHAT-002 — 메시지 구조·작성자별 색·확장 훅 (세 테스트) ──────
 describe('AC-WEBCHAT-002 message structure, bot colours, decoration hook', () => {
   it('builds the documented message structure and colours bots apart', async () => {
