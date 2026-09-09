@@ -36,6 +36,8 @@ SQLite 파일 하나(`MINIDISCORD_DATA_DIR/minidiscord.db`, `journal_mode = WAL`
 | `fetch_history` 의 `since_id` / 응답 `cursor` | 세션의 기억 | 이 번호 다음부터 |
 | 웹 목록 `?after=` / SSE 재연결 백필 | 브라우저 `state.lastEventId` | 화면이 마지막으로 그린 메시지 |
 
+**초기 로드도 같은 커서를 쓴다.** `GET /api/rooms/:id/messages` 는 한 번에 `LIMIT 200` 까지만 준다(`routes-messages.ts`, REQ-MSG-011). `openRoom` 은 첫 요청을 커서 없이 보낸 뒤, 응답이 200건으로 꽉 차 있으면 마지막 `id` 를 `?after=` 커서로 삼아 다 받을 때까지 잇고, 마지막으로 그린 `id` 를 `state.lastEventId` 에 세운다 — 그래야 SSE 재연결 백필이 이어받을 자리에서 시작한다. 2026-09-09 이전에는 초기 로드가 한 번만 조회하고 `state.lastEventId` 를 0 으로 두어, 200건이 넘는 방은 그 뒤 구간이 화면에서만 사라졌다(`SPEC-MSG-001/acceptance.md` 의 «클라이언트는 마지막 id 를 커서로 이어 조회한다» 계약 미이행). 서버 `LIMIT` 은 그대로다.
+
 ## 2. 흐름 (a) — 사람이 `@TO`/`@CC` 메시지를 보내면 봇에게 닿기까지
 
 ```mermaid
@@ -77,7 +79,7 @@ sequenceDiagram
    - 남은 타깃에 `to` 가 있고 `BOT_RUN_LIMIT > 0 && botRunSinceLastHuman(roomId) >= BOT_RUN_LIMIT` 이면 (`BOT_RUN_LIMIT` 은 `opts.botRunLimit` ← `config.botRunLimit` ← `MINIDISCORD_BOT_RUN_LIMIT`, 기본 6, `0` 이면 끔) (마지막 사람 글 이후 봇 글 수, 지금 글 포함, system 글은 연속을 끊지 않음) 전부 `cc` 로 내리고 `«사람 글 없이 봇 글이 6개 이어져 @TO 를 cc 로 내렸습니다»` 를 남긴다.
    - 남은 타깃마다 `message_targets` 행을 쓰고 `deliverTo` 로 보낸다 — 사람 경로와 같은 자리다.
 7. `sse.ts publish` 가 방의 모든 구독 `ServerResponse` 에 `event: message\ndata: …\n\n`.
-8. `web/app.js openStream` 의 `EventSource` 리스너 → `renderMessage`, 스크롤, `state.lastEventId` 갱신. `renderMessage` 는 본문을 `web/markdown.js` 의 `renderMarkdown` 으로 그리고 실패하면 원문 텍스트로 되돌린다. `status:idle` 은 `bot_status` 이벤트로 와서 「입력 중」 표시를 지운다.
+8. `web/app.js openStream` 의 `EventSource` 리스너 → `renderMessage`, 스크롤, `state.lastEventId` 갱신. 이 경로는 방을 연 뒤 **새로 오는 것만** 붙인다 — 방을 열 때의 과거 이력은 `openRoom` 의 커서 조회가 이미 다 받아 뒀다(1장 «커서 체계»). `renderMessage` 는 본문을 `web/markdown.js` 의 `renderMarkdown` 으로 그리고 실패하면 원문 텍스트로 되돌린다. `status:idle` 은 `bot_status` 이벤트로 와서 「입력 중」 표시를 지운다.
 
 `handleWsMessage` 는 참여 검사 뒤에 `bot_message`·`status` 에 한해 `rooms.status = 'active'` 를 본다(`isActiveRoom`, t43) — 보관된 방으로 온 봇 글은 행·발행·응답 없이 버려지고 소켓은 유지된다 (사람 경로는 409).
 

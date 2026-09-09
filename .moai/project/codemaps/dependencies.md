@@ -63,7 +63,7 @@ channel/src/truncate.ts       -> (없음)
 
 web/index.html  -> /app.js, /style.css
 web/style.css   -> ./design-tokens.css (@import, 6행)
-web/app.js      -> ./rich.js, ./markdown.js ← 741행에서 import, 의도적 (SPEC-WEBRICH-001 · SPEC-WEBMD-001)
+web/app.js      -> ./rich.js, ./markdown.js ← 파일 끝의 `from './rich.js'` import 문, 의도적 (SPEC-WEBRICH-001 · SPEC-WEBMD-001)
 web/rich.js     -> (없음)
 web/markdown.js -> (없음)
 

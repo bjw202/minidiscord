@@ -242,7 +242,7 @@ describe('openRoom pages past the server LIMIT', () => {
   it('asks once when the first page is not full', async () => {
     const calls: string[] = []
     const base = baseHandler({ '/api/rooms/1/messages': { messages: [msg({ id: 7, body: '한 건' })] } })
-    const app = await loadApp(url => { calls.push(url); return base(url) })
+    const app = await loadApp((url, opts) => { calls.push(url); return base(url, opts) })
     await app.openRoom(1)
     await flush()
 
