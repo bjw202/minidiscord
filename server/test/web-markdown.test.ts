@@ -428,7 +428,7 @@ async function flush(times = 20) { for (let i = 0; i < times; i++) await Promise
 interface AppModule {
   state: Record<string, unknown>
   openRoom: (id: number) => Promise<void>
-  renderMessage: (m: unknown) => void
+  renderMessage: (m: unknown, prev?: unknown) => void
   sendMessage: () => Promise<void>
   refreshRoomBots: () => Promise<void>
   registerMessageDecorator: (factory: unknown) => void

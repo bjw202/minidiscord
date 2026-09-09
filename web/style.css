@@ -288,7 +288,12 @@ input:focus { outline: 1px solid var(--md-accent); }
   padding: var(--md-space-4);
 }
 
-.message { margin-bottom: var(--md-space-3); }
+/* 턴 리듬 — 새 턴은 위 여백을 크게(16px), 같은 턴 연속(.turn-cont)은 붙이고 머리글을 숨긴다.
+   머리글은 DOM 에 남고 화면에서만 숨겨진다 (2026-09-09 운영자 결정: 말풍선 대신 그룹핑) */
+.message { margin: var(--md-space-4) 0 var(--md-space-1); }
+#messages .message:first-child { margin-top: 0; }
+.message.turn-cont { margin-top: 0; }
+.message.turn-cont .msg-head { display: none; }
 
 .msg-head {
   display: flex;

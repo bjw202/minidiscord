@@ -76,7 +76,7 @@ async function flush(times = 20) { for (let i = 0; i < times; i++) await Promise
 interface AppModule {
   state: Record<string, unknown>
   openRoom: (id: number) => Promise<void>
-  renderMessage: (m: unknown) => void
+  renderMessage: (m: unknown, prev?: unknown) => void
   sendMessage: () => Promise<void>
   refreshRoomBots: () => Promise<void>
   registerMessageDecorator: (factory: unknown) => void
@@ -230,6 +230,21 @@ describe('AC-WEBCHAT-002 message structure, bot colours, decoration hook', () =>
     expect(names[0]).toMatch(/\bbot-color-[1-5]\b/)
     expect(names[1]).toMatch(/\bbot-color-[1-5]\b/)
     expect(names[0]).not.toBe(names[1])   // 서로 다른 봇은 서로 다른 색
+  })
+
+  it('groups consecutive messages by the same author — head stays in DOM, hidden only on screen', async () => {
+    // 턴 그룹핑 (2026-09-09 운영자 결정): 같은 사람·5분 안의 연속은 .turn-cont 로 묶어
+    // 머리글을 화면에서 숨긴다. 숨김은 CSS 뿐 — 머리글은 DOM 에 남는다(구조 계약·화면낭독기).
+    const app = await loadApp(baseHandler())
+    app.renderMessage(msg({ id: 1, author_name: 'jw', created_at: '2026-08-27 10:00:00', body: '첫' }))
+    app.renderMessage(msg({ id: 2, author_name: 'jw', created_at: '2026-08-27 10:02:00', body: '이어' }))
+    app.renderMessage(msg({ id: 3, author_type: 'bot', author_name: 'jarvis', author_bot_id: 3, created_at: '2026-08-27 10:03:00', body: '응답' }))
+    const msgs = $$('#messages .message')
+    expect(msgs.length).toBe(3)
+    expect(msgs[0].classList.contains('turn-cont')).toBe(false)
+    expect(msgs[1].classList.contains('turn-cont')).toBe(true)   // 같은 사람·2분 차 → 한 뭉치
+    expect(msgs[2].classList.contains('turn-cont')).toBe(false)  // 사람이 바뀌면 새 턴
+    expect(msgs[1].querySelector('.msg-head > strong')!.textContent).toBe('jw')   // DOM 유지
   })
 
   it('calls the registered decoration hook once per message, before append', async () => {

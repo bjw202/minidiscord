@@ -258,6 +258,7 @@ export async function openRoom(id) {
   const room = [...state.rooms.active, ...state.rooms.archived].find(r => r.id === id)
   $('room-title').textContent = `# ${room ? room.name : id}`
   $('messages').innerHTML = ''
+  lastRenderedMsg = null   // 턴 그룹핑 기준점도 새 방에서 다시 산다
   hideAutocomplete()
   // 6단계 — 과거 대화를 받아 순서대로 그린다
   const history = await api(`/api/rooms/${id}/messages`)
@@ -361,9 +362,32 @@ export function registerMessageDecorator(factory) {
 // ── 렌더 ─────────────────────────────────────────────────────────────
 // div.message.<author_type> > (.msg-head > strong+span, .msg-body) (REQ-WEBCHAT-003).
 // 사용자·봇·시스템이 만든 문자열은 전부 textContent 로만 넣는다 (REQ-WEBCHAT-004).
-export function renderMessage(m) {
+
+// 턴 그룹핑 — 같은 사람의 연속 메시지를 한 뭉치로 보기 위한 기준점(마지막으로 그린 메시지).
+// 방을 열어 #messages 를 비울 때 null 로 되돌린다 (openRoom 5단계).
+let lastRenderedMsg = null
+
+// 같은 턴인가 — 작성자 신원이 같고 5분 안의 연속이면 한 뭉치로 본다(디스코드 관례). 시스템
+// 메시지는 승인·상태 전이 하나하나가 눈에 띄어야 하므로 묶지 않고, 시각 파싱에 실패하면
+// 실패 방향인 «다른 턴» 으로 본다 (2026-09-09 운영자 결정: 말풍선 대신 그룹핑으로 턴을 구분).
+function sameTurn(a, b) {
+  if (!a || !b) return false
+  if (a.author_type !== b.author_type) return false
+  if ((a.author_name ?? '') !== (b.author_name ?? '')) return false
+  if (a.author_type === 'bot' && (a.author_bot_id ?? 0) !== (b.author_bot_id ?? 0)) return false
+  if (a.author_type === 'system') return false
+  const ta = Date.parse(String(a.created_at ?? '').replace(' ', 'T'))
+  const tb = Date.parse(String(b.created_at ?? '').replace(' ', 'T'))
+  if (!Number.isFinite(ta) || !Number.isFinite(tb)) return false
+  return Math.abs(tb - ta) <= 5 * 60 * 1000
+}
+
+export function renderMessage(m, prev = lastRenderedMsg) {
   const wrap = document.createElement('div')
   wrap.className = `message ${m.author_type}`
+  // 같은 턴이면 머리글을 CSS 로만 숨긴다(.turn-cont) — 머리글은 DOM 에 남아 화면낭독기와
+  // 구조 시험(web-chat.test.ts)이 기대하는 계약을 지킨다
+  if (sameTurn(prev, m)) wrap.classList.add('turn-cont')
 
   const head = document.createElement('div')
   head.className = 'msg-head'
@@ -403,6 +427,7 @@ export function renderMessage(m) {
   if (roomDecorator) roomDecorator.decorate(wrap, m)
 
   $('messages').appendChild(wrap)
+  lastRenderedMsg = m
 }
 
 // 참여 목록(v2: GET /api/rooms/:id/bots — [{bot_id, bot_name, online}])을 받아 캐시하고 봇 칩을 다시 그린다.
