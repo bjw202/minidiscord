@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 // SPEC-WEBMD-001 수용 기준 — AC-WEBMD-001 ~ AC-WEBMD-016 (acceptance.md 테스트 코드 그대로).
+// [예외 1건] AC-014 표 계약은 2026-09-09 운영자 결정으로 폭 맞춤(width:100%·셀 줄바꿈)으로 개편됐다 —
+// acceptance.md 원문은 완결 시점 기록으로 그대로 둔다(완결 SPEC 형제 개정 금지 — completed-spec-semantics).
 // 이 도크블록이 이 파일만 jsdom 환경으로 가른다 — web/ 소스를 직접 import 한다
 // (server/test/web-rich.test.ts 11행 관례 그대로).
 // A 그룹 = 문법별 렌더(AC-001~005·013), B 그룹 = 안전성(AC-006~010·014·015),
@@ -95,6 +97,16 @@ describe('AC-WEBMD-003 lists quotes and horizontal rules', () => {
     const two = render('--')
     expect(two.querySelectorAll('hr').length).toBe(0)
     expect(two.textContent).toBe('--')
+  })
+
+  // 불릿 항목의 텍스트까지 관측한다 — 구조(ul 개수·중첩)만 보던 AC-003 의 검사 빈틈.
+  // M6 육안에서 불릿 텍스트가 전부 undefined 로 그려진 결함(2026-09-09)의 재현이다.
+  it('renders bullet item text verbatim, never undefined', () => {
+    const t = render('- 하나\n- 둘\n  - 둘의 하위')
+    const texts = [...t.querySelectorAll('li')].map(li => li.textContent)
+    expect(texts[0]).toBe('하나')
+    expect(texts[2]).toBe('둘의 하위')
+    expect(texts.join(' ')).not.toContain('undefined')
   })
 })
 
@@ -327,7 +339,7 @@ describe('AC-WEBMD-010 no images no markup APIs', () => {
 // ── CSS 계약과 모듈 표면 ─────────────────────────────────────────────
 
 describe('AC-WEBMD-014 CSS contract', () => {
-  it('holds the CSS contract: line-break responsibility moved, scroll wrapper present, tokens only', () => {
+  it('holds the CSS contract: line-break responsibility moved, table fits width, tokens only', () => {
     const css = readFileSync(join(webDir, 'style.css'), 'utf8')
 
     // .msg-body 블록 안에 pre-wrap 이 없다 (책임이 p/br 노드로 옮겨졌다)
@@ -338,9 +350,14 @@ describe('AC-WEBMD-014 CSS contract', () => {
     // 폴백에만 되살아난다
     expect(/\.md-fallback\s*\{[^}]*white-space:\s*pre-wrap/.test(css)).toBe(true)
 
-    // 가로 스크롤은 두 선언이 함께 만든다 — max-content 가 없으면 셀이 눌려 스크롤이 안 생긴다
+    // 표는 컨테이너 폭에 맞춘다 — 2026-09-09 운영자 결정으로 max-content 가로 스크롤 계약을 대체.
+    // wrap 의 overflow-x:auto 는 안전망으로 남고, 셀이 anywhere 로 줄바꿈 책임을 진다
     expect(/\.md-table-wrap\s*\{[^}]*overflow-x:\s*auto/.test(css)).toBe(true)
-    expect(/\.md-table\s*\{[^}]*width:\s*max-content/.test(css)).toBe(true)
+    expect(/\.md-table\s*\{[^}]*width:\s*100%/.test(css)).toBe(true)
+    expect(/\.md-table th, \.md-table td\s*\{[^}]*overflow-wrap:\s*anywhere/.test(css)).toBe(true)
+    // 옛 스크롤 계약의 흔적(nowrap·max-content)이 표 블록에 남지 않았는지도 관측한다
+    expect(/\.md-table[^{]*\{[^}]*white-space:\s*nowrap/.test(css)).toBe(false)
+    expect(/\.md-table\s*\{[^}]*width:\s*max-content/.test(css)).toBe(false)
 
     // 새 블록에 16진수 색 리터럴 0건 (블록이 비어 있지 않음을 먼저 확인)
     const block = css.slice(css.indexOf('/* SPEC-WEBMD-001 */'), css.indexOf('/* /SPEC-WEBMD-001 */'))

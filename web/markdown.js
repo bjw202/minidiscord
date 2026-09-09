@@ -170,7 +170,8 @@ function scanList(lines, i, depth) {
     const o = /^(\d{1,9})[.)]\s+(.*)$/.exec(line)
     const marker = ordered ? o : b
     if (marker === null) break                           // 종류가 바뀌면 목록을 끝낸다
-    current = { text: marker[2], sub: [] }
+    // 텍스트 그룹 자리는 종류가 가른다 — 번호 목록은 [2](번호가 [1]), 불릿은 [1] 이다
+    current = { text: ordered ? marker[2] : marker[1], sub: [] }
     items.push(current)
     j++
   }

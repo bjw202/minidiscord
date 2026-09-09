@@ -636,14 +636,15 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
 }
 .md-quote:last-child { margin-bottom: 0; }
 
-/* 표 — 가로 스크롤은 wrap 의 overflow-x 와 table 의 max-content 가 함께 만든다.
-   max-content 가 없으면 셀이 눌려서 스크롤이 생기지 않는다 (REQ-WEBMD-014) */
+/* 표 — 컨테이너 폭에 맞추고 긴 셀은 줄바꿈으로 담는다. 2026-09-09 운영자 결정으로 옛
+   max-content 가로 스크롤 계약(REQ-WEBMD-014)을 대체 — 스크롤 원문은 그 이전 의도의 기록.
+   wrap 의 overflow-x:auto 는 안전망으로 남긴다 */
 .md-table-wrap { overflow-x: auto; max-width: 100%; margin: 0 0 var(--md-space-2); }
-.md-table { border-collapse: collapse; width: max-content; min-width: 100%; }
+.md-table { border-collapse: collapse; width: 100%; }
 .md-table th, .md-table td {
   border: var(--md-border-width) solid var(--md-divider);
   padding: var(--md-space-1) var(--md-space-2);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   text-align: left;
 }
 .md-table th { background: var(--md-bg-panel); }
