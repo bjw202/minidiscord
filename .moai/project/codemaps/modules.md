@@ -28,7 +28,7 @@
 |---|---|---|---|---|
 | `index.ts` | 128 | `wire()` 로 MCP 서버와 게이트웨이 클라이언트를 묶음. «마지막 to 방» 기억, `chat_id` → `room_id` 세 겹 결정, 이력 문서 예산(16,000바이트, 최신부터 버림), CLI 진입 가드. env `MINIDISCORD_TOKEN`·`MINIDISCORD_SERVER` 를 읽는 유일한 자리. 전송 스킴 검사 없음 (125행 주석) | `wire(opts)`, `resolveUrl(env?)`, `DEFAULT_SERVER`, `interface WireOpts` | channel-server, gateway-client, truncate |
 | `channel-server.ts` | 247 | MCP 서버 본체. 도구 `reply`·`fetch_history`, 알림 `notifications/claude/channel`·`…/permission`, 지시문(신뢰 경계 포함), 봉투 중화, 권한 요청 `request_id` 집합(128 상한) | `createChannelServer(deps): ChannelHandle`, `INSTRUCTIONS`, `TO_REPLY_NOTE`, `neutralizeEnvelope`, `interface ChannelDeps/ChannelHandle/ChatMessage` | truncate |
-| `gateway-client.ts` | 135 | WebSocket 클라이언트. `open` 마다 `hello{token}`, `message`·`permission_verdict`·`history_response` 세 종류만 분기, 1초→30초 지수 백오프 재접속, `history_request` RPC(`rid` 대조, 10초 타임아웃) | `createGatewayClient(input): GatewayClient`, `interface GatewayClient/GatewayClientOpts/GatewayMessage/HistoryParams`, `type UrlRef` | 없음 |
+| `gateway-client.ts` | 136 | WebSocket 클라이언트. `open` 마다 `hello{token}`, `message`·`permission_verdict`·`history_response` 세 종류만 분기, 1초→30초 지수 백오프 재접속, `history_request` RPC(`rid` 대조, 10초 타임아웃) | `createGatewayClient(input): GatewayClient`, `interface GatewayClient/GatewayClientOpts/GatewayMessage/HistoryParams`, `type UrlRef` | 없음 |
 | `truncate.ts` | 82 | 바이트 예산 절단 원시 함수와 상수. 시질(`⟪` `⟫`)을 먼저 이스케이프하고 코드포인트 경계에서 자른 뒤 `⟪잘림: N바이트 생략⟫` 표식 | `truncateToBudget`, `escapeSigils`, `formatMarker`, `MAX_BODY_BYTES=4000`, `MAX_ATTACHMENTS=20`, `MAX_PATH_BYTES=512`, `MAX_HISTORY_BYTES=16000`, `MAX_NAME_BYTES=256`, 시질·표식 상수, `SIBLING_SWEEP_ASSERT_REGEX` | 없음 |
 
 ## web/ — 8 파일, 2,516 줄 (빌드 없음, 서버가 그대로 서빙)
