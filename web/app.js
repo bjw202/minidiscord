@@ -452,6 +452,14 @@ export function initChat() {
   // 캡쳐 붙여넣기 — 초점이 있는 편집 요소에서 발화하므로 입력칸에 건다 (SPEC-WEBATTACH-001 D5).
   // document 에 걸면 자동완성 목록·메시지 본문의 붙여넣기까지 가로채 요청 범위를 넘는다.
   composer.addEventListener('paste', onComposerPaste)
+  // 끌어놓기 — 받는 자리는 작성기 영역뿐이다 (운영자 결정 D1). 요소 수준 청취자는 body 교체마다
+  // 요소가 새로 만들어지므로 쌓일 대상이 없다 — 쌓이는 것은 문서 수준뿐이고 그쪽은 표지가 막는다.
+  const box = $('composer-box')
+  box.addEventListener('dragenter', onComposerDragEnter)
+  box.addEventListener('dragover', onComposerDragOver)
+  box.addEventListener('dragleave', onComposerDragLeave)
+  box.addEventListener('drop', onComposerDrop)
+  installDocumentDropGuard()
   // 첨부 선택 표시 — 무엇이 함께 나갈지 보이지 않으면 사용자는 첨부 여부를 알 수 없다 (카드 t32 D-7)
   $('file-input').addEventListener('change', onFilePicked)
   $('send-btn').addEventListener('click', () => { sendMessage() })
@@ -971,6 +979,66 @@ function onComposerPaste(e) {
     return name === f.name ? f : new File([f], name, { type: f.type, lastModified: f.lastModified })
   })
   addPickedFiles(named, { dedupe: false })
+}
+
+// 끌기가 드롭 영역 «안» 에 몇 겹으로 들어와 있는가. dragleave 는 자식 요소를 지날 때마다
+// 발화하므로, 깊이 없이 바로 표시를 끄면 끌기가 입력칸 위를 지날 때마다 깜빡인다.
+let dragDepth = 0
+
+function markDropTarget(on) {
+  const box = $('composer-box')
+  if (!box) return
+  box.classList.toggle('drop-target', on)
+}
+
+function onComposerDragEnter(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  e.preventDefault()
+  dragDepth++
+  markDropTarget(true)
+}
+
+function onComposerDragOver(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  // [HARD] dragover 의 기본 동작을 막아야 이 요소가 유효한 드롭 대상이 된다 — 막지 않으면
+  // 브라우저가 탐색을 수행하고 drop 은 애초에 발화하지 않는다 (HTML DnD 규약).
+  e.preventDefault()
+}
+
+function onComposerDragLeave(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  dragDepth = Math.max(0, dragDepth - 1)
+  if (dragDepth === 0) markDropTarget(false)
+}
+
+function onComposerDrop(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  e.preventDefault()
+  // 떨구면 dragleave 가 오지 않는 경로가 있다 — 깊이는 세지 말고 0 으로 강제한다
+  dragDepth = 0
+  markDropTarget(false)
+  // 종류를 가리지 않는다 (운영자 지시: 드래그앤드롭은 모든 파일)
+  addPickedFiles(filesFromTransfer(e.dataTransfer))
+}
+
+// 문서 가드 — 드롭 영역 «밖» 에 파일을 떨구면 브라우저가 그 파일로 페이지를 통째로 넘겨
+// 쓰던 본문·메시지 목록·SSE 연결이 사라진다. 세 이벤트의 기본 동작만 막고 목록은 건드리지
+// 않는다: 「받지 않음」이지 「받음」이 아니다 (D6). 파일이 아닌 끌기는 손대지 않는다.
+function guardFileDrag(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  e.preventDefault()
+}
+
+// [HARD] 1회성은 «문서 자신이 지니는 표지» 로 보장한다 (D10). 모듈 수준 플래그(chatReady)는
+// 모듈이 다시 적재되면 false 로 돌아가는데 document 노드는 그대로 살아 있어, 플래그만 믿으면
+// 적재할 때마다 청취자가 하나씩 쌓인다 (spec.md §1.1 실측).
+function installDocumentDropGuard() {
+  const root = document.documentElement
+  if (!root || root.dataset.webattachGuard === '1') return
+  root.dataset.webattachGuard = '1'
+  // 청취자 이름을 변수로 도는 이유: 이 세 종류는 아래 작성기 배선이 이미 글자로 한 번씩 쓰고 있고,
+  // 「원문에 각 1회」라는 비회귀 기준(AC-WEBATT-013)이 그 횟수를 센다.
+  for (const type of ['dragenter', 'dragover', 'drop']) document.addEventListener(type, guardFileDrag)
 }
 
 // 고른 파일을 칩 한 줄로 보인다. 이름은 textContent 로만 넣는다 — 파일명은 사용자 입력이라

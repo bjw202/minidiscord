@@ -930,3 +930,15 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
   border: var(--md-border-width) solid var(--md-divider);
 }
 /* /SPEC-WEBMD-002 */
+
+/* SPEC-WEBATTACH-001 */
+/* 이 구획의 주석은 사람이 읽는 표지일 뿐이다 — 관측은 셀렉터로 한다.
+   cssRuleBlock 이 본문 첫 줄에서 주석을 전부 벗기므로 주석 표지로는 잡히지 않는다
+   (server/test/css-rule.ts). 그리고 세 규칙은 각각 «단독 규칙» 이어야 한다 —
+   쉼표로 묶으면 셀렉터 바로 뒤에 { 가 오지 않아 같은 헬퍼가 찾지 못한다. */
+
+/* 파일을 실은 끌기가 작성기 위에 있는 동안의 표시 — 떨어뜨릴 자리를 눈으로 알린다 */
+#composer-box.drop-target {
+  outline: var(--md-border-width) dashed var(--md-accent);
+  outline-offset: var(--md-space-1);
+}

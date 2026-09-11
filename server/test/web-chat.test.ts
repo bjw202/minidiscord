@@ -1494,3 +1494,97 @@ describe('AC-WEBATT-005 no OS / browser / modifier-key branching', () => {
     }
   })
 })
+
+describe('AC-WEBATT-006 every dropped file joins the list, whatever its kind', () => {
+  it('takes text, image and typeless files alike and sends all three', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      const files = [
+        new File(['t'], 'note.txt', { type: 'text/plain' }),
+        new File(['i'], 'shot.png', { type: 'image/png' }),
+        new File(['b'], 'data.bin', { type: '' }),
+      ]
+      const ev = drag(composerBox(), 'drop', files)
+      await flush()
+      expect(allChips().length).toBe(3)
+      expect(ev.defaultPrevented).toBe(true)
+
+      pressEnter(); await flush()
+      expect(filePartsOfLastPost().files.map(f => f.name)).toEqual(['note.txt', 'shot.png', 'data.bin'])
+    } finally { s.restore() }
+  })
+})
+
+describe('AC-WEBATT-007 the drop marker does not flicker over child elements', () => {
+  it('pairs dragenter and dragleave by depth and clears on drop', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      const f = [new File(['x'], 'a.png', { type: 'image/png' })]
+      drag(composerBox(), 'dragenter', f)
+      expect(composerBox().classList.contains('drop-target')).toBe(true)
+      // 자식 위로 지나가는 동안에도 표시는 유지된다 — 깜빡이면 사용자는 떨어뜨릴 자리를 잃는다
+      drag(input(), 'dragenter', f)
+      drag(input(), 'dragleave', f)
+      expect(composerBox().classList.contains('drop-target')).toBe(true)
+      // 영역 자체를 벗어나야 꺼진다
+      drag(composerBox(), 'dragleave', f)
+      expect(composerBox().classList.contains('drop-target')).toBe(false)
+
+      // dragover 를 막아야 유효한 드롭 대상이 된다 — 막지 않으면 drop 이 애초에 발화하지 않는다
+      const over = drag(composerBox(), 'dragover', f)
+      expect(over.defaultPrevented).toBe(true)
+
+      drag(composerBox(), 'dragenter', f)
+      drag(composerBox(), 'drop', f)
+      await flush()
+      expect(composerBox().classList.contains('drop-target')).toBe(false)
+    } finally { s.restore() }
+  })
+})
+
+describe('AC-WEBATT-008 a file drag outside the zone is swallowed but not accepted', () => {
+  it('prevents all three events and leaves the list untouched', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    pickFiles('가.txt')
+    await flush()
+    expect(allChips().length).toBe(1)
+
+    const outside = [new File(['o'], 'outside.png', { type: 'image/png' })]
+    // dragover 를 막지 않으면 drop 은 애초에 발화하지 않는다 — 셋을 함께 막는 것이 이 요구의 전부다
+    for (const type of ['dragenter', 'dragover', 'drop']) {
+      const ev = drag(document.body, type, outside)
+      expect(ev.defaultPrevented, `${type} 은 막혀야 한다`).toBe(true)
+    }
+    await flush()
+    // 「받지 않음」이지 「받음」이 아니다
+    expect(allChips().length).toBe(1)
+    expect(document.body.classList.contains('drop-target')).toBe(false)
+  })
+})
+
+describe('AC-WEBATT-009 a non-file drag is untouched inside and outside the zone', () => {
+  it('leaves defaultPrevented false on all four events', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+
+    const cases: Array<[EventTarget, string]> = [
+      [document.body, 'dragover'],
+      [composerBox(), 'dragover'],
+      // (c) 영역 «안» 의 비파일 drop — 이것이 없으면 글자 끌어놓기를 망가뜨린 구현이 전부 통과한다
+      [composerBox(), 'drop'],
+      [composerBox(), 'dragenter'],
+    ]
+    for (const [target, type] of cases) {
+      const ev = drag(target, type, [], ['text/plain'])
+      expect(ev.defaultPrevented, `비파일 ${type} 은 가로채지 않는다`).toBe(false)
+    }
+    await flush()
+    expect(allChips().length).toBe(0)
+    expect(composerBox().classList.contains('drop-target')).toBe(false)
+  })
+})
