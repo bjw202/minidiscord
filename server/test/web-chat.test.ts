@@ -1249,6 +1249,12 @@ describe('SPEC-WEBUI-001 메시지 표면·작성기', () => {
     const inputRule = rule('#msg-input')
     expect(inputRule).toMatch(/background:\s*none/)
     expect(inputRule).toMatch(/border:\s*none/)
+    // 2026-09-11 화면 확인 반영 — textarea 는 input 공통 규칙(색·폰트 상속)에 걸리지 않아,
+    // 배경을 투명으로 바꾼 뒤 UA 기본 검은 글자·고정폭 폰트가 어두운 배경 위에 드러났다.
+    // 히스토리 본문과 같은 글자색·폰트를 요구한다.
+    expect(inputRule).toMatch(/color:\s*var\(--md-text-primary\)/)
+    expect(inputRule).toMatch(/caret-color:\s*var\(--md-text-primary\)/)
+    expect(inputRule).toMatch(/font:\s*inherit/)
     expect(rule('#composer-box')).toMatch(/background:\s*var\(--md-bg-input\)/)
 
     // [F11] «폭을 그대로 쓴다» 는 선언 없이는 성립하지 않는다. #composer 는 display:flex 로 남으므로
