@@ -1315,3 +1315,182 @@ describe('SPEC-WEBUI-001 메시지 표면·작성기', () => {
     expect(send.getAttribute('aria-disabled')).toBe('false')
   })
 })
+
+// ══ SPEC-WEBATTACH-001 — 붙여넣기·끌어놓기·썸네일 ══════════════════════
+// 시험 이음매의 정본은 acceptance.md §A 다. 이 환경에는 ClipboardEvent·DataTransfer·
+// DragEvent 생성자가 «없고» URL.createObjectURL·revokeObjectURL 은 «있다»(spec.md §1.1 실측).
+// 그래서 앞의 셋은 심어서 메우고, 뒤의 둘은 덮어써서 세거나 지워서 부재를 재현한다.
+// 네 헬퍼 모두 이 파일이 이미 쓰는 수법(읽기 전용 picker.files 를 defineProperty 로 심기)의 연장이다.
+
+// 가짜 DataTransfer — 생성자가 없으므로 객체 리터럴로 만든다.
+// types 는 브라우저와 같은 규약을 따른다: 파일을 실으면 'Files' 가 들어 있다.
+function fakeDT(files: File[], types = files.length ? ['Files'] : ['text/plain']) {
+  return { files, items: files.map(f => ({ kind: 'file', type: f.type, getAsFile: () => f })), types }
+}
+
+// 이벤트를 만들고 읽기 전용 자리에 심는다 — cancelable:true 여야 defaultPrevented 를 읽을 수 있다.
+// [HARD] 이벤트 객체를 돌려주어야 한다. defaultPrevented 를 읽지 못하면 REQ-004·008·009 의
+// 「가로채지 않는다」가 관측 불가능한 주장이 된다 — 그 셋은 「아무 일도 안 일어난다」가 정답이라
+// 다른 관측 수단이 없다.
+function fireWith(target: EventTarget, type: string, prop: string, value: unknown) {
+  const ev = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperty(ev, prop, { value, configurable: true })
+  target.dispatchEvent(ev)
+  return ev
+}
+
+// 객체 URL 을 «세는» 이음매 — 이 환경에는 진짜가 있으므로(실측) 덮어쓰고 되돌리기를 돌려준다.
+// [HARD] 되돌리지 않으면 두 함수가 전역이라 같은 파일의 뒤따르는 loadApp 시험이 오염된다.
+function stubObjectURL() {
+  const origCreate = URL.createObjectURL
+  const origRevoke = URL.revokeObjectURL
+  let n = 0
+  const create = vi.fn(() => `blob:stub/${++n}`)
+  const revoke = vi.fn()
+  Object.defineProperty(URL, 'createObjectURL', { value: create, configurable: true })
+  Object.defineProperty(URL, 'revokeObjectURL', { value: revoke, configurable: true })
+  const restore = () => {
+    Object.defineProperty(URL, 'createObjectURL', { value: origCreate, configurable: true })
+    Object.defineProperty(URL, 'revokeObjectURL', { value: origRevoke, configurable: true })
+  }
+  return { create, revoke, restore }
+}
+
+// 「객체 URL 을 못 만드는 환경」을 «만들어» 재현한다 — jsdom 의 기본값이 아니다(spec.md §1.1 정정).
+function withoutObjectURL() {
+  const origCreate = URL.createObjectURL
+  Object.defineProperty(URL, 'createObjectURL', { value: undefined, configurable: true })
+  return () => Object.defineProperty(URL, 'createObjectURL', { value: origCreate, configurable: true })
+}
+
+// 문서 수준 배선을 «세는» 이음매 — jsdom 에 청취자 개수를 읽는 수단이 없으므로 등록 호출 자체를 센다.
+// [N2] document 만 감싸면 가드를 window 에 건 구현이 loadApp 마다 쌓여도 이 기준이 붉어지지 않는다
+// (document.body 에서 발화한 이벤트는 window 까지 버블하므로 AC-008 도 통과하고, dataset 표지를
+// 그냥 찍어 두면 그 단언도 통과한다). 그래서 window.addEventListener 도 함께 감싸고 두 목록을 합친다.
+function countDocListeners() {
+  const origDoc = document.addEventListener.bind(document)
+  const origWin = window.addEventListener.bind(window)
+  const types: string[] = []
+  ;(document as unknown as Record<string, unknown>).addEventListener =
+    (t: string, ...rest: unknown[]) => { types.push(t); return (origDoc as (...a: unknown[]) => void)(t, ...rest) }
+  ;(window as unknown as Record<string, unknown>).addEventListener =
+    (t: string, ...rest: unknown[]) => { types.push(t); return (origWin as (...a: unknown[]) => void)(t, ...rest) }
+  return {
+    types,
+    stop: () => {
+      ;(document as unknown as Record<string, unknown>).addEventListener = origDoc
+      ;(window as unknown as Record<string, unknown>).addEventListener = origWin
+    },
+  }
+}
+
+// 칩 전체(이름 칩 + 썸네일 칩)를 센다 — chipNames() 는 .file-chip 만 읽으므로 이미지가 빠진다.
+const allChips = () => $$('#file-chosen > span')
+const thumbAlts = () => $$('#file-chosen img.file-chip-thumb').map(i => (i as HTMLImageElement).alt)
+const removeLabels = () => $$('#file-chosen .file-chip-remove').map(b => b.getAttribute('aria-label') ?? '')
+const filePartsOfLastPost = () => {
+  const posts = calls.filter(c => c.method === 'POST')
+  const fd = posts[posts.length - 1].body as FormData
+  return { fd, files: [...fd.values()].filter(v => v instanceof File) as File[] }
+}
+// 붙여넣기 한 번 — clipboardData 를 심어 #msg-input 에 발화시킨다
+const paste = (...files: File[]) => fireWith(input(), 'paste', 'clipboardData', fakeDT(files))
+// 끌기 한 번 — dataTransfer 를 심어 지정한 대상에 발화시킨다
+const drag = (target: EventTarget, type: string, files: File[], types?: string[]) =>
+  fireWith(target, type, 'dataTransfer', fakeDT(files, types))
+const composerBox = () => el('composer-box')
+const appSrc = () => readFileSync(join(webDir, 'app.js'), 'utf8')
+const occurrences = (hay: string, needle: string) => hay.split(needle).length - 1
+
+describe('AC-WEBATT-001 pasted clipboard files join the attachment list', () => {
+  it('appends the pasted file, swallows the paste, and sends exactly one file part', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      const ev = paste(new File([new Uint8Array([1, 2, 3])], '', { type: 'image/png' }))
+      await flush()
+      expect(allChips().length).toBe(1)
+      expect(ev.defaultPrevented).toBe(true)
+
+      pressEnter(); await flush()
+      const { fd, files } = filePartsOfLastPost()
+      expect(files.length).toBe(1)
+      // 파일 아닌 파트를 서버가 전부 body 로 이어 붙이므로 텍스트 파트는 하나뿐이어야 한다
+      expect(fd.getAll('body')).toEqual([''])
+    } finally { s.restore() }
+  })
+})
+
+describe('AC-WEBATT-002 the capture name is one string in all three places', () => {
+  it('names the pasted capture by local clock and puts it on the File itself', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 11, 14, 30, 5))
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      paste(new File(['x'], '', { type: 'image/png' }))
+      await flush()
+      const expected = '스크린샷-20260911-143005.png'
+      // (b) 그려진 썸네일의 alt · (c) ✕ 의 aria-label
+      expect(thumbAlts()).toEqual([expected])
+      expect(removeLabels()).toEqual([`${expected} 첨부 제거`])
+
+      pressEnter(); await flush()
+      // (a) 실제로 보내진 파일 파트의 name — 이름이 라벨에만 붙고 File 에 안 붙으면 여기가 어긋난다
+      expect(filePartsOfLastPost().files.map(f => f.name)).toEqual([expected])
+    } finally { s.restore() }
+  })
+
+  it('derives the extension from the clipboard MIME (png / jpg / gif)', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 11, 14, 30, 5))
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      paste(new File(['a'], '', { type: 'image/png' })); await flush()
+      paste(new File(['b'], '', { type: 'image/jpeg' })); await flush()
+      paste(new File(['c'], '', { type: 'image/gif' })); await flush()
+      expect(thumbAlts()).toEqual([
+        '스크린샷-20260911-143005.png',
+        '스크린샷-20260911-143005.jpg',
+        '스크린샷-20260911-143005.gif',
+      ])
+    } finally { s.restore() }
+  })
+})
+
+describe('AC-WEBATT-003 pasting twice inside one second keeps both', () => {
+  it('never silently drops the second paste and never repeats a name', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 11, 14, 30, 5))
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      paste(new File(['x'], '', { type: 'image/png' })); await flush()
+      paste(new File(['x'], '', { type: 'image/png' })); await flush()
+      expect(allChips().length).toBe(2)
+      expect(thumbAlts()).toEqual(['스크린샷-20260911-143005.png', '스크린샷-20260911-143005-2.png'])
+    } finally { s.restore() }
+  })
+})
+
+describe('AC-WEBATT-004 a plain-text paste is not intercepted', () => {
+  it('leaves defaultPrevented false and the attachment list untouched', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const ev = fireWith(input(), 'paste', 'clipboardData', fakeDT([], ['text/plain']))
+    await flush()
+    expect(ev.defaultPrevented).toBe(false)
+    expect(allChips().length).toBe(0)
+  })
+})
+
+describe('AC-WEBATT-005 no OS / browser / modifier-key branching', () => {
+  it('keeps all five stems at zero occurrences in web/app.js', () => {
+    const src = appSrc()
+    for (const stem of ['navigator.platform', 'navigator.userAgent', 'navigator.vendor', 'metaKey', 'ctrlKey']) {
+      expect(occurrences(src, stem), `${stem} 은 0회여야 한다`).toBe(0)
+    }
+  })
+})

@@ -449,6 +449,9 @@ export function initChat() {
   const composer = $('msg-input')
   composer.addEventListener('input', onComposerInput)
   composer.addEventListener('keydown', onComposerKeyDown)
+  // 캡쳐 붙여넣기 — 초점이 있는 편집 요소에서 발화하므로 입력칸에 건다 (SPEC-WEBATTACH-001 D5).
+  // document 에 걸면 자동완성 목록·메시지 본문의 붙여넣기까지 가로채 요청 범위를 넘는다.
+  composer.addEventListener('paste', onComposerPaste)
   // 첨부 선택 표시 — 무엇이 함께 나갈지 보이지 않으면 사용자는 첨부 여부를 알 수 없다 (카드 t32 D-7)
   $('file-input').addEventListener('change', onFilePicked)
   $('send-btn').addEventListener('click', () => { sendMessage() })
@@ -867,20 +870,107 @@ export async function sendMessage() {
 // «무엇이 나갈지» 의 단일 출처는 이 배열이고, picker 는 고르는 창구로만 쓴다.
 let pickedFiles = []
 
+// 공용 편입 경로 — 고르기·붙여넣기·끌어놓기 셋이 전부 여기로 들어온다 (SPEC-WEBATTACH-001).
+// 새 전송 경로를 만들지 않는 이유가 이것이다: 배열에 들어오기만 하면 sendMessage() 가 이미 싣는다.
+// dedupe 를 끄는 자리는 붙여넣기 하나뿐이다 — 사람이 두 번 누른 것은 두 번 넣겠다는 뜻이고,
+// 클립보드 File 은 붙일 때마다 lastModified 가 새로 찍혀 isSameFile 판정 자체가 우연에 맡겨진다 (D7).
+function addPickedFiles(files, { dedupe = true } = {}) {
+  for (const f of files) {
+    if (dedupe && pickedFiles.some(p => isSameFile(p, f))) continue
+    pickedFiles.push(f)
+  }
+  renderPickedFiles()
+}
+
 // 새로 고른 파일을 목록에 잇는다. 두 번에 나눠 골라도 쌓이고, 같은 파일은 두 번 담지 않는다.
 function onFilePicked() {
   const picker = $('file-input')
-  for (const f of Array.from(picker.files ?? [])) {
-    if (!pickedFiles.some(p => isSameFile(p, f))) pickedFiles.push(f)
-  }
+  const files = Array.from(picker.files ?? [])
   // 같은 파일을 다시 고를 수 있게 창구를 비운다 — 비우지 않으면 change 가 다시 오지 않는다
   picker.value = ''
-  renderPickedFiles()
+  addPickedFiles(files)
 }
 
 // 이름·크기·수정시각이 모두 같으면 같은 파일로 본다 — File 객체는 고를 때마다 새로 생긴다
 function isSameFile(a, b) {
   return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified
+}
+
+// ── 붙여넣기·끌어놓기 (SPEC-WEBATTACH-001) ────────────────────────────
+// clipboardData 도 dataTransfer 도 같은 모양(files / items / types)을 쓰므로 읽는 함수는 하나다.
+// [HARD] instanceof DragEvent·ClipboardEvent 로 판정하지 않는다 — jsdom 에 그 생성자가 없어
+// 시험에서 영원히 거짓이 되고, 브라우저에서만 도는 분기는 관측할 방법이 없다 (plan.md §B-1).
+function filesFromTransfer(dt) {
+  if (!dt) return []
+  const direct = Array.from(dt.files ?? [])
+  if (direct.length > 0) return direct
+  // files 가 비어 있어도 items 에 파일이 실려 오는 경로가 있다 (일부 브라우저의 클립보드)
+  return Array.from(dt.items ?? [])
+    .filter(i => i && i.kind === 'file')
+    .map(i => i.getAsFile())
+    .filter(Boolean)
+}
+
+// 「이 끌기가 파일을 실었는가」 — 규약상 파일이 있으면 types 에 'Files' 가 들어 있다.
+// 파일이 아닌 끌기(글자 끌어놓기 등)는 이 판정 하나로 전부 통과시킨다 (REQ-WEBATT-009).
+function transferHasFiles(dt) {
+  if (!dt) return false
+  return Array.from(dt.types ?? []).includes('Files')
+}
+
+// 클립보드 항목의 MIME 에서 확장자를 뽑는다. 근거 없이 붙이면 서버가 확장자로 MIME 을 정하므로
+// (routes-messages.ts MIME 표) 내려받기와 보낸 뒤 표시가 함께 어긋난다.
+function extensionForMime(type) {
+  const sub = String(type || '').split('/')[1] || 'bin'
+  return sub === 'jpeg' ? 'jpg' : sub
+}
+
+// 붙여넣은 캡쳐에 쓸 만한 이름이 없는가 — 비었거나 브라우저 기본값(image.png 류)이면 참.
+function hasNoUsableName(name) {
+  const n = String(name || '')
+  if (n === '') return true
+  const dot = n.lastIndexOf('.')
+  return (dot > 0 ? n.slice(0, dot) : n).toLowerCase() === 'image'
+}
+
+// 스크린샷-YYYYMMDD-HHMMSS.<ext> — 현지 시각이다(운영자 결정 D2). UTC 로 찍으면 사람이
+// 자기 화면을 캡쳐한 시각과 이름이 어긋난다.
+function captureName(ext) {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+  return `스크린샷-${stamp}.${ext}`
+}
+
+// 이미 쓰인 이름이면 확장자 앞에 -2, -3 … 을 붙인다. 적용 범위는 «붙여넣기로 들어오는 항목» 뿐이다
+// (D7) — 고르기 경로는 isSameFile 만 보고 이름을 보지 않으며 그 동작은 바뀌지 않는다(REQ-WEBATT-014).
+function uniqueName(name, taken) {
+  if (!taken.has(name)) return name
+  const dot = name.lastIndexOf('.')
+  const stem = dot > 0 ? name.slice(0, dot) : name
+  const ext = dot > 0 ? name.slice(dot) : ''
+  for (let n = 2; ; n++) {
+    const candidate = `${stem}-${n}${ext}`
+    if (!taken.has(candidate)) return candidate
+  }
+}
+
+// 붙여넣기 — 파일 항목이 없으면 손대지 않는다(평문 붙여넣기는 지금과 똑같이 작동한다, REQ-WEBATT-004).
+// 운영체제·조합키를 가리지 않는다: macOS 의 Cmd+V 와 Windows 의 Ctrl+V 는 같은 paste 를 만든다.
+function onComposerPaste(e) {
+  const files = filesFromTransfer(e.clipboardData)
+  if (files.length === 0) return
+  e.preventDefault()
+  // 이름은 «항목 자체» 가 가져야 한다 — 칩 라벨·alt·전송 파트 이름 셋이 같은 문자열이어야 하고
+  // sendMessage() 는 pickedFiles 를 그대로 싣기 때문이다(REQ-WEBATT-002). 그래서 File 을 다시 만든다.
+  const taken = new Set(pickedFiles.map(f => f.name))
+  const named = files.map(f => {
+    const base = hasNoUsableName(f.name) ? captureName(extensionForMime(f.type)) : f.name
+    const name = uniqueName(base, taken)
+    taken.add(name)
+    return name === f.name ? f : new File([f], name, { type: f.type, lastModified: f.lastModified })
+  })
+  addPickedFiles(named, { dedupe: false })
 }
 
 // 고른 파일을 칩 한 줄로 보인다. 이름은 textContent 로만 넣는다 — 파일명은 사용자 입력이라
