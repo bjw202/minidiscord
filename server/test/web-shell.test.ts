@@ -7,6 +7,9 @@ import { readFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
+// CSS 정적 관측 헬퍼 — SPEC-WEBUI-001 M0 이 web-shell.test.ts 에서 server/test/css-rule.ts 로
+// 옮겨 두고 web-chat.test.ts 와 함께 쓴다. 시그니처가 그대로라 기존 호출의 의미는 바뀌지 않는다.
+import { cssRuleBlock } from './css-rule.js'
 
 const here = dirname(fileURLToPath(import.meta.url))    // server/test
 const webDir = join(here, '../../web')
@@ -388,26 +391,7 @@ describe('AC-WEBSHELL-013 logout', () => {
 // 결함 D-1(회원가입 실패 무반응)은 v2 에서 회원가입 자체가 사라져 대상이 없다. login() 은 실패를
 // #auth-error 에 띄우는 같은 형태를 유지한다 — AC-WEBSHELL-009 가 잰다.
 
-// style.css 에서 셀렉터의 규칙 블록 원문을 잡는다. 접두가 겹치는 셀렉터(#auth-view form 등)는
-// 셀렉터 다음에 여백+`{` 가 바로 오지 않으므로 여기서 걸러진다. 주석은 먼저 벗겨낸다 —
-// 규칙 설명 주석이 셀렉터 문법([hidden]{display:none} 등)을 그대로 인용하면 주석 속
-// 문자열이 진짜 규칙보다 먼저 잡히기 때문이다(D-3 가드 it 이 잡은 실제 사례). CSS 주석은
-// 중첩되지 않으므로 벗기기가 안전하다. 중괄호는 깊이를 세어 짝을 맞춘다.
-function cssRuleBlock(css: string, selector: string): string {
-  const bare = css.replace(/\/\*[\s\S]*?\*\//g, '')
-  let at = -1
-  for (let i = bare.indexOf(selector); i !== -1; i = bare.indexOf(selector, i + 1)) {
-    if (bare.slice(i + selector.length).trimStart().startsWith('{')) { at = i; break }
-  }
-  expect(at, `style.css 에 ${selector} 규칙이 있어야 한다`).toBeGreaterThanOrEqual(0)
-  const brace = bare.indexOf('{', at)
-  let depth = 0
-  for (let i = brace; i < bare.length; i++) {
-    if (bare[i] === '{') depth++
-    else if (bare[i] === '}') { depth--; if (depth === 0) return bare.slice(brace + 1, i) }
-  }
-  return ''
-}
+// cssRuleBlock 본체는 server/test/css-rule.ts 로 옮겨 갔다(SPEC-WEBUI-001 M0) — 위 import 로 그대로 쓴다.
 
 describe('auth-error repair (card t32 §D)', () => {
   // 결함 D-2: #auth-error 가 폼 다음 형제라 오류 문구가 패널 바깥 오른쪽에 떴다
@@ -479,3 +463,11 @@ describe('auth-error repair (card t32 §D)', () => {
     expect(cssRuleBlock(css, '[hidden]')).toContain('display: none !important')
   })
 })
+
+// ── SPEC-WEBUI-001 — 방 목록·계정 바 (C1·C4) ───────────────────────────
+// [F2] 이 파일에는 flush 가 없다(web-chat.test.ts 에만 있다) — 마이크로태스크 한 바퀴를
+// 도는 최소 정의를 이 파일 안에 둔다(acceptance.md § 파일마다 쓸 수 있는 헬퍼가 다르다).
+// [M0 실행 조정] vitest 4.1.11 은 it 이 없는 describe 를 "No test found in suite" 오류로
+// 실패시킨다(실측) — 그래서 describe 블록은 첫 AC it 과 함께(M2) 열고, 여기서는 헬퍼 정의만
+// 먼저 둔다. plan.md M0 3단계의 의도(그 파일에 없는 헬퍼의 지역 정의)는 그대로 산다.
+const flush = () => new Promise(r => setTimeout(r, 0))

@@ -5,6 +5,8 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+// CSS 정적 관측 헬퍼 — 이 파일에는 없던 것을 공유 모듈(server/test/css-rule.ts, SPEC-WEBUI-001 M0)로 받아 온다.
+import { cssRuleBlock } from './css-rule.js'
 // 실제 서버 파서를 그대로 가져온다 — 계약 일치 검증(AC-WEBCHAT-010·011)의 전부다.
 // 이 import 를 문자열 비교로 대체하면 정규식이 바뀔 때 조용히 어긋난다 (plan.md §D 1번)
 import { parseMentions } from '../src/mention.js'
@@ -1129,3 +1131,11 @@ describe('SPEC-WEBACNAV-001 keyboard navigation and TO/CC badges', () => {
     expect(parseMentions(input().value + 'x')).toEqual([{ bot: 'pm', delivery: 'cc' }])
   })
 })
+
+// ── SPEC-WEBUI-001 — 메시지 표면·작성기 (C2·C3) ─────────────────────────
+// 이 파일에는 cssRuleBlock 이 없었다 — 공유 모듈(server/test/css-rule.ts, M0)을 받아 쓴다.
+// 호출부는 이스케이프하지 않은 원문 선택자를 넘긴다(acceptance.md § CSS 정적 관측).
+// [M0 실행 조정] vitest 4.1.11 은 it 이 없는 describe 를 "No test found in suite" 오류로
+// 실패시키므로(실측) describe 블록은 첫 AC it 과 함께(M1) 열고 여기서는 별칭만 먼저 둔다.
+const css = () => readFileSync(join(webDir, 'style.css'), 'utf8')
+const rule = (sel: string) => cssRuleBlock(css(), sel)

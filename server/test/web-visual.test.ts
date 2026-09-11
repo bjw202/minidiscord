@@ -47,44 +47,57 @@ try {
   process.stderr.write(`web-visual: Playwright 부재로 시각 단언 skip — 로컬에서 npm test 로 관측할 것 (${skipReason})\n`)
 }
 
+// 임시 데이터 디렉터리 + 포트 0 서버, chromium, 로그인, #main-view 대기까지 한 번에 세운다
+// (SPEC-WEBUI-001 M0 — 서버 기동·chromium·로그인 절차가 유일한 it 안에 인라인돼 있던 것을 뽑았다).
+// 돌려주는 dispose() 는 browser·app·디렉터리를 기존 finally 절과 같은 순서로 정리한다.
+// 운영자의 3000/3001 에 붙지 않는다 — 임시 데이터 디렉터리 + 포트 0(자유 포트).
+// 로그인 흐름이 실제 sqlite 에 쓰지만 그 대상은 이 임시 디렉터리다.
+async function bootVisual(): Promise<{ page: any; base: string; dispose: () => Promise<void> }> {
+  const dir = mkdtempSync(join(tmpdir(), 'md-visual-'))
+  process.env.MINIDISCORD_DATA_DIR = dir
+  const { buildServer } = await import('../src/index.js')
+  const app = await buildServer()
+  await app.listen({ port: 0, host: '127.0.0.1' })
+  const address = app.server.address()
+  const base = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`
+
+  // chromium 캐시가 맞는 후보를 골라야 하므로 launch 실패를 다음 후보로 넘긴다
+  const browsers = playwrightCandidates
+  let lastErr: unknown
+  let browser: any = null
+  for (const pw of browsers) {
+    try {
+      browser = await pw.chromium.launch({ headless: true })
+      break
+    } catch (err) { lastErr = err }
+  }
+  if (!browser) {
+    await app.close()
+    rmSync(dir, { recursive: true, force: true })
+    throw new Error(`chromium 실행 불가 — ~/Library/Caches/ms-playwright 캐시를 확인하라: ${lastErr}`)
+  }
+
+  const page = await browser.newPage()
+  await page.goto(base + '/')
+  // 이름 로그인 흐름 — 제출하면 login → main 진입까지 자동이다 (v2, 가입 없음)
+  await page.fill('#login-username', `visual-probe-${Date.now()}`)
+  await page.click('#login-form button[type="submit"]')
+  // 로그인 완료 신호: main-view 의 hidden 속성이 떼어지는 시점까지 기다린다.
+  // 이 대기는 속성 기준이다 — 시각 판정은 각 it 의 bounding box 가 한다.
+  await page.waitForSelector('#main-view:not([hidden])', { state: 'attached', timeout: 10_000 })
+
+  const dispose = async () => {
+    await browser.close()
+    await app.close()
+    rmSync(dir, { recursive: true, force: true })
+  }
+  return { page, base, dispose }
+}
+
 describe('D-3 hidden guard (real browser, card t32 §D)', () => {
   it('hides the auth view visually after successful registration', { skip: skipReason !== null, timeout: 60_000 }, async () => {
-    // 운영자의 3000/3001 에 붙지 않는다 — 임시 데이터 디렉터리 + 포트 0(자유 포트).
-    // 회원가입 흐름이 실제 sqlite 에 쓰지만 그 대상은 이 임시 디렉터리다.
-    const dir = mkdtempSync(join(tmpdir(), 'md-visual-'))
-    process.env.MINIDISCORD_DATA_DIR = dir
-    const { buildServer } = await import('../src/index.js')
-    const app = await buildServer()
-    await app.listen({ port: 0, host: '127.0.0.1' })
-    const address = app.server.address()
-    const base = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`
-
-    // chromium 캐시가 맞는 후보를 골라야 하므로 launch 실패를 다음 후보로 넘긴다
-    const browsers = playwrightCandidates
-    let lastErr: unknown
-    let browser: any = null
-    for (const pw of browsers) {
-      try {
-        browser = await pw.chromium.launch({ headless: true })
-        break
-      } catch (err) { lastErr = err }
-    }
-    if (!browser) {
-      await app.close()
-      rmSync(dir, { recursive: true, force: true })
-      throw new Error(`chromium 실행 불가 — ~/Library/Caches/ms-playwright 캐시를 확인하라: ${lastErr}`)
-    }
-
+    const { page, dispose } = await bootVisual()
     try {
-      const page = await browser.newPage()
-      await page.goto(base + '/')
-      // 이름 로그인 흐름 — 제출하면 login → main 진입까지 자동이다 (v2, 가입 없음)
-      await page.fill('#login-username', `visual-probe-${Date.now()}`)
-      await page.click('#login-form button[type="submit"]')
-      // 로그인 완료 신호: main-view 의 hidden 속성이 떼어지는 시점까지 기다린다.
-      // 이 대기는 속성 기준이다 — 시각 판정은 아래 bounding box 가 한다.
-      await page.waitForSelector('#main-view:not([hidden])', { state: 'attached', timeout: 10_000 })
-
       // 시각 단언 — 속성이 아니라 실제 레이아웃을 잰다. display:none 이면 boundingBox 는 null.
       const authBox = await page.locator('#auth-view').boundingBox()
       const mainBox = await page.locator('#main-view').boundingBox()
@@ -96,9 +109,7 @@ describe('D-3 hidden guard (real browser, card t32 §D)', () => {
       expect(mainBox!.height).toBeGreaterThan(0)
 
     } finally {
-      await browser.close()
-      await app.close()
-      rmSync(dir, { recursive: true, force: true })
+      await dispose()
     }
   })
 })
