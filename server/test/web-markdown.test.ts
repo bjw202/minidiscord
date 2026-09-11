@@ -655,6 +655,18 @@ describe('AC-WEBMD2-003 out-of-grammar forms stay fully literal', () => {
       expect(h.textContent).toBe(bad)          // 한 글자도 삼키지 않는다
     }
   })
+
+  // 2026-09-11 sync 감사 F1 — 문법에 «맞는» 이름에 HTML 메타문자가 들어가면 칩이 만들어진다.
+  // 이름은 텍스트 노드로만 흘러가므로 재해석이 구조적으로 불가능해야 한다: 칩 딱 하나,
+  // 어떤 태그도 태어나지 않고, 이름 원문이 텍스트 그대로 산다.
+  it('keeps a grammar-valid metacharacter name inert — one chip, no elements born, raw name as text', () => {
+    for (const src of ['@TO(<b>x</b>) 마크', `@TO(a"b'c)`]) {
+      const h = render(src)
+      expect(h.querySelectorAll('.md-mention').length).toBe(1)
+      expect(h.querySelectorAll('b, img, svg, script, i').length).toBe(0)
+      expect(h.textContent).toContain(src.slice(4, -1))
+    }
+  })
 })
 
 describe('AC-WEBMD2-004 code surfaces stay literal', () => {
