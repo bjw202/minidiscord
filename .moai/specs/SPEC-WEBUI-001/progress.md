@@ -179,7 +179,7 @@ m1_to_mN_commit_strategy: "마일스톤당 1커밋(M0 9b03ff5·M1 fc637a4·M2 9f
 
 ```yaml
 sync_complete_at: 2026-09-11T02:20:00Z
-sync_commit_sha: pending-backfill-webui001-sync
+sync_commit_sha: 7bfc345
 sync_status: complete
 sync_auditor_verdict: "PASS — 조화평균 95.0 (Functionality 97 · Security 95 · Craft 92 · Consistency 96), 제안 3건 전부 선택적"
 security_findings: "치명 0 / 높음 0 / 중간 0 · 정보성 1 (로그인 직후 /me 실패 시 계정 바 공백 — UX 전용)"
