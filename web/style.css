@@ -173,15 +173,21 @@ input:focus { outline: 1px solid var(--md-accent); }
 }
 .archive-btn:hover { color: var(--md-text-primary); background: var(--md-bg-input); }
 
-/* 봇 삭제 버튼 — 보관 버튼과 같은 모양 (2026-09-08) */
+/* 봇 삭제 버튼 — 보관 버튼과 같은 모양·아이콘 체계 (2026-09-08, 2026-09-11 아이콘화) */
 .bot-item { display: flex; align-items: center; justify-content: space-between; }
 .delete-bot-btn {
-  padding: var(--md-space-1) var(--md-space-2);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--md-radius-badge);
   background: none;
   color: var(--md-text-muted);
-  font-size: var(--md-font-size-label);
 }
-.delete-bot-btn:hover { color: var(--md-status-error); background: none; }
+.delete-bot-btn:hover { color: var(--md-status-error); background: var(--md-bg-input); }
 
 /* 봇 목록 — 상태 표시는 각 항목 안쪽에 붙는다(형제 SPEC 계약, spec.md §4.8 계약 4) */
 #bot-list { margin-bottom: var(--md-space-3); }

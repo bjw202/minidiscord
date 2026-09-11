@@ -332,6 +332,10 @@ describe('AC-WEBSHELL-012 bots', () => {
     expect(item.textContent).toContain('pm')
     const btn = item.querySelector('button.delete-bot-btn') as HTMLButtonElement
     expect(btn).toBeTruthy()
+    // 2026-09-11 아이콘화 — 텍스트 «삭제» 는 사라지고, 이름은 aria-label 이 그림은 svg 가 전달한다
+    expect(btn.getAttribute('aria-label')).toBe('봇 삭제')
+    expect(btn.querySelector('svg')).toBeTruthy()
+    expect(btn.textContent).toBe('')
 
     const calls = stubFetch({
       'DELETE /api/bots/1': { status: 200, body: { ok: true } },

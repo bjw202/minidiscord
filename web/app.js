@@ -165,11 +165,14 @@ export function renderBots() {
     item.className = 'bot-item'
     item.textContent = bot.name
     // 삭제 버튼 — 방 목록의 보관 버튼과 같은 모양·자리. 확인 창을 거쳐 deleteBot 으로 (2026-09-08)
+    // 2026-09-11 «삭제» 텍스트 대신 휴지통 아이콘 — 보관 버튼과 같은 체계(svgIcon·currentColor),
+    // 지워진 이름은 aria-label 이 스크린리더에 전달한다
     const delBtn = document.createElement('button')
     delBtn.type = 'button'
     delBtn.className = 'delete-bot-btn'
-    delBtn.textContent = '삭제'
+    delBtn.setAttribute('aria-label', '봇 삭제')
     delBtn.title = '봇 삭제 — 모든 방의 참여가 함께 지워지고 세션 접속이 끊깁니다'
+    delBtn.appendChild(svgIcon(16, ['M3 6h18', 'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', 'M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6', 'M10 11v6', 'M14 11v6']))
     delBtn.addEventListener('click', (e) => {
       e.stopPropagation()
       if (window.confirm(`봇 «${bot.name}» 을(를) 지울까요?\n모든 방의 참여가 함께 지워지고, 붙어 있는 세션은 끊깁니다. 옛 글은 남습니다.`)) deleteBot(bot.id)
