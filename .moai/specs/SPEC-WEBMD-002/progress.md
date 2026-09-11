@@ -48,7 +48,8 @@ Tier S · plan-phase 산출물: spec.md(REQ 8 · AC 인라인 8) + plan.md(마�
 
 - AC-WEBMD2-007 describe 추가 — jsdom `loadApp` 골격으로 실제 app.js 경로 관측 + pre-flight HEAD 기준선 PRESERVE 검사. 첫 실행에서 최상위가 아닌 describe 안의 import 구문 오류(`Cannot use import statement outside a module`) → 390행 관례(최상위 import)로 수정 후 통과. 구현물 결함이 아니라 시험 코드 배치 오류였고 수정은 시험 파일 안에서만 일어났다.
 - GREEN: `npx vitest run server/test/web-markdown.test.ts` → `Tests  25 passed (25)`, exit 0.
-- 전체 회귀: `npm test`(workspaces 전체) → exit 0, `Test Files  6 passed (6)`, `Tests  103 passed (103)`.
+- 전체 회귀: `npm test`(workspaces 전체) → exit 0 — server `Test Files  19 passed (19)` / `Tests  279 passed (279)` **와** channel `Test Files  6 passed (6)` / `Tests  103 passed (103)`. (정정: sync 감사 발견 F2. 원래 이 자리에는 `6 passed`/`103 passed` 만 적혀 있었는데 그것은 `npm test` 의 **마지막 워크스페이스(channel) 꼬리**일 뿐이라, 전체 스위트를 주장하면서 범위를 과소 표기하고 있었다 — VCI §3.2. 위 수치는 sync 단계에서 다시 실행해 관측한 값이다.)
+- 시험 개수 시효 주석: 아래 §E AC 행렬이 인용하는 `25 passed` 는 그 절을 쓴 시점에는 참이었고 현재는 **27** 이다 — 그 뒤 굳히기 커밋 둘(`2d9d6b0`·`5dae6c6`, F1 가드 시험)이 `it` 를 더했다. 행렬 행은 당시 기록으로 그대로 두고 이 한 줄로 차이를 밝힌다.
 - 형 검사: `npm --prefix server run typecheck` → exit 0.
 
 **§E AC 이분 판정 행렬 (E1 — 판정 명령은 spec.md §3.2 관측 명령 그대로)**
@@ -87,7 +88,27 @@ m1_to_mN_commit_strategy: 마일스톤별 커밋 M1(b374dc8)·M2(45a98de)·M3(�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-11
+sync_commit_sha: pending — 후속 백필   # 커밋은 자기 해시를 알 수 없다(D3 관례). 오케스트레이터가 채운다
+sync_status: complete
+sync_auditor_verdict: "PASS — 조화평균 91.66 (Functionality 94 · Security 95 · Craft 88 · Consistency 90), blocking 발견 0건"
+security_findings: "치명 0 / 높음 0 / 중간 0 · 거짓 배지 탐침 0건(입력 12개 서버 문법 대조, chips > serverRouted 인 칸 없음) · 마크업 조립 API grep 0건 · 이름은 createTextNode 단일 경로"
+coverage: "web/markdown.js — statements 90.09% · branches 84.34% · functions 100% · lines 96.39% (vitest v8, 감사자 직접 측정)"
+full_suite: "server 279/279 + channel 103/103, npm test exit 0, tsc --noEmit(strict) exit 0"
+spec_test_file: "server/test/web-markdown.test.ts 17 → 27 (AC-WEBMD2-001~008 여덟 블록 + 굳히기 가드 둘), 추가 전용 — 제거 0줄"
+preserve_verified: "web/app.js · web/rich.js · web/markdown.d.ts · server/src — pre-flight 67db21a 대비 git log/diff 빈 출력"
+doc_scope: "CHANGELOG [Unreleased] 최상단 항목 1건(커밋 4f251d1 배치 수정 포함 — 같은 이야기라 분리하지 않는다는 운영자 결정) + spec.md frontmatter 종결 + 이 §E.4 + §E.2 F2 정정. README·프로젝트 문서(.moai/project/*)·코드맵 제외 — 구조 변화 없음"
+audit_report: .moai/reports/sync-audit/SPEC-WEBMD-002-2026-09-11.md
+findings_dispositions:
+  F1: "해소 — spec.md §1.1 결정 D1 본문과 HISTORY 0.1.1 에 반영. 괴리가 «코드 표면 한 곳» 이 아니라 다섯 부류(링크 라벨·이미지 문법 리터럴·스킴 거부 링크 폴백·URL 형 라벨·20,000자 절단 뒤)임을 실측대로 정정. 전부 «배지 누락» 방향이며 거짓 배지 0건. 코드 변경 없음"
+  F2: "해소 — 이 progress.md §E.2 M3 의 `npm test` 인용을 두 워크스페이스 합(server 279 + channel 103)으로 정정. 기존 인용은 마지막 워크스페이스 꼬리였다"
+  F3: "기록만 — 기준선 범위 67db21a..HEAD 에 무관한 작업 흐름의 커밋 5f11c9d 가 섞여 web-chat.test.ts 가 +6줄. 오귀속이며 PRESERVE 위반 아님"
+  F4: "기록만 — 커밋 4f251d1 이 `fix(web):` 로만 라벨돼 SPEC id 미표기(TRUST Trackable). 이력 재작성은 하지 않는다"
+  F5: "범위 밖 — 전이 의존 qs moderate 1건(GHSA-4mjr-xmp4-gh2g), 이 SPEC 과 무관하며 사전 존재"
+  F6: "기록만 — 분기 커버리지 84.34%, TRUST 85% 목표에 0.66pp 미달. 저장소에 커버리지 명령도 합의된 기준선도 없어 별도 카드 대상"
+status_transitions: "spec.md frontmatter in-progress → completed (updated: 2026-09-11). plan.md 는 frontmatter 없음 — 무변경. 본문·HISTORY·version(0.1.1) 무변경"
+```
 
 ## §F Phase 4 Mode Selection
 
