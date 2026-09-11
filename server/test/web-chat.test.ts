@@ -1588,3 +1588,172 @@ describe('AC-WEBATT-009 a non-file drag is untouched inside and outside the zone
     expect(composerBox().classList.contains('drop-target')).toBe(false)
   })
 })
+
+describe('AC-WEBATT-010 thumbnails and name chips split, and filenames stay text', () => {
+  it('① draws one thumbnail chip and one name chip, and chipNames() ignores the image', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      pickFiles(
+        new File(['i'], 'shot.png', { type: 'image/png', lastModified: 1_700_000_000_000 }),
+        new File(['t'], 'note.txt', { type: 'text/plain', lastModified: 1_700_000_000_000 }),
+      )
+      await flush()
+      expect($$('#file-chosen span.file-chip-image').length).toBe(1)
+      expect($$('#file-chosen span.file-chip').length).toBe(1)
+
+      const thumbChip = document.querySelector('#file-chosen span.file-chip-image') as HTMLElement
+      const img = thumbChip.querySelector('img.file-chip-thumb') as HTMLImageElement
+      expect(img.getAttribute('src')).toBe('blob:stub/1')
+      expect(img.alt).toBe('shot.png')
+      expect(thumbChip.querySelector('.file-chip-remove')).not.toBeNull()
+      // [D9] 썸네일 칩은 .file-chip 을 달지 않는다 — 달면 chipNames() 가 이미지를 빈 이름으로 읽어
+      // 그 헬퍼의 의미가 조용히 바뀐다
+      expect(thumbChip.classList.contains('file-chip')).toBe(false)
+      expect(chipNames()).toEqual(['note.txt'])
+    } finally { s.restore() }
+  })
+
+  it('② keeps a non-image filename as text — no markup is assembled', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    pickFiles(new File(['t'], '<img src=x onerror=1>.txt', { type: 'text/plain', lastModified: 1_700_000_000_000 }))
+    await flush()
+    expect($$('#file-chosen img').length).toBe(0)
+    expect($$('#file-chosen script').length).toBe(0)
+    expect(chipNames()).toEqual(['<img src=x onerror=1>.txt'])
+  })
+
+  it('③ keeps an image filename as text in alt — exactly one img, the thumbnail itself', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      pickFiles(new File(['i'], '<img src=x onerror=1>.png', { type: 'image/png', lastModified: 1_700_000_000_000 }))
+      await flush()
+      const imgs = $$('#file-chosen img')
+      expect(imgs.length).toBe(1)
+      expect((imgs[0] as HTMLImageElement).alt).toBe('<img src=x onerror=1>.png')
+      expect(imgs[0].getAttribute('src')).toBe('blob:stub/1')
+      expect($$('#file-chosen script').length).toBe(0)
+    } finally { s.restore() }
+  })
+})
+
+describe('AC-WEBATT-011 object URL lifetime, failure path included', () => {
+  it('creates once per file and revokes on ✕, on clear, but never on a failed send', async () => {
+    let failNext = false
+    const app = await loadApp((url, opts) =>
+      failNext && opts.method === 'POST' && url === '/api/rooms/1/messages'
+        ? { ok: false, status: 500, data: { error: '보내지 못했습니다' } }
+        : baseHandler()(url, opts))
+    await app.openRoom(1); await flush()
+    const s = stubObjectURL()
+    try {
+      // renderPickedFiles() 는 변화마다 목록 전체를 다시 그린다 — 그릴 때마다 만들면 그린 횟수만큼 샌다
+      pickFiles(new File(['i'], 'shot.png', { type: 'image/png', lastModified: 1_700_000_000_000 }))
+      await flush()
+      pickFiles('가.txt'); await flush()
+      pickFiles('나.txt'); await flush()
+      expect(s.create).toHaveBeenCalledTimes(1)
+
+      // ✕ 로 뺄 때 그 URL 로 정확히 한 번 회수한다
+      const x = document.querySelector('#file-chosen span.file-chip-image .file-chip-remove') as HTMLElement
+      x.click(); await flush()
+      expect(s.revoke).toHaveBeenCalledTimes(1)
+      expect(s.revoke).toHaveBeenCalledWith('blob:stub/1')
+
+      // 전송 «실패» — 선택이 화면에 남으므로 회수하면 남은 썸네일이 죽은 URL 을 가리킨다
+      failNext = true
+      pickFiles(new File(['j'], 'shot2.png', { type: 'image/png', lastModified: 1_700_000_000_001 }))
+      await flush()
+      expect(s.create).toHaveBeenCalledTimes(2)
+      pressEnter(); await flush()
+      expect($$('#file-chosen span.file-chip-image').length).toBe(1)
+      expect(s.revoke).toHaveBeenCalledTimes(1)          // blob:stub/2 는 아직 살아 있다
+
+      // 곧바로 다시 보내 성공하면 그때 회수한다 — 총 회수 = 총 생성
+      failNext = false
+      pressEnter(); await flush()
+      expect(s.revoke).toHaveBeenCalledTimes(2)
+      expect(s.revoke).toHaveBeenCalledWith('blob:stub/2')
+      expect(s.revoke.mock.calls.length).toBe(s.create.mock.calls.length)
+    } finally { s.restore() }
+  })
+})
+
+describe('AC-WEBATT-012 an environment that cannot make object URLs', () => {
+  it('falls back to the name chip instead of throwing', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    // 이 환경의 기본값은 「있음」이다 — 부재는 명시적으로 만들어야 재현된다 (spec.md §1.1 정정)
+    const restore = withoutObjectURL()
+    try {
+      expect(() => {
+        pickFiles(new File(['i'], 'shot.png', { type: 'image/png', lastModified: 1_700_000_000_000 }))
+      }).not.toThrow()
+      await flush()
+      expect($$('#file-chosen img').length).toBe(0)
+      expect($$('#file-chosen span.file-chip').length).toBe(1)
+      expect(chipNames()).toEqual(['shot.png'])
+    } finally { restore() }
+  })
+})
+
+describe('AC-WEBATT-013 non-regression and boundaries', () => {
+  it('keeps aria-disabled as the only send-state signal right after a paste', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const send = el('send-btn') as HTMLButtonElement
+    expect(send.hasAttribute('disabled')).toBe(false)
+    const s = stubObjectURL()
+    try {
+      paste(new File(['x'], '', { type: 'image/png' }))
+      await flush()
+      expect(send.getAttribute('aria-disabled')).toBe('false')
+      // disabled 는 끝까지 쓰지 않는다 — 탭 순서에서 빠지면 «왜 안 보내지» 를 확인할 대상이 사라진다
+      expect(send.hasAttribute('disabled')).toBe(false)
+    } finally { s.restore() }
+  })
+
+  it('never wires the document-level guard twice in the same document', async () => {
+    const app1 = await loadApp(baseHandler())
+    await app1.openRoom(1); await flush()
+
+    // 등록 «호출» 자체를 센다 — jsdom 에 청취자 개수를 읽는 수단이 없다.
+    // [N2] window 쪽 등록도 함께 세므로 가드를 window 에 건 구현도 여기서 붉어진다.
+    const spy = countDocListeners()
+    try {
+      const app2 = await loadApp(baseHandler())
+      await app2.openRoom(1); await flush()
+      for (const t of ['dragenter', 'dragover', 'drop']) {
+        expect(spy.types, `두 번째 적재에서 ${t} 이 다시 걸려서는 안 된다`).not.toContain(t)
+      }
+    } finally { spy.stop() }
+    expect(document.documentElement.dataset.webattachGuard).toBe('1')
+  })
+
+  it('wires each listener type exactly once in the source (supporting evidence only)', () => {
+    // [주의] 원문 세기는 결론의 근거가 아니다 — 원문에 한 번 적힌 호출이 런타임에 몇 번 도는지는
+    // 세어지지 않는다. 위 it 이 실제 재배선을 재고, 이것은 그 옆에 두는 보조 관측이다.
+    const src = appSrc()
+    for (const t of ['paste', 'drop', 'dragover', 'dragenter', 'dragleave']) {
+      expect(occurrences(src, `addEventListener('${t}'`), `addEventListener('${t}' 은 1회여야 한다`).toBe(1)
+    }
+  })
+
+  it('styles the three new selectors with design tokens only', () => {
+    const image = rule('.file-chip-image')
+    const thumb = rule('.file-chip-thumb')
+    const drop = rule('#composer-box.drop-target')
+    for (const [name, body] of [['.file-chip-image', image], ['.file-chip-thumb', thumb], ['#composer-box.drop-target', drop]]) {
+      expect(body.trim(), `${name} 규칙이 비어 있으면 안 된다`).not.toBe('')
+    }
+    const all = image + thumb + drop
+    expect(all).toContain('var(--md-')
+    expect(all).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+    // #file-chosen { opacity: 0.8 } 상속을 되돌리지 않으면 썸네일이 흐려 보인다 (web/style.css)
+    expect(thumb).toMatch(/opacity:\s*1\b/)
+  })
+})

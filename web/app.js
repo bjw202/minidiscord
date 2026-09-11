@@ -1041,16 +1041,64 @@ function installDocumentDropGuard() {
   for (const type of ['dragenter', 'dragover', 'drop']) document.addEventListener(type, guardFileDrag)
 }
 
-// 고른 파일을 칩 한 줄로 보인다. 이름은 textContent 로만 넣는다 — 파일명은 사용자 입력이라
+// 파일 → 객체 URL. [HARD] renderPickedFiles() 는 변화마다 목록 전체를 다시 그리므로,
+// 그릴 때마다 만들면 지운 만큼이 아니라 «그린 횟수만큼» 샌다. 그래서 파일당 한 번만 만들고
+// 여기 붙들어 둔다. 회수 자리는 둘이다 — ✕ 와 clearPickedFiles(). 하나만 두면 나머지가 샌다.
+const objectUrls = new Map()
+
+// 무엇을 이미지로 보는가: MIME 또는 확장자 (D8). 둘의 합집합인 이유는 근거가 서로 다르기
+// 때문이다 — 붙여넣은 캡쳐는 type 이 권위 있고, 끌어온 파일은 플랫폼에 따라 type 이 빈
+// 문자열이라 확장자가 유일한 근거가 된다.
+function isImageFile(f) {
+  return (typeof f.type === 'string' && f.type.startsWith('image/')) || isImageFilename(f.name)
+}
+
+// 썸네일에 쓸 URL. 못 만드는 환경이면 null 을 돌려주고 부르는 쪽이 이름 칩으로 되돌린다.
+// [HARD] 여기서 던지면 renderPickedFiles() 가 통째로 무너져 사용자가 무엇이 나갈지 볼 수도
+// ✕ 로 뺄 수도 없게 된다 — 그리기 경로는 어떤 이유로도 던지지 않는다 (REQ-WEBATT-012).
+function thumbUrl(f) {
+  if (objectUrls.has(f)) return objectUrls.get(f)
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return null
+  let url = null
+  try {
+    url = URL.createObjectURL(f)
+  } catch {
+    return null
+  }
+  objectUrls.set(f, url)
+  return url
+}
+
+function revokeThumbUrl(f) {
+  const url = objectUrls.get(f)
+  if (!url) return
+  objectUrls.delete(f)
+  if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(url)
+}
+
+// 고른 파일을 칩 한 줄로 보인다. 이름은 textContent·alt 로만 넣는다 — 파일명은 사용자 입력이라
 // innerHTML 로 넣으면 그대로 마크업이 된다(REQ-WEBCHAT-003 과 같은 이유).
 function renderPickedFiles() {
   const box = $('file-chosen')
   box.textContent = ''
   for (const f of pickedFiles) {
+    // 이미지면 이름 칩 대신 썸네일 칩. URL 을 못 만들면 이름 칩으로 되돌아간다.
+    const url = isImageFile(f) ? thumbUrl(f) : null
     const chip = document.createElement('span')
-    chip.className = 'file-chip'
-    // 📎 는 옆의 첨부 버튼이 이미 달고 있다 — 칩마다 되풀이하지 않고 이름만 둔다
-    chip.append(f.name)
+    if (url) {
+      // [D9] 썸네일 칩에는 .file-chip 을 달지 않는다 — 달면 기존 chipNames() 헬퍼가
+      // 이미지 항목을 빈 이름으로 읽어 그 헬퍼의 의미가 조용히 바뀐다.
+      chip.className = 'file-chip-image'
+      const img = document.createElement('img')
+      img.className = 'file-chip-thumb'
+      img.src = url
+      img.alt = f.name
+      chip.appendChild(img)
+    } else {
+      chip.className = 'file-chip'
+      // 📎 는 옆의 첨부 버튼이 이미 달고 있다 — 칩마다 되풀이하지 않고 이름만 둔다
+      chip.append(f.name)
+    }
     const remove = document.createElement('button')
     remove.type = 'button'
     remove.className = 'file-chip-remove'
@@ -1058,6 +1106,7 @@ function renderPickedFiles() {
     remove.textContent = '✕'
     // 인덱스가 아니라 파일 자체로 지운다 — 다시 그리는 사이 인덱스는 어긋날 수 있다
     remove.addEventListener('click', () => {
+      revokeThumbUrl(f)
       pickedFiles = pickedFiles.filter(p => p !== f)
       renderPickedFiles()
     })
@@ -1070,6 +1119,9 @@ function renderPickedFiles() {
 
 // 선택을 통째로 비운다. 전송에 성공했을 때만 부른다.
 function clearPickedFiles() {
+  // 회수의 두 번째 자리. 전송 «실패» 경로에는 이것이 없다 — 실패하면 선택이 화면에 남으므로
+  // 거기서 회수하면 남은 썸네일이 죽은 URL 을 가리킨다.
+  for (const f of pickedFiles) revokeThumbUrl(f)
   pickedFiles = []
   $('file-input').value = ''
   renderPickedFiles()
@@ -1099,7 +1151,9 @@ function notifyError(err) {
 // ══ 리치 표면 (SPEC-WEBRICH-001) ═══════════════════════════════════════
 // 이 SPEC 이 app.js 에 더하는 것은 이 블록 전부다 — renderMessage 본체는 한 줄도
 // 건드리지 않는다 (REQ-WEBRICH-002). 모듈 최상위가 배선의 자리다.
-import { createRichContext, buildInviteChoices, applyInviteResult, clearInviteResult, copyText } from './rich.js'
+// isImageFilename 은 SPEC-WEBRICH-001 이 이미 export 한다 — 작성기의 미리보기 판정과
+// 보낸 뒤의 표시 판정이 같은 자를 쓰도록, 새 판정 함수를 만들지 않고 이름 하나를 더 가져온다.
+import { createRichContext, buildInviteChoices, applyInviteResult, clearInviteResult, copyText, isImageFilename } from './rich.js'
 import { renderMarkdown } from './markdown.js'
 
 // 배선 계약 (spec.md REQ-WEBRICH-002) — 방을 열 때마다 openRoom 3-1단계가
