@@ -449,6 +449,17 @@ export function initChat() {
   const composer = $('msg-input')
   composer.addEventListener('input', onComposerInput)
   composer.addEventListener('keydown', onComposerKeyDown)
+  // 캡쳐 붙여넣기 — 초점이 있는 편집 요소에서 발화하므로 입력칸에 건다 (SPEC-WEBATTACH-001 D5).
+  // document 에 걸면 자동완성 목록·메시지 본문의 붙여넣기까지 가로채 요청 범위를 넘는다.
+  composer.addEventListener('paste', onComposerPaste)
+  // 끌어놓기 — 받는 자리는 작성기 영역뿐이다 (운영자 결정 D1). 요소 수준 청취자는 body 교체마다
+  // 요소가 새로 만들어지므로 쌓일 대상이 없다 — 쌓이는 것은 문서 수준뿐이고 그쪽은 표지가 막는다.
+  const box = $('composer-box')
+  box.addEventListener('dragenter', onComposerDragEnter)
+  box.addEventListener('dragover', onComposerDragOver)
+  box.addEventListener('dragleave', onComposerDragLeave)
+  box.addEventListener('drop', onComposerDrop)
+  installDocumentDropGuard()
   // 첨부 선택 표시 — 무엇이 함께 나갈지 보이지 않으면 사용자는 첨부 여부를 알 수 없다 (카드 t32 D-7)
   $('file-input').addEventListener('change', onFilePicked)
   $('send-btn').addEventListener('click', () => { sendMessage() })
@@ -867,15 +878,25 @@ export async function sendMessage() {
 // «무엇이 나갈지» 의 단일 출처는 이 배열이고, picker 는 고르는 창구로만 쓴다.
 let pickedFiles = []
 
+// 공용 편입 경로 — 고르기·붙여넣기·끌어놓기 셋이 전부 여기로 들어온다 (SPEC-WEBATTACH-001).
+// 새 전송 경로를 만들지 않는 이유가 이것이다: 배열에 들어오기만 하면 sendMessage() 가 이미 싣는다.
+// dedupe 를 끄는 자리는 붙여넣기 하나뿐이다 — 사람이 두 번 누른 것은 두 번 넣겠다는 뜻이고,
+// 클립보드 File 은 붙일 때마다 lastModified 가 새로 찍혀 isSameFile 판정 자체가 우연에 맡겨진다 (D7).
+function addPickedFiles(files, { dedupe = true } = {}) {
+  for (const f of files) {
+    if (dedupe && pickedFiles.some(p => isSameFile(p, f))) continue
+    pickedFiles.push(f)
+  }
+  renderPickedFiles()
+}
+
 // 새로 고른 파일을 목록에 잇는다. 두 번에 나눠 골라도 쌓이고, 같은 파일은 두 번 담지 않는다.
 function onFilePicked() {
   const picker = $('file-input')
-  for (const f of Array.from(picker.files ?? [])) {
-    if (!pickedFiles.some(p => isSameFile(p, f))) pickedFiles.push(f)
-  }
+  const files = Array.from(picker.files ?? [])
   // 같은 파일을 다시 고를 수 있게 창구를 비운다 — 비우지 않으면 change 가 다시 오지 않는다
   picker.value = ''
-  renderPickedFiles()
+  addPickedFiles(files)
 }
 
 // 이름·크기·수정시각이 모두 같으면 같은 파일로 본다 — File 객체는 고를 때마다 새로 생긴다
@@ -883,16 +904,201 @@ function isSameFile(a, b) {
   return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified
 }
 
-// 고른 파일을 칩 한 줄로 보인다. 이름은 textContent 로만 넣는다 — 파일명은 사용자 입력이라
+// ── 붙여넣기·끌어놓기 (SPEC-WEBATTACH-001) ────────────────────────────
+// clipboardData 도 dataTransfer 도 같은 모양(files / items / types)을 쓰므로 읽는 함수는 하나다.
+// [HARD] instanceof DragEvent·ClipboardEvent 로 판정하지 않는다 — jsdom 에 그 생성자가 없어
+// 시험에서 영원히 거짓이 되고, 브라우저에서만 도는 분기는 관측할 방법이 없다 (plan.md §B-1).
+function filesFromTransfer(dt) {
+  if (!dt) return []
+  const direct = Array.from(dt.files ?? [])
+  if (direct.length > 0) return direct
+  // files 가 비어 있어도 items 에 파일이 실려 오는 경로가 있다 (일부 브라우저의 클립보드)
+  return Array.from(dt.items ?? [])
+    .filter(i => i && i.kind === 'file')
+    .map(i => i.getAsFile())
+    .filter(Boolean)
+}
+
+// 「이 끌기가 파일을 실었는가」 — 규약상 파일이 있으면 types 에 'Files' 가 들어 있다.
+// 파일이 아닌 끌기(글자 끌어놓기 등)는 이 판정 하나로 전부 통과시킨다 (REQ-WEBATT-009).
+function transferHasFiles(dt) {
+  if (!dt) return false
+  return Array.from(dt.types ?? []).includes('Files')
+}
+
+// 클립보드 항목의 MIME 에서 확장자를 뽑는다. 근거 없이 붙이면 서버가 확장자로 MIME 을 정하므로
+// (routes-messages.ts MIME 표) 내려받기와 보낸 뒤 표시가 함께 어긋난다.
+function extensionForMime(type) {
+  const sub = String(type || '').split('/')[1] || 'bin'
+  return sub === 'jpeg' ? 'jpg' : sub
+}
+
+// 붙여넣은 캡쳐에 쓸 만한 이름이 없는가 — 비었거나 브라우저 기본값(image.png 류)이면 참.
+function hasNoUsableName(name) {
+  const n = String(name || '')
+  if (n === '') return true
+  const dot = n.lastIndexOf('.')
+  return (dot > 0 ? n.slice(0, dot) : n).toLowerCase() === 'image'
+}
+
+// 스크린샷-YYYYMMDD-HHMMSS.<ext> — 현지 시각이다(운영자 결정 D2). UTC 로 찍으면 사람이
+// 자기 화면을 캡쳐한 시각과 이름이 어긋난다.
+function captureName(ext) {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+  return `스크린샷-${stamp}.${ext}`
+}
+
+// 이미 쓰인 이름이면 확장자 앞에 -2, -3 … 을 붙인다. 적용 범위는 «붙여넣기로 들어오는 항목» 뿐이다
+// (D7) — 고르기 경로는 isSameFile 만 보고 이름을 보지 않으며 그 동작은 바뀌지 않는다(REQ-WEBATT-014).
+function uniqueName(name, taken) {
+  if (!taken.has(name)) return name
+  const dot = name.lastIndexOf('.')
+  const stem = dot > 0 ? name.slice(0, dot) : name
+  const ext = dot > 0 ? name.slice(dot) : ''
+  for (let n = 2; ; n++) {
+    const candidate = `${stem}-${n}${ext}`
+    if (!taken.has(candidate)) return candidate
+  }
+}
+
+// 붙여넣기 — 파일 항목이 없으면 손대지 않는다(평문 붙여넣기는 지금과 똑같이 작동한다, REQ-WEBATT-004).
+// 운영체제·조합키를 가리지 않는다: macOS 의 Cmd+V 와 Windows 의 Ctrl+V 는 같은 paste 를 만든다.
+function onComposerPaste(e) {
+  const files = filesFromTransfer(e.clipboardData)
+  if (files.length === 0) return
+  e.preventDefault()
+  // 이름은 «항목 자체» 가 가져야 한다 — 칩 라벨·alt·전송 파트 이름 셋이 같은 문자열이어야 하고
+  // sendMessage() 는 pickedFiles 를 그대로 싣기 때문이다(REQ-WEBATT-002). 그래서 File 을 다시 만든다.
+  const taken = new Set(pickedFiles.map(f => f.name))
+  const named = files.map(f => {
+    const base = hasNoUsableName(f.name) ? captureName(extensionForMime(f.type)) : f.name
+    const name = uniqueName(base, taken)
+    taken.add(name)
+    return name === f.name ? f : new File([f], name, { type: f.type, lastModified: f.lastModified })
+  })
+  addPickedFiles(named, { dedupe: false })
+}
+
+// 끌기가 드롭 영역 «안» 에 몇 겹으로 들어와 있는가. dragleave 는 자식 요소를 지날 때마다
+// 발화하므로, 깊이 없이 바로 표시를 끄면 끌기가 입력칸 위를 지날 때마다 깜빡인다.
+let dragDepth = 0
+
+function markDropTarget(on) {
+  const box = $('composer-box')
+  if (!box) return
+  box.classList.toggle('drop-target', on)
+}
+
+function onComposerDragEnter(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  e.preventDefault()
+  dragDepth++
+  markDropTarget(true)
+}
+
+function onComposerDragOver(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  // [HARD] dragover 의 기본 동작을 막아야 이 요소가 유효한 드롭 대상이 된다 — 막지 않으면
+  // 브라우저가 탐색을 수행하고 drop 은 애초에 발화하지 않는다 (HTML DnD 규약).
+  e.preventDefault()
+}
+
+function onComposerDragLeave(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  dragDepth = Math.max(0, dragDepth - 1)
+  if (dragDepth === 0) markDropTarget(false)
+}
+
+function onComposerDrop(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  e.preventDefault()
+  // 떨구면 dragleave 가 오지 않는 경로가 있다 — 깊이는 세지 말고 0 으로 강제한다
+  dragDepth = 0
+  markDropTarget(false)
+  // 종류를 가리지 않는다 (운영자 지시: 드래그앤드롭은 모든 파일)
+  addPickedFiles(filesFromTransfer(e.dataTransfer))
+}
+
+// 문서 가드 — 드롭 영역 «밖» 에 파일을 떨구면 브라우저가 그 파일로 페이지를 통째로 넘겨
+// 쓰던 본문·메시지 목록·SSE 연결이 사라진다. 세 이벤트의 기본 동작만 막고 목록은 건드리지
+// 않는다: 「받지 않음」이지 「받음」이 아니다 (D6). 파일이 아닌 끌기는 손대지 않는다.
+function guardFileDrag(e) {
+  if (!transferHasFiles(e.dataTransfer)) return
+  e.preventDefault()
+}
+
+// [HARD] 1회성은 «문서 자신이 지니는 표지» 로 보장한다 (D10). 모듈 수준 플래그(chatReady)는
+// 모듈이 다시 적재되면 false 로 돌아가는데 document 노드는 그대로 살아 있어, 플래그만 믿으면
+// 적재할 때마다 청취자가 하나씩 쌓인다 (spec.md §1.1 실측).
+function installDocumentDropGuard() {
+  const root = document.documentElement
+  if (!root || root.dataset.webattachGuard === '1') return
+  root.dataset.webattachGuard = '1'
+  // 청취자 이름을 변수로 도는 이유: 이 세 종류는 아래 작성기 배선이 이미 글자로 한 번씩 쓰고 있고,
+  // 「원문에 각 1회」라는 비회귀 기준(AC-WEBATT-013)이 그 횟수를 센다.
+  for (const type of ['dragenter', 'dragover', 'drop']) document.addEventListener(type, guardFileDrag)
+}
+
+// 파일 → 객체 URL. [HARD] renderPickedFiles() 는 변화마다 목록 전체를 다시 그리므로,
+// 그릴 때마다 만들면 지운 만큼이 아니라 «그린 횟수만큼» 샌다. 그래서 파일당 한 번만 만들고
+// 여기 붙들어 둔다. 회수 자리는 둘이다 — ✕ 와 clearPickedFiles(). 하나만 두면 나머지가 샌다.
+const objectUrls = new Map()
+
+// 무엇을 이미지로 보는가: MIME 또는 확장자 (D8). 둘의 합집합인 이유는 근거가 서로 다르기
+// 때문이다 — 붙여넣은 캡쳐는 type 이 권위 있고, 끌어온 파일은 플랫폼에 따라 type 이 빈
+// 문자열이라 확장자가 유일한 근거가 된다.
+function isImageFile(f) {
+  return (typeof f.type === 'string' && f.type.startsWith('image/')) || isImageFilename(f.name)
+}
+
+// 썸네일에 쓸 URL. 못 만드는 환경이면 null 을 돌려주고 부르는 쪽이 이름 칩으로 되돌린다.
+// [HARD] 여기서 던지면 renderPickedFiles() 가 통째로 무너져 사용자가 무엇이 나갈지 볼 수도
+// ✕ 로 뺄 수도 없게 된다 — 그리기 경로는 어떤 이유로도 던지지 않는다 (REQ-WEBATT-012).
+function thumbUrl(f) {
+  if (objectUrls.has(f)) return objectUrls.get(f)
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return null
+  let url = null
+  try {
+    url = URL.createObjectURL(f)
+  } catch {
+    return null
+  }
+  objectUrls.set(f, url)
+  return url
+}
+
+function revokeThumbUrl(f) {
+  const url = objectUrls.get(f)
+  if (!url) return
+  objectUrls.delete(f)
+  if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(url)
+}
+
+// 고른 파일을 칩 한 줄로 보인다. 이름은 textContent·alt 로만 넣는다 — 파일명은 사용자 입력이라
 // innerHTML 로 넣으면 그대로 마크업이 된다(REQ-WEBCHAT-003 과 같은 이유).
 function renderPickedFiles() {
   const box = $('file-chosen')
   box.textContent = ''
   for (const f of pickedFiles) {
+    // 이미지면 이름 칩 대신 썸네일 칩. URL 을 못 만들면 이름 칩으로 되돌아간다.
+    const url = isImageFile(f) ? thumbUrl(f) : null
     const chip = document.createElement('span')
-    chip.className = 'file-chip'
-    // 📎 는 옆의 첨부 버튼이 이미 달고 있다 — 칩마다 되풀이하지 않고 이름만 둔다
-    chip.append(f.name)
+    if (url) {
+      // [D9] 썸네일 칩에는 .file-chip 을 달지 않는다 — 달면 기존 chipNames() 헬퍼가
+      // 이미지 항목을 빈 이름으로 읽어 그 헬퍼의 의미가 조용히 바뀐다.
+      chip.className = 'file-chip-image'
+      const img = document.createElement('img')
+      img.className = 'file-chip-thumb'
+      img.src = url
+      img.alt = f.name
+      chip.appendChild(img)
+    } else {
+      chip.className = 'file-chip'
+      // 📎 는 옆의 첨부 버튼이 이미 달고 있다 — 칩마다 되풀이하지 않고 이름만 둔다
+      chip.append(f.name)
+    }
     const remove = document.createElement('button')
     remove.type = 'button'
     remove.className = 'file-chip-remove'
@@ -900,6 +1106,7 @@ function renderPickedFiles() {
     remove.textContent = '✕'
     // 인덱스가 아니라 파일 자체로 지운다 — 다시 그리는 사이 인덱스는 어긋날 수 있다
     remove.addEventListener('click', () => {
+      revokeThumbUrl(f)
       pickedFiles = pickedFiles.filter(p => p !== f)
       renderPickedFiles()
     })
@@ -912,6 +1119,9 @@ function renderPickedFiles() {
 
 // 선택을 통째로 비운다. 전송에 성공했을 때만 부른다.
 function clearPickedFiles() {
+  // 회수의 두 번째 자리. 전송 «실패» 경로에는 이것이 없다 — 실패하면 선택이 화면에 남으므로
+  // 거기서 회수하면 남은 썸네일이 죽은 URL 을 가리킨다.
+  for (const f of pickedFiles) revokeThumbUrl(f)
   pickedFiles = []
   $('file-input').value = ''
   renderPickedFiles()
@@ -941,7 +1151,9 @@ function notifyError(err) {
 // ══ 리치 표면 (SPEC-WEBRICH-001) ═══════════════════════════════════════
 // 이 SPEC 이 app.js 에 더하는 것은 이 블록 전부다 — renderMessage 본체는 한 줄도
 // 건드리지 않는다 (REQ-WEBRICH-002). 모듈 최상위가 배선의 자리다.
-import { createRichContext, buildInviteChoices, applyInviteResult, clearInviteResult, copyText } from './rich.js'
+// isImageFilename 은 SPEC-WEBRICH-001 이 이미 export 한다 — 작성기의 미리보기 판정과
+// 보낸 뒤의 표시 판정이 같은 자를 쓰도록, 새 판정 함수를 만들지 않고 이름 하나를 더 가져온다.
+import { createRichContext, buildInviteChoices, applyInviteResult, clearInviteResult, copyText, isImageFilename } from './rich.js'
 import { renderMarkdown } from './markdown.js'
 
 // 배선 계약 (spec.md REQ-WEBRICH-002) — 방을 열 때마다 openRoom 3-1단계가
