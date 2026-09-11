@@ -72,13 +72,13 @@ Tier S · plan-phase 산출물: spec.md(REQ 8 · AC 인라인 8) + plan.md(마�
 
 ```yaml
 run_complete_at: 2026-09-11T06:27:39Z
-run_commit_sha: pending-backfill-M3   # M3 커밋 SHA 를 후속 커밋으로 백필한다(자기 참조 물리 불가 — D3 관례)
+run_commit_sha: f9738e4434626fb93bd77ec9d827d999a91ce884   # M3 커밋 — 후속 백필(D3 관례)
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
 preserve_list_post_run_count: 0       # plan §A.5 PRESERVE 위반 관측 0건 (git log/diff 기준선 비교)
-l44_pre_commit_fetch: origin/main == pre-flight 67db21a (push 직전 fetch 확인)
-l44_post_push_fetch: pending-backfill-M3   # push 후 기록(백필 커밋에서 확정)
+l44_pre_commit_fetch: origin/main == pre-flight 67db21a (push 직전 fetch 확인, rev-list `0 2`)
+l44_post_push_fetch: push `67db21a..f9738e4 HEAD -> main` exit 0 — `git rev-list --count --left-right origin/main...HEAD` → `0	0` (2026-09-11T06:29Z)
 new_warnings_or_lints_introduced: 0   # tsc --noEmit exit 0; 저장소에 별도 lint runner 부재(§C 사전·사후 동일 명령면)
 cross_platform_build: n/a             # 빌드 단계 없는 바닐라 ES 모듈·CSS (spec §5 제약)
 total_run_phase_files: 5              # web/markdown.js, web/style.css, server/test/web-markdown.test.ts, spec.md(frontmatter), progress.md
