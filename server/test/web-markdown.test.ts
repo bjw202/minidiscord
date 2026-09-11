@@ -595,3 +595,116 @@ describe('AC-WEBMD-016 existing tests untouched and hook coexistence', () => {
     expect(document.querySelectorAll('#messages .message > .msg-body').length).toBe(2)
   })
 })
+
+// ── D 그룹 — SPEC-WEBMD-002 본문 @TO/@CC 배지 (AC-WEBMD2-001~008) ─────
+// 기존 describe(AC-WEBMD-001~016) 은 한 줄도 고치지 않는다 — 이 그룹은 파일
+// 끝에만 더한다 (REQ-WEBMD2-007). 자격 문법 = 서버 문법(REQ-WEBMD2-003),
+// 코드 표면 제외(REQ-WEBMD2-004), 즉시 리터럴·선형 시간(REQ-WEBMD2-005·008)의
+// 계약 문면은 spec.md §3.1 이 소유한다.
+
+describe('AC-WEBMD2-001 TO token renders as chip plus name text', () => {
+  it('renders the most common measured form: chip first, then the name as a text node', () => {
+    const h = render('@TO(orchestrator) 처음 접속이다')
+    const p = h.querySelector('p')!
+    expect(p).not.toBeNull()
+
+    // 문단 첫 노드가 종류 칩이다
+    const first = p.firstChild as HTMLElement
+    expect(first.nodeType).toBe(Node.ELEMENT_NODE)
+    expect(first.tagName).toBe('SPAN')
+    expect(first.classList.contains('md-mention')).toBe(true)
+    expect(first.classList.contains('to')).toBe(true)
+    expect(first.textContent).toBe('TO')
+
+    // 칩 뒤에 이름이 텍스트 노드로 붙고 나머지 문장이 이어진다
+    expect((first.nextSibling as Text).nodeType).toBe(Node.TEXT_NODE)
+    expect(first.nextSibling!.textContent).toBe('orchestrator')
+    expect(p.textContent).toBe('TOorchestrator 처음 접속이다')
+
+    // 토큰 문법(@TO( 와 닫는 )) 은 표시 어디에도 남지 않는다
+    expect(h.textContent).not.toContain('@TO(')
+    expect(h.textContent).not.toContain(')')
+  })
+})
+
+describe('AC-WEBMD2-002 roll-call line renders every chip in order', () => {
+  it('renders second-and-later tokens on the same line too, each followed by its name', () => {
+    const h = render('@TO(analyst) @TO(archivist) @CC(researcher) 출석체크다')
+    const chips = [...h.querySelectorAll('.md-mention')]
+    expect(chips.length).toBe(3)
+    expect(chips.map(c => c.classList.contains('to'))).toEqual([true, true, false])
+    expect(chips.map(c => c.classList.contains('cc'))).toEqual([false, false, true])
+    expect(chips.map(c => c.textContent)).toEqual(['TO', 'TO', 'CC'])
+
+    // 각 칩 바로 뒤에 이름이 텍스트 노드로 남는다 — 칩·이름·칩·이름 순서
+    expect(chips[0].nextSibling!.textContent).toBe('analyst')
+    expect(chips[1].nextSibling!.textContent).toBe('archivist')
+    expect(chips[2].nextSibling!.textContent).toBe('researcher')
+    expect(h.textContent).toBe('TOanalyst TOarchivist CCresearcher 출석체크다')
+  })
+})
+
+describe('AC-WEBMD2-003 out-of-grammar forms stay fully literal', () => {
+  it('renders the five out-of-grammar forms with zero chips and exact source identity', () => {
+    // 전부 줄 시작에서 각각 렌더한다 — 위치는 자격에 무관하고(REQ-WEBMD2-003)
+    // «문법 밖» 형태만 가른다 (REQ-WEBMD2-005 과대 매칭 거부)
+    for (const bad of ['@to(bot)', '@TO()', '@TO(이 름)', '@TO(안닫힘', '@TO(a(b)']) {
+      const h = render(bad)
+      expect(h.querySelectorAll('.md-mention').length).toBe(0)
+      expect(h.textContent).toBe(bad)          // 한 글자도 삼키지 않는다
+    }
+  })
+})
+
+describe('AC-WEBMD2-004 code surfaces stay literal', () => {
+  it('renders exactly one chip outside code, and none inside a code span or fence', () => {
+    const src = '@TO(a) 설명 `@TO(b) 예시`\n\n```\n@TO(x)\n```'
+    const h = render(src)
+
+    // 칩은 줄의 첫 토큰 하나뿐
+    const chips = h.querySelectorAll('.md-mention')
+    expect(chips.length).toBe(1)
+    expect(chips[0].classList.contains('to')).toBe(true)
+
+    // 코드스팬의 textContent 는 원문 그대로
+    const span = h.querySelector('p code')
+    expect(span).not.toBeNull()
+    expect(span!.textContent).toBe('@TO(b) 예시')
+
+    // 펜스 코드블록 안에 .md-mention 이 없고 원문이 그대로 담긴다
+    expect(h.querySelectorAll('pre .md-mention').length).toBe(0)
+    expect(h.querySelector('pre')!.textContent).toBe('@TO(x)')
+  })
+})
+
+describe('AC-WEBMD2-005 token on a later line renders right after the break', () => {
+  it('places the chip and name at the start of the line following the br', () => {
+    // 실측 메시지 형태 — 둘째 줄이 토큰으로 시작한다
+    const h = render('…출석 확인. (3/4)\n@TO(reporter) 너만 남았다')
+    const p = h.querySelector('p')!
+    expect(p.querySelectorAll('br').length).toBe(1)
+
+    const br = p.querySelector('br')!
+    const after = br.nextSibling as HTMLElement
+    expect(after.nodeType).toBe(Node.ELEMENT_NODE)
+    expect(after.tagName).toBe('SPAN')
+    expect(after.classList.contains('md-mention')).toBe(true)
+    expect(after.classList.contains('to')).toBe(true)
+    expect(after.textContent).toBe('TO')
+    expect(after.nextSibling!.textContent).toBe('reporter')
+  })
+})
+
+describe('AC-WEBMD2-008 linear time on adversarial mention input', () => {
+  // 「유한 시간」의 판정자는 AC-WEBMD-013(web-markdown.test.ts:171) 과 같은
+  // 방식으로 it 옵션에 못박는다. 닫을 수 없는 토큰 나열에서 이름 스캔이 '(' 를
+  // 멈춤 글자로 삼기에 스캔 구간이 겹치지 않는다 — 선형 구현은 밀리초에 끝나고
+  // 백트래킹 폭발은 이 값으로 돌아오지 못한다.
+  it('returns in finite time on unclosed tokens and five thousand valid tokens', () => {
+    const unclosed = render('@TO(x'.repeat(10000))
+    expect(unclosed.querySelectorAll('.md-mention').length).toBe(0)   // 닫힘이 없으면 전부 리터럴
+
+    const many = render(('@TO(a) ').repeat(5000))
+    expect(many.querySelectorAll('.md-mention').length).toBeGreaterThan(0)
+  }, 20_000)
+})

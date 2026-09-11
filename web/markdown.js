@@ -35,6 +35,12 @@ const BIDI_RE = /[\u202A-\u202E\u2066-\u2069]/g
 // 브라우저는 스킴 안의 TAB/LF/CR 을 무시하므로 정제가 판정보다 먼저 와야 한다.
 const HREF_SANITIZE_RE = /[\u0000-\u001F\u007F-\u009F\u00A0\u1680\u180E\u2000-\u200F\u202A-\u202F\u205F\u2060-\u2069\u3000\uFEFF]/g
 
+// 멘션 이름 한 글자 멈춤 판정 — 이름은 (·)·공백이 없는 한 글자 이상 (REQ-WEBMD2-003).
+// test 로만 쓰므로 /g 를 붙이지 않는다(lastIndex 상태가 생긴다).
+// @MX:NOTE: [AUTO] 멘션 토큰(@TO/@CC)의 자격 문법은 서버 라우팅 문법(server/src/mention.ts MENTION_RE)과 1:1 이다 —
+//   표시 전용 길이 상한·«줄 시작» 제한을 덧대면 «라우팅은 되고 배지는 안 뜌» 괴리가 생긴다 (SPEC-WEBMD-002 REQ-WEBMD2-003).
+const MENTION_NAME_STOP_RE = /[()\s]/
+
 // ── URL 스킴 세 겹 검사 (REQ-WEBMD-006) ──────────────────────────────
 // @MX:ANCHOR: [AUTO] 신뢰 경계 밖 문자열이 a.href 로 흘러가는 유일한 관문 — 렌더러의 모든 링크가 이 판정에 산다
 // @MX:REASON: 정제→화이트리스트→URL 파서 순서를 바꾸면 java<TAB>script: 류가 순진한 접두 검사를 통과한다. 이 순서 자체가 계약이다 (REQ-WEBMD-006)
@@ -458,6 +464,31 @@ export function renderInline(text, doc, depth = 0) {
         if (href !== null) {
           frag.appendChild(buildAnchor(m[0], href, doc, depth, true))
           i += m[0].length
+          continue
+        }
+      }
+    }
+    // 멘션 토큰 — @TO(이름)/@CC(이름). 자격 문법은 서버 라우팅 문법과 같다:
+    // 대문자 TO/CC 만, 이름은 (·)·공백 없는 한 글자 이상 (REQ-WEBMD2-003).
+    // 각 자리에서 고정 문법 한 번만 시도하고 실패(소문자·빈 이름·공백·괄호·미닫힘)하면
+    // 한 글자 리터럴로 떨어진다 — 되돌아가는 시도가 없다 (REQ-WEBMD2-005·008).
+    // 이름 스캔이 '(' 를 멈춤 글자로 삼는 덕에 '@TO(x@TO(x…' 폭탄에서 스캔 구간이
+    // 서로 겹치지 않아 전체가 선형이다. @ 는 기존 어떤 인라인 마커도 아니어서
+    // 분기를 스캔 말미에 두어도 기존 우선순위(코드스팬 최상위 등)를 흔들지 않는다.
+    if (ch === '@') {
+      const kind = src.startsWith('@TO(', i) ? 'to' : src.startsWith('@CC(', i) ? 'cc' : null
+      if (kind !== null) {
+        let k = i + 4
+        while (k < src.length && !MENTION_NAME_STOP_RE.test(src[k])) k++
+        if (k > i + 4 && src[k] === ')') {
+          // 종류 칩 + 이름 텍스트 — createElement·className·textContent 로만 조립하고
+          // className 의 종류 값은 고정 리터럴 'to'/'cc' 뿐이다 (REQ-WEBMD2-007)
+          const chip = doc.createElement('span')
+          chip.className = 'md-mention ' + kind
+          chip.textContent = kind === 'to' ? 'TO' : 'CC'
+          frag.appendChild(chip)
+          push(src.slice(i + 4, k))      // 이름은 다시 인라인 문법으로 해석하지 않는다 (REQ-WEBMD2-001)
+          i = k + 1
           continue
         }
       }

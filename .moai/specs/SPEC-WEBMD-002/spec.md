@@ -2,7 +2,7 @@
 id: SPEC-WEBMD-002
 title: "웹 본문 @TO/@CC 배지 — 메시지 몸통의 수신 지시 토큰을 자동완성과 같은 색 언어로 그린다"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec

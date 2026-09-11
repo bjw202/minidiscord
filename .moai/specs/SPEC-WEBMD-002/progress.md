@@ -24,7 +24,19 @@ Tier S · plan-phase 산출물: spec.md(REQ 8 · AC 인라인 8) + plan.md(마�
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**Pre-flight (plan.md §C — 구현 시작 전, 어떤 편집보다 먼저 측정)**
+
+- pre-flight HEAD: `67db21a03e40ffb135b2eac24a93199d5802b883` (branch: worktree-agent-a1eb5be106c638c3e — Route A 커밋은 main 으로 push) — AC-WEBMD2-006·007 의 모든 diff/show 비교가 도는 기준선
+- `npm run typecheck -w server` → exit 0 (베이스라인 녹색)
+- `npx vitest run server/test/web-markdown.test.ts` → 기존 블록 전부 녹색 (17 passed)
+- `grep -c 'md-mention' web/markdown.js web/style.css` → 0, 0 (중복 구현 부재)
+- `server/src/mention.ts:3` `MENTION_RE = /@(TO|CC)\(([^()\s]+)\)/g` 확인 (자격 문법의 원천)
+
+**M1 렌더러 (AC-WEBMD2-001~005·008) — TDD**
+
+- RED (구현 전, 워킹트리 = 테스트 추가만): `npx vitest run server/test/web-markdown.test.ts` → `Tests  5 failed | 18 passed (23)` — 실패 5건 전부 AC-WEBMD2-001·002·004·005·008 (칩 0개). AC-WEBMD2-003(과대 매칭 거부)은 구현 없이는 공허하게 통과(칩 0·원문 항등) — 이 AC 는 «배지를 만드는» 구현이 들어온 뒤에만 실패할 수 있는 거부 기준이다. 기존 AC-WEBMD-001~016 전부 초록.
+- GREEN: `renderInline` 말미(리터럴 폴백 직전)에 `@` 분기 추가 — 고정 문법 한 번 시도(`@TO(`/`@CC(` 대문자만), 이름 스캔은 `(`·`)`·공백 멈춤(`MENTION_NAME_STOP_RE`), 실패 즉시 한 글자 리터럴. 칩은 `createElement('span')`+`className`+`textContent` 로만 조립, 이름은 텍스트 노드(재해석 없음). export 다섯 무변경.
+- GREEN 확인: `npx vitest run server/test/web-markdown.test.ts` → `Tests  23 passed (23)`, exit 0.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
