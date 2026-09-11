@@ -160,7 +160,7 @@ J3 종료 시점 재실행(실브라우저, skip 없음): `✓ D-3 … 719ms · 
 
 ```yaml
 run_complete_at: 2026-09-11T01:23:22Z
-run_commit_sha: pending-backfill-m5
+run_commit_sha: 029b3ee
 run_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
