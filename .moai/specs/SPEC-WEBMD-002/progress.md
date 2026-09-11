@@ -90,7 +90,7 @@ m1_to_mN_commit_strategy: 마일스톤별 커밋 M1(b374dc8)·M2(45a98de)·M3(�
 
 ```yaml
 sync_complete_at: 2026-09-11
-sync_commit_sha: pending — 후속 백필   # 커밋은 자기 해시를 알 수 없다(D3 관례). 오케스트레이터가 채운다
+sync_commit_sha: d1452ac   # sync 커밋 — 후속 백필(D3 관례). 커밋은 자기 해시를 미리 알 수 없다
 sync_status: complete
 sync_auditor_verdict: "PASS — 조화평균 91.66 (Functionality 94 · Security 95 · Craft 88 · Consistency 90), blocking 발견 0건"
 security_findings: "치명 0 / 높음 0 / 중간 0 · 거짓 배지 탐침 0건(입력 12개 서버 문법 대조, chips > serverRouted 인 칸 없음) · 마크업 조립 API grep 0건 · 이름은 createTextNode 단일 경로"
