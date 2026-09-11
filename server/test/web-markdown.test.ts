@@ -601,6 +601,7 @@ describe('AC-WEBMD-016 existing tests untouched and hook coexistence', () => {
 // 끝에만 더한다 (REQ-WEBMD2-007). 자격 문법 = 서버 문법(REQ-WEBMD2-003),
 // 코드 표면 제외(REQ-WEBMD2-004), 즉시 리터럴·선형 시간(REQ-WEBMD2-005·008)의
 // 계약 문면은 spec.md §3.1 이 소유한다.
+import { execSync } from 'node:child_process'
 
 describe('AC-WEBMD2-001 TO token renders as chip plus name text', () => {
   it('renders the most common measured form: chip first, then the name as a text node', () => {
@@ -707,4 +708,47 @@ describe('AC-WEBMD2-008 linear time on adversarial mention input', () => {
     const many = render(('@TO(a) ').repeat(5000))
     expect(many.querySelectorAll('.md-mention').length).toBeGreaterThan(0)
   }, 20_000)
+})
+
+// ── pre-flight 기준선(AC-WEBMD2-006·007 공용) ─────────────────────────
+// plan.md §C 가 명명한 pre-flight HEAD — 구현 시작 전 HEAD 이며, 작업 나무 비교로는
+// 이미 커밋된 PRESERVE 위반을 못 잡으므로 git show/log/diff 의 기준선이 된다.
+const PRE_FLIGHT_HEAD = '67db21a03e40ffb135b2eac24a93199d5802b883'
+const repoRoot = join(webDir, '..')
+
+describe('AC-WEBMD2-006 CSS contract — same color language as the ac badge', () => {
+  it('uses only .ac-kind tokens in the SPEC-WEBMD-002 block and keeps .ac-kind byte-identical', () => {
+    const css = readFileSync(join(webDir, 'style.css'), 'utf8')
+    const start = css.indexOf('/* SPEC-WEBMD-002 */')
+    const block = css.slice(start, css.indexOf('/* /SPEC-WEBMD-002 */'))
+    expect(start).toBeGreaterThanOrEqual(0)                 // 블록이 존재한다
+    expect(block.length).toBeGreaterThan(200)               // 비어 있지 않음 — 공허 합격 차단
+
+    // .md-mention.to — 채운 강조색 배경 + 본문 글자색
+    const toRule = /\.md-mention\.to\s*\{[^}]*\}/.exec(block)
+    expect(toRule).not.toBeNull()
+    expect(toRule![0]).toContain('background: var(--md-accent)')
+    expect(toRule![0]).toContain('color: var(--md-text-primary)')
+
+    // .md-mention.cc — 흐린 글자 + 가는 테두리
+    const ccRule = /\.md-mention\.cc\s*\{[^}]*\}/.exec(block)
+    expect(ccRule).not.toBeNull()
+    expect(ccRule![0]).toContain('color: var(--md-text-muted)')
+    expect(ccRule![0]).toContain('border: var(--md-border-width) solid var(--md-divider)')
+
+    // 블록 안 16진수 색 리터럴 0건·var(--md- 사용 1건 이상
+    expect(block.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).toEqual([])
+    expect((block.match(/var\(--md-/g) ?? []).length).toBeGreaterThanOrEqual(1)
+
+    // .ac-kind 세 규칙은 pre-flight HEAD 의 같은 규칙과 한 글자 차이 없이 동일 —
+    // 커밋된 위반이 거짓 합급하지 못하게 하는 기준선 지정 비교다
+    const before = execSync(`git show ${PRE_FLIGHT_HEAD}:web/style.css`, { cwd: repoRoot }).toString()
+    for (const rule of [/\.ac-kind\s*\{[^}]*\}/, /\.ac-kind\.to\s*\{[^}]*\}/, /\.ac-kind\.cc\s*\{[^}]*\}/]) {
+      const now = rule.exec(css)
+      const was = rule.exec(before)
+      expect(was).not.toBeNull()                            // 기준선에 규칙이 있다 — 비교가 공허하지 않게
+      expect(now).not.toBeNull()
+      expect(now![0]).toBe(was![0])
+    }
+  })
 })

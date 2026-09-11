@@ -890,3 +890,33 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
   color: var(--md-text-muted);
 }
 /* /SPEC-WEBUI-001 */
+
+/* SPEC-WEBMD-002 */
+/* 본문 @TO/@CC 배지 — 색 언어는 자동완성 배지(.ac-kind, SPEC-WEBACNAV-001)가 쓰는
+   토큰만 쓴다(REQ-WEBMD2-006). .ac-kind 세 규칙은 소비만 하고 한 글자도 고치지
+   않는다 — 칩의 비색 속성(min-width·간격·모서리·타이포)을 같은 토큰으로 미러한다 */
+
+/* 종류 칩 — 본문 안 인라인 문맥이므로 inline-block 으로 칩 폭을 갖는다 */
+.md-mention {
+  display: inline-block;
+  min-width: 2.2em;
+  padding: 0 var(--md-space-1);
+  border-radius: var(--md-radius-badge);
+  font-size: var(--md-font-size-label);
+  font-weight: var(--md-font-weight-name);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* TO — 채운 강조색 배경 (자동완성 배지 .ac-kind.to 와 같은 색) */
+.md-mention.to {
+  background: var(--md-accent);
+  color: var(--md-text-primary);
+}
+
+/* CC — 흐린 글자에 가는 테두리 (자동완성 배지 .ac-kind.cc 와 같은 색) */
+.md-mention.cc {
+  color: var(--md-text-muted);
+  border: var(--md-border-width) solid var(--md-divider);
+}
+/* /SPEC-WEBMD-002 */

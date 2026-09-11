@@ -38,6 +38,12 @@ Tier S · plan-phase 산출물: spec.md(REQ 8 · AC 인라인 8) + plan.md(마�
 - GREEN: `renderInline` 말미(리터럴 폴백 직전)에 `@` 분기 추가 — 고정 문법 한 번 시도(`@TO(`/`@CC(` 대문자만), 이름 스캔은 `(`·`)`·공백 멈춤(`MENTION_NAME_STOP_RE`), 실패 즉시 한 글자 리터럴. 칩은 `createElement('span')`+`className`+`textContent` 로만 조립, 이름은 텍스트 노드(재해석 없음). export 다섯 무변경.
 - GREEN 확인: `npx vitest run server/test/web-markdown.test.ts` → `Tests  23 passed (23)`, exit 0.
 
+**M2 스타일 (AC-WEBMD2-006) — TDD**
+
+- RED (스타일 블록 추가 전): `npx vitest run server/test/web-markdown.test.ts` → `Tests  1 failed | 23 passed (24)` — `AssertionError: expected -1 to be greater than or equal to 0`(SPEC-WEBMD-002 블록 부재). 시험은 `git show 67db21a…:web/style.css` 기준선과 `.ac-kind` 세 규칙을 비교한다.
+- GREEN: `web/style.css` 말미에 `/* SPEC-WEBMD-002 */` 블록 신설 — `.md-mention` 공통(inline-block·min-width·간격·모서리·타이포를 `.ac-kind` 와 같은 토큰으로 미러) + `.to`(강조색 배경) + `.cc`(흐린 글자·가는 테두리). `.ac-kind` 세 규칙 무수정, hex 0건, `var(--md-*` 만 사용.
+- GREEN 확인: `npx vitest run server/test/web-markdown.test.ts` → `Tests  24 passed (24)`, exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
