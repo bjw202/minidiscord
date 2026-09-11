@@ -113,3 +113,37 @@ describe('D-3 hidden guard (real browser, card t32 §D)', () => {
     }
   })
 })
+
+// ── SPEC-WEBUI-001 — 실브라우저 뒤 겹 (C2·C1·C3) ────────────────────────
+// 그리드 자동 배치는 CSS 사양 동작이라 jsdom 이 재지 못한다. CSS 정적 단언은 「규칙이
+// 적혀 있다」까지만 보고, 적힌 규칙이 실제로 듣는지는 여기서 잰다.
+describe('SPEC-WEBUI-001 real-browser layers', () => {
+  // AC-WEBUI-006 뒤 겹 — 이 SPEC 에서 유일하게 「시험은 초록인데 화면이 깨진」 상태를 잡는 관측
+  it('keeps a decoration node out of the 40px avatar column (real browser)', { skip: skipReason !== null, timeout: 60_000 }, async () => {
+    const { page, dispose } = await bootVisual()
+    try {
+      await page.evaluate(async () => {
+        await fetch('/api/rooms', { method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'probe' }) })
+      })
+      await page.reload()
+      await page.click('#room-list .room-item')
+      // 메시지 하나를 실제로 보낸다 — 렌더 경로를 그대로 지난다
+      await page.fill('#msg-input', '레이아웃 탐침')
+      await page.click('#send-btn')
+      await page.waitForSelector('#messages .message')
+
+      // SPEC-WEBRICH-001 이 붙이는 것과 «같은 자리»에 노드를 하나 붙인다 (el.appendChild(node))
+      const width = await page.evaluate(() => {
+        const m = document.querySelector('#messages .message')!
+        const probe = document.createElement('div')
+        probe.className = 'attachment-probe'
+        probe.textContent = '첨부 자리 탐침'
+        m.appendChild(probe)                      // rich.js 의 el.appendChild 와 같은 직계 자식 추가
+        return probe.getBoundingClientRect().width
+      })
+      // 40px 칸으로 밀려 들어갔으면 이 값이 40 언저리다. 2열이면 본문 폭을 받는다.
+      expect(width).toBeGreaterThan(200)
+    } finally { await dispose() }
+  })
+})

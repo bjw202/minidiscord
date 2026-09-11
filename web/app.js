@@ -374,7 +374,9 @@ export function registerMessageDecorator(factory) {
 }
 
 // ── 렌더 ─────────────────────────────────────────────────────────────
-// div.message.<author_type> > (.msg-head > strong+span, .msg-body) (REQ-WEBCHAT-003).
+// div.message.<author_type> > (span.msg-avatar, div.msg-head, div.msg-body)
+// SPEC-WEBUI-001 §5.2 — 직계 자식 셋. 그리드 2열 배치이며 감싸는 컨테이너를 넣지 않는다.
+// 시각은 .msg-time 클래스로 지목한다 (봇 메시지에서는 .bot-badge 가 먼저 온다).
 // 사용자·봇·시스템이 만든 문자열은 전부 textContent 로만 넣는다 (REQ-WEBCHAT-004).
 
 // 턴 그룹핑 — 같은 사람의 연속 메시지를 한 뭉치로 보기 위한 기준점(마지막으로 그린 메시지).
@@ -419,12 +421,33 @@ function sameTurn(a, b) {
   return Math.abs(tb - ta) <= 5 * 60 * 1000
 }
 
+// 아바타 색 — 작성자마다 고정된 다섯 역할색 순환 (REQ-WEBUI-006). 봇은 author_bot_id,
+// 사람은 author_user_id 를 키로 쓴다. 사람의 키가 없을 때 이름 코드 단위 합으로 갈라뜨린다 —
+// 키가 undefined 면 모든 사람이 같은 색이 되어 «개인을 가른다»는 목적이 조용히 무너진다.
+// system 은 색 클래스를 붙이지 않는다(CSS 가 패널 배경·흐린 글자로 그린다).
+function avatarColorClass(m) {
+  if (m.author_type === 'bot') return `avatar-color-${((m.author_bot_id ?? 0) % 5) + 1}`
+  if (m.author_type === 'user') {
+    const key = m.author_user_id ?? [...(m.author_name ?? '')].reduce((h, c) => (h + c.codePointAt(0)) % 5, 0)
+    return `avatar-color-${(key % 5) + 1}`
+  }
+  return null
+}
+
 export function renderMessage(m, prev = lastRenderedMsg) {
   const wrap = document.createElement('div')
   wrap.className = `message ${m.author_type}`
   // 같은 턴이면 머리글을 CSS 로만 숨긴다(.turn-cont) — 머리글은 DOM 에 남아 화면낭독기와
   // 구조 시험(web-chat.test.ts)이 기대하는 계약을 지킨다
   if (sameTurn(prev, m)) wrap.classList.add('turn-cont')
+
+  // 아바타 기둥 — 작성자 이름 첫 글자 하나(REQ-WEBUI-005). .msg-head/.msg-body 와 함께
+  // .message 의 직계 자식 셋을 이룬다(SPEC-WEBUI-001 §5.2). 감싸는 컨테이너는 넣지 않는다.
+  const avatar = document.createElement('span')
+  avatar.className = 'msg-avatar'
+  avatar.textContent = [...(m.author_name ?? '')][0] ?? ''
+  const avatarColor = avatarColorClass(m)
+  if (avatarColor) avatar.classList.add(avatarColor)
 
   const head = document.createElement('div')
   head.className = 'msg-head'
@@ -438,6 +461,14 @@ export function renderMessage(m, prev = lastRenderedMsg) {
   time.className = 'msg-time'
   time.textContent = displayTime(m.created_at)
   head.appendChild(author)
+  // 봇 배지 — 색각 이상·저대비에서도 봇을 가르는, 색에 기대지 않는 두 번째 단서(REQ-WEBUI-007).
+  // .msg-time 보다 앞에 온다 — 시각은 .msg-time 클래스로 지목한다(§5.2)
+  if (m.author_type === 'bot') {
+    const badge = document.createElement('span')
+    badge.className = 'bot-badge'
+    badge.textContent = 'BOT'
+    head.appendChild(badge)
+  }
   head.appendChild(time)
 
   const body = document.createElement('div')
@@ -456,6 +487,7 @@ export function renderMessage(m, prev = lastRenderedMsg) {
     console.warn('markdown 렌더 실패 — 원문 텍스트로 되돌림', err)
   }
 
+  wrap.appendChild(avatar)
   wrap.appendChild(head)
   wrap.appendChild(body)
 

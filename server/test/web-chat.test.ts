@@ -1139,3 +1139,93 @@ describe('SPEC-WEBACNAV-001 keyboard navigation and TO/CC badges', () => {
 // 실패시키므로(실측) describe 블록은 첫 AC it 과 함께(M1) 열고 여기서는 별칭만 먼저 둔다.
 const css = () => readFileSync(join(webDir, 'style.css'), 'utf8')
 const rule = (sel: string) => cssRuleBlock(css(), sel)
+
+describe('SPEC-WEBUI-001 메시지 표면·작성기', () => {
+  // ── AC-WEBUI-006 — 메시지 세 직계 자식과 사라진 구분선 (앞 겹) ──────
+  it('adds an avatar column while keeping head and body as direct children', async () => {
+    const app = await loadApp(baseHandler({ '/api/rooms/1/messages': { messages: [
+      msg({ id: 1, author_name: 'jw', author_user_id: 7, body: '사람' }),
+      msg({ id: 2, author_type: 'bot', author_name: 'a', author_bot_id: 1, body: '봇1' }),
+      msg({ id: 3, author_type: 'system', author_name: '시스템', body: '알림' }),
+    ] } }))
+    await app.openRoom(1); await flush()
+
+    const first = document.querySelector('#messages .message') as HTMLElement
+    // 새 계약: 직계 자식 셋 (SPEC-WEBUI-001 §5.2)
+    expect([...first.children].map(c => c.className.split(' ')[0]))
+      .toEqual(['msg-avatar', 'msg-head', 'msg-body'])
+    // 형제 계약 회귀 — 감싸는 컨테이너를 넣지 않았다
+    expect($$('#messages .message > .msg-head > strong').length).toBe(3)
+    expect($$('#messages .message > .msg-body').length).toBe(3)
+    // 아바타는 이름 첫 글자 하나
+    expect(first.querySelector('.msg-avatar')!.textContent).toBe('j')
+
+    // 턴 구분선은 사라졌다 — 경계는 간격과 아바타가 진다
+    expect(rule('.message:not(.turn-cont)')).not.toMatch(/border-top:\s*var\(--md-border-width\)/)
+    expect(rule('.message')).toMatch(/display:\s*grid/)
+
+    // [F5] 형제 SPEC 의 장식 노드는 .message 의 «직계 자식» 이다 (web/rich.js 의 el.appendChild 두 자리).
+    // 명시 배치가 없으면 넷째 이후 직계 자식이 40px 아바타 칸으로 자동 배치된다.
+    expect(rule('.message > :not(.msg-avatar)')).toMatch(/grid-column:\s*2/)
+  })
+
+  // ── AC-WEBUI-007 — 아바타 색은 작성자마다 고정이다 ──────────────────
+  it('assigns a deterministic role color per author', async () => {
+    const app = await loadApp(baseHandler())
+    const cls = (i: number) => ($$('#messages .msg-avatar')[i] as HTMLElement).className
+    const color = (i: number) => /avatar-color-[1-5]/.exec(cls(i))?.[0]
+
+    app.renderMessage(msg({ id: 1, author_name: 'jw', author_user_id: 7, created_at: '2026-09-11 10:00:00' }))
+    app.renderMessage(msg({ id: 2, author_name: 'pm', author_user_id: 8, created_at: '2026-09-11 11:00:00' }))
+    app.renderMessage(msg({ id: 3, author_name: 'jw', author_user_id: 7, created_at: '2026-09-11 12:00:00' }))
+    app.renderMessage(msg({ id: 4, author_type: 'system', author_name: '시스템', created_at: '2026-09-11 13:00:00' }))
+    app.renderMessage(msg({ id: 5, author_name: '가나다', author_user_id: null, created_at: '2026-09-11 14:00:00' }))
+    app.renderMessage(msg({ id: 6, author_name: '라마바', author_user_id: null, created_at: '2026-09-11 15:00:00' }))
+
+    expect(color(0)).toMatch(/avatar-color-[1-5]/)   // 다섯 토큰 안
+    expect(color(2)).toBe(color(0))                  // 같은 사람은 다시 그려도 같은 색
+    expect(color(1)).not.toBe(color(0))              // 다른 사람은 다른 색
+    expect(cls(3)).not.toMatch(/avatar-color-/)      // system 은 역할 색을 쓰지 않는다
+    // author_user_id 가 없어도 모두가 한 색으로 뭉치지 않는다
+    expect(color(5)).not.toBe(color(4))
+
+    // 다섯 클래스가 전부 역할 색 토큰만 소비한다 — 새 색을 만들지 않았다
+    for (const n of [1, 2, 3, 4, 5]) {
+      expect(rule(`.avatar-color-${n}`)).toMatch(new RegExp(`background:\\s*var\\(--md-role-color-${n}\\)`))
+    }
+  })
+
+  // ── AC-WEBUI-008 — 봇은 색 없이도 봇으로 읽힌다 ─────────────────────
+  it('marks bots with a non-color badge and keeps the name colors unchanged', async () => {
+    const app = await loadApp(baseHandler({ '/api/rooms/1/messages': { messages: [
+      msg({ id: 1, author_type: 'bot', author_name: 'jarvis', author_bot_id: 2 }),
+      msg({ id: 2, author_name: 'jw', author_user_id: 7 }),
+      msg({ id: 3, author_type: 'system', author_name: '시스템' }),
+    ] } }))
+    await app.openRoom(1); await flush()
+
+    expect($$('#messages .message.bot .bot-badge').length).toBe(1)
+    expect(($$('#messages .message.bot .bot-badge')[0] as HTMLElement).textContent).toBe('BOT')
+    expect($$('#messages .message.user .bot-badge').length).toBe(0)
+    expect($$('#messages .message.system .bot-badge').length).toBe(0)
+    // 이름 색 규칙은 개정되지 않았다 (형제 회귀)
+    expect(($$('#messages .message.bot .msg-head > strong')[0] as HTMLElement).className).toMatch(/\bbot-color-[1-5]\b/)
+    // 시각은 이제 클래스로 지목한다 — 배지가 먼저 오므로 span 순서에 기대지 않는다
+    expect($$('#messages .message.bot .msg-time').length).toBe(1)
+  })
+
+  // ── AC-WEBUI-009 — 이어짐 행의 아바타 기둥 ──────────────────────────
+  it('keeps the avatar in the DOM on continuation rows and hides it visually only', async () => {
+    const app = await loadApp(baseHandler())
+    app.renderMessage(msg({ id: 1, author_name: 'jw', author_user_id: 7, created_at: '2026-09-11 10:00:00' }))
+    app.renderMessage(msg({ id: 2, author_name: 'jw', author_user_id: 7, created_at: '2026-09-11 10:02:00' }))
+    const rows = $$('#messages .message')
+    expect(rows[1].classList.contains('turn-cont')).toBe(true)
+    // DOM 모양은 첫 줄과 같다 — 구조 시험이 입력에 따라 갈라지지 않는다
+    expect(rows[1].querySelector('.msg-avatar')).not.toBeNull()
+    // 감춤은 시각적으로만. display:none 은 40px 기둥을 무너뜨려 본문 정렬이 어긋난다
+    const src = css()
+    expect(src).toMatch(/\.turn-cont\s+\.msg-avatar[^{]*\{[^}]*visibility:\s*hidden/)
+    expect(/\.turn-cont\s+\.msg-avatar[^{]*\{[^}]*display:\s*none/.test(src)).toBe(false)
+  })
+})
