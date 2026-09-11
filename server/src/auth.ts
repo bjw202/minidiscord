@@ -17,7 +17,7 @@ export const USERNAME_MAX_LENGTH = 32
 // 표시·로그를 깨뜨리고 화면상 구분되지 않는 닮은꼴 계정을 만든다 (t33 F2 — sync 감사)
 const USERNAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u
 
-// @MX:NOTE: 이 모듈이 등록하는 라우트는 login·logout 둘뿐 — 가입은 없다. 처음 보는 이름은 로그인 때 users 에 생긴다
+// @MX:NOTE: 이 모듈이 등록하는 /api/auth 라우트는 셋 — login·logout·me(GET /api/auth/me, 읽기 전용). 가입은 없다. 처음 보는 이름은 로그인 때 users 에 생긴다 (라우트 셋째는 SPEC-WEBUI-001 §5 가 인수했다)
 export function registerAuthRoutes(app: FastifyInstance, db: Db): void {
   app.post('/api/auth/login', async (req, reply) => {
     const { username } = req.body as { username?: string }
@@ -47,6 +47,11 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db): void {
     reply.clearCookie('md_session', { path: '/' })
     return { ok: true }
   })
+
+  // 계정 바의 «현재 사용자 이름» 출처 (SPEC-WEBUI-001 REQ-WEBUI-013 — 운영자가 승인한 범위 확장).
+  // 새 질의가 없다: requireAuth 가 이미 sessions/users 조인으로 req.user = {id, username} 를
+  // 채웠고 이 라우트는 그것을 읽기만 한다. 미인증 401 도 requireAuth 가 이미 하던 대로다.
+  app.get('/api/auth/me', { preHandler: [requireAuth] }, async req => req.user)
 }
 
 // @MX:ANCHOR: [AUTO] 모든 보호 라우트의 preHandler 진입 검사 — SPEC-ROOM-001·SPEC-BOT-001 이 소비하는 공개 계약

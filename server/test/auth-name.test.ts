@@ -123,11 +123,48 @@ describe('auth — name login', () => {
   it('serves logout without a session, exposes only login and logout, and keeps protected routes at 401', async () => {
     const app = await build()
     expect((await app.inject({ method: 'POST', url: '/api/auth/logout', payload: {} })).statusCode).toBe(200)
-    // 이 모듈이 등록하는 /api/auth 라우트는 login·logout 둘뿐이다 — 가입 라우트는 등록되지 않는다
+    // 이 모듈이 등록하는 /api/auth 라우트는 셋이다 — login·logout·me(SPEC-WEBUI-001 §5). 가입 라우트는 등록되지 않는다
     const authRoutes = app.printRoutes().split('\n').filter(l => l.includes('login') || l.includes('logout') || l.includes('regist'))
     expect(authRoutes.some(l => l.includes('regist'))).toBe(false)
     expect(app.hasRoute({ method: 'POST', url: '/api/auth/login' })).toBe(true)
     expect(app.hasRoute({ method: 'POST', url: '/api/auth/logout' })).toBe(true)
     expect((await app.inject({ method: 'GET', url: '/api/me' })).statusCode).toBe(401)
+  })
+})
+
+describe('SPEC-WEBUI-001 — GET /api/auth/me', () => {
+  it('401s without a cookie and mirrors the session user with one', async () => {
+    const app = await build()
+    // 쿠키 없이 — requireAuth 가 이미 하던 401 을 그대로 낸다
+    const anon = await app.inject({ method: 'GET', url: '/api/auth/me' })
+    expect(anon.statusCode).toBe(401)
+    expect(anon.json()).toEqual({ error: '로그인이 필요합니다' })
+
+    // 로그인 뒤 — 세션이 가리키는 사용자를 그대로 돌려준다
+    const res = await login(app, 'alice')
+    const me = await app.inject({
+      method: 'GET', url: '/api/auth/me',
+      headers: { cookie: setCookieOf(res).split(';')[0] },
+    })
+    expect(me.statusCode).toBe(200)
+    const row = db.prepare('SELECT id, username FROM users WHERE username = ?').get('alice')
+    expect(me.json()).toEqual(row)          // req.user 를 다시 빚지 않는다 — {id, username} 그대로
+    expect(Object.keys(me.json()).sort()).toEqual(['id', 'username'])   // 키가 늘지 않았다
+  })
+
+  // [F8] 위 it 은 build() 가 만든 앱을 찌른다. 누군가 build() 에 /api/auth/me 를 한 줄 더하면
+  // server/src/auth.ts 의 라우트를 통째로 지워도 위 it 은 초록이다 — 산문 금지로는 못 막는다.
+  // 그래서 «대역이 있을 수 없는» 앱을 따로 세워 라우트의 출처를 직접 묻는다.
+  it('registers /api/auth/me inside registerAuthRoutes itself, not in the test harness', async () => {
+    const bare = Fastify()
+    bare.db = db
+    await bare.register(cookie)
+    registerAuthRoutes(bare, db)          // 이 한 줄이 등록하는 것만 있는 앱
+    await bare.ready()
+    expect(bare.hasRoute({ method: 'GET', url: '/api/auth/me' })).toBe(true)
+    // 기존 두 라우트도 그대로다 — 새 라우트가 무언가를 밀어내지 않았다
+    expect(bare.hasRoute({ method: 'POST', url: '/api/auth/login' })).toBe(true)
+    expect(bare.hasRoute({ method: 'POST', url: '/api/auth/logout' })).toBe(true)
+    await bare.close()
   })
 })

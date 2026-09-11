@@ -236,6 +236,27 @@ export async function logout() {
   showAuth()
 }
 
+// ── 계정 바의 «현재 사용자 이름» 출처 (SPEC-WEBUI-001 §4.5) ──────────────
+// 읽기 전용 라우트 하나가 이름의 유일한 출처다(REQ-WEBUI-014). login() 이 받은 문자열로
+// state.user 를 직접 채우는 지름길은 쓰지 않는다 — login() 에는 id 가 없어 반쯤 빈 모양이
+// 되고, 출처가 둘이 되면 복구 경로와 로그인 경로가 어긋날 수 있다. 이 함수는 계약 6 의
+// 아홉 함수 밖이다 — 호출은 initApp() 안에만 산다.
+export async function loadMe() {
+  state.user = await api('/api/auth/me')
+  renderAccountBar()
+}
+
+// 계정 바 렌더 — state.user 가 없으면 빈 칸으로 둔다. 아바타는 이름 첫 글자(REQ-WEBUI-012).
+function renderAccountBar() {
+  const bar = document.querySelector('#sidebar .account-bar')
+  if (!bar) return
+  const name = state.user?.username ?? ''
+  const avatar = bar.querySelector('.account-avatar')
+  const nameEl = bar.querySelector('.account-name')
+  if (avatar) avatar.textContent = [...name][0] ?? ''
+  if (nameEl) nameEl.textContent = name
+}
+
 // ── 방·봇 생성/보관 액션 ──────────────────────────────────────────────
 // 서버 오류를 삼키지 않고 #error-toast 에 문구를 띄운다 (REQ-WEBSHELL-010, plan.md §D 4번).
 // 이 다섯 액션 함수의 네트워크 호출 순서와 개수는 고정이다 (§4.8 계약 6).
@@ -361,10 +382,15 @@ export function promptText(label) {
 // index.html 의 인라인 모듈 스크립트가 부른다. 폼 핸들러를 걸고
 // 살아 있는 세션이 있는지 한 번 물어본 뒤 화면을 정한다 (REQ-WEBSHELL-008).
 export function initApp() {
+  // 계정 바가 쓸 사용자 필드를 스스로 선언·초기화한다 (§4.8 계약 2, SPEC-WEBUI-001 REQ-WEBUI-014)
+  state.user = null
   $('login-form').addEventListener('submit', async (e) => {
     e.preventDefault()
     try {
       await login($('login-username').value.trim())
+      // 로그인 성공 뒤 이름을 되묻는다 — loadMe() 는 initApp 안에서만 부른다(계약 6).
+      // login() 본문에는 넣지 않는다: 아홉 함수의 호출 순번이 형제 시험에 동결돼 있다.
+      await loadMe()
     } catch { /* login 이 이미 #auth-error 를 채웠다 */ }
   })
   $('new-room-btn').addEventListener('click', async () => {
@@ -384,8 +410,12 @@ export function initApp() {
   // 세션이 살아 있으면 메인 화면으로, 아니면 인증 화면으로.
   // 401 이면 api() 가 이미 showAuth() 를 불렀지만 네트워크 실패 등 다른 오류도
   // 인증 화면으로 떨어지게 한다(중복 호출은 무해하다).
+  // loadMe() 는 showMain() 앞에 둔다 — 메인 화면이 뜨는 순간 이름이 이미 있어야
+  // 계정 바가 빈 칸으로 깜빡이지 않는다(REQ-WEBUI-014). 여기까지 와서 /api/auth/me 가
+  // 401 이면 세션이 정말 죽은 것이므로 아래 catch 의 인증 화면이 옳은 방향이다.
   loadRooms()
     .then(() => loadBots())
+    .then(() => loadMe())
     .then(() => showMain())
     .catch(() => showAuth())
 }

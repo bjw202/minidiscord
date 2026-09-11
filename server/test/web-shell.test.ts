@@ -621,4 +621,39 @@ describe('SPEC-WEBUI-001 방 목록·계정 바', () => {
     await flush()
     expect(calls.filter(c => c.path === '/api/auth/logout')).toHaveLength(1)
   })
+
+  // ── AC-WEBUI-014 — 이름이 새로고침을 넘긴다 ───────────────────────────
+  it('restores the account-bar name after a reload', async () => {
+    const app = await loadApp(); loadDom()
+    const calls = stubFetch({
+      'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
+      'GET /api/bots': { status: 200, body: [] },
+      'GET /api/auth/me': { status: 200, body: { id: 7, username: '김피엘' } },
+    })
+    // 로그인 폼을 거치지 않는 «새로고침» 경로 — 부트스트랩만 돈다
+    app.initApp()
+    await flush()
+
+    // 이름의 출처는 라우트 하나뿐이고, 정확히 한 번 물어본다
+    expect(calls.filter(c => c.path === '/api/auth/me')).toHaveLength(1)
+    expect(app.state.user).toEqual({ id: 7, username: '김피엘' })
+    // 계정 바가 그 이름을 그린다 — 아바타는 첫 글자
+    const bar = document.querySelector('#sidebar .account-bar')!
+    expect(bar.textContent).toContain('김피엘')
+    expect(bar.querySelector('.account-avatar')!.textContent).toBe('김')
+    // 메인 화면이 뜬 시점에 이미 채워져 있다 (빈 칸이 깜빡이지 않는다)
+    expect(document.getElementById('main-view')!.hasAttribute('hidden')).toBe(false)
+  })
+
+  it('does not put the /me call inside login()', async () => {
+    const app = await loadApp()
+    const calls = stubFetch({
+      'POST /api/auth/login': { status: 200, body: { ok: true } },
+      'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
+      'GET /api/bots': { status: 200, body: [] },
+    })
+    await app.login('alice')
+    // §4.8 계약 6 — 아홉 함수의 호출 순번은 그대로다. /me 는 initApp 의 폼 핸들러가 부른다
+    expect(calls.map(c => c.path)).toEqual(['/api/auth/login', '/api/rooms', '/api/bots'])
+  })
 })
