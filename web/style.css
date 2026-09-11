@@ -129,38 +129,49 @@ input:focus { outline: 1px solid var(--md-accent); }
   padding: 0;
 }
 
-/* 방 항목 — 호버 시 눈에 띄게 밝아진다 (design DNA §1) */
+/* 방 항목 — 한 줄 26px, 호버 시 눈에 띄게 밝아진다 (design DNA §1, SPEC-WEBUI-001 REQ-001).
+   26px·아바타 40px 는 리터럴 길이로 적는다(plan.md §B.7) */
 .room-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--md-space-2);
-  padding: var(--md-space-1) var(--md-space-2);
+  gap: var(--md-space-1);
+  height: 26px;
+  min-width: 0;
+  padding: 0 var(--md-space-2);
   border-radius: var(--md-radius-badge);
   cursor: pointer;
 }
 
 .room-item:hover { background: var(--md-bg-hover); }
 
-/* 현재 방 표시 — 호버와 같은 밝기 계열에 흰 텍스트 */
+/* 현재 방 표시 — 호버와 같은 밝기 계열에 흰 텍스트. 강조 막대는 inset box-shadow 다:
+   border-left 는 26px 고정 높이 안에서 콘텐츠 폭을 2px 밀어 현재 방만 글자 시작점이 어긋난다 (REQ-WEBUI-002) */
 .room-item.active {
   background: var(--md-bg-hover);
   color: var(--md-text-primary);
   font-weight: var(--md-font-weight-name);
+  box-shadow: inset 2px 0 0 var(--md-accent);
 }
 
-/* 보관된 방은 다시 보관할 수 없다 — 버튼이 없고 흐리게 (REQ-WEBSHELL-009) */
-#archived-list .room-item { color: var(--md-text-muted); }
+/* 보관된 방은 다시 보관할 수 없다 — 버튼이 없고 흐리게 (REQ-WEBSHELL-009, REQ-WEBUI-004) */
+#archived-list .room-item { color: var(--md-text-muted); opacity: 0.55; }
 #archived-list .room-item:hover { background: none; }
 
-/* 보관 버튼 — 텍스트 크기를 줄여 방 이름과 눈금을 맞춘다 */
+/* 보관 버튼 — 20×20 아이콘 버튼. 평소 opacity 0, 호버·초점에서 CSS 로만 되돌아온다 (REQ-WEBUI-003) */
 .archive-btn {
-  padding: var(--md-space-1) var(--md-space-2);
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   color: var(--md-text-muted);
-  font-size: var(--md-font-size-label);
+  opacity: 0;
 }
-.archive-btn:hover { color: var(--md-status-error); background: none; }
+.archive-btn:hover { color: var(--md-text-primary); background: var(--md-bg-input); }
 
 /* 봇 삭제 버튼 — 보관 버튼과 같은 모양 (2026-09-08) */
 .bot-item { display: flex; align-items: center; justify-content: space-between; }
@@ -175,7 +186,19 @@ input:focus { outline: 1px solid var(--md-accent); }
 /* 봇 목록 — 상태 표시는 각 항목 안쪽에 붙는다(형제 SPEC 계약, spec.md §4.8 계약 4) */
 #bot-list { margin-bottom: var(--md-space-3); }
 
-#logout-btn { margin-top: auto; }
+/* 로그아웃 — 계정 바 안의 조용한 아이콘 버튼 (REQ-WEBUI-012). margin-top:auto 대신
+   .account-bar 의 margin auto 가 사이드바 바닥에 붙인다. id 는 영속 20개 중 하나 — 옮겨졌을 뿐이다 */
+#logout-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  color: var(--md-text-muted);
+}
 
 /* ── 채팅 영역 — 내용물는 형제 SPEC(SPEC-WEBCHAT-001) 이 채운다 ── */
 #chat { flex: 1; }
@@ -744,4 +767,76 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
 .avatar-color-3 { background: var(--md-role-color-3); }
 .avatar-color-4 { background: var(--md-role-color-4); }
 .avatar-color-5 { background: var(--md-role-color-5); }
+
+/* C1 — 방 행: # + 앞머리 + 꼬리 세 span (REQ-WEBUI-001). [HARD] 줄어드는 것은
+   앞머리뿐이다 — 폭이 모자라면 앞머리에 생략기호가 붙고 꼬리는 결코 잘리지 않는다 */
+.room-hash { flex-shrink: 0; }
+.room-prefix {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--md-font-size-label);
+  color: var(--md-text-muted);
+}
+.room-name {
+  font-size: var(--md-font-size-body);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* 현재 방(REQ-WEBUI-002)과 행 호버(REQ-WEBUI-003)에서 꼬리를 밝힌다 */
+.room-item.active .room-name { color: var(--md-text-primary); font-weight: var(--md-font-weight-name); }
+.room-item:hover .room-name { color: var(--md-text-primary); }
+/* 보관 버튼은 호버·키보드 초점에서만 보인다 — opacity 외의 감춤은 탭 순서에서 빼 버린다 */
+.room-item:hover .archive-btn { opacity: 1; }
+.archive-btn:focus-visible { opacity: 1; }
+
+/* C4 — 계정 바 (REQ-WEBUI-012). margin auto 가 바닥에 밀어 붙이고 음수 좌우·아래 여백이
+   사이드바 패딩을 상쇄해 바닥에 꽉 붙는다. 이 앱에서 가장 어두운 층(--md-bg-sidebar) */
+.account-bar {
+  margin: auto calc(-1 * var(--md-space-3)) calc(-1 * var(--md-space-3));
+  padding: var(--md-space-2) var(--md-space-3);
+  background: var(--md-bg-sidebar);
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-2);
+}
+.account-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--md-radius-avatar);
+  background: var(--md-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--md-font-size-timestamp);
+  font-weight: var(--md-font-weight-name);
+  color: var(--md-text-primary);
+}
+.account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--md-font-size-body);
+  font-weight: var(--md-font-weight-name);
+  color: var(--md-text-primary);
+}
+#logout-btn:hover { color: var(--md-status-error); }
+
+/* 사이드바의 두 생성 버튼 — 강조색을 버리고 조용한 아이콘이 된다 (REQ-WEBUI-004).
+   [HARD] 두 버튼은 공동 규칙 하나로 쓴다 — 선택자 문자열 `#new-room-btn, #new-bot-btn`
+   의 이 순서·이 형태가 규범이다(두 규칙으로 쪼개지 않는다) */
+#new-room-btn, #new-bot-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  color: var(--md-text-muted);
+}
+#new-room-btn:hover, #new-bot-btn:hover { color: var(--md-text-primary); }
 /* /SPEC-WEBUI-001 */

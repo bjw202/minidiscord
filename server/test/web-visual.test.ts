@@ -146,4 +146,33 @@ describe('SPEC-WEBUI-001 real-browser layers', () => {
       expect(width).toBeGreaterThan(200)
     } finally { await dispose() }
   })
+
+  // AC-WEBUI-003 뒤 겹 — 실제 API 로 만든 방 둘의 행 높이가 둘 다 26 이고 꼬리가 잘리지 않는다.
+  // window.__app 같은 전역은 쓰지 않는다 — web/app.js 는 ES 모듈이고 전역을 심지 않는다.
+  it('renders every room row at the same fixed height (real browser)', { skip: skipReason !== null, timeout: 60_000 }, async () => {
+    const { page, dispose } = await bootVisual()
+    try {
+      // 방 둘을 실제 서버에 만든다 — 페이지의 세션 쿠키를 그대로 쓰는 fetch 다
+      await page.evaluate(async () => {
+        const mk = (name: string) => fetch('/api/rooms', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),
+        })
+        await mk('a')
+        await mk('prodev-worktogether-2026-장기/분기별-수율-보고서-최종본')
+      })
+      await page.reload()
+      await page.waitForSelector('#room-list .room-item')
+
+      const heights = await page.$$eval('#room-list .room-item',
+        (els: Element[]) => els.map((e: Element) => e.getBoundingClientRect().height))
+      expect(heights).toHaveLength(2)
+      expect(heights[0]).toBe(26)
+      expect(heights[1]).toBe(heights[0])   // 이름 길이가 행 높이를 바꾸지 않는다
+      // 꼬리는 화면에서도 잘리지 않는다 — 줄어드는 것은 앞머리뿐이다
+      const tail = await page.$$eval('#room-list .room-item .room-name',
+        (els: Element[]) => els.map((e: Element) => e.scrollWidth <= e.clientWidth))
+      expect(tail).toEqual([true, true])
+    } finally { await dispose() }
+  })
 })

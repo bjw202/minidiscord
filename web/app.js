@@ -60,8 +60,8 @@ export function showMain() {
 }
 
 // ── 방 목록 ───────────────────────────────────────────────────────────
-// 활성 방은 `# 이름` + 보관 버튼, 보관된 방은 버튼 없이 흐리게 (REQ-WEBSHELL-009).
-// .room-item / .archive-btn 클래스 이름과 이 규칙은 형제가 바꾸지 않는다 (§4.8 계약 4).
+// 방 행은 # + 앞머리 + 꼬리 세 span 이고 보관 버튼은 활성 방에만 있다.
+// 이 구조와 클래스 이름은 SPEC-WEBUI-001 §5.1 — 꼬리는 줄이지 않는다 (줄어드는 것은 앞머리뿐).
 export function renderRooms() {
   const roomList = $('room-list')
   roomList.innerHTML = ''
@@ -69,11 +69,15 @@ export function renderRooms() {
     const item = document.createElement('li')
     item.className = 'room-item'
     if (room.id === state.currentRoomId) item.classList.add('active')
-    item.textContent = `# ${room.name}`
+    item.append(...roomNameSpans(room.name))
     const archiveBtn = document.createElement('button')
     archiveBtn.type = 'button'
     archiveBtn.className = 'archive-btn'
-    archiveBtn.textContent = '보관'
+    // 아이콘만 남으므로 접근 가능한 이름을 속성으로 갖는다 (REQ-WEBUI-003).
+    // 감춤은 opacity 로만 한다 — DOM·탭 순서에는 늘 있다.
+    archiveBtn.setAttribute('aria-label', '방 보관')
+    archiveBtn.title = '방 보관'
+    archiveBtn.appendChild(svgIcon(16, ['M3 8l1.5-4h15L21 8', 'M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8', 'M10 12h4']))
     // 버튼 클릭이 방 열기까지 전파되지 않게 한다
     archiveBtn.addEventListener('click', (e) => {
       e.stopPropagation()
@@ -89,10 +93,61 @@ export function renderRooms() {
   for (const room of state.rooms.archived) {
     const item = document.createElement('li')
     item.className = 'room-item'
-    item.textContent = `# ${room.name}`
+    item.append(...roomNameSpans(room.name))
     item.addEventListener('click', () => openRoom(room.id))
     archivedList.appendChild(item)
   }
+}
+
+// 방 이름 분해 — 앞머리는 마지막 '/' 까지(포함), 꼬리는 나머지(구별되는 부분). '/' 가 없으면
+// 앞머리가 빈 문자열이고, 그렇게 나눈 꼬리가 빈 문자열이면(이름이 '/' 로 끝날 때) 나누지 않고
+// 이름 전체를 꼬리로 둔다 — 구별되는 부분이 하나도 안 보이는 행을 만들지 않기 위해서다 (REQ-WEBUI-001).
+function splitRoomName(name) {
+  const i = name.lastIndexOf('/')
+  if (i === -1) return { prefix: '', tail: name }
+  const tail = name.slice(i + 1)
+  if (tail === '') return { prefix: '', tail: name }
+  return { prefix: name.slice(0, i + 1), tail }
+}
+
+// 방 행의 세 span — 앞머리가 빈 문자열이어도 DOM 에 만든다. 구조가 이름에 따라 달라지면
+// 그 구조에 기대는 시험이 입력에 따라 붉어졌다 푸르렀다 한다. 세 span 의 문자열은 전부
+// textContent 로만 넣는다 — 방 이름은 다른 사용자가 등록할 수 있는 신뢰 경계 밖 문자열이다.
+function roomNameSpans(name) {
+  const { prefix, tail } = splitRoomName(name)
+  const hash = document.createElement('span')
+  hash.className = 'room-hash'
+  hash.textContent = '#'
+  const pre = document.createElement('span')
+  pre.className = 'room-prefix'
+  pre.textContent = prefix
+  const tailSpan = document.createElement('span')
+  tailSpan.className = 'room-name'
+  tailSpan.textContent = tail
+  return [hash, pre, tailSpan]
+}
+
+// 인라인 SVG 아이콘 — createElementNS 로만 만든다. web/ 의 어느 .js 도 innerHTML 에 빈
+// 문자열 외의 값을 넣을 수 없다(SPEC-WEBMD-010 REQ-WEBMD-005) — 마크업 파싱 API 금지가
+// 사용자 문자열 없는 정적 아이콘에도 그대로 걸린다. 색 리터럴 없이 currentColor 로 그린다(REQ-WEBUI-016).
+function svgIcon(size, paths) {
+  const NS = 'http://www.w3.org/2000/svg'
+  const svg = document.createElementNS(NS, 'svg')
+  svg.setAttribute('width', String(size))
+  svg.setAttribute('height', String(size))
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('fill', 'none')
+  svg.setAttribute('stroke', 'currentColor')
+  svg.setAttribute('stroke-width', '2')
+  svg.setAttribute('stroke-linecap', 'round')
+  svg.setAttribute('stroke-linejoin', 'round')
+  svg.setAttribute('aria-hidden', 'true')
+  for (const d of paths) {
+    const p = document.createElementNS(NS, 'path')
+    p.setAttribute('d', d)
+    svg.appendChild(p)
+  }
+  return svg
 }
 
 export async function loadRooms() {

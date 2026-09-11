@@ -471,3 +471,154 @@ describe('auth-error repair (card t32 §D)', () => {
 // 실패시킨다(실측) — 그래서 describe 블록은 첫 AC it 과 함께(M2) 열고, 여기서는 헬퍼 정의만
 // 먼저 둔다. plan.md M0 3단계의 의도(그 파일에 없는 헬퍼의 지역 정의)는 그대로 산다.
 const flush = () => new Promise(r => setTimeout(r, 0))
+
+describe('SPEC-WEBUI-001 방 목록·계정 바', () => {
+  // 이 블록의 CSS 정적 관측 — 공유 cssRuleBlock(server/test/css-rule.ts)에 원문 선택자를
+  // 이스케이프 없이 넘기는 별칭(acceptance.md § CSS 정적 관측).
+  const css = () => readFileSync(join(webDir, 'style.css'), 'utf8')
+  const rule = (sel: string) => cssRuleBlock(css(), sel)
+
+  // ── AC-WEBUI-001 — 방 행 세 조각과 이름 분해 ─────────────────────────
+  it('splits a room name into hash / prefix / tail spans', async () => {
+    const app = await loadApp(); loadDom()
+    app.state.rooms = {
+      active: [
+        { id: 1, name: 'prodev-a/보고', status: 'active', created_at: 'x', archived_at: null },
+        { id: 2, name: 'prodev-a', status: 'active', created_at: 'x', archived_at: null },
+        { id: 3, name: 'prodev-a/', status: 'active', created_at: 'x', archived_at: null },
+      ],
+      archived: [],
+    }
+    app.renderRooms()
+    const rows = [...document.getElementById('room-list')!.querySelectorAll('.room-item')]
+    const parts = (i: number) => ({
+      hash: rows[i].querySelector('.room-hash')!.textContent,
+      prefix: rows[i].querySelector('.room-prefix')!.textContent,
+      name: rows[i].querySelector('.room-name')!.textContent,
+    })
+    expect(parts(0)).toEqual({ hash: '#', prefix: 'prodev-a/', name: '보고' })
+    // '/' 가 없으면 전체가 꼬리 — prefix span 은 비어 있어도 DOM 에 있다
+    expect(parts(1)).toEqual({ hash: '#', prefix: '', name: 'prodev-a' })
+    // '/' 로 끝나면 나누지 않는다 — 구별되는 부분이 사라지는 행을 만들지 않는다
+    expect(parts(2)).toEqual({ hash: '#', prefix: '', name: 'prodev-a/' })
+  })
+
+  // ── AC-WEBUI-002 — 꼬리는 줄어들지 않는다 ────────────────────────────
+  it('keeps the whole tail in the DOM and shrinks only the prefix', async () => {
+    const app = await loadApp(); loadDom()
+    const long = 'prodev-worktogether-2026-장기프로젝트/분기별-수율-보고서-최종'
+    app.state.rooms = { active: [{ id: 1, name: long, status: 'active', created_at: 'x', archived_at: null }], archived: [] }
+    app.renderRooms()
+    const row = document.querySelector('#room-list .room-item')!
+    // DOM 의 꼬리는 생략되지 않은 원문 전체다 — 생략은 화면에서만 일어난다
+    expect(row.querySelector('.room-name')!.textContent).toBe('분기별-수율-보고서-최종')
+    expect(row.querySelector('.room-prefix')!.textContent).toBe('prodev-worktogether-2026-장기프로젝트/')
+
+    // 줄어드는 쪽은 앞머리뿐이다
+    const prefix = rule('.room-prefix')
+    expect(prefix).toMatch(/text-overflow:\s*ellipsis/)
+    expect(prefix).toMatch(/overflow:\s*hidden/)
+    expect(prefix).toMatch(/white-space:\s*nowrap/)
+    expect(prefix).toMatch(/min-width:\s*0/)
+    expect(rule('.room-name')).toMatch(/flex-shrink:\s*0/)
+    expect(rule('.room-name')).not.toMatch(/text-overflow/)
+  })
+
+  // ── AC-WEBUI-001 앞 겹 — 행 높이는 이름 길이와 무관하다 (AC-003 전반) ─
+  it('pins the row height and forbids wrapping in the stylesheet', () => {
+    const src = readFileSync(join(webDir, 'style.css'), 'utf8')
+    const item = cssRuleBlock(src, '.room-item')
+    // min-height 가 아니라 height — 이름이 두 줄이 되어도 행이 자라지 않는다
+    expect(item).toMatch(/(^|[^-])height:\s*26px/)
+    expect(item).not.toMatch(/min-height/)
+    // 세 span 이 전부 한 줄에 머문다
+    expect(cssRuleBlock(src, '.room-name')).toMatch(/white-space:\s*nowrap/)
+    expect(cssRuleBlock(src, '.room-prefix')).toMatch(/white-space:\s*nowrap/)
+  })
+
+  // ── AC-WEBUI-004 — 보관 컨트롤은 키보드로 닿는다 ─────────────────────
+  it('keeps the archive control reachable by keyboard', async () => {
+    const app = await loadApp(); loadDom()
+    app.state.rooms = { active: [{ id: 1, name: 'prj', status: 'active', created_at: 'x', archived_at: null }], archived: [] }
+    app.renderRooms()
+    const btn = document.querySelector('#room-list .room-item .archive-btn') as HTMLButtonElement
+    expect(btn.tagName).toBe('BUTTON')                       // 탭 순서에 있는 요소여야 한다
+    expect(btn.getAttribute('aria-label')).toBeTruthy()      // 아이콘만 남으므로 이름을 속성으로 갖는다
+    expect(btn.querySelector('svg')).not.toBeNull()          // 글자가 아니라 아이콘
+    expect(btn.textContent).not.toContain('보관')             // 글자 라벨은 사라졌다
+    btn.focus(); expect(document.activeElement).toBe(btn)    // 초점이 실제로 간다
+
+    // 감춤은 opacity 로만 한다 — 나머지 넷은 요소를 탭 순서에서 빼 버린다
+    const hidden = rule('.archive-btn')
+    expect(hidden).not.toMatch(/display:\s*none/)
+    expect(hidden).not.toMatch(/visibility:\s*hidden/)
+    expect(hidden).toMatch(/opacity:\s*0/)
+    const src = css()
+    expect(src).toMatch(/\.archive-btn:focus-visible[^{]*\{[^}]*opacity:\s*1/)
+    expect(src).toMatch(/\.room-item:hover\s+\.archive-btn[^{]*\{[^}]*opacity:\s*1/)
+  })
+
+  // ── AC-WEBUI-005 — 보관된 방·현재 방·조용해진 생성 버튼 ──────────────
+  it('keeps archived rooms controlless and marks the current room with an accent bar', async () => {
+    const app = await loadApp(); loadDom()
+    app.state.rooms = {
+      active: [
+        { id: 1, name: 'a', status: 'active', created_at: 'x', archived_at: null },
+        { id: 2, name: 'b', status: 'active', created_at: 'x', archived_at: null },
+      ],
+      archived: [{ id: 3, name: '옛방', status: 'archived', created_at: 'x', archived_at: 'y' }],
+    }
+    app.state.currentRoomId = 2
+    app.renderRooms()
+    // REQ-WEBSHELL-009 회귀 — 보관된 방에는 보관 컨트롤이 없다
+    expect(document.querySelector('#archived-list .room-item .archive-btn')).toBeNull()
+    expect(document.querySelector('#room-list .room-item .archive-btn')).not.toBeNull()
+    const rows = [...document.querySelectorAll('#room-list .room-item')]
+    expect(rows[1].classList.contains('active')).toBe(true)
+    expect(rows[0].classList.contains('active')).toBe(false)
+    // 강조 막대는 폭을 먹지 않는 inset box-shadow 다
+    expect(rule('.room-item.active')).toMatch(/box-shadow:\s*inset 2px 0 0 var\(--md-accent\)/)
+    expect(rule('.room-item.active')).not.toMatch(/border-left/)
+  })
+
+  it('demotes the two creation buttons out of the accent color', () => {
+    const doc = loadDom()
+    for (const id of ['new-room-btn', 'new-bot-btn']) {
+      const b = doc.getElementById(id)!
+      expect(b.getAttribute('aria-label')).toBeTruthy()   // 글자 라벨이 아이콘으로 바뀌어도 이름은 남는다
+      expect(b.querySelector('svg')).not.toBeNull()
+    }
+    // [F15] 선택자 문자열 `#new-room-btn, #new-bot-btn` 은 REQ-WEBUI-004 가 규범으로 못 박았다 —
+    // 직접 쓴 정규식 대신 공용 cssRuleBlock 을 쓴다(주석 제거·중괄호 깊이가 함께 온다).
+    const quiet = rule('#new-room-btn, #new-bot-btn')
+    expect(quiet).toMatch(/background:\s*none/)
+    expect(quiet).not.toMatch(/--md-accent/)
+  })
+
+  // ── AC-WEBUI-012 — 계정 바와 살아 있는 로그아웃 ────────────────────────
+  it('demotes logout into an account bar without breaking it', async () => {
+    const doc = loadDom()
+    const bar = doc.querySelector('#sidebar .account-bar')!
+    expect(bar).not.toBeNull()
+    expect(doc.getElementById('sidebar')!.lastElementChild).toBe(bar)   // 사이드바 맨 아래
+    const out = doc.getElementById('logout-btn')!
+    expect(bar.contains(out)).toBe(true)                                // 같은 id 가 그 안으로 옮겨졌다
+    expect(out.getAttribute('aria-label')).toBeTruthy()                 // 아이콘만 남으므로
+    expect(out.querySelector('svg')).not.toBeNull()
+
+    // 클릭이 여전히 로그아웃을 부른다 — §4.8 계약 6 대로 호출은 정확히 한 번.
+    // 부트스트랩 사슬(rooms → bots → me)을 전부 스텁한다 — 하나라도 빠지면 스텁이 그 자리에서 던진다
+    const app = await loadApp()
+    const calls = stubFetch({
+      'GET /api/rooms': { status: 200, body: { active: [], archived: [] } },
+      'GET /api/bots': { status: 200, body: [] },
+      'GET /api/auth/me': { status: 200, body: { id: 7, username: '김피엘' } },
+      'POST /api/auth/logout': { status: 200, body: { ok: true } },
+    })
+    app.initApp()
+    await flush()
+    ;(document.getElementById('logout-btn') as HTMLButtonElement).click()
+    await flush()
+    expect(calls.filter(c => c.path === '/api/auth/logout')).toHaveLength(1)
+  })
+})

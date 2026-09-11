@@ -28,7 +28,8 @@
     <nav id="sidebar">
       <div class="sidebar-head">
         <h2>방</h2>
-        <button id="new-room-btn" type="button">+ 새 방</button>
+        <!-- + 는 SVG 아이콘이 되었고 글자 라벨은 aria-label 로 옮겼다 (REQ-WEBUI-004) -->
+        <button id="new-room-btn" type="button" aria-label="새 방"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       </div>
       <ul id="room-list"></ul>
       <div id="archived-box">
@@ -37,10 +38,16 @@
       </div>
       <div class="sidebar-head">
         <h2>봇</h2>
-        <button id="new-bot-btn" type="button">+ 봇 등록</button>
+        <button id="new-bot-btn" type="button" aria-label="봇 등록"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       </div>
       <ul id="bot-list"></ul>
-      <button id="logout-btn" type="button">로그아웃</button>
+      <!-- 계정 바 — 28px 아바타 · 현재 사용자 이름(M3 이 채운다) · 조용한 로그아웃 아이콘 (REQ-WEBUI-012).
+           #logout-btn 은 새로 만들지 않고 이 안으로 옮겼다 — 영속 id 이자 initApp() 핸들러의 결속점이다. -->
+      <div class="account-bar">
+        <span class="account-avatar"></span>
+        <span class="account-name"></span>
+        <button id="logout-btn" type="button" aria-label="로그아웃" title="로그아웃"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
+      </div>
     </nav>
     <!-- #chat 요소는 SPEC-WEBSHELL-001 소유(§4.8 계약 4). 안쪽 내용물은 SPEC-WEBCHAT-001 소유다.
          #placeholder 는 제거했다 — 형제의 영구 기준은 그 존재를 단언하지 않는다. -->
