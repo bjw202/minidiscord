@@ -44,9 +44,46 @@ Tier S · plan-phase 산출물: spec.md(REQ 8 · AC 인라인 8) + plan.md(마�
 - GREEN: `web/style.css` 말미에 `/* SPEC-WEBMD-002 */` 블록 신설 — `.md-mention` 공통(inline-block·min-width·간격·모서리·타이포를 `.ac-kind` 와 같은 토큰으로 미러) + `.to`(강조색 배경) + `.cc`(흐린 글자·가는 테두리). `.ac-kind` 세 규칙 무수정, hex 0건, `var(--md-*` 만 사용.
 - GREEN 확인: `npx vitest run server/test/web-markdown.test.ts` → `Tests  24 passed (24)`, exit 0.
 
+**M3 회귀·통합 (AC-WEBMD2-007) — 회귀 게이트(plan §F M3 은 RED 단계 없음: 구현 완료 상태를 통합 경로로 관측하는 AC)**
+
+- AC-WEBMD2-007 describe 추가 — jsdom `loadApp` 골격으로 실제 app.js 경로 관측 + pre-flight HEAD 기준선 PRESERVE 검사. 첫 실행에서 최상위가 아닌 describe 안의 import 구문 오류(`Cannot use import statement outside a module`) → 390행 관례(최상위 import)로 수정 후 통과. 구현물 결함이 아니라 시험 코드 배치 오류였고 수정은 시험 파일 안에서만 일어났다.
+- GREEN: `npx vitest run server/test/web-markdown.test.ts` → `Tests  25 passed (25)`, exit 0.
+- 전체 회귀: `npm test`(workspaces 전체) → exit 0, `Test Files  6 passed (6)`, `Tests  103 passed (103)`.
+- 형 검사: `npm --prefix server run typecheck` → exit 0.
+
+**§E AC 이분 판정 행렬 (E1 — 판정 명령은 spec.md §3.2 관측 명령 그대로)**
+
+명령(전 행 공통): `npx vitest run server/test/web-markdown.test.ts` — 관측: `Tests  25 passed (25)` (파일 안 AC-WEBMD2-001~008 describe 각각 초록; 기존 AC-WEBMD-001~016 도 같은 실행 안에서 초록). PRESERVE/diff 행만 별도 명령.
+
+| AC | 판정 | 관측 명령 | 관측 출력 | HEAD 귀속 |
+|----|------|-----------|-----------|-----------|
+| AC-WEBMD2-001 | PASS | `npx vitest run server/test/web-markdown.test.ts` | `Tests  25 passed (25)`, exit 0 | 작업 나무 == M3 커밋 내용(시험 영향 파일은 동일) |
+| AC-WEBMD2-002 | PASS | 〃 | 〃 | 〃 |
+| AC-WEBMD2-003 | PASS | 〃 | 〃 | 〃 |
+| AC-WEBMD2-004 | PASS | 〃 | 〃 | 〃 |
+| AC-WEBMD2-005 | PASS | 〃 | 〃 | 〃 |
+| AC-WEBMD2-006 | PASS | 〃 (`.ac-kind` 기준선 비교는 시험 안에서 `git show 67db21a…:web/style.css` 대비) | 〃 | 〃 |
+| AC-WEBMD2-007 | PASS | 〃 + `git log 67db21a..HEAD -- web/app.js web/rich.js web/markdown.d.ts server/src` / `git diff --stat -- (같은 경로)` / `git diff 67db21a -- server/test/web-markdown.test.ts \| grep -c '^-[^-]'` | 시험 초록; log 빈 출력; diff --stat 빈 출력(0줄); 제거 라인 0 | 〃 |
+| AC-WEBMD2-008 | PASS | 〃 (`{ timeout: 20_000 }` 안쪽 종료 — Duration 838ms 전체 실행) | 〃 | 〃 |
+
+**E4 기준선 대비** — §C 사전 측정(편집 전): web-markdown.test.ts 17 passed·0 failed, typecheck exit 0. 실행 후: 같은 파일 25 passed·0 failed, 전체 스위트 103 passed·0 failed, typecheck exit 0. 사전 결함 0 → 신규 결함 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-11T06:27:39Z
+run_commit_sha: pending-backfill-M3   # M3 커밋 SHA 를 후속 커밋으로 백필한다(자기 참조 물리 불가 — D3 관례)
+run_status: complete
+ac_pass_count: 8
+ac_fail_count: 0
+preserve_list_post_run_count: 0       # plan §A.5 PRESERVE 위반 관측 0건 (git log/diff 기준선 비교)
+l44_pre_commit_fetch: origin/main == pre-flight 67db21a (push 직전 fetch 확인)
+l44_post_push_fetch: pending-backfill-M3   # push 후 기록(백필 커밋에서 확정)
+new_warnings_or_lints_introduced: 0   # tsc --noEmit exit 0; 저장소에 별도 lint runner 부재(§C 사전·사후 동일 명령면)
+cross_platform_build: n/a             # 빌드 단계 없는 바닐라 ES 모듈·CSS (spec §5 제약)
+total_run_phase_files: 5              # web/markdown.js, web/style.css, server/test/web-markdown.test.ts, spec.md(frontmatter), progress.md
+m1_to_mN_commit_strategy: 마일스톤별 커밋 M1(b374dc8)·M2(45a98de)·M3(이 커밋) + run_commit_sha 백필 후속 커밋, 종료 시 일괄 push(origin HEAD:main)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

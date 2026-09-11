@@ -752,3 +752,45 @@ describe('AC-WEBMD2-006 CSS contract — same color language as the ac badge', (
     }
   })
 })
+
+// export 다섯 고정 검사는 모듈 표면을 통째로 본다 — describe 밖 최상위 import (관례: 390행)
+import * as markdownModule from '../../web/markdown.js'
+
+describe('AC-WEBMD2-007 integration and preserve baseline', () => {
+  // 통합 경로 관측 + PRESERVE 위반 검사. PRESERVE 는 «커밋돼도» 잡히게 pre-flight HEAD
+  // 기준선으로 돌린다 — 작업 나무 diff 만으로는 이미 커밋된 위반을 못 본다.
+  // 기존 블록 AC-WEBMD-001~016 의 초록은 이 파일과 같은 vitest 실행이 곧 증거다.
+  afterEach(() => {
+    document.body.innerHTML = ''
+    FakeEventSource.instances = []
+  })
+
+  it('renders the badge through the real app path and keeps every PRESERVE surface intact', async () => {
+    // (1) jsdom 앱 통합 경로 — app.js 무변경, renderMarkdown 호출 한 줄이 배지까지 그린다
+    const app = await loadApp(baseHandler({
+      '/api/rooms/1/messages': { messages: [msg({ id: 1, body: '@TO(orchestrator) 출석체크' })] },
+    }))
+    await app.openRoom(1); await flush()
+    const chip = document.querySelector('#messages .msg-body .md-mention.to')
+    expect(chip).not.toBeNull()
+    expect(chip!.textContent).toBe('TO')
+    expect(chip!.nextSibling!.textContent).toBe('orchestrator')
+
+    // (2) PRESERVE — pre-flight HEAD 이후 이 경로들에 커밋이 없다
+    const git = (args: string) => execSync(`git ${args}`, { cwd: repoRoot }).toString()
+    expect(git(`log --oneline ${PRE_FLIGHT_HEAD}..HEAD -- web/app.js web/rich.js web/markdown.d.ts server/src`)).toBe('')
+
+    // (3) PRESERVE — 작업 나무도 0줄
+    expect(git('diff --stat -- web/app.js web/rich.js web/markdown.d.ts server/src')).toBe('')
+
+    // (4) 시험 파일은 추가 라인만 — 기존 describe 블록 무수정(제거·변경 0줄)
+    const diff = git(`diff ${PRE_FLIGHT_HEAD} -- server/test/web-markdown.test.ts`)
+    const removed = diff.split('\n').filter(l => l.startsWith('-') && !l.startsWith('---'))
+    expect(diff).not.toBe('')            // 비교가 공허하지 않게 — 추가분이 실제로 있다
+    expect(removed).toEqual([])
+
+    // (5) export 다섯 그대로 (REQ-WEBMD-001, B-2)
+    expect(Object.keys(markdownModule).sort()).toEqual(
+      ['codeLangToken', 'parseBlocks', 'renderInline', 'renderMarkdown', 'safeHref'])
+  })
+})
