@@ -178,3 +178,29 @@ m1_to_mN_commit_strategy: "마일스톤당 1커밋(M0 9b03ff5·M1 fc637a4·M2 9f
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+(2026-09-11T00:35:58Z 기록 — Implementation Kickoff Approval 승인 직후. 백필: 첫 run-phase 스폰 전에 로컬에 기록했으나 로컬 미커밋 상태로 남아 pull 충돌을 만들어 잠시 제거했다가 복원. 사용자 선택: 즉시 시작 · 자율 진행(autonomous) · plan 문서 커밋+push `325e80a` · depends_on SPEC-AUTH-001 일회성 무시(`.moai/logs/depends-on-override.log`))
+
+**입력 변수**
+
+- tier: M
+- scope: 9 files (소스 4 + 시험 4 + 공유 헬퍼 1)
+- domain count: 2 (web 프런트엔드 vanilla JS/CSS/HTML + server 인증 라우트 1건·시험)
+- file language mix: TypeScript / JavaScript / CSS / HTML (+SPEC 문서 Markdown)
+- concurrency benefit: 낮음 — 코딩 집약이고 9개 파일이 DOM 계약(§B.2)·CSS 편집 규약(§B.6)이라는 단일 계약 표면에 결합
+- Agent Teams 요청: 없음 (`--team` 미사용)
+
+**모드 평가**
+
+| 모드 | 판정 | 근거 |
+|------|------|------|
+| direct | 미선택 | 단일 줄 수정·타이포 수준이 아님 — 9파일·TDD 사이클·마일스톤 6 |
+| serial | **선택** | 코딩 집약 작업의 표준 기본값 — 마일스톤 M0~M5 를 한 manager-develop 가 순차 수행 |
+| fanout | 미선택 | 다중 도메인(≥3)·연구 집약 조건 미충족(도메인 2) — 코딩 집약은 순차가 정석 |
+| sweep | 미선택 | ≥30파일 기계적 일괄 변환 아님 (9파일, 규칙이 파일마다 다름) |
+
+Decision: serial (Standard envelope — files: 9, domains: 2)
+
+근거: Anthropic 의 코딩 작업 병렬성 주의(대부분의 코딩 작업은 연구보다 실제 병렬화 가능한 작업이 적다)에 따라 코딩 집약 구현은 순차 서브에이전트가 정석이다. 이 SPEC 의 9개 파일은 한 계약 표면에 결합되어 병렬 쓰기가 곧 경합이 된다. 마일스톤 6개를 TDD 사이클로 순차 진행하고 마일스톤별 커밋으로 진행을 나눈다. 실제 실행도 그대로였다 — manager-develop 1회 스폰이 M0~M5 를 순차 완수하고 마일스톤마다 main 에 커밋·push 했다(§E.2).
