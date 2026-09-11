@@ -184,15 +184,25 @@ AssertionError: expected 'f2c114d feat(SPEC-WEBATTACH-001): M2 …' to be '' // 
 
 제안하는 최소 수리(오케스트레이터/운영자 처분 사항): `web-markdown.test.ts:803` 의 경로 집합에서 `web/app.js` 를 뺀다. 그 단언이 원래 지키려던 것(WEBMD-002 가 `app.js` 를 건드리지 않았다)은 이미 그 SPEC 의 sync 로 확정됐고, 남은 것은 미래를 향한 족쇄뿐이다. 같은 함정을 되풀이하지 않도록 `plan.md` §G 에 안티패턴 한 줄을 추가해 두었다.
 
-### 사람 관측 (HO-1~HO-3) — 전부 **미검증**
+### 사람 관측 (HO-1~HO-3) — HO-2 관측됨, HO-1 절반, HO-3 미검증
 
-| 항목 | 상태 | 이유 |
+| 항목 | 상태 | 근거 |
 |------|------|------|
-| **HO-1** 맥·윈도우 실제 캡쳐 붙여넣기 | **미검증** | jsdom 에 진짜 클립보드가 없고 브라우저를 띄우는 수단이 이 하네스 밖이다. 운영자가 직접 관측해야 한다. **`acceptance.md` §D.2 의 차단 관문** — 다섯 값(관측자·관측일·macOS 스크린샷 경로·Windows 스크린샷 경로·생성된 파일명)이 이 문서에 적히기 전에는 `status: completed` 로 전이하지 않는다 |
-| **HO-2** 드롭 표시·썸네일 생김새 | **미검증** | 차단하지 않는다. 잔여 위험으로 함께 올린다 |
+| **HO-1** 맥·윈도우 실제 캡쳐 붙여넣기 | **부분 관측 — 관문 닫힘 유지** | macOS 에서 관측됨(아래 관측 기록). Windows 는 미관측이므로 다섯 값 중 Windows 항이 비어 있고, **`acceptance.md` §D.2 의 차단 관문은 열리지 않는다** — `status: completed` 로 전이하지 않는다 |
+| **HO-2** 드롭 표시·썸네일 생김새 | **관측됨** | 운영자 제출 화면 캡쳐 2장. 이미지 3장이 썸네일로, `잔고증명서_Kiwoom.pdf` 는 `.file-chip` 이름 칩으로 한 줄에 공존. D3(이미지만 썸네일)이 실제 화면에서 성립 |
 | **HO-3** 폴더 드롭 | **미검증** | 차단하지 않는다. `spec.md` §6 의 해당 한 줄은 「미확정」으로 남는다 |
 
-[HARD] 셋 중 어느 것도 PASS 로 적지 않았다 (VCI §3.4 Gaps).
+#### HO-1 관측 기록 (macOS)
+
+| 값 | 내용 |
+|---|---|
+| 관측자 | jw |
+| 관측일 | 2026-09-11 |
+| macOS 증거 | 운영자 제출 화면 캡쳐 2장 (세션 전사; 저장 경로 미기록). 캡쳐 붙여넣기·드래그앤드롭·클립 버튼 세 경로 모두 동작함을 운영자가 진술 |
+| Windows 증거 | **없음 — 미관측** |
+| 생성된 파일명 | **미기록** — 화면 캡쳐에 썸네일만 보이고 파일명이 드러나지 않았다. 다음 관측에서 이미지 항목의 `img.alt` 또는 `title` 로 확인할 것 |
+
+[HARD] HO-1 을 PASS 로 적지 않았다. 다섯 값 중 둘(Windows 증거·생성된 파일명)이 비어 있고, 부분 관측은 관측이 아니다 (VCI §3.4 Gaps). 관문을 열려면 Windows 브라우저에서 `Ctrl+V` 를 한 번 관측하고 그때 생성된 파일명을 함께 적는다.
 
 ### 잔여 위험
 
@@ -209,21 +219,22 @@ run_complete_at: 2026-09-11
 run_commit_sha: a44ecf8f5361b0e5f6435505d2efb8fbcd7b4ee7
 run_preflight_head: 49bf601b550c3ef7f17d439ca5c4ea579cc51cd1
 run_branch: worktree-agent-a8a15ee3b38e6b43e
-run_status: complete-with-blocker
-ac_pass_count: 12                 # AC-WEBATT-001~012
-ac_pass_with_debt_count: 1        # AC-WEBATT-013 — npm test 불릿만 FAIL (교차 SPEC 충돌)
+run_status: complete
+ac_pass_count: 13                 # AC-WEBATT-001~013 (013 은 블로커 해소 후 초록)
+ac_pass_with_debt_count: 0
 ac_fail_count: 0
-human_observation_unverified: 3   # HO-1(차단 관문) · HO-2 · HO-3
+human_observation_unverified: 2   # HO-1(차단 관문, macOS 만 관측 — Windows 미관측) · HO-3
 preserve_list_post_run_count: 7   # server/src web/rich.js web/rich.d.ts web/markdown.js web/markdown.d.ts web/design-tokens.css web/index.html — 전부 무변경
 new_warnings_or_lints_introduced: 0
 typecheck_exit_code: 0
 tests_web_chat: "72 passed (72)"
-tests_npm_full: "server 297 passed / 1 failed (298); channel 103 passed (103)"
-blocking_failure:
+tests_npm_full: "server 298 passed (298); channel 103 passed (103) — main 병합 후 재실행"
+resolved_blocker:
   file: server/test/web-markdown.test.ts
   test: AC-WEBMD2-007 integration and preserve baseline
   cause: SPEC-WEBMD-002(completed) 가 영구 시험 파일에 박은 pre-flight HEAD 기준선이 web/app.js 를 영구 동결
-  owner: 교차 SPEC 정책 — 오케스트레이터/운영자 처분 사항 (구현자가 고치지 않았다)
+  disposition: 운영자 결정(2026-09-11) — PRESERVE 단언 두 줄의 경로 목록에서 web/app.js 만 제거. 나머지 세 경로(web/rich.js · web/markdown.d.ts · server/src)의 보호는 유지. 커밋 c48fee0
+  merge_commit: main 에 --no-ff 병합, 병합 후 npm test 전체 초록 재확인
 milestone_commit_strategy: M1/M2/M3 각 1커밋 + 산출물 1커밋
 audit_corrections_applied: [N1, N2, N3, N4]
 blocking_human_gate: HO-1        # acceptance.md §D.2 — 미검증인 동안 status: completed 에 이르지 못한다
