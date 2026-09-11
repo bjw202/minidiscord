@@ -660,11 +660,11 @@ describe('AC-WEBMD2-003 out-of-grammar forms stay fully literal', () => {
   // 이름은 텍스트 노드로만 흘러가므로 재해석이 구조적으로 불가능해야 한다: 칩 딱 하나,
   // 어떤 태그도 태어나지 않고, 이름 원문이 텍스트 그대로 산다.
   it('keeps a grammar-valid metacharacter name inert — one chip, no elements born, raw name as text', () => {
-    for (const src of ['@TO(<b>x</b>) 마크', `@TO(a"b'c)`]) {
-      const h = render(src)
+    for (const name of ['<b>x</b>', `a"b'c`]) {
+      const h = render(`@TO(${name}) 뒷말`)
       expect(h.querySelectorAll('.md-mention').length).toBe(1)
       expect(h.querySelectorAll('b, img, svg, script, i').length).toBe(0)
-      expect(h.textContent).toContain(src.slice(4, -1))
+      expect(h.textContent).toContain(name)
     }
   })
 })
