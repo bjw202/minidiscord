@@ -435,22 +435,24 @@ input:focus { outline: 1px solid var(--md-accent); }
 }
 /* /SPEC-WEBACNAV-001 */
 
-/* 입력창 — 둥근 사각형에 채팅 배경보다 밝은 배경 (design DNA §4) */
+/* 입력창 — 배경·테두리를 컨테이너(#composer-box, SPEC-WEBUI-001) 에 넘기고 투명하게 둔다 */
 #msg-input {
   flex: 1;
   resize: none;
   min-height: 44px;
+  background: none;
+  border: none;
+  outline: none;
 }
 
 /* #file-input 은 HTML 의 hidden 속성으로 숨겨 둔다 — CSS display:none 을 덮지 않는다.
    SPEC-WEBRICH-001 이 hidden 을 떼는 순간 바로 보이는 것이 형제와의 약속이다. */
 
-#send-btn, #attach-btn { align-self: flex-end; }
-/* 📎 는 label 이지만 버튼처럼 보이고 눌린다 — #send-btn 과 같은 정렬을 공유한다 (카드 t32 D-7) */
-#attach-btn { cursor: pointer; user-select: none; padding: 0 0.4rem; }
-/* 고른 파일이 여러 개면 칩이 여러 개 늘어선다 — 좁아지면 다음 줄로 접힌다 */
+/* 첨부 label — 클립 아이콘을 가운데 정렬한다. 입력 줄(.composer-row)의 align-items 가 정렬을 대신한다 */
+#attach-btn { cursor: pointer; user-select: none; padding: 0 0.4rem; display: inline-flex; align-items: center; }
+/* 고른 파일이 여러 개면 칩이 여러 개 늘어선다 — 좁아지면 다음 줄로 접힌다. 칩 줄은
+   #composer-box 의 첫 칸이다(align-self 는 옛 컴포저 레이아웃의 잔해라 걷었다) */
 #file-chosen {
-  align-self: flex-end;
   display: flex;
   flex-wrap: wrap;
   gap: var(--md-space-1);
@@ -458,13 +460,14 @@ input:focus { outline: 1px solid var(--md-accent); }
   opacity: 0.8;
 }
 
-/* 첨부 칩 — 이름 + ✕ 버튼 한 쌍. 색은 design-tokens 의 var(--md-*) 만 쓴다 */
+/* 첨부 칩 — 이름 + ✕ 버튼 한 쌍. 이제 --md-bg-input 컨테이너 안에 있어 같은 색이면
+   칩이 안 보인다 — 패널 배경으로 바꾼다 (REQ-WEBUI-009) */
 .file-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--md-space-1);
   padding: var(--md-space-1) var(--md-space-2);
-  background: var(--md-bg-input);
+  background: var(--md-bg-panel);
   border-radius: var(--md-radius-badge);
   font-size: 0.85em;
 }
@@ -839,4 +842,38 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
   color: var(--md-text-muted);
 }
 #new-room-btn:hover, #new-bot-btn:hover { color: var(--md-text-primary); }
+
+/* C3 — 작성기 컨테이너 (REQ-WEBUI-009). 테두리는 inset box-shadow 로 그린다 — border 와
+   달리 콘텐츠 폭을 먹지 않고 초점 시 색만 바꾸면 레이아웃이 흔들리지 않는다.
+   flex:1 + min-width:0 이 «채팅 열의 폭을 그대로 쓴다»다 — 이 선언 없이는 컨테이너가
+   내용 폭까지만 늘어난다(감사 F11). 세로 두 칸: 위 첨부 칩 줄, 아래 입력 줄 */
+#composer-box {
+  flex: 1;
+  min-width: 0;
+  background: var(--md-bg-input);
+  border-radius: var(--md-radius-input);
+  box-shadow: inset 0 0 0 var(--md-border-width) var(--md-divider);
+  padding: var(--md-space-2) var(--md-space-2) var(--md-space-2) var(--md-space-4);
+  display: flex;
+  flex-direction: column;
+}
+/* 초점 테두리 — 강조색 넷 중 «지금 여기에 쓰는 중» 자리 (REQ-WEBUI-009) */
+#composer-box:focus-within {
+  box-shadow: inset 0 0 0 var(--md-border-width) var(--md-accent);
+}
+/* 입력 줄 — 첨부 label + #msg-input + #send-btn */
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--md-space-2);
+  min-width: 0;
+}
+/* 첨부 칩 줄 — 칩이 하나도 없으면 자리를 차지하지 않는다 */
+#file-chosen:empty { display: none; }
+/* 보낼 것이 없을 때의 보내기 버튼 — 상태 표시일 뿐, disabled 속성이 아니다(REQ-WEBUI-011).
+   있으면 기본 button 규칙(강조 배경)이 그대로 돌아온다 */
+#send-btn[aria-disabled="true"] {
+  background: var(--md-bg-panel);
+  color: var(--md-text-muted);
+}
 /* /SPEC-WEBUI-001 */

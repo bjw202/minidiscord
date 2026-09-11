@@ -175,4 +175,27 @@ describe('SPEC-WEBUI-001 real-browser layers', () => {
       expect(tail).toEqual([true, true])
     } finally { await dispose() }
   })
+
+  // AC-WEBUI-010 뒤 겹 — 선언이 적혀 있다는 것과 폭이 실제로 나온다는 것은 다른 사실이다.
+  // 컨테이너 폭이 바깥 footer 폭(좌우 패딩 16px 씩 제외)과 같은지 잰다.
+  it('lets the composer container span the chat column (real browser)', { skip: skipReason !== null, timeout: 60_000 }, async () => {
+    const { page, dispose } = await bootVisual()
+    try {
+      await page.evaluate(async () => {
+        await fetch('/api/rooms', { method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'probe' }) })
+      })
+      await page.reload()
+      await page.click('#room-list .room-item')
+      await page.waitForSelector('#composer-box')
+
+      const [boxW, footerW] = await page.evaluate(() => {
+        const b = document.getElementById('composer-box')!.getBoundingClientRect()
+        const f = document.getElementById('composer')!.getBoundingClientRect()
+        return [b.width, f.width]
+      })
+      // 바깥 footer 의 좌우 패딩(--md-space-4 = 16px 씩)을 뺀 만큼을 컨테이너가 다 쓴다
+      expect(boxW).toBeGreaterThan(footerW - 40)
+    } finally { await dispose() }
+  })
 })

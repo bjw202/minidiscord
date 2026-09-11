@@ -1228,4 +1228,84 @@ describe('SPEC-WEBUI-001 메시지 표면·작성기', () => {
     expect(src).toMatch(/\.turn-cont\s+\.msg-avatar[^{]*\{[^}]*visibility:\s*hidden/)
     expect(/\.turn-cont\s+\.msg-avatar[^{]*\{[^}]*display:\s*none/.test(src)).toBe(false)
   })
+
+  // ── AC-WEBUI-010 — 작성기는 한 덩어리이고 첨부는 여전히 label 이다 ─────
+  // [F1] 이 파일에는 loadDom 이 없다. index.html 본문을 세우는 일은 loadApp() 이 이미 한다.
+  it('puts attach, input, send and chips inside one bounded container', async () => {
+    await loadApp(baseHandler())
+    const doc = document
+    const box = doc.getElementById('composer-box')!
+    expect(box).not.toBeNull()
+    for (const id of ['attach-btn', 'msg-input', 'send-btn', 'file-chosen']) {
+      expect(box.contains(doc.getElementById(id)), `#${id} 는 컨테이너 안에 있어야 한다`).toBe(true)
+    }
+    // 자동완성은 컨테이너 밖 #composer 직계로 남는다 — bottom:100% 기준이 바뀌면 뜨는 자리가 어긋난다
+    expect(doc.getElementById('autocomplete')!.parentElement!.id).toBe('composer')
+    // SPEC-WEBACNAV-001 블록은 한 줄도 바뀌지 않았다
+    expect(rule('#autocomplete')).toMatch(/bottom:\s*100%/)
+    expect(rule('.ac-kind.to')).toMatch(/background:\s*var\(--md-accent\)/)
+    // [N5] `#msg-input { flex: 1 }` 은 style.css 에 **이미** 있어 구현 전에도 참이다 — 판별력 0 이라 뺐다.
+    // 대신 이 SPEC 이 실제로 «더하는» 선언을 본다: 입력칸이 자기 배경·테두리를 버리고 컨테이너에 넘긴다.
+    const inputRule = rule('#msg-input')
+    expect(inputRule).toMatch(/background:\s*none/)
+    expect(inputRule).toMatch(/border:\s*none/)
+    expect(rule('#composer-box')).toMatch(/background:\s*var\(--md-bg-input\)/)
+
+    // [F11] «폭을 그대로 쓴다» 는 선언 없이는 성립하지 않는다. #composer 는 display:flex 로 남으므로
+    // grow 선언이 없으면 컨테이너가 내용 폭까지만 늘어난다 — 그래도 위 background 단언은 통과한다.
+    // [N2] 이 it 안에는 이미 `box`(DOM 요소)가 있다. 같은 이름을 다시 선언하면 TS2451 이고
+    // 런타임 SyntaxError 다 — server/package.json 의 pretest 때문에 npm test 자체가 죽는다.
+    const boxRule = rule('#composer-box')
+    expect(boxRule.replace(/\s/g, '')).toMatch(/flex:1|width:100%/)
+    expect(boxRule).toMatch(/min-width:\s*0/)
+  })
+
+  it('replaces the paperclip emoji with an icon without breaking the file picker', async () => {
+    await loadApp(baseHandler())
+    const doc = document
+    const attach = doc.getElementById('attach-btn')!
+    // 스크립트 없이 파일 선택창을 여는 유일한 수단이다 — button 으로 바꾸면 조용히 죽는다
+    expect(attach.tagName).toBe('LABEL')
+    expect(attach.getAttribute('for')).toBe('file-input')
+    expect(attach.querySelector('svg')).not.toBeNull()
+    expect(attach.textContent).not.toContain('📎')
+    expect(attach.getAttribute('aria-label')).toBeTruthy()
+    expect(doc.getElementById('file-input')!.hasAttribute('hidden')).toBe(true)
+  })
+
+  // ── AC-WEBUI-011 — 보낼 것이 없을 때의 보내기 버튼 ────────────────────
+  it('quiets the send button when there is nothing to send, without disabling it', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const send = el('send-btn') as HTMLButtonElement
+
+    expect(send.getAttribute('aria-disabled')).toBe('true')
+    type('안녕'); await flush()
+    expect(send.getAttribute('aria-disabled')).toBe('false')
+    type(''); await flush()
+    expect(send.getAttribute('aria-disabled')).toBe('true')
+    // 공백만으로는 보낼 것이 생기지 않는다
+    type('   '); await flush()
+    expect(send.getAttribute('aria-disabled')).toBe('true')
+    // disabled 속성은 끝까지 쓰지 않는다 — 탭 순서에서 빠지면 이유를 읽을 대상이 사라진다
+    expect(send.hasAttribute('disabled')).toBe(false)
+    expect(send.disabled).toBe(false)
+  })
+
+  // [F12] 위 it 만으로는 정적 문자열 구현이 첫 단언을 통과한다 — «전이» 를 직접 본다.
+  it('drives aria-disabled from state, not from a hardcoded attribute', async () => {
+    const app = await loadApp(baseHandler())
+    await app.openRoom(1); await flush()
+    const send = el('send-btn') as HTMLButtonElement
+
+    // 초기값을 일부러 «틀리게» 뒤집어 놓는다. JS 가 상태를 반영한다면 다음 input 에서 되돌아온다.
+    send.setAttribute('aria-disabled', 'false')
+    type(''); await flush()
+    expect(send.getAttribute('aria-disabled')).toBe('true')   // 정적 문자열 구현은 여기서 붉어진다
+
+    // 파일만 골라도 «보낼 것» 이 생긴다 — 본문 없이도 false 여야 한다 (sendMessage 의 가드와 같은 기준)
+    pickFiles('a.txt')   // 가변인자 — 문자열이면 그 이름의 텍스트 파일을 만든다 (web-chat.test.ts 의 pickFiles)
+    await flush()
+    expect(send.getAttribute('aria-disabled')).toBe('false')
+  })
 })

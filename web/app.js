@@ -449,6 +449,9 @@ export function initChat() {
   // 첨부 선택 표시 — 무엇이 함께 나갈지 보이지 않으면 사용자는 첨부 여부를 알 수 없다 (카드 t32 D-7)
   $('file-input').addEventListener('change', onFilePicked)
   $('send-btn').addEventListener('click', () => { sendMessage() })
+  // index.html 이 실은 aria-disabled 초기값을 실제 상태로 확정한다 — 이 호출이 없으면
+  // 화면상 옳아 보이면서 상태와 표시가 영원히 어긋난다 (REQ-WEBUI-011 [HARD], 감사 F12)
+  refreshSendState()
   chatReady = true
 }
 
@@ -703,6 +706,8 @@ function currentMentionToken() {
 
 // input 이벤트 — 캐시된 초대 목록만 읽는다. 키 입력마다 네트워크를 치지 않는다 (REQ-WEBCHAT-009).
 function onComposerInput() {
+  // 보내기 상태 갱신이 먼저다 — 아래에 조기 return 이 있어도 매 입력에서 돌아야 한다 (REQ-WEBUI-011)
+  refreshSendState()
   const token = currentMentionToken()
   if (token === null) { hideAutocomplete(); return }
   const prefix = token.toLowerCase()
@@ -896,6 +901,8 @@ function renderPickedFiles() {
     chip.appendChild(remove)
     box.appendChild(chip)
   }
+  // 첨부 목록이 다시 그려질 때마다 보내기 상태도 함께 (REQ-WEBUI-011)
+  refreshSendState()
 }
 
 // 선택을 통째로 비운다. 전송에 성공했을 때만 부른다.
@@ -903,6 +910,19 @@ function clearPickedFiles() {
   pickedFiles = []
   $('file-input').value = ''
   renderPickedFiles()
+  // 전송 성공으로 선택이 비워질 때 — renderPickedFiles 와 별개의 네 자리 중 하나다 (REQ-WEBUI-011)
+  refreshSendState()
+}
+
+// 보낼 것이 있는가 — sendMessage 의 빈 전송 가드(!body.trim() && files.length === 0)와 같은 기준.
+// 이것은 표시일 뿐 차단이 아니다: aria-disabled 만 뒤집고 disabled 속성은 끝까지 쓰지 않는다
+// (REQ-WEBUI-011). disabled 는 버튼을 탭 순서에서 빼 «왜 안 보내지»를 확인할 대상 자체를 지운다.
+function refreshSendState() {
+  const send = $('send-btn')
+  if (!send) return
+  const input = $('msg-input')
+  const has = ((input?.value ?? '').trim().length > 0) || pickedFiles.length > 0
+  send.setAttribute('aria-disabled', has ? 'false' : 'true')
 }
 
 // 전송 실패 알림 — alert 대신 화면 안의 요소로 낸다. jsdom 이 alert 를 던지지 않고
