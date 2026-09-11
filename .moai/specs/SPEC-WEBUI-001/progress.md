@@ -177,7 +177,20 @@ m1_to_mN_commit_strategy: "마일스톤당 1커밋(M0 9b03ff5·M1 fc637a4·M2 9f
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-11T02:20:00Z
+sync_commit_sha: pending-backfill-webui001-sync
+sync_status: complete
+sync_auditor_verdict: "PASS — 조화평균 95.0 (Functionality 97 · Security 95 · Craft 92 · Consistency 96), 제안 3건 전부 선택적"
+security_findings: "치명 0 / 높음 0 / 중간 0 · 정보성 1 (로그인 직후 /me 실패 시 계정 바 공백 — UX 전용)"
+coverage: "statements 95.27% · branches 88.81% · functions 96.36% · lines 95.47% (vitest, server)"
+full_suite: "server 269/269 + channel 103/103, typecheck exit 0"
+doc_scope: "CHANGELOG 항목 + SPEC frontmatter 종결 + §E.4 + @MX:ANCHOR 1건(web/app.js renderMessage) — README·project docs·codemaps 제외(구조 변화 없음)"
+f1_f2_f3_dispositions:
+  F1: "해소 — renderMessage 위 @MX:ANCHOR/@MX:REASON 주석 두 줄 추가(이 sync 커밋에 포함)"
+  F2: "기록만 — 로그인 경로 loadMe 실패 시 계정 바 공백(UX 전용, 보안 문제 아님). 다음 개선 여지로 CHANGELOG·sync 보고서에 기록. 코드 수정 없음(운영자 결정)"
+  F3: "만료 경로 인용 — 원문 재실행으로 검증됨(AC-015·016 관측 블록 재실행 PASS)"
+```
 
 ## §F Phase 4 Mode Selection
 

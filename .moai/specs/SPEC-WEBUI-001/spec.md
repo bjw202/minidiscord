@@ -2,7 +2,7 @@
 id: SPEC-WEBUI-001
 title: "웹 UI 개선 — 방 목록·메시지·입력창·로그아웃"
 version: "0.4.2"
-status: in-progress
+status: completed
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec

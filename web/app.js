@@ -522,6 +522,8 @@ function avatarColorClass(m) {
   return null
 }
 
+// @MX:ANCHOR: [AUTO] 메시지 렌더의 세 갈래 — 커서 이어받기 루프 · SSE 실시간 수신 · 재연결 따라잡기 — 가 모두 이 함수로 그린다 (fan_in 3)
+// @MX:REASON: .message 의 직계 자식 구조는 SPEC-WEBUI-001 §5.2 가 개정한 계약 — 래퍼 컨테이너를 끼우면 형제 시험(web-chat·web-markdown)의 자손 단언이 깨진다
 export function renderMessage(m, prev = lastRenderedMsg) {
   const wrap = document.createElement('div')
   wrap.className = `message ${m.author_type}`
