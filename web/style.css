@@ -896,9 +896,13 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
    토큰만 쓴다(REQ-WEBMD2-006). .ac-kind 세 규칙은 소비만 하고 한 글자도 고치지
    않는다 — 칩의 비색 속성(min-width·간격·모서리·타이포)을 같은 토큰으로 미러한다 */
 
-/* 종류 칩 — 본문 안 인라인 문맥이므로 inline-block 으로 칩 폭을 갖는다 */
+/* 종류 칩 — 본문 안 인라인 문맥이므로 inline-block 으로 칩 폭을 갖는다.
+   vertical-align 없이는 인라인 baseline 규칙대로 칩이 줄에서 비스듬히 뜨고(2026-09-11
+   화면 확인), margin 없이는 칩이 뒤따르는 봇 이름에 바짝 붙는다 — 두 속성이 인라인 배치의 본체다 */
 .md-mention {
   display: inline-block;
+  vertical-align: middle;
+  margin: 0 var(--md-space-1);
   min-width: 2.2em;
   padding: 0 var(--md-space-1);
   border-radius: var(--md-radius-badge);

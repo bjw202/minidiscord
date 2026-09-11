@@ -751,6 +751,16 @@ describe('AC-WEBMD2-006 CSS contract — same color language as the ac badge', (
       expect(now![0]).toBe(was![0])
     }
   })
+
+  // 2026-09-11 화면 확인 반영 — 인라인 배치의 본체 두 속성: 칩이 줄에서 비스듬히 뜨지
+  // 않게(vertical-align) 칩과 뒤따르는 봇 이름이 바짝 붙지 않게(margin) 하는 회귀 가드
+  it('keeps the chip vertically aligned and spaced inside the inline flow', () => {
+    const css = readFileSync(join(webDir, 'style.css'), 'utf8')
+    const base = /\.md-mention\s*\{[^}]*\}/.exec(css)
+    expect(base).not.toBeNull()
+    expect(base![0]).toContain('vertical-align: middle')
+    expect(base![0]).toMatch(/margin:\s*0 var\(--md-space-1\)/)
+  })
 })
 
 // export 다섯 고정 검사는 모듈 표면을 통째로 본다 — describe 밖 최상위 import (관례: 390행)
