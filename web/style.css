@@ -778,9 +778,13 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
 .avatar-color-5 { background: var(--md-role-color-5); }
 
 /* C1 — 방 행: # + 앞머리 + 꼬리 세 span (REQ-WEBUI-001). [HARD] 줄어드는 것은
-   앞머리뿐이다 — 폭이 모자라면 앞머리에 생략기호가 붙고 꼬리는 결코 잘리지 않는다 */
+   앞머리뿐이다 — 폭이 모자라면 앞머리에 생략기호가 붙고 꼬리는 결코 잘리지 않는다.
+   2026-09-11 정정: 앞머리가 없는(슬래시 없는) 긴 이름은 줄일 대상이 없어 행을 넘치고
+   보관 버튼을 화면 밖으로 밀었다. shrink 가중치(앞머리 100 : 꼬리 1)로 앞머리 우선은
+   그대로 두고, 앞머리를 다 줄여도 모자랄 때만 꼬리도 행 안에서 말린다 — 넘침보다 낫다 */
 .room-hash { flex-shrink: 0; }
 .room-prefix {
+  flex-shrink: 100;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -789,9 +793,12 @@ h6.md-h { font-size: 0.9em; color: var(--md-text-muted); }
   color: var(--md-text-muted);
 }
 .room-name {
-  font-size: var(--md-font-size-body);
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: var(--md-font-size-body);
 }
 /* 현재 방(REQ-WEBUI-002)과 행 호버(REQ-WEBUI-003)에서 꼬리를 밝힌다 */
 .room-item.active .room-name { color: var(--md-text-primary); font-weight: var(--md-font-weight-name); }

@@ -508,7 +508,10 @@ describe('SPEC-WEBUI-001 방 목록·계정 바', () => {
   })
 
   // ── AC-WEBUI-002 — 꼬리는 줄어들지 않는다 ────────────────────────────
-  it('keeps the whole tail in the DOM and shrinks only the prefix', async () => {
+  // 2026-09-11 정정: 앞머리가 없는(슬래시 없는) 긴 이름은 줄일 대상이 없어 행을 넘치고
+  // 보관 버튼을 화면 밖으로 밀었다. 앞머리 우선은 그대로 두고(shrink 100:1), 앞머리를
+  // 다 줄여도 모자랄 때만 꼬리도 행 안에서 말린다 — 넘침보다 말림이 낫다.
+  it('keeps the whole tail in the DOM; the prefix shrinks first, the tail only when overflow remains', async () => {
     const app = await loadApp(); loadDom()
     const long = 'prodev-worktogether-2026-장기프로젝트/분기별-수율-보고서-최종'
     app.state.rooms = { active: [{ id: 1, name: long, status: 'active', created_at: 'x', archived_at: null }], archived: [] }
@@ -518,14 +521,20 @@ describe('SPEC-WEBUI-001 방 목록·계정 바', () => {
     expect(row.querySelector('.room-name')!.textContent).toBe('분기별-수율-보고서-최종')
     expect(row.querySelector('.room-prefix')!.textContent).toBe('prodev-worktogether-2026-장기프로젝트/')
 
-    // 줄어드는 쪽은 앞머리뿐이다
+    // 줄어드는 쪽은 앞머리 우선이다 — 가중치 100:1 로 앞머리가 먼저 흡수한다
     const prefix = rule('.room-prefix')
     expect(prefix).toMatch(/text-overflow:\s*ellipsis/)
     expect(prefix).toMatch(/overflow:\s*hidden/)
     expect(prefix).toMatch(/white-space:\s*nowrap/)
     expect(prefix).toMatch(/min-width:\s*0/)
-    expect(rule('.room-name')).toMatch(/flex-shrink:\s*0/)
-    expect(rule('.room-name')).not.toMatch(/text-overflow/)
+    expect(prefix).toMatch(/flex-shrink:\s*100/)
+    // 앞머리를 다 줄여도 모자란 경우 — 꼬리도 행 안에서 말린다 (넘침 방지)
+    const name = rule('.room-name')
+    expect(name).toMatch(/flex-shrink:\s*1\b/)
+    expect(name).toMatch(/min-width:\s*0/)
+    expect(name).toMatch(/overflow:\s*hidden/)
+    expect(name).toMatch(/text-overflow:\s*ellipsis/)
+    expect(name).toMatch(/white-space:\s*nowrap/)
   })
 
   // ── AC-WEBUI-001 앞 겹 — 행 높이는 이름 길이와 무관하다 (AC-003 전반) ─

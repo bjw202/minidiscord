@@ -152,7 +152,9 @@ describe('SPEC-WEBUI-001 real-browser layers', () => {
   it('renders every room row at the same fixed height (real browser)', { skip: skipReason !== null, timeout: 60_000 }, async () => {
     const { page, dispose } = await bootVisual()
     try {
-      // 방 둘을 실제 서버에 만든다 — 페이지의 세션 쿠키를 그대로 쓰는 fetch 다
+      // 방 셋을 실제 서버에 만든다 — 페이지의 세션 쿠키를 그대로 쓰는 fetch 다
+      // (2026-09-11 셋째 이름 추가: 슬래시 없는 긴 이름 — 앞머리가 없어 예전엔 행이 넘치고
+      //  보관 버튼이 화면 밖으로 밀렸던 케이스를 실브라우저에서 영구히 지킨다)
       await page.evaluate(async () => {
         const mk = (name: string) => fetch('/api/rooms', {
           method: 'POST', credentials: 'same-origin',
@@ -160,19 +162,27 @@ describe('SPEC-WEBUI-001 real-browser layers', () => {
         })
         await mk('a')
         await mk('prodev-worktogether-2026-장기/분기별-수율-보고서-최종본')
+        await mk('슬래시 없는 아주 긴 방 이름 — 넘침과 말줄임 확인')
       })
       await page.reload()
       await page.waitForSelector('#room-list .room-item')
 
       const heights = await page.$$eval('#room-list .room-item',
         (els: Element[]) => els.map((e: Element) => e.getBoundingClientRect().height))
-      expect(heights).toHaveLength(2)
+      expect(heights).toHaveLength(3)
       expect(heights[0]).toBe(26)
-      expect(heights[1]).toBe(heights[0])   // 이름 길이가 행 높이를 바꾸지 않는다
-      // 꼬리는 화면에서도 잘리지 않는다 — 줄어드는 것은 앞머리뿐이다
-      const tail = await page.$$eval('#room-list .room-item .room-name',
-        (els: Element[]) => els.map((e: Element) => e.scrollWidth <= e.clientWidth))
-      expect(tail).toEqual([true, true])
+      for (const h of heights) expect(h).toBe(heights[0])   // 이름 길이가 행 높이를 바꾸지 않는다
+      // 2026-09-11 정정 — 관측의 본질은 «행이 목록 폭을 넘지 않는다»다. 꼬리가 말리는(
+      // scrollWidth > clientWidth) 것은 말줄임의 정상 동작이므로 더 이상 결함이 아니다.
+      const fits = await page.$$eval('#room-list .room-item',
+        (els: Element[]) => els.map((e: Element) => e.scrollWidth <= e.clientWidth + 1))
+      expect(fits).toEqual([true, true, true])
+      // 보관 버튼이 화면 밖으로 밀리지 않는다 — 목록 오른쪽 안쪽에 머문다
+      const btnIn = await page.$$eval('#room-list .room-item .archive-btn', (els: Element[]) => {
+        const right = document.querySelector('#room-list')!.getBoundingClientRect().right
+        return els.map((e: Element) => e.getBoundingClientRect().right <= right + 1)
+      })
+      expect(btnIn).toEqual([true, true, true])
     } finally { await dispose() }
   })
 
