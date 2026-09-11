@@ -799,11 +799,18 @@ describe('AC-WEBMD2-007 integration and preserve baseline', () => {
     expect(chip!.nextSibling!.textContent).toBe('orchestrator')
 
     // (2) PRESERVE — pre-flight HEAD 이후 이 경로들에 커밋이 없다
+    //
+    // web/app.js 는 이 목록에서 빠졌다 (운영자 결정, SPEC-WEBATTACH-001 run 단계).
+    // 「기준 시점 이후 커밋 0」 은 run 단계에서만 참인 명제인데 영구 시험에 박히면
+    // 그 파일을 정당하게 고치는 뒤따르는 모든 SPEC 이 이 단언을 깬다 — 시간이 흐르면
+    // 반드시 깨지는 시험이다. WEBMD-002 가 app.js 를 안 건드렸다는 사실은 그 SPEC 의
+    // sync 에서 이미 확정됐고, 여기 남은 것은 미래를 향한 족쇄뿐이었다.
+    // 나머지 세 경로의 보호는 그대로 둔다.
     const git = (args: string) => execSync(`git ${args}`, { cwd: repoRoot }).toString()
-    expect(git(`log --oneline ${PRE_FLIGHT_HEAD}..HEAD -- web/app.js web/rich.js web/markdown.d.ts server/src`)).toBe('')
+    expect(git(`log --oneline ${PRE_FLIGHT_HEAD}..HEAD -- web/rich.js web/markdown.d.ts server/src`)).toBe('')
 
-    // (3) PRESERVE — 작업 나무도 0줄
-    expect(git('diff --stat -- web/app.js web/rich.js web/markdown.d.ts server/src')).toBe('')
+    // (3) PRESERVE — 작업 나무도 0줄 (같은 이유로 web/app.js 제외)
+    expect(git('diff --stat -- web/rich.js web/markdown.d.ts server/src')).toBe('')
 
     // (4) 시험 파일은 추가 라인만 — 기존 describe 블록 무수정(제거·변경 0줄)
     const diff = git(`diff ${PRE_FLIGHT_HEAD} -- server/test/web-markdown.test.ts`)
