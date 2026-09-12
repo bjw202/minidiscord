@@ -805,12 +805,18 @@ describe('AC-WEBMD2-007 integration and preserve baseline', () => {
     // 그 파일을 정당하게 고치는 뒤따르는 모든 SPEC 이 이 단언을 깬다 — 시간이 흐르면
     // 반드시 깨지는 시험이다. WEBMD-002 가 app.js 를 안 건드렸다는 사실은 그 SPEC 의
     // sync 에서 이미 확정됐고, 여기 남은 것은 미래를 향한 족쇄뿐이었다.
-    // 나머지 세 경로의 보호는 그대로 둔다.
+    //
+    // **server/src 도 같은 까닭으로 2026-09-12 에 빠졌다** (윈도우 포팅). 위 단락이 예고한 일이
+    // 그대로 일어났다 — gateway.ts 의 첨부 뿌리 판정을 윈도우에서 고쳐야 했고(드라이브 문자
+    // 대소문자가 어긋나면 봇 첨부가 조용히 전부 사라진다), 서버 코드와 아무 상관없는 이 화면
+    // 시험이 그것을 막았다. WEBMD-002 가 server/src 를 안 건드렸다는 사실 역시 그 SPEC 의 sync 에서
+    // 이미 확정됐고, 서버 동작의 보호는 server/test/** 291건이 한다 — 이 한 줄이 아니다.
+    // 남은 둘(web/rich.js · web/markdown.d.ts)은 이 SPEC 이 실제로 마주친 자리라 그대로 둔다.
     const git = (args: string) => execSync(`git ${args}`, { cwd: repoRoot }).toString()
-    expect(git(`log --oneline ${PRE_FLIGHT_HEAD}..HEAD -- web/rich.js web/markdown.d.ts server/src`)).toBe('')
+    expect(git(`log --oneline ${PRE_FLIGHT_HEAD}..HEAD -- web/rich.js web/markdown.d.ts`)).toBe('')
 
-    // (3) PRESERVE — 작업 나무도 0줄 (같은 이유로 web/app.js 제외)
-    expect(git('diff --stat -- web/rich.js web/markdown.d.ts server/src')).toBe('')
+    // (3) PRESERVE — 작업 나무도 0줄 (같은 이유로 web/app.js · server/src 제외)
+    expect(git('diff --stat -- web/rich.js web/markdown.d.ts')).toBe('')
 
     // (4) 시험 파일은 추가 라인만 — 기존 describe 블록 무수정(제거·변경 0줄)
     const diff = git(`diff ${PRE_FLIGHT_HEAD} -- server/test/web-markdown.test.ts`)
