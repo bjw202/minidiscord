@@ -58,12 +58,22 @@ export async function acquirePort(): Promise<{ forServer: string; forProbe: numb
   return { forServer: String(port), forProbe: port }
 }
 
-/** 서버 spawn — 별도 프로세스, 실제 전선. detached 로 프로세스 그룹을 만들어 npx→tsx→node 중간 단계가 있어도
- *  그룹 전체를 거둘 수 있게 한다. 환경변수는 server/src/config.ts 가 실제로 읽는 것들이다. */
+/** 서버 spawn — 별도 프로세스, 실제 전선. 환경변수는 server/src/config.ts 가 실제로 읽는 것들이다.
+ *
+ *  npx 를 부르지 않고 tsx 의 CLI 를 노드로 바로 띄운다. 윈도우에는 **실행 가능한 `npx` 가 없다** —
+ *  `npx.cmd` 뿐이고 노드는 `.cmd` 를 셸 없이 띄우지 않아 spawn 이 ENOENT 로 죽는다 (2026-09-12 실측).
+ *  `shell: true` 로 우회하면 이번에는 kill 이 셸만 죽이고 서버가 남아 러너가 끝나지 않는다.
+ *  자식을 하나로 줄이면 세 플랫폼이 같은 길을 쓰고, 중간 단계가 없어 kill 이 그대로 먹는다.
+ *
+ *  detached 는 posix 에서만 켠다. 프로세스 그룹은 stopServer 가 `-pid` 로 그룹째 신호를 보내려고 둔
+ *  것인데, 윈도우에는 그룹 신호가 없다(음수 pid 는 던진다). 윈도우에서는 자식 하나를 바로 죽인다 —
+ *  2026-09-12 에 tsx CLI 로 띄운 서버가 child.kill() 하나로 포트를 놓는 것을 재 보고 정했다. */
+const TSX_CLI = path.join(PROJECT_ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs')
+const 윈도우 = process.platform === 'win32'
 export function spawnServer(portForServer: string, dataDir: string, botFilesDir: string): ChildProcess {
-  return spawn('npx', ['tsx', 'server/src/index.ts'], {
+  return spawn(process.execPath, [TSX_CLI, 'server/src/index.ts'], {
     cwd: PROJECT_ROOT,
-    detached: true,
+    detached: !윈도우,
     stdio: 'inherit',
     env: {
       ...process.env,
@@ -108,14 +118,19 @@ export async function waitForBoot(child: ChildProcess, probePort: number): Promi
   throw new E2eError(EXIT_BOOT_TIMEOUT)
 }
 
-/** 서버 프로세스 그룹을 거둔다 — SIGTERM → 3초 유예 → SIGKILL. 최종 정리와 재시작 단계가 함께 쓴다. */
+/** 서버를 거둔다 — SIGTERM → 3초 유예 → SIGKILL. 최종 정리와 재시작 단계가 함께 쓴다.
+ *  posix 는 프로세스 그룹째(`-pid`) 보낸다: spawnServer 가 detached 로 그룹을 만들어 둔다.
+ *  윈도우는 그룹 신호가 없어 자식 하나에 보낸다 — spawnServer 가 자식을 하나로 만들어 둔다. */
 export async function stopServer(child: ChildProcess): Promise<void> {
   if (!child.pid) return
   const dead = new Promise<void>(resolve => child.once('exit', () => resolve()))
-  try { process.kill(-child.pid, 'SIGTERM') } catch { /* 이미 죽었다 */ }
+  const 보낸다 = (sig: NodeJS.Signals) => {
+    try { 윈도우 ? child.kill(sig) : process.kill(-child.pid!, sig) } catch { /* 이미 죽었다 */ }
+  }
+  보낸다('SIGTERM')
   await Promise.race([dead, new Promise<void>(resolve => setTimeout(resolve, 3_000))])
   if (child.exitCode === null && child.signalCode === null) {
-    try { process.kill(-child.pid, 'SIGKILL') } catch { /* 이미 죽었다 */ }
+    보낸다('SIGKILL')
     await dead
   }
 }
