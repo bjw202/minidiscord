@@ -18,6 +18,22 @@ import { registerAuthRoutes } from '../src/auth.js'
 import { registerBotRoutes } from '../src/routes-bots.js'
 import multipart from '@fastify/multipart'
 import { registerMessageRoutes } from '../src/routes-messages.js'
+
+// 이 기계에서 심볼릭 링크를 **만들 수** 있는가. 윈도우는 개발자 모드도 관리자 권한도 없으면
+// symlinkSync 가 EPERM 으로 던진다 (2026-09-12 실측 · 윈도우 11 Home · 개발자 모드 꺼짐).
+// 링크 건은 «뿌리 안의 링크로 뿌리 밖을 끌어오지 못한다» 는 보안 경계를 재는 자리라
+// 통째로 건너뛰면 안 된다 — 그래서 **링크 칸만** 빼고 나머지 칸(밖 · 안 · 형제 접두 · 없는 파일)은
+// 윈도우에서도 그대로 잰다. 링크 자리를 재려면 개발자 모드를 켠다
+// (설정 → 개인 정보 및 보안 → 개발자용 → 개발자 모드). posix 는 언제나 true 라 갈래가 생기지 않는다.
+const 링크만들수있나 = (() => {
+  const t = mkdtempSync(join(tmpdir(), 'md-symlink-probe-'))
+  try { writeFileSync(join(t, 'target'), 'x'); symlinkSync(join(t, 'target'), join(t, 'link')); return true }
+  catch { return false }
+  finally { rmSync(t, { recursive: true, force: true }) }
+})()
+if (!링크만들수있나) {
+  console.warn('  [건너뜀] 심볼릭 링크를 만들 수 없는 기계다 (윈도우 개발자 모드 꺼짐?) — 링크 경계 칸을 뺀다')
+}
 import { attributeHits, type CaptureRecord, type WinEntry } from './wsupgrade-judgment.js'
 
 let dir: string
@@ -657,8 +673,9 @@ describe('gateway', () => {
     writeFileSync(inside, 'ok')
     const linkTarget = join(outsideDir, 'linked-secret.txt')
     writeFileSync(linkTarget, 'LINK-CANARY-3c4d')
-    const link = join(dir, '겉보기정상.txt')
-    symlinkSync(linkTarget, link)
+    // 링크를 못 만드는 기계에서는 이 칸만 뺀다 (위 링크만들수있나 의 까닭). 나머지 넷은 그대로 잰다.
+    const link = 링크만들수있나 ? join(dir, '겉보기정상.txt') : null
+    if (link) symlinkSync(linkTarget, link)
     // dir 의 형제이면서 문자열로는 dir 을 접두사로 갖는 디렉터리 — sep 없이 비교하면 여기가 뚫린다
     const sibling = `${dir}evil`
     mkdirSync(sibling, { recursive: true })
@@ -672,7 +689,7 @@ describe('gateway', () => {
         files: [
           { local_path: outside, name: 'outside.txt' },
           { local_path: inside, name: '뿌리안.txt' },
-          { local_path: link, name: '겉보기정상.txt' },
+          ...(link ? [{ local_path: link, name: '겉보기정상.txt' }] : []),
           { local_path: siblingFile, name: 'sibling.txt' },
           { local_path: missing, name: '없는파일.txt' },
         ],
@@ -725,7 +742,8 @@ describe('gateway', () => {
   })
 
   // AC-GW-023 (이관) — 허용 뿌리 안의 심볼릭 링크로도 밖을 끌어오지 못한다 (변이 ㉢ realpathSync → resolve 가 여기서 붉어진다)
-  it('bot_message refuses a symlink inside botFilesDir that points outside it', async () => {
+  // 이 칸은 링크가 전부라 링크를 못 만들면 잴 것이 없다 — 통과로 위장하지 않고 건너뛴 것으로 남긴다.
+  it.skipIf(!링크만들수있나)('bot_message refuses a symlink inside botFilesDir that points outside it', async () => {
     const { app, port } = await build()
     const room = seedRoom(), pm = seedBot('pm')
     joinRoom(room, pm)

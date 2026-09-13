@@ -8,6 +8,19 @@ import { basename, join, resolve, sep } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { resolveTargets } from './targets.js'
 
+// 뿌리 안인가 — 문자열 접두사 판정을 한 자리에 둔다 (봇 첨부의 출처 봉인, sync-audit F-01).
+// sep 를 붙여 비교한다: 붙이지 않으면 '<root>-evil' 같은 형제 접두사가 통과한다.
+//
+// 윈도우만 대소문자를 무시한다. realpathSync 는 **들어온 드라이브 문자의 대소문자를 그대로 돌려준다** —
+// MINIDISCORD_BOT_FILES_DIR 을 'c:/…' 로 주면 뿌리는 'c:\…', 봇이 보내는 파일은 'C:\…' 가 되어
+// 같은 폴더인데도 판정이 false 다. 그러면 **봇 첨부가 오류 한 줄 없이 전부 사라진다**
+// (2026-09-12 윈도우 11 실측: realpathSync('c:\\…') → 'c:\\…', realpathSync('C:\\…') → 'C:\\…').
+// 윈도우 파일 이름은 실제로 대소문자를 구분하지 않으므로 무시하는 편이 그 OS 의 뜻에 맞다.
+// posix 는 구분하는 것이 맞고, 그쪽 판정은 한 글자도 바뀌지 않는다 — 보안 경계가 느슨해지지 않는다.
+const 뿌리안 = process.platform === 'win32'
+  ? (src: string, root: string) => src.toLowerCase().startsWith((root + sep).toLowerCase())
+  : (src: string, root: string) => src.startsWith(root + sep)
+
 export interface MessageRow {
   id: number; room_id: number; author_type: string; author_name: string
   body: string; created_at: string
@@ -216,10 +229,10 @@ export function createGateway(app: FastifyInstance, opts: { uploadsDir: string; 
       try {
         // 출처 경로 봉인 (sync-audit F-01). basename() 은 목적지 이름에만 걸리고 출처에는 걸리지 않아,
         // 이 검사가 없으면 '../..' 없이 절대 경로만으로도 뿌리 밖 파일이 그대로 복사됐다.
-        // sep 를 붙여 비교한다 — 붙이지 않으면 '<root>-evil' 같은 접두사 일치가 통과한다.
+        // 접두사 판정은 위의 뿌리안() 한 자리다 (sep 를 붙이는 까닭과 윈도우 대소문자도 거기 적었다).
         // 없는 파일은 realpathSync 가 던지고 아래 catch 가 받는다 — 건너뛰기와 같은 자리다.
         const src = realpathSync(String(f.local_path))
-        if (!filesRoot || !src.startsWith(filesRoot + sep)) continue
+        if (!filesRoot || !뿌리안(src, filesRoot)) continue
         // 다섯 컬럼 전부 채운다 — size·mime 은 NOT NULL 이라 빠뜨리면 INSERT 가 제약 위반으로
         // 던지고 이 catch 가 그것을 삼켜 첨부가 조용히 사라진다.
         // size 는 원본의 바이트 크기, mime 은 상수 — 게이트웨이는 내용을 스니핑하지 않는다.

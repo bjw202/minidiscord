@@ -210,7 +210,10 @@ describe('bots', () => {
     // 채널 경로는 저장소 안 빌드 산출물의 절대 경로 — PATH 의 전역 명령이나 셸 export 에 기대지 않는다 (맥북 첫 설치 실측)
     const { fileURLToPath } = await import('node:url')
     const entry = fileURLToPath(new URL('../../channel/dist/index.js', import.meta.url))
-    expect(entry.startsWith('/')).toBe(true)
+    // 재려는 것은 «절대 경로인가» 다. `/` 로 시작하는지로 재면 윈도우(`C:\…`)에서 틀린다 —
+    // isAbsolute 는 세 플랫폼에서 같은 뜻을 낸다.
+    const { isAbsolute } = await import('node:path')
+    expect(isAbsolute(entry)).toBe(true)
     const m = /<<'EOF'\n([\s\S]*?)\nEOF\n/.exec(body.command)
     expect(m).not.toBeNull()
     expect(JSON.parse(m![1])).toEqual({ mcpServers: { 'minidiscord-channel': {

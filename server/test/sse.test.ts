@@ -35,7 +35,11 @@ async function startServer() {
   const ck = setCookieOf(login).split(';')[0]
   await app.listen({ port: 0 })
   const port = (app.server.address() as { port: number }).port
-  cleanups.push(async () => { await app.close(); rmSync(dir, { recursive: true, force: true }) })
+  // DB 를 **닫은 뒤** 폴더를 지운다. 이 자리는 buildServer() 를 안 거쳐 onClose 훅이 없으므로
+  // app.close() 만으로는 SQLite 핸들이 남는다. 윈도우는 열린 파일을 지울 수 없어 rmSync 가
+  // EPERM 으로 던지고, 그 예외가 afterEach 에서 나 이 파일의 시험 아홉이 통째로 붉어진다
+  // (2026-09-12 실측). posix 는 열린 파일도 지워지므로 지금까지 조용히 새고 있었다 — 어느 쪽이든 닫는 게 맞다.
+  cleanups.push(async () => { await app.close(); try { app.db.close() } catch { /* 이미 닫혔다 */ } rmSync(dir, { recursive: true, force: true }) })
   return { app, hub, cookie: ck, port }
 }
 
@@ -209,12 +213,15 @@ describe('sse', () => {
     cleanups.push(() => {
       if (prevDataDir === undefined) delete process.env.MINIDISCORD_DATA_DIR
       else process.env.MINIDISCORD_DATA_DIR = prevDataDir
-      rmSync(dataDir, { recursive: true, force: true })
     })
 
     const { buildServer } = await import('../src/index.js')
     const app = await buildServer()
+    // 서버를 닫는 뒷정리를 폴더 지우기보다 **먼저** 넣는다. afterEach 는 넣은 순서로 돈다 —
+    // 거꾸로 두면 DB 가 열린 채 rmSync 가 돌아 윈도우에서 EPERM 으로 던진다 (열린 파일은 못 지운다).
+    // buildServer() 는 onClose 에서 db.close() 를 하므로 app.close() 하나로 핸들이 풀린다.
     cleanups.push(async () => { await app.close() })
+    cleanups.push(() => { rmSync(dataDir, { recursive: true, force: true }) })
 
     const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'w' } })
     const ck = setCookieOf(login).split(';')[0]
